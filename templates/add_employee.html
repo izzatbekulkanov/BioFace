@@ -1,0 +1,513 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mb-6 flex flex-col justify-between items-start gap-4">
+    <div>
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{% if lang == "ru" %}Добавить сотрудника{% else %}Yangi xodim qo'shish{% endif %}</h2>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{% if lang == "ru" %}Заполните данные для нового сотрудника.{% else %}Yangi xodim uchun ma'lumotlarni to'ldiring.{% endif %}</p>
+    </div>
+</div>
+
+<div class="bg-white border border-gray-200 rounded-xl shadow-sm dark:bg-gray-800 dark:border-gray-700 p-6 md:p-8">
+    <form id="addEmployeeForm" onsubmit="saveNewEmployee(event)">
+        <div class="grid gap-6 mb-6 grid-cols-1 md:grid-cols-2">
+            <div>
+                <label for="firstName" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{{ t.first_name }} <span class="text-red-500">*</span></label>
+                <input type="text" id="firstName" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" required>
+            </div>
+            <div>
+                <label for="lastName" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{{ t.last_name }} <span class="text-red-500">*</span></label>
+                <input type="text" id="lastName" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" required>
+            </div>
+            <div>
+                <label for="department" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{{ t.department }}</label>
+                <input type="text" id="department" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
+            </div>
+            <div>
+                <label for="position" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{{ t.position }}</label>
+                <input type="text" id="position" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
+            </div>
+            
+            <div class="col-span-1 md:col-span-2">
+                <label for="inpOrg" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{{ t.organization }}</label>
+                <select id="inpOrg" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" onchange="filterCamerasByOrg()">
+                    <option value="">-- Tashkilot tanlanmagan --</option>
+                    {% for org in organizations %}
+                    <option value="{{ org.id }}">{{ org.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-span-1 md:col-span-2">
+                <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Kameralarni Tanlash (ISUP orqali yuzni yuborish)</label>
+                <div id="cam-list" class="flex flex-wrap gap-2 p-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg min-h-[48px] text-sm text-gray-400">
+                    Avval tashkilotni tanlang...
+                </div>
+                <input type="hidden" id="selectedCameras" value="[]">
+            </div>
+
+            <div class="col-span-1 md:col-span-2">
+                <label for="personalId" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Shaxsiy Tabel Yoki Kamera ID (Ixtiyoriy)</label>
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <input type="text" id="personalId" maxlength="7" inputmode="numeric" autocomplete="off" readonly
+                           placeholder="7 xonali ID"
+                           class="bg-gray-50 font-mono border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white">
+                    <button type="button" id="btnGeneratePersonalId" onclick="generatePersonalId()"
+                            class="shrink-0 px-4 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition">
+                        Generatsiya
+                    </button>
+                    <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                        <input type="checkbox" id="manualPersonalId" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" onchange="toggleManualPersonalId()">
+                        Qo'lda kiritish
+                    </label>
+                </div>
+                <p id="personalIdHint" class="text-xs text-gray-500 mt-1">ID 7 ta raqam bo'ladi, 0 bilan boshlanmaydi va bazada takrorlanmaydi.</p>
+            </div>
+            
+            <div class="col-span-1 md:col-span-2">
+                <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{% if lang == 'ru' %}Фотография (Необязательно){% else %}Yuz rasmi yuklash (Ixtiyoriy){% endif %}</label>
+                <input class="hidden" id="image" type="file" accept="image/*">
+                <div id="emp-image-dropzone" class="relative rounded-2xl border-2 border-dashed border-blue-300/80 dark:border-blue-700/60 bg-gradient-to-br from-blue-50 via-indigo-50 to-sky-50 dark:from-gray-900 dark:via-gray-900 dark:to-blue-950/20 p-5 transition-all cursor-pointer hover:shadow-md hover:border-blue-400 dark:hover:border-blue-600">
+                    <div id="emp-upload-empty" class="flex items-center gap-4">
+                        <div class="w-14 h-14 rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-blue-100 dark:border-gray-700 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M12 13v8m0-8l-3 3m3-3l3 3"/>
+                            </svg>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-sm font-semibold text-gray-800 dark:text-gray-100">{% if lang == 'ru' %}Перетащите фото или выберите файл{% else %}Rasmni tashlang yoki fayl tanlang{% endif %}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">JPG, PNG, WEBP. Yuz aniq ko'rinadigan rasm tavsiya etiladi.</p>
+                            <button type="button" id="emp-btn-open-file" class="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                </svg>
+                                {% if lang == 'ru' %}Выбрать{% else %}Tanlash{% endif %}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="emp-upload-preview" class="hidden items-center gap-4">
+                        <img id="emp-upload-preview-img" src="" alt="Preview" class="w-20 h-20 rounded-2xl object-cover ring-2 ring-white dark:ring-gray-800 shadow-md">
+                        <div class="min-w-0 flex-1">
+                            <p id="emp-upload-file-name" class="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate"></p>
+                            <p id="emp-upload-file-size" class="text-xs text-gray-500 dark:text-gray-400 mt-1"></p>
+                            <div class="mt-2 flex items-center gap-2">
+                                <button type="button" id="emp-btn-change-file" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition">{% if lang == 'ru' %}Заменить{% else %}Almashtirish{% endif %}</button>
+                                <button type="button" id="emp-btn-remove-file" class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200 text-xs font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition">{% if lang == 'ru' %}Удалить{% else %}O'chirish{% endif %}</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-span-1 md:col-span-2 mt-4">
+                <h4 class="text-base font-medium text-gray-900 dark:text-white mb-2 pb-2 border-b border-gray-200 dark:border-gray-700">{% if lang == "ru" %}Персональное рабочее время (по желанию){% else %}Shaxsiy Ish Vaqti (Ixtiyoriy){% endif %}</h4>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">{% if lang == "ru" %}Укажите только если отличается от общего времени организации. Оставьте пустым для использования настроек по умолчанию.{% else %}Agar tashkilotning umumiy ish vaqtiga mos kelmasa to'ldiring. Aks holda bo'sh qoldiring.{% endif %}</p>
+                
+                <div class="grid gap-6 grid-cols-1 sm:grid-cols-2">
+                    <div>
+                        <label for="startTime" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Kelish (Masalan: 08:30)</label>
+                        <input type="time" id="startTime" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="endTime" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Ketish (Masalan: 17:30)</label>
+                        <input type="time" id="endTime" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="formError" class="hidden mb-4 p-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400" role="alert"></div>
+
+        <div class="flex items-center gap-4 mt-8 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <a href="/employees" class="text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 dark:focus:ring-gray-700">
+                {% if lang == "ru" %}Отмена{% else %}Bekor qilish{% endif %}
+            </a>
+            <button type="submit" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-6 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 flex items-center gap-2">
+                <svg id="saveSpinner" class="hidden w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                Saqlash
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+let allCameras = [];
+let personalIdCheckTimer = null;
+let personalIdLastChecked = "";
+let personalIdIsAvailable = false;
+const empImageInput = document.getElementById('image');
+const empDropzone = document.getElementById('emp-image-dropzone');
+const empUploadEmpty = document.getElementById('emp-upload-empty');
+const empUploadPreview = document.getElementById('emp-upload-preview');
+const empUploadPreviewImg = document.getElementById('emp-upload-preview-img');
+const empUploadFileName = document.getElementById('emp-upload-file-name');
+const empUploadFileSize = document.getElementById('emp-upload-file-size');
+const empBtnOpenFile = document.getElementById('emp-btn-open-file');
+const empBtnChangeFile = document.getElementById('emp-btn-change-file');
+const empBtnRemoveFile = document.getElementById('emp-btn-remove-file');
+
+function empHumanFileSize(bytes) {
+    if (!bytes) return '0 KB';
+    const kb = bytes / 1024;
+    if (kb < 1024) return `${kb.toFixed(1)} KB`;
+    return `${(kb / 1024).toFixed(2)} MB`;
+}
+
+function showEmployeeUploadEmpty() {
+    empUploadEmpty.classList.remove('hidden');
+    empUploadPreview.classList.add('hidden');
+    empUploadPreview.classList.remove('flex');
+}
+
+function showEmployeeUploadPreview(file) {
+    if (!file) {
+        showEmployeeUploadEmpty();
+        return;
+    }
+    empUploadFileName.textContent = file.name || 'image';
+    empUploadFileSize.textContent = `${empHumanFileSize(file.size)} - ${file.type || 'image/*'}`;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        empUploadPreviewImg.src = e.target.result;
+        empUploadEmpty.classList.add('hidden');
+        empUploadPreview.classList.remove('hidden');
+        empUploadPreview.classList.add('flex');
+    };
+    reader.readAsDataURL(file);
+}
+
+function setEmployeeSelectedImage(file) {
+    if (!file || !String(file.type || '').startsWith('image/')) return;
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    empImageInput.files = dt.files;
+    showEmployeeUploadPreview(file);
+}
+
+function setEmployeeDropzoneActive(active) {
+    if (active) {
+        empDropzone.classList.add('ring-2', 'ring-blue-400', 'border-blue-500');
+    } else {
+        empDropzone.classList.remove('ring-2', 'ring-blue-400', 'border-blue-500');
+    }
+}
+
+function setPersonalIdHint(message, tone = 'neutral') {
+    const hint = document.getElementById('personalIdHint');
+    hint.textContent = message;
+    if (tone === 'success') {
+        hint.className = 'text-xs text-emerald-600 dark:text-emerald-400 mt-1';
+    } else if (tone === 'error') {
+        hint.className = 'text-xs text-red-600 dark:text-red-400 mt-1';
+    } else if (tone === 'warn') {
+        hint.className = 'text-xs text-amber-600 dark:text-amber-400 mt-1';
+    } else {
+        hint.className = 'text-xs text-gray-500 mt-1';
+    }
+}
+
+function sanitizePersonalIdInput(raw) {
+    let cleaned = (raw || '').replace(/\D/g, '').slice(0, 7);
+    if (cleaned.startsWith('0')) {
+        cleaned = cleaned.replace(/^0+/, '').slice(0, 7);
+    }
+    return cleaned;
+}
+
+function isValidPersonalIdFormat(value) {
+    return /^[1-9][0-9]{6}$/.test(value || '');
+}
+
+function toggleManualPersonalId() {
+    const input = document.getElementById('personalId');
+    const manual = document.getElementById('manualPersonalId').checked;
+    input.readOnly = !manual;
+    if (manual) {
+        input.focus();
+        setPersonalIdHint("Qo'lda kiritish yoqildi: 7 ta raqam kiriting.", 'neutral');
+    } else {
+        setPersonalIdHint("Qo'lda kiritish o'chdi. Generatsiya tugmasidan foydalaning.", 'neutral');
+    }
+}
+
+async function checkPersonalIdAvailability(value) {
+    try {
+        const res = await fetch(`/api/employees/personal-id/validate?personal_id=${encodeURIComponent(value)}`);
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data.detail || 'Tekshirishda xatolik');
+        }
+        personalIdLastChecked = value;
+        personalIdIsAvailable = Boolean(data.valid && data.available);
+        if (personalIdIsAvailable) {
+            setPersonalIdHint("ID bo'sh. Saqlash mumkin.", 'success');
+            return true;
+        }
+        setPersonalIdHint(data.message || "Bu ID band.", 'error');
+        return false;
+    } catch (e) {
+        personalIdIsAvailable = false;
+        setPersonalIdHint(`Tekshirishda xatolik: ${e.message}`, 'error');
+        return false;
+    }
+}
+
+function onPersonalIdInput() {
+    const input = document.getElementById('personalId');
+    const value = sanitizePersonalIdInput(input.value);
+    if (input.value !== value) {
+        input.value = value;
+    }
+
+    personalIdIsAvailable = false;
+    personalIdLastChecked = "";
+    if (personalIdCheckTimer) {
+        clearTimeout(personalIdCheckTimer);
+    }
+
+    if (!value) {
+        setPersonalIdHint("ID 7 ta raqam bo'lishi kerak.", 'warn');
+        return;
+    }
+    if (value.length < 7) {
+        setPersonalIdHint(`Yana ${7 - value.length} ta raqam kiriting.`, 'warn');
+        return;
+    }
+    if (!isValidPersonalIdFormat(value)) {
+        setPersonalIdHint("Birinchi raqam 1-9 bo'lishi kerak.", 'error');
+        return;
+    }
+
+    setPersonalIdHint("ID tekshirilmoqda...", 'neutral');
+    personalIdCheckTimer = setTimeout(() => {
+        checkPersonalIdAvailability(value);
+    }, 250);
+}
+
+async function generatePersonalId() {
+    const input = document.getElementById('personalId');
+    const btn = document.getElementById('btnGeneratePersonalId');
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Kutilmoqda...';
+    try {
+        const res = await fetch('/api/employees/personal-id/generate');
+        const data = await res.json();
+        if (!res.ok || !data.personal_id) {
+            throw new Error(data.detail || "ID generatsiya qilib bo'lmadi");
+        }
+        input.value = String(data.personal_id);
+        personalIdLastChecked = input.value;
+        personalIdIsAvailable = true;
+        setPersonalIdHint(`Generatsiya qilindi: ${input.value}`, 'success');
+    } catch (e) {
+        setPersonalIdHint(`Generatsiya xatosi: ${e.message}`, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+    }
+}
+
+async function ensurePersonalIdReady() {
+    const input = document.getElementById('personalId');
+    const value = sanitizePersonalIdInput(input.value);
+    input.value = value;
+
+    if (!isValidPersonalIdFormat(value)) {
+        setPersonalIdHint("Shaxsiy ID noto'g'ri. 7 ta raqam kiriting (0 bilan boshlanmasin).", 'error');
+        return null;
+    }
+    if (personalIdLastChecked === value && personalIdIsAvailable) {
+        return value;
+    }
+    const ok = await checkPersonalIdAvailability(value);
+    return ok ? value : null;
+}
+
+async function filterCamerasByOrg() {
+    const orgId = document.getElementById('inpOrg').value;
+    const camList = document.getElementById('cam-list');
+    if (!orgId) {
+        camList.innerHTML = 'Avval tashkilotni tanlang...';
+        allCameras = [];
+        return;
+    }
+    camList.innerHTML = '<span class="text-gray-400 text-xs animate-pulse">Yuklanmoqda...</span>';
+    try {
+        const res = await fetch('/api/cameras/by-org/' + orgId);
+        allCameras = await res.json();
+        if (allCameras.length === 0) {
+            camList.innerHTML = '<span class="text-gray-400 text-xs">Bu tashkilotda kamera yo\'q</span>';
+            return;
+        }
+        camList.innerHTML = allCameras.map(c => `
+            <label class="flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-lg ${c.is_online ? 'bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-900/30' : 'bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700'}">
+                <input type="checkbox" value="${c.id}" class="cam-check w-4 h-4 text-blue-600 cursor-pointer">
+                <span class="text-sm text-gray-800 dark:text-gray-200">${c.name}</span>
+                <span class="w-1.5 h-1.5 rounded-full ml-1 ${c.is_online ? 'bg-green-500' : 'bg-gray-400'}"></span>
+            </label>
+        `).join('');
+    } catch(e) {
+        camList.innerHTML = '<span class="text-red-400 text-xs">Kameralarni yuklashda xato</span>';
+    }
+}
+
+async function saveNewEmployee(event) {
+    event.preventDefault();
+    const btnSpinner = document.getElementById('saveSpinner');
+    const errBlock = document.getElementById('formError');
+    
+    errBlock.classList.add('hidden');
+
+    const pid = await ensurePersonalIdReady();
+    if (!pid) {
+        errBlock.textContent = "Shaxsiy ID noto'g'ri yoki band. Iltimos, qayta tekshiring.";
+        errBlock.classList.remove('hidden');
+        return;
+    }
+
+    btnSpinner.classList.remove('hidden');
+
+    const formData = new FormData();
+    formData.append('first_name', document.getElementById('firstName').value.trim());
+    formData.append('last_name', document.getElementById('lastName').value.trim());
+    formData.append('personal_id', pid);
+    
+    const dept = document.getElementById('department').value.trim();
+    if (dept) formData.append('department', dept);
+    
+    const pos = document.getElementById('position').value.trim();
+    if (pos) formData.append('position', pos);
+    
+    const stime = document.getElementById('startTime').value.trim();
+    if (stime) formData.append('start_time', stime);
+    
+    const etime = document.getElementById('endTime').value.trim();
+    if (etime) formData.append('end_time', etime);
+
+    const orgId = document.getElementById('inpOrg').value;
+    if (orgId) formData.append('organization_id', orgId);
+
+    const imageFile = document.getElementById('image').files[0];
+    if (imageFile) formData.append('image', imageFile);
+
+    // Selected cameras for ISUP face push
+    const selectedCams = [...document.querySelectorAll('.cam-check:checked')].map(c => c.value);
+    if (selectedCams.length > 0) {
+        formData.append('camera_ids', JSON.stringify(selectedCams.map(x => Number(x))));
+    }
+
+    try {
+        const res = await fetch('/api/employees', {
+            method: 'POST',
+            body: formData
+        });
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.detail || 'Xato yuz berdi');
+        }
+        const empData = await res.json();
+
+        // Push user + face to selected cameras via ISUP
+        if (selectedCams.length > 0 && empData.id) {
+            const firstName = document.getElementById('firstName').value.trim();
+            const lastName = document.getElementById('lastName').value.trim();
+            const cameraWarnings = [];
+            const cameraPushResults = await Promise.allSettled(
+                selectedCams.map(async (camId) => {
+                    const cameraForm = new FormData();
+                    cameraForm.append('first_name', firstName);
+                    cameraForm.append('last_name', lastName);
+                    cameraForm.append('personal_id', empData.personal_id || pid);
+                    if (imageFile) {
+                        cameraForm.append('image', imageFile);
+                    }
+
+                    const camRes = await fetch(`/api/cameras/${camId}/users/upload`, {
+                        method: 'POST',
+                        body: cameraForm
+                    });
+                    const camJson = await camRes.json().catch(() => ({}));
+                    if (!camRes.ok || camJson.ok === false) {
+                        throw new Error(camJson.detail || camJson.message || `Kamera ${camId} ga yuborilmadi`);
+                    }
+                    if (imageFile && camJson.set_face_response && camJson.set_face_response.ok === false) {
+                        const faceErr = camJson.set_face_response.error || `Kamera ${camId} ga rasm yozilmadi`;
+                        const low = String(faceErr).toLowerCase();
+                        const transient = low.includes('code=10') || low.includes('isup javobi kelmadi');
+                        if (transient) {
+                            cameraWarnings.push(`Kamera ${camId}: ${faceErr}`);
+                            return { camId, ok: true, warning: faceErr };
+                        }
+                        throw new Error(faceErr);
+                    }
+                    return { camId, ok: true };
+                })
+            );
+
+            const failed = cameraPushResults
+                .filter(r => r.status === 'rejected')
+                .map(r => r.reason?.message || 'Noma\'lum xatolik');
+            if (failed.length > 0) {
+                throw new Error(`Xodim BioFace ga saqlandi, lekin ${failed.length} kameraga yuborilmadi: ${failed.join('; ')}`);
+            }
+            if (cameraWarnings.length > 0) {
+                console.warn('Kamera rasm yuborish ogohlantirishlari:', cameraWarnings);
+            }
+        }
+
+        window.location.href = '/employees';
+    } catch(e) {
+        errBlock.textContent = e.message;
+        errBlock.classList.remove('hidden');
+    } finally {
+        btnSpinner.classList.add('hidden');
+    }
+}
+
+empDropzone.addEventListener('click', (e) => {
+    if (e.target.closest('button')) return;
+    empImageInput.click();
+});
+empBtnOpenFile.addEventListener('click', () => empImageInput.click());
+empBtnChangeFile.addEventListener('click', () => empImageInput.click());
+empBtnRemoveFile.addEventListener('click', () => {
+    empImageInput.value = '';
+    showEmployeeUploadEmpty();
+});
+empImageInput.addEventListener('change', () => {
+    const file = empImageInput.files?.[0];
+    showEmployeeUploadPreview(file || null);
+});
+empDropzone.addEventListener('dragenter', (e) => {
+    e.preventDefault();
+    setEmployeeDropzoneActive(true);
+});
+empDropzone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    setEmployeeDropzoneActive(true);
+});
+empDropzone.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    if (!empDropzone.contains(e.relatedTarget)) setEmployeeDropzoneActive(false);
+});
+empDropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    setEmployeeDropzoneActive(false);
+    const file = e.dataTransfer?.files?.[0];
+    if (!file) return;
+    setEmployeeSelectedImage(file);
+});
+
+function initPersonalIdControls() {
+    const input = document.getElementById('personalId');
+    input.addEventListener('input', onPersonalIdInput);
+    toggleManualPersonalId();
+    generatePersonalId();
+}
+
+initPersonalIdControls();
+showEmployeeUploadEmpty();
+</script>
+{% endblock %}

@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="mb-4 text-2xl font-bold text-gray-900 dark:text-white">{{ t.events_title }}</h1>
+    <div class="grid grid-cols-2 gap-4 md:grid-cols-3">
+        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <p class="mb-1 text-xs text-gray-500 dark:text-gray-400">{% if lang == "ru" %}Всего событий{% else %}Jami hodisalar{% endif %}</p>
+            <p class="text-xl font-bold text-gray-900 dark:text-white" id="stat-total">0</p>
+        </div>
+        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <p class="mb-1 text-xs text-emerald-500">{% if lang == "ru" %}Распознанные{% else %}Tizimda mavjud{% endif %}</p>
+            <p class="text-xl font-bold text-emerald-600 dark:text-emerald-400" id="stat-known">0</p>
+        </div>
+        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <p class="mb-1 text-xs text-red-500">{% if lang == "ru" %}Неизвестные{% else %}Noma'lum shaxslar{% endif %}</p>
+            <p class="text-xl font-bold text-red-600 dark:text-red-400" id="stat-unknown">0</p>
+        </div>
+    </div>
+</div>
+
+<div class="mb-6 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+    <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <div>
+            <label for="events-org-filter" class="mb-1 block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Tashkilot</label>
+            <select id="events-org-filter" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
+                <option value="all">Barcha tashkilotlar</option>
+            </select>
+        </div>
+        <div>
+            <label for="events-camera-filter" class="mb-1 block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Kamera</label>
+            <select id="events-camera-filter" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
+                <option value="all">Barcha kameralar</option>
+            </select>
+        </div>
+        <div class="flex items-end">
+            <button id="events-apply-filter" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700">
+                Filtrni qo'llash
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="flex flex-col items-center justify-between gap-4 border-b border-gray-100 bg-gray-50/50 px-6 py-4 dark:border-gray-800 dark:bg-gray-800/20 sm:flex-row">
+        <h3 class="font-bold text-gray-900 dark:text-white">{% if lang == "ru" %}Последние события{% else %}Oxirgi hodisalar{% endif %}</h3>
+        <div class="flex items-center gap-3">
+            <button onclick="eventsState.lastId=0; loadEvents();" class="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                Yangilash
+            </button>
+            <span id="live-indicator" style="opacity:0.6;transition:opacity 0.3s;" class="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500"></span> LIVE
+            </span>
+        </div>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+            <thead class="border-b border-gray-100 bg-gray-50 text-xs uppercase text-gray-700 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-300">
+                <tr>
+                    <th class="px-6 py-4 font-semibold">#</th>
+                    <th class="px-6 py-4 font-semibold">{{ t.time }}</th>
+                    <th class="px-6 py-4 font-semibold">{{ t.camera }}</th>
+                    <th class="px-6 py-4 font-semibold">{{ t.employee }}</th>
+                    <th class="px-6 py-4 font-semibold">{{ t.status }}</th>
+                </tr>
+            </thead>
+            <tbody id="events-tbody" class="divide-y divide-gray-100 dark:divide-gray-800">
+                <tr><td colspan="5" class="py-8 text-center text-gray-400">Yuklanmoqda...</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="flex flex-col items-center justify-between gap-3 border-t border-gray-100 px-6 py-4 dark:border-gray-800 sm:flex-row">
+        <p id="events-page-info" class="text-xs text-gray-500 dark:text-gray-400">1 / 1</p>
+        <div class="inline-flex items-center gap-2">
+            <button id="events-prev-page" class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">Oldingi</button>
+            <button id="events-next-page" class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">Keyingi</button>
+        </div>
+    </div>
+</div>
+
+<style>
+@keyframes flashNew {
+    0%   { background-color: #d1fae5; }
+    100% { background-color: transparent; }
+}
+.event-new-flash { animation: flashNew 2s ease-out forwards; }
+</style>
+
+<script>
+const lang = document.documentElement.lang || "uz";
+const eventsState = { organizations: [], cameras: [], page: 1, pageSize: 50, total: 0, totalPages: 1, lastId: 0 };
+
+// Vaqt: kamera UTC+5 lokal vaqt yuboradi → "YYYY-MM-DD HH:MM:SS" raw ko'rsatamiz
+function formatTimestamp(ts) {
+    if (!ts) return "-";
+    return String(ts).replace("T", " ").replace(/\.\d+$/, "").slice(0, 19);
+}
+
+function esc(v) {
+    return String(v ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+
+function selectedOrgId() {
+    const v = document.getElementById("events-org-filter").value;
+    return v === "all" ? null : Number(v);
+}
+function selectedCameraId() {
+    const v = document.getElementById("events-camera-filter").value;
+    return v === "all" ? null : Number(v);
+}
+
+function renderCameraFilter() {
+    const sel = document.getElementById("events-camera-filter");
+    const orgId = selectedOrgId();
+    const prev = sel.value;
+    sel.innerHTML = '<option value="all">Barcha kameralar</option>';
+    const filtered = eventsState.cameras.filter(c => orgId === null || Number(c.organization_id || 0) === Number(orgId));
+    filtered.forEach(cam => sel.insertAdjacentHTML("beforeend", `<option value="${esc(cam.id)}">${esc(cam.name)}</option>`));
+    if ([...sel.options].some(o => o.value === prev)) sel.value = prev;
+}
+
+function renderPagination() {
+    document.getElementById("events-page-info").textContent = `${eventsState.page} / ${eventsState.totalPages} (jami: ${eventsState.total})`;
+    document.getElementById("events-prev-page").disabled = eventsState.page <= 1;
+    document.getElementById("events-next-page").disabled = eventsState.page >= eventsState.totalPages;
+}
+
+async function loadFilters() {
+    const [oRes, cRes] = await Promise.all([fetch("/api/organizations"), fetch("/api/cameras")]);
+    eventsState.organizations = (await oRes.json().catch(() => [])) || [];
+    eventsState.cameras = (await cRes.json().catch(() => [])) || [];
+    if (!Array.isArray(eventsState.organizations)) eventsState.organizations = [];
+    if (!Array.isArray(eventsState.cameras)) eventsState.cameras = [];
+
+    const orgSel = document.getElementById("events-org-filter");
+    orgSel.innerHTML = '<option value="all">Barcha tashkilotlar</option>';
+    eventsState.organizations.forEach(o =>
+        orgSel.insertAdjacentHTML("beforeend", `<option value="${esc(o.id)}">${esc(o.name)}</option>`)
+    );
+    renderCameraFilter();
+}
+
+function buildRow(eq, rowNo, isNew) {
+    const time = formatTimestamp(eq.timestamp);
+    const cam = `<div class="font-medium text-gray-900 dark:text-white">${esc(eq.camera_name || "Noma'lum")}</div>
+                 <div class="mt-0.5 inline-block rounded bg-gray-50 px-1 text-xs font-mono text-gray-500 dark:bg-gray-800">${esc(eq.camera_mac || "-")}</div>`;
+    const known = eq.status === "aniqlandi";
+    const badge = known
+        ? `<span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>${lang==="ru"?"Распознан":"Aniqlandi"}</span>`
+        : `<span class="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-600 dark:bg-red-900/30 dark:text-red-400"><span class="h-1.5 w-1.5 rounded-full bg-red-500"></span>${lang==="ru"?"Неизвестный":"Noma'lum"}</span>`;
+    const name = eq.person_name || eq.employee_name || "-";
+    const avatar = eq.snapshot_url
+        ? `<img src="${esc(eq.snapshot_url)}" class="h-full w-full object-cover">`
+        : `<svg class="h-full w-full p-2 text-gray-400" fill="currentColor" viewBox="0 0 24 24"><path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z"/></svg>`;
+    return `<tr class="transition hover:bg-gray-50 dark:hover:bg-gray-800/50${isNew?" event-new-flash":""}">
+        <td class="whitespace-nowrap px-6 py-4 font-medium text-gray-600 dark:text-gray-300">${rowNo}</td>
+        <td class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white">${time}</td>
+        <td class="px-6 py-4">${cam}</td>
+        <td class="px-6 py-4"><div class="flex items-center gap-3">
+            <div class="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">${avatar}</div>
+            <div class="font-medium text-gray-900 dark:text-white">${esc(name)}</div>
+        </div></td>
+        <td class="whitespace-nowrap px-6 py-4">${badge}</td>
+    </tr>`;
+}
+
+async function loadEvents() {
+    try {
+        const q = new URLSearchParams({ paginated:"true", page:String(eventsState.page), page_size:String(eventsState.pageSize) });
+        const orgId = selectedOrgId(), camId = selectedCameraId();
+        if (orgId !== null) q.set("organization_id", String(orgId));
+        if (camId !== null) q.set("camera_id", String(camId));
+
+        const data = await fetch(`/api/events?${q}`).then(r => r.json()).catch(() => ({}));
+        const rows = Array.isArray(data) ? data : (data.items || []);
+
+        eventsState.total = Number(data.total ?? rows.length) || 0;
+        eventsState.totalPages = Math.max(1, Number(data.total_pages ?? 1));
+        eventsState.page = Math.max(1, Number(data.page ?? eventsState.page));
+
+        // lastId har doim yangilab boramiz
+        if (rows.length > 0) {
+            const maxId = Math.max(...rows.map(r => Number(r.id) || 0));
+            if (maxId > eventsState.lastId) eventsState.lastId = maxId;
+        }
+
+        const tbody = document.getElementById("events-tbody");
+        if (!rows.length) {
+            tbody.innerHTML = '<tr><td colspan="5" class="py-8 text-center text-gray-500 dark:text-gray-400">Hodisalar topilmadi.</td></tr>';
+            ["stat-total","stat-known","stat-unknown"].forEach(id => document.getElementById(id).textContent = "0");
+            renderPagination();
+            return;
+        }
+
+        let known = 0, unknown = 0;
+        tbody.innerHTML = rows.map((eq, i) => {
+            eq.status === "aniqlandi" ? known++ : unknown++;
+            return buildRow(eq, (eventsState.page - 1) * eventsState.pageSize + i + 1, false);
+        }).join("");
+
+        document.getElementById("stat-total").textContent = String(eventsState.total);
+        document.getElementById("stat-known").textContent = String(known);
+        document.getElementById("stat-unknown").textContent = String(unknown);
+        renderPagination();
+    } catch (e) {
+        document.getElementById("events-tbody").innerHTML = '<tr><td colspan="5" class="py-8 text-center text-red-500">Xato yuz berdi</td></tr>';
+    }
+}
+
+// ── LIVE POLLING: har 2 soniyada faqat yangi eventlar (after_id) ──
+async function livePoll() {
+    if (eventsState.page !== 1 || eventsState.lastId === 0) return;
+    try {
+        const q = new URLSearchParams({ after_id: String(eventsState.lastId), limit: "20" });
+        const orgId = selectedOrgId(), camId = selectedCameraId();
+        if (orgId !== null) q.set("organization_id", String(orgId));
+        if (camId !== null) q.set("camera_id", String(camId));
+
+        const data = await fetch(`/api/attendance?${q}`).then(r => r.json()).catch(() => ({}));
+        const items = data.items || [];
+        if (!items.length || !data.last_id || Number(data.last_id) <= eventsState.lastId) return;
+
+        eventsState.lastId = Number(data.last_id);
+        eventsState.total = (eventsState.total || 0) + items.length;
+
+        const tbody = document.getElementById("events-tbody");
+        if (tbody.querySelector("td[colspan]")) tbody.innerHTML = "";
+
+        let addK = 0, addU = 0;
+        for (const eq of [...items].reverse()) {
+            eq.status === "aniqlandi" ? addK++ : addU++;
+            tbody.insertAdjacentHTML("afterbegin", buildRow(eq, "⚡", true));
+        }
+
+        document.getElementById("stat-total").textContent = String(eventsState.total);
+        document.getElementById("stat-known").textContent = String(parseInt(document.getElementById("stat-known").textContent||"0") + addK);
+        document.getElementById("stat-unknown").textContent = String(parseInt(document.getElementById("stat-unknown").textContent||"0") + addU);
+
+        const liveEl = document.getElementById("live-indicator");
+        if (liveEl) { liveEl.style.opacity = "1"; setTimeout(() => liveEl.style.opacity = "0.6", 1000); }
+    } catch (_) {}
+}
+
+// Listeners
+document.getElementById("events-org-filter").addEventListener("change", () => { renderCameraFilter(); eventsState.page=1; eventsState.lastId=0; loadEvents(); });
+document.getElementById("events-camera-filter").addEventListener("change", () => { eventsState.page=1; eventsState.lastId=0; loadEvents(); });
+document.getElementById("events-apply-filter").addEventListener("click", () => { eventsState.page=1; eventsState.lastId=0; loadEvents(); });
+document.getElementById("events-prev-page").addEventListener("click", () => { if(eventsState.page>1){ eventsState.page--; loadEvents(); } });
+document.getElementById("events-next-page").addEventListener("click", () => { if(eventsState.page<eventsState.totalPages){ eventsState.page++; loadEvents(); } });
+
+// Start
+loadFilters().finally(loadEvents);
+setInterval(livePoll, 2000);
+setInterval(() => { if (eventsState.page === 1) loadEvents(); }, 30000);
+</script>
+{% endblock %}

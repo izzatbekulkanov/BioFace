@@ -1,0 +1,457 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="mb-6 flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t.add_user }}</h1>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Yangi tizim foydalanuvchisini qo'shish</p>
+        </div>
+        <a href="/users" class="px-4 py-2 text-sm font-medium bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+            {{ t.cancel }}
+        </a>
+    </div>
+
+    <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm overflow-hidden p-6">
+        <div class="space-y-6">
+            <div id="user-error" class="hidden text-sm text-red-600 bg-red-50 dark:bg-red-900/20 px-4 py-3 rounded-lg border border-red-200 dark:border-red-800/30"></div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Ism <span class="text-red-500">*</span></label>
+                    <input type="text" id="inp-first-name" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 placeholder-gray-400">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Familiya</label>
+                    <input type="text" id="inp-last-name" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 placeholder-gray-400">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Otasining ismi</label>
+                    <input type="text" id="inp-middle-name" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 placeholder-gray-400">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Username (login nomi)</label>
+                    <input type="text" id="inp-username" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 placeholder-gray-400">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ t.email }} <span class="text-red-500">*</span></label>
+                    <input type="email" id="inp-email" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 placeholder-gray-400">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Telefon raqam</label>
+                    <input type="tel" id="inp-phone" placeholder="+998 90 123 45 67" maxlength="17" inputmode="numeric" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 placeholder-gray-400">
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Format: +998 xx xxx xx xx</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ t.password }} <span class="text-red-500">*</span></label>
+                    <div class="relative">
+                        <input type="password" id="inp-password" placeholder="Parol kiriting" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 pr-11 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 placeholder-gray-400">
+                        <button type="button" id="toggle-password" class="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-blue-600 transition" aria-label="Parolni ko'rsatish yoki yashirish">
+                            <svg class="w-5 h-5 icon-eye" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                            <svg class="w-5 h-5 icon-eye-off hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.287-3.95M9.88 9.88a3 3 0 104.24 4.24M6.1 6.1A9.954 9.954 0 0112 5c4.478 0 8.268 2.943 9.542 7a9.97 9.97 0 01-4.133 5.105M3 3l18 18"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <p id="password-hint" class="mt-1 text-xs text-gray-500 dark:text-gray-400">Kamida 8 ta belgi, kamida 1 ta harf va 1 ta boshqa belgi (raqam/symbol).</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Parol tasdiqlash <span class="text-red-500">*</span></label>
+                    <div class="relative">
+                        <input type="password" id="inp-password-confirm" placeholder="Parolni qayta kiriting" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 pr-11 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 placeholder-gray-400">
+                        <button type="button" id="toggle-password-confirm" class="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-blue-600 transition" aria-label="Parol tasdig'ini ko'rsatish yoki yashirish">
+                            <svg class="w-5 h-5 icon-eye" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                            <svg class="w-5 h-5 icon-eye-off hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.287-3.95M9.88 9.88a3 3 0 104.24 4.24M6.1 6.1A9.954 9.954 0 0112 5c4.478 0 8.268 2.943 9.542 7a9.97 9.97 0 01-4.133 5.105M3 3l18 18"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <p id="password-confirm-hint" class="mt-1 text-xs text-gray-500 dark:text-gray-400">Tasdiq parol bilan bir xil bo'lishi kerak.</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ t.role }} <span class="text-red-500">*</span></label>
+                    <select id="inp-role" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100">
+                        <option value="SuperAdmin">{{ t.super_admin }}</option>
+                        <option value="MahallaAdmin">{{ t.mahalla_admin }}</option>
+                        <option value="MaktabAdmin">{{ t.maktab_admin }}</option>
+                        <option value="KollejAdmin">{{ t.kollej_admin }}</option>
+                        <option value="TashkilotAdmin">{{ t.tashkilot_admin }}</option>
+                        <option value="KorxonaAdmin">{{ t.korxona_admin }}</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ t.organization }}</label>
+                    <select id="inp-org" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100">
+                        <option value="">-- Barchasi / Yo'q --</option>
+                        {% for org in organizations %}
+                            <option value="{{ org.id }}">{{ org.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Rasm URL (ixtiyoriy)</label>
+                    <input type="url" id="inp-image-url" placeholder="https://example.com/avatar.jpg" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 placeholder-gray-400">
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Rasm yuklash</label>
+                    <input type="file" id="inp-image" accept="image/*" class="hidden">
+                    <div id="image-dropzone" class="relative rounded-2xl border-2 border-dashed border-blue-300/80 dark:border-blue-700/60 bg-gradient-to-br from-blue-50 via-indigo-50 to-sky-50 dark:from-gray-900 dark:via-gray-900 dark:to-blue-950/20 p-5 transition-all cursor-pointer hover:shadow-md hover:border-blue-400 dark:hover:border-blue-600">
+                        <div id="upload-empty" class="flex items-center gap-4">
+                            <div class="w-14 h-14 rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-blue-100 dark:border-gray-700 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M12 13v8m0-8l-3 3m3-3l3 3"/>
+                                </svg>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-sm font-semibold text-gray-800 dark:text-gray-100">Rasmni shu yerga tashlang yoki tanlang</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">JPG, PNG, WEBP. Tavsiya: kvadrat yoki portret rasm.</p>
+                                <button type="button" id="btn-open-file" class="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                    </svg>
+                                    Rasm tanlash
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="upload-preview" class="hidden items-center gap-4">
+                            <img id="upload-preview-img" src="" alt="Preview" class="w-20 h-20 rounded-2xl object-cover ring-2 ring-white dark:ring-gray-800 shadow-md">
+                            <div class="min-w-0 flex-1">
+                                <p id="upload-file-name" class="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate"></p>
+                                <p id="upload-file-size" class="text-xs text-gray-500 dark:text-gray-400 mt-1"></p>
+                                <div class="mt-2 flex items-center gap-2">
+                                    <button type="button" id="btn-change-file" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition">Almashtirish</button>
+                                    <button type="button" id="btn-remove-file" class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200 text-xs font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition">O'chirish</button>
+                                </div>
+                            </div>
+                            <div id="avatar-preview-box" class="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center text-lg font-bold shadow-sm shrink-0">U</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-4 mt-6 border-t border-gray-100 dark:border-gray-800 flex justify-end">
+                <button onclick="saveUser()" class="px-6 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl flex items-center gap-2 transition shadow-sm">
+                    <svg id="save-spinner" class="w-4 h-4 hidden animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke-width="4" class="opacity-25"/><path d="M4 12a8 8 0 018-8v8H4z" class="opacity-75" fill="currentColor"/></svg>
+                    {{ t.save }}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const imageInput = document.getElementById('inp-image');
+const previewBox = document.getElementById('avatar-preview-box');
+const firstNameInput = document.getElementById('inp-first-name');
+const usernameInput = document.getElementById('inp-username');
+const phoneInput = document.getElementById('inp-phone');
+const dropzone = document.getElementById('image-dropzone');
+const uploadEmpty = document.getElementById('upload-empty');
+const uploadPreview = document.getElementById('upload-preview');
+const uploadPreviewImg = document.getElementById('upload-preview-img');
+const uploadFileName = document.getElementById('upload-file-name');
+const uploadFileSize = document.getElementById('upload-file-size');
+const btnOpenFile = document.getElementById('btn-open-file');
+const btnChangeFile = document.getElementById('btn-change-file');
+const btnRemoveFile = document.getElementById('btn-remove-file');
+const passwordInput = document.getElementById('inp-password');
+const passwordConfirmInput = document.getElementById('inp-password-confirm');
+const passwordHint = document.getElementById('password-hint');
+const passwordConfirmHint = document.getElementById('password-confirm-hint');
+const togglePasswordBtn = document.getElementById('toggle-password');
+const togglePasswordConfirmBtn = document.getElementById('toggle-password-confirm');
+
+function updateInitial() {
+    const fromFirstName = firstNameInput.value.trim()[0];
+    const fromUsername = usernameInput.value.trim()[0];
+    const ch = (fromFirstName || fromUsername || 'U').toUpperCase();
+    previewBox.textContent = ch;
+}
+
+firstNameInput.addEventListener('input', updateInitial);
+usernameInput.addEventListener('input', updateInitial);
+
+function normalizePhoneDigits(raw) {
+    let digits = String(raw || '').replace(/\D/g, '');
+    if (digits.startsWith('998')) digits = digits.slice(3);
+    return digits.slice(0, 9);
+}
+
+function formatPhoneMask(raw) {
+    const digits = normalizePhoneDigits(raw);
+    const p1 = digits.slice(0, 2);
+    const p2 = digits.slice(2, 5);
+    const p3 = digits.slice(5, 7);
+    const p4 = digits.slice(7, 9);
+    let out = '+998';
+    if (p1) out += ` ${p1}`;
+    if (p2) out += ` ${p2}`;
+    if (p3) out += ` ${p3}`;
+    if (p4) out += ` ${p4}`;
+    return out;
+}
+
+function isPhoneComplete(raw) {
+    return normalizePhoneDigits(raw).length === 9;
+}
+
+function isStrongPassword(raw) {
+    const pwd = String(raw || '');
+    return pwd.length >= 8 && /[A-Za-z]/.test(pwd) && /[^A-Za-z]/.test(pwd);
+}
+
+function updatePasswordHints() {
+    const pwd = passwordInput.value;
+    const confirm = passwordConfirmInput.value;
+
+    if (!pwd) {
+        passwordHint.className = 'mt-1 text-xs text-gray-500 dark:text-gray-400';
+        passwordHint.textContent = "Kamida 8 ta belgi, kamida 1 ta harf va 1 ta boshqa belgi (raqam/symbol).";
+    } else if (isStrongPassword(pwd)) {
+        passwordHint.className = 'mt-1 text-xs text-emerald-600 dark:text-emerald-400';
+        passwordHint.textContent = "Parol kuchli.";
+    } else {
+        passwordHint.className = 'mt-1 text-xs text-red-600 dark:text-red-400';
+        passwordHint.textContent = "Parol zaif: kamida 8 ta belgi, 1 ta harf va 1 ta boshqa belgi bo'lishi kerak.";
+    }
+
+    if (!confirm) {
+        passwordConfirmHint.className = 'mt-1 text-xs text-gray-500 dark:text-gray-400';
+        passwordConfirmHint.textContent = "Tasdiq parol bilan bir xil bo'lishi kerak.";
+    } else if (pwd === confirm) {
+        passwordConfirmHint.className = 'mt-1 text-xs text-emerald-600 dark:text-emerald-400';
+        passwordConfirmHint.textContent = "Parol tasdiqlandi.";
+    } else {
+        passwordConfirmHint.className = 'mt-1 text-xs text-red-600 dark:text-red-400';
+        passwordConfirmHint.textContent = "Parol tasdig'i mos emas.";
+    }
+}
+
+function wirePasswordToggle(button, input) {
+    button.addEventListener('click', () => {
+        const isHidden = input.type === 'password';
+        input.type = isHidden ? 'text' : 'password';
+        button.querySelector('.icon-eye')?.classList.toggle('hidden', isHidden);
+        button.querySelector('.icon-eye-off')?.classList.toggle('hidden', !isHidden);
+    });
+}
+
+phoneInput.addEventListener('focus', () => {
+    if (!phoneInput.value.trim()) phoneInput.value = '+998 ';
+});
+
+phoneInput.addEventListener('blur', () => {
+    const digits = normalizePhoneDigits(phoneInput.value);
+    phoneInput.value = digits ? formatPhoneMask(phoneInput.value) : '';
+});
+
+phoneInput.addEventListener('input', () => {
+    phoneInput.value = formatPhoneMask(phoneInput.value);
+});
+
+phoneInput.addEventListener('paste', (e) => {
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData('text');
+    phoneInput.value = formatPhoneMask(text);
+});
+
+passwordInput.addEventListener('input', updatePasswordHints);
+passwordConfirmInput.addEventListener('input', updatePasswordHints);
+wirePasswordToggle(togglePasswordBtn, passwordInput);
+wirePasswordToggle(togglePasswordConfirmBtn, passwordConfirmInput);
+
+function humanFileSize(bytes) {
+    if (!bytes) return '0 KB';
+    const kb = bytes / 1024;
+    if (kb < 1024) return `${kb.toFixed(1)} KB`;
+    return `${(kb / 1024).toFixed(2)} MB`;
+}
+
+function showUploadEmpty() {
+    uploadEmpty.classList.remove('hidden');
+    uploadPreview.classList.add('hidden');
+    uploadPreview.classList.remove('flex');
+}
+
+function showImagePreview(file) {
+    if (!file) {
+        showUploadEmpty();
+        return;
+    }
+    uploadFileName.textContent = file.name || 'image';
+    uploadFileSize.textContent = `${humanFileSize(file.size)} - ${file.type || 'image/*'}`;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        uploadPreviewImg.src = e.target.result;
+        uploadEmpty.classList.add('hidden');
+        uploadPreview.classList.remove('hidden');
+        uploadPreview.classList.add('flex');
+    };
+    reader.readAsDataURL(file);
+}
+
+function setSelectedImage(file) {
+    if (!file) {
+        imageInput.value = '';
+        showUploadEmpty();
+        return;
+    }
+    if (!String(file.type || '').startsWith('image/')) {
+        return;
+    }
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    imageInput.files = dt.files;
+    showImagePreview(file);
+}
+
+function setDropzoneActive(active) {
+    if (active) {
+        dropzone.classList.add('ring-2', 'ring-blue-400', 'border-blue-500');
+    } else {
+        dropzone.classList.remove('ring-2', 'ring-blue-400', 'border-blue-500');
+    }
+}
+
+dropzone.addEventListener('click', (e) => {
+    if (e.target.closest('button')) return;
+    imageInput.click();
+});
+
+btnOpenFile.addEventListener('click', () => imageInput.click());
+btnChangeFile.addEventListener('click', () => imageInput.click());
+btnRemoveFile.addEventListener('click', () => {
+    imageInput.value = '';
+    showUploadEmpty();
+});
+
+imageInput.addEventListener('change', () => {
+    const file = imageInput.files?.[0];
+    if (!file) {
+        showUploadEmpty();
+        return;
+    }
+    showImagePreview(file);
+});
+
+dropzone.addEventListener('dragenter', (e) => {
+    e.preventDefault();
+    setDropzoneActive(true);
+});
+
+dropzone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    setDropzoneActive(true);
+});
+
+dropzone.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    if (!dropzone.contains(e.relatedTarget)) {
+        setDropzoneActive(false);
+    }
+});
+
+dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    setDropzoneActive(false);
+    const file = e.dataTransfer?.files?.[0];
+    if (!file) return;
+    setSelectedImage(file);
+});
+
+async function saveUser() {
+    const name = document.getElementById('inp-username').value.trim();
+    const first_name = document.getElementById('inp-first-name').value.trim();
+    const last_name = document.getElementById('inp-last-name').value.trim();
+    const middle_name = document.getElementById('inp-middle-name').value.trim();
+    const email = document.getElementById('inp-email').value.trim();
+    const phoneRaw = document.getElementById('inp-phone').value.trim();
+    const phone = phoneRaw ? formatPhoneMask(phoneRaw) : '';
+    const password = document.getElementById('inp-password').value.trim();
+    const passwordConfirm = document.getElementById('inp-password-confirm').value.trim();
+    const role = document.getElementById('inp-role').value;
+    const organization_id = document.getElementById('inp-org').value;
+    const image_url = document.getElementById('inp-image-url').value.trim();
+    const image = imageInput.files?.[0];
+
+    const errEl = document.getElementById('user-error');
+    if (!first_name || !email || !password) {
+        errEl.textContent = "Ism, Email va Parol majburiy!";
+        errEl.classList.remove('hidden');
+        return;
+    }
+    if (!isStrongPassword(password)) {
+        errEl.textContent = "Parol kamida 8 ta bo'lishi, kamida 1 ta harf va 1 ta boshqa belgi (raqam/symbol) bo'lishi kerak.";
+        errEl.classList.remove('hidden');
+        return;
+    }
+    if (password !== passwordConfirm) {
+        errEl.textContent = "Parol tasdig'i mos emas.";
+        errEl.classList.remove('hidden');
+        return;
+    }
+    if (phoneRaw && !isPhoneComplete(phoneRaw)) {
+        errEl.textContent = "Telefon raqam formati noto'g'ri. Masalan: +998 90 123 45 67";
+        errEl.classList.remove('hidden');
+        return;
+    }
+
+    errEl.classList.add('hidden');
+    document.getElementById('save-spinner').classList.remove('hidden');
+
+    const formData = new FormData();
+    formData.append('name', name);
+    formData.append('first_name', first_name);
+    formData.append('last_name', last_name);
+    formData.append('middle_name', middle_name);
+    formData.append('email', email);
+    formData.append('phone', phone);
+    formData.append('password', password);
+    formData.append('role', role);
+    formData.append('organization_id', organization_id);
+    if (image_url) formData.append('image_url', image_url);
+    if (image) formData.append('image', image);
+
+    try {
+        const res = await fetch('/api/users', {
+            method: 'POST',
+            body: formData
+        });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            errEl.textContent = data.detail || "Xatolik";
+            errEl.classList.remove('hidden');
+            return;
+        }
+        window.location.href = '/users';
+    } catch (e) {
+        errEl.textContent = "Tarmoqda xatolik";
+        errEl.classList.remove('hidden');
+    } finally {
+        document.getElementById('save-spinner').classList.add('hidden');
+    }
+}
+
+updateInitial();
+showUploadEmpty();
+updatePasswordHints();
+</script>
+{% endblock %}

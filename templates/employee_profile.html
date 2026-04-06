@@ -1,0 +1,482 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="space-y-6">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div class="flex items-center gap-4">
+            {% if emp.image_url %}
+            <img src="{{ emp.image_url }}" alt="{{ emp.first_name }}" class="h-20 w-20 rounded-2xl border-2 border-blue-200 object-cover shadow dark:border-blue-900/40">
+            {% else %}
+            <div class="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-3xl font-bold text-white shadow">
+                {{ (emp.first_name or "X")[0] }}{{ (emp.last_name or "X")[0] }}
+            </div>
+            {% endif %}
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ emp.first_name }} {{ emp.last_name }}</h1>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ emp.position or "Lavozim kiritilmagan" }}{% if emp.department %} | {{ emp.department }}{% endif %}</p>
+                <div class="mt-2 flex flex-wrap items-center gap-2">
+                    <span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">ID: {{ emp.id }}</span>
+                    <span class="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">Shaxsiy ID: {{ emp.personal_id or "-" }}</span>
+                </div>
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <a href="/employees/{{ emp.id }}/edit" class="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                {{ t.edit }}
+            </a>
+            <a href="/employees" class="inline-flex items-center rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800">
+                <- {{ t.employees_title }}
+            </a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+            <p class="text-xs text-gray-500 dark:text-gray-400">Joriy oy kelgan kun</p>
+            <p id="stat-present-days" class="mt-1 text-2xl font-bold text-emerald-700 dark:text-emerald-300">0</p>
+        </div>
+        <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+            <p class="text-xs text-gray-500 dark:text-gray-400">Joriy oy kelmagan kun</p>
+            <p id="stat-absent-days" class="mt-1 text-2xl font-bold text-red-700 dark:text-red-300">0</p>
+        </div>
+        <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+            <p class="text-xs text-gray-500 dark:text-gray-400">Joriy oy kech qolgan kun</p>
+            <p id="stat-late-days" class="mt-1 text-2xl font-bold text-amber-700 dark:text-amber-300">0</p>
+        </div>
+        <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+            <p class="text-xs text-gray-500 dark:text-gray-400">Joriy oy kechikish jami</p>
+            <p id="stat-late-total" class="mt-1 text-lg font-bold text-gray-900 dark:text-white">0 daqiqa</p>
+        </div>
+        <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+            <p class="text-xs text-gray-500 dark:text-gray-400">Joriy oy eventlar</p>
+            <p id="stat-total-events" class="mt-1 text-2xl font-bold text-blue-700 dark:text-blue-300">0</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-12">
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900 xl:col-span-4">
+            <h2 class="mb-4 text-base font-bold text-gray-900 dark:text-white">Xodim ma'lumotlari</h2>
+            <div class="space-y-2 text-sm">
+                <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/70">
+                    <span class="text-gray-500 dark:text-gray-400">Tashkilot</span>
+                    <b class="text-gray-900 dark:text-gray-100">{{ emp.organization.name if emp.organization else "-" }}</b>
+                </div>
+                <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/70">
+                    <span class="text-gray-500 dark:text-gray-400">Bo'lim</span>
+                    <b class="text-gray-900 dark:text-gray-100">{{ emp.department or "-" }}</b>
+                </div>
+                <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/70">
+                    <span class="text-gray-500 dark:text-gray-400">Lavozim</span>
+                    <b class="text-gray-900 dark:text-gray-100">{{ emp.position or "-" }}</b>
+                </div>
+                <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/70">
+                    <span class="text-gray-500 dark:text-gray-400">Ish jadvali</span>
+                    <b class="text-gray-900 dark:text-gray-100">{{ emp.start_time or "09:00" }} - {{ emp.end_time or "18:00" }}</b>
+                </div>
+                <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/70">
+                    <span class="text-gray-500 dark:text-gray-400">Status</span>
+                    {% if emp.has_access %}
+                    <b class="text-emerald-700 dark:text-emerald-300">Faol</b>
+                    {% else %}
+                    <b class="text-slate-600 dark:text-slate-300">Nofaol</b>
+                    {% endif %}
+                </div>
+                <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/70">
+                    <span class="text-gray-500 dark:text-gray-400">Yaratilgan sana</span>
+                    <b class="text-gray-900 dark:text-gray-100">{{ emp.created_at.strftime('%Y-%m-%d') if emp.created_at else "-" }}</b>
+                </div>
+            </div>
+        </section>
+
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900 xl:col-span-8">
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <h2 class="text-base font-bold text-gray-900 dark:text-white">Kalendar (davomat)</h2>
+                <div class="grid grid-cols-2 gap-2">
+                    <select id="cal-year" class="rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40"></select>
+                    <select id="cal-month" class="rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40"></select>
+                </div>
+            </div>
+
+            <div class="mb-3 flex flex-wrap gap-2 text-xs">
+                <span class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>Kelgan</span>
+                <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"><span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>Kech qolgan</span>
+                <span class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-red-700 dark:bg-red-900/30 dark:text-red-300"><span class="h-1.5 w-1.5 rounded-full bg-red-500"></span>Kelmagan</span>
+            </div>
+
+            <div class="text-center text-xs font-semibold text-gray-500 dark:text-gray-400" style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.5rem;">
+                <div>Dush</div>
+                <div>Sesh</div>
+                <div>Chor</div>
+                <div>Pays</div>
+                <div>Juma</div>
+                <div>Shan</div>
+                <div>Yak</div>
+            </div>
+            <div id="attendance-calendar" class="mt-2" style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.5rem;"></div>
+
+            <div id="day-detail" class="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm dark:border-gray-700 dark:bg-gray-800/60">
+                Kunni tanlang.
+            </div>
+        </section>
+    </div>
+
+    <section class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+        <div class="mb-3 flex items-center justify-between">
+            <h2 class="text-base font-bold text-gray-900 dark:text-white">Ulangan kameralar</h2>
+            <span id="linked-camera-count" class="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-300">{{ linked_cameras|length }} ta</span>
+        </div>
+        <div id="linked-cameras-wrap" class="flex flex-wrap gap-2">
+            {% if linked_cameras %}
+                {% for cam in linked_cameras %}
+                <span class="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-300">
+                    <b>{{ cam.name }}</b>
+                    {% if cam.isup_device_id %}<span class="font-mono">{{ cam.isup_device_id }}</span>{% endif %}
+                    {% if cam.mac_address %}<span class="font-mono">{{ cam.mac_address }}</span>{% endif %}
+                </span>
+                {% endfor %}
+            {% else %}
+                <span class="text-sm text-gray-500 dark:text-gray-400">Kamera biriktirilmagan.</span>
+            {% endif %}
+        </div>
+    </section>
+
+    <section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4 dark:border-gray-800">
+            <h2 class="text-base font-bold text-gray-900 dark:text-white">So'nggi davomat loglari</h2>
+            <span id="logs-total" class="text-xs text-gray-500 dark:text-gray-400">0 ta</span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500 dark:bg-gray-800 dark:text-gray-300">
+                    <tr>
+                        <th class="px-4 py-3">Sana</th>
+                        <th class="px-4 py-3">Vaqt</th>
+                        <th class="px-4 py-3">Kamera</th>
+                        <th class="px-4 py-3">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="employee-logs-body" class="divide-y divide-gray-100 dark:divide-gray-800">
+                    <tr>
+                        <td colspan="4" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">Yuklanmoqda...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="flex items-center justify-between border-t border-gray-100 px-5 py-3 dark:border-gray-800">
+            <button id="logs-prev" type="button" class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800">
+                Oldingi
+            </button>
+            <span id="logs-page-info" class="text-xs text-gray-500 dark:text-gray-400">1 / 1</span>
+            <button id="logs-next" type="button" class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800">
+                Keyingi
+            </button>
+        </div>
+    </section>
+</div>
+
+<script>
+const EMP_ID = Number("{{ emp.id }}");
+const EMP_CREATED_YEAR = Number("{{ emp.created_at.year if emp.created_at else 0 }}") || 0;
+const LOG_PAGE_SIZE = 100;
+const monthNames = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun", "Iyul", "Avgust", "Sentabr", "Oktabr", "Noyabr", "Dekabr"];
+let calendarState = {
+    year: new Date().getFullYear(),
+    month: new Date().getMonth() + 1,
+    days: [],
+    summary: {},
+};
+let logsState = {
+    page: 1,
+    totalPages: 1,
+    total: 0,
+    loading: false,
+};
+
+function esc(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+function formatTime(value) {
+    if (!value) return "-";
+    try {
+        return new Date(value).toLocaleTimeString("uz-UZ", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    } catch (_) {
+        return value;
+    }
+}
+
+function formatClock(value) {
+    if (!value) return "-";
+    try {
+        return new Date(value).toLocaleTimeString("uz-UZ", { hour: "2-digit", minute: "2-digit" });
+    } catch (_) {
+        return value;
+    }
+}
+
+function formatDate(value) {
+    if (!value) return "-";
+    try {
+        return new Date(value).toLocaleDateString("uz-UZ", { year: "numeric", month: "2-digit", day: "2-digit" });
+    } catch (_) {
+        return value;
+    }
+}
+
+function setSummary(summary) {
+    document.getElementById("stat-present-days").textContent = String(summary.present_days || 0);
+    document.getElementById("stat-absent-days").textContent = String(summary.absent_days || 0);
+    document.getElementById("stat-late-days").textContent = String(summary.late_days || 0);
+    document.getElementById("stat-late-total").textContent = summary.total_late_human_full || summary.total_late_human || "0 daqiqa";
+    document.getElementById("stat-total-events").textContent = String(summary.total_events || 0);
+}
+
+function renderDayDetail(day) {
+    const target = document.getElementById("day-detail");
+    if (!day) {
+        target.textContent = "Kunni tanlang.";
+        return;
+    }
+    const expectedStart = formatClock(day.expected_time);
+    const expectedEnd = formatClock(day.expected_end_time);
+    const passCount = Number(day.event_count || 0);
+    const passText = `${passCount} marta kameradan o'tdi`;
+    if (day.status === "absent") {
+        target.innerHTML = `
+            <div class="font-semibold text-red-700 dark:text-red-300">${esc(day.date)} - Kelmagan</div>
+            <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">Bu kunda davomat logi topilmadi.</div>
+            <div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <div class="rounded-lg bg-white px-3 py-2 text-xs dark:bg-gray-900/70">
+                    <div class="text-gray-500 dark:text-gray-400">Aslida kelishi kerak</div>
+                    <div class="font-semibold text-gray-900 dark:text-gray-100">${esc(expectedStart)}</div>
+                </div>
+                <div class="rounded-lg bg-white px-3 py-2 text-xs dark:bg-gray-900/70">
+                    <div class="text-gray-500 dark:text-gray-400">Aslida ketishi kerak</div>
+                    <div class="font-semibold text-gray-900 dark:text-gray-100">${esc(expectedEnd)}</div>
+                </div>
+            </div>
+        `;
+        return;
+    }
+    const cameras = Array.isArray(day.camera_names) && day.camera_names.length > 0
+        ? day.camera_names.map((name) => `<span class="inline-flex items-center rounded-lg bg-blue-100 px-2 py-0.5 text-[11px] text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">${esc(name)}</span>`).join(" ")
+        : '<span class="text-xs text-gray-500 dark:text-gray-400">Kamera ma\'lum emas</span>';
+    const lateText = day.late_human_full || day.late_human || "0 daqiqa";
+    const workedText = day.worked_human || "0 daqiqa";
+
+    target.innerHTML = `
+        <div class="font-semibold text-gray-900 dark:text-gray-100">${esc(day.date)}</div>
+        <div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div class="rounded-lg bg-white px-3 py-2 text-xs dark:bg-gray-900/70">
+                <div class="text-gray-500 dark:text-gray-400">Aslida kelishi kerak</div>
+                <div class="font-semibold text-gray-900 dark:text-gray-100">${esc(expectedStart)}</div>
+            </div>
+            <div class="rounded-lg bg-white px-3 py-2 text-xs dark:bg-gray-900/70">
+                <div class="text-gray-500 dark:text-gray-400">Aslida ketishi kerak</div>
+                <div class="font-semibold text-gray-900 dark:text-gray-100">${esc(expectedEnd)}</div>
+            </div>
+            <div class="rounded-lg bg-white px-3 py-2 text-xs dark:bg-gray-900/70">
+                <div class="text-gray-500 dark:text-gray-400">Haqiqiy kelgan vaqt</div>
+                <div class="font-semibold text-gray-900 dark:text-gray-100">${esc(formatTime(day.first_seen))}</div>
+            </div>
+            <div class="rounded-lg bg-white px-3 py-2 text-xs dark:bg-gray-900/70">
+                <div class="text-gray-500 dark:text-gray-400">Haqiqiy ketgan vaqt</div>
+                <div class="font-semibold text-gray-900 dark:text-gray-100">${esc(formatTime(day.last_seen))}</div>
+            </div>
+            <div class="rounded-lg bg-white px-3 py-2 text-xs dark:bg-gray-900/70">
+                <div class="text-gray-500 dark:text-gray-400">Kechikish</div>
+                <div class="font-semibold ${day.late_minutes > 0 ? "text-amber-700 dark:text-amber-300" : "text-emerald-700 dark:text-emerald-300"}">${esc(lateText)}</div>
+            </div>
+            <div class="rounded-lg bg-white px-3 py-2 text-xs dark:bg-gray-900/70">
+                <div class="text-gray-500 dark:text-gray-400">Ishda bo'lgan vaqt</div>
+                <div class="font-semibold text-gray-900 dark:text-gray-100">${esc(workedText)}</div>
+            </div>
+            <div class="rounded-lg bg-white px-3 py-2 text-xs dark:bg-gray-900/70 sm:col-span-2">
+                <div class="text-gray-500 dark:text-gray-400">Kameradan o'tishlar</div>
+                <div class="font-semibold text-gray-900 dark:text-gray-100">${esc(passText)}</div>
+            </div>
+        </div>
+        <div class="mt-2 flex flex-wrap gap-1">${cameras}</div>
+    `;
+}
+
+function renderCalendar() {
+    const wrap = document.getElementById("attendance-calendar");
+    wrap.innerHTML = "";
+    const year = calendarState.year;
+    const month = calendarState.month;
+    const first = new Date(year, month - 1, 1);
+    const firstWeekdayMon = (first.getDay() + 6) % 7;
+
+    for (let i = 0; i < firstWeekdayMon; i += 1) {
+        const empty = document.createElement("div");
+        empty.className = "h-20 rounded-xl border border-transparent";
+        wrap.appendChild(empty);
+    }
+
+    for (const day of calendarState.days || []) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        let style = "border-gray-200 bg-white text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200";
+        if (day.status === "late") {
+            style = "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-200";
+        } else if (day.status === "present") {
+            style = "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-200";
+        } else if (day.status === "absent") {
+            style = "border-red-200 bg-red-50 text-red-800 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-200";
+        }
+        btn.className = `h-24 w-full rounded-xl border px-2 py-1 text-left transition hover:-translate-y-0.5 hover:shadow-sm ${style}`;
+        const lateText = day.late_human_full || day.late_human || "0 daqiqa";
+        const passCount = Number(day.event_count || 0);
+        const passLine = `<div class="mt-0.5 text-[10px]">${esc(`${passCount} marta kameradan o'tdi`)}</div>`;
+        const tooltip = day.status === "absent"
+            ? `${day.date}\nKelmagan\nAslida kelishi kerak: ${formatClock(day.expected_time)}\nAslida ketishi kerak: ${formatClock(day.expected_end_time)}`
+            : `${day.date}\nAslida kelishi kerak: ${formatClock(day.expected_time)}\nAslida ketishi kerak: ${formatClock(day.expected_end_time)}\nHaqiqiy kelgan: ${formatTime(day.first_seen)}\nHaqiqiy ketgan: ${formatTime(day.last_seen)}\nKechikish: ${lateText}\n${passCount} marta kameradan o'tdi`;
+        btn.title = tooltip;
+        const extra = day.status === "late"
+            ? `<div class="mt-1 text-[10px] font-semibold">+${esc(lateText)}</div>${passLine}`
+            : `<div class="mt-1 text-[10px]">${day.status === "present" ? "Kelgan" : "Kelmagan"}</div>${passLine}`;
+        btn.innerHTML = `
+            <div class="flex items-center justify-between text-xs">
+                <b>${esc(String(day.day))}</b>
+                <span>${esc(String(passCount))}</span>
+            </div>
+            ${extra}
+        `;
+        btn.addEventListener("click", () => renderDayDetail(day));
+        wrap.appendChild(btn);
+    }
+}
+
+async function loadCalendar(year, month) {
+    const res = await fetch(`/api/employees/${EMP_ID}/attendance-calendar?year=${year}&month=${month}`);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.ok === false) {
+        throw new Error(data.detail || data.message || "Davomat kalendarini yuklab bo'lmadi");
+    }
+    calendarState = {
+        year: Number(data.month?.year || year),
+        month: Number(data.month?.month || month),
+        days: Array.isArray(data.days) ? data.days : [],
+        summary: data.summary || {},
+    };
+    setSummary(calendarState.summary);
+    renderCalendar();
+    const today = new Date();
+    const todayKey = `${calendarState.year}-${String(calendarState.month).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    const picked = calendarState.days.find((d) => d.date === todayKey) || calendarState.days.find((d) => d.status === "late") || calendarState.days[0];
+    renderDayDetail(picked || null);
+}
+
+function renderLogStatus(status) {
+    if ((status || "").toLowerCase() === "aniqlandi") {
+        return '<span class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>Kelgan</span>';
+    }
+    return '<span class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-900/30 dark:text-red-300"><span class="h-1.5 w-1.5 rounded-full bg-red-500"></span>Noma\'lum</span>';
+}
+
+function renderLogsTable(items) {
+    const tbody = document.getElementById("employee-logs-body");
+    tbody.innerHTML = "";
+    if (!Array.isArray(items) || items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">Davomat ma\'lumoti topilmadi.</td></tr>';
+        return;
+    }
+    for (const log of items) {
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-gray-50/80 dark:hover:bg-gray-800/40";
+        tr.innerHTML = `
+            <td class="px-4 py-3">${esc(formatDate(log.timestamp))}</td>
+            <td class="px-4 py-3">${esc(formatTime(log.timestamp))}</td>
+            <td class="px-4 py-3">${esc(log.camera_name || "-")}</td>
+            <td class="px-4 py-3">${renderLogStatus(log.status)}</td>
+        `;
+        tbody.appendChild(tr);
+    }
+}
+
+function renderLogsPagination() {
+    const pageInfo = document.getElementById("logs-page-info");
+    const prevBtn = document.getElementById("logs-prev");
+    const nextBtn = document.getElementById("logs-next");
+    const totalEl = document.getElementById("logs-total");
+    pageInfo.textContent = `${logsState.page} / ${logsState.totalPages}`;
+    totalEl.textContent = `${logsState.total} ta`;
+    prevBtn.disabled = logsState.loading || logsState.page <= 1;
+    nextBtn.disabled = logsState.loading || logsState.page >= logsState.totalPages;
+}
+
+async function loadLogs(page = 1) {
+    if (logsState.loading) return;
+    logsState.loading = true;
+    renderLogsPagination();
+    try {
+        const res = await fetch(`/api/employees/${EMP_ID}/logs?page=${page}&page_size=${LOG_PAGE_SIZE}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.ok === false) {
+            throw new Error(data.detail || data.message || "Loglarni yuklab bo'lmadi");
+        }
+        logsState.page = Number(data.page || 1);
+        logsState.totalPages = Number(data.total_pages || 1);
+        logsState.total = Number(data.total || 0);
+        renderLogsTable(Array.isArray(data.items) ? data.items : []);
+    } catch (err) {
+        const tbody = document.getElementById("employee-logs-body");
+        tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-8 text-center text-red-600">${esc(err.message || "Loglarni yuklashda xatolik.")}</td></tr>`;
+    } finally {
+        logsState.loading = false;
+        renderLogsPagination();
+    }
+}
+
+function initControls() {
+    const yearSel = document.getElementById("cal-year");
+    const monthSel = document.getElementById("cal-month");
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const startYear = EMP_CREATED_YEAR && EMP_CREATED_YEAR > 2000 ? Math.min(EMP_CREATED_YEAR, currentYear) : currentYear - 3;
+    const endYear = currentYear + 1;
+
+    yearSel.innerHTML = "";
+    for (let y = endYear; y >= startYear; y -= 1) {
+        yearSel.insertAdjacentHTML("beforeend", `<option value="${y}">${y}</option>`);
+    }
+    monthSel.innerHTML = "";
+    for (let i = 1; i <= 12; i += 1) {
+        monthSel.insertAdjacentHTML("beforeend", `<option value="${i}">${monthNames[i - 1]}</option>`);
+    }
+    yearSel.value = String(currentYear);
+    monthSel.value = String(now.getMonth() + 1);
+
+    const onChange = async () => {
+        try {
+            await loadCalendar(Number(yearSel.value), Number(monthSel.value));
+        } catch (err) {
+            document.getElementById("day-detail").textContent = err.message || "Kalendarni yuklashda xatolik.";
+        }
+    };
+    yearSel.addEventListener("change", onChange);
+    monthSel.addEventListener("change", onChange);
+    onChange();
+
+    document.getElementById("logs-prev").addEventListener("click", () => {
+        if (logsState.page > 1) {
+            loadLogs(logsState.page - 1);
+        }
+    });
+    document.getElementById("logs-next").addEventListener("click", () => {
+        if (logsState.page < logsState.totalPages) {
+            loadLogs(logsState.page + 1);
+        }
+    });
+    loadLogs(1);
+}
+
+initControls();
+</script>
+{% endblock %}

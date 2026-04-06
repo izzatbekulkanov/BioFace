@@ -1,0 +1,96 @@
+{
+  "menus": {
+    "dashboard": {
+      "uz": "Boshqaruv Paneli",
+      "ru": "Панель управления"
+    },
+    "group_cameras": {
+      "uz": "Kameralar",
+      "ru": "Камеры"
+    },
+    "devices": {
+      "uz": "Kameralar Ro'yxati",
+      "ru": "Список камер"
+    },
+    "events": {
+      "uz": "Kamera Hodisalari",
+      "ru": "События камер"
+    },
+    "commands": {
+      "uz": "Kameraga Buyruqlar",
+      "ru": "Команды камере"
+    },
+    "group_employees": {
+      "uz": "Xodimlar",
+      "ru": "Персонал"
+    },
+    "employees": {
+      "uz": "Xodimlar Ro'yxati",
+      "ru": "Список сотрудников"
+    },
+    "attendance": {
+      "uz": "Davomat",
+      "ru": "Посещаемость"
+    },
+    "reports": {
+      "uz": "Kechikish Hisoboti",
+      "ru": "Отчёт об опозданиях"
+    },
+    "group_management": {
+      "uz": "Boshqaruv",
+      "ru": "Управление"
+    },
+    "settings": {
+      "uz": "Sozlamalar",
+      "ru": "Настройки"
+    },
+    "about": {
+      "uz": "Tizim Haqida",
+      "ru": "О системе"
+    },
+    "isup_server": {
+      "uz": "ISUP Server",
+      "ru": "ISUP Сервер"
+    },
+    "redis_monitor": {
+      "uz": "REDIS",
+      "ru": "REDIS"
+    },
+    "users": {
+      "uz": "Tizim Foydalanuvchilari",
+      "ru": "Системные пользователи"
+    },
+    "organizations": {
+      "uz": "Tashkilotlar",
+      "ru": "Организации"
+    },
+    "api_helper": {
+      "uz": "API Helper",
+      "ru": "API Helper"
+    }
+  },
+  "order": [
+    "dashboard",
+    "group_cameras",
+    "devices",
+    "events",
+    "commands",
+    "group_employees",
+    "employees",
+    "attendance",
+    "reports",
+    "group_management",
+    "organizations",
+    "users",
+    "settings",
+    "isup_server",
+    "redis_monitor",
+    "about",
+    "api_helper"
+  ],
+  "app_name": "BioFace",
+  "logo_url": "",
+  "favicon_url": "",
+  "isup_public_host": "",
+  "public_web_base_url": ""
+}

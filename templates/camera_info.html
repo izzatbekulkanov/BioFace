@@ -1,0 +1,837 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div class="min-w-0">
+            <div class="mb-2 flex items-center gap-3">
+                <a href="/devices" class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 text-gray-600 transition hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                    </svg>
+                </a>
+                <h1 id="camera-title" class="truncate text-2xl font-bold text-gray-900 dark:text-white">Kamera</h1>
+                <span id="camera-online-pill" class="hidden items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold"></span>
+            </div>
+            <p id="camera-subtitle" class="truncate text-sm text-gray-500 dark:text-gray-400">Ma'lumotlar yuklanmoqda...</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <button id="btn-refresh-all" class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70">
+                <svg id="btn-refresh-all-spinner" class="hidden h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z"></path>
+                </svg>
+                <svg id="btn-refresh-all-icon" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356-2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0A8.003 8.003 0 015.03 15m14.389 0H15"/>
+                </svg>
+                <span id="btn-refresh-all-text">Yangilash</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="alert-box" class="hidden rounded-2xl border px-4 py-3 text-sm"></div>
+
+    <div id="loading-block" class="rounded-2xl border border-gray-200 bg-white p-8 text-center dark:border-gray-800 dark:bg-gray-900">
+        <svg class="mx-auto mb-3 h-10 w-10 animate-spin text-blue-600" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z"></path>
+        </svg>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Kamera ma'lumotlari olinmoqda...</p>
+    </div>
+
+    <div id="camera-page" class="hidden space-y-6">
+        <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+            <section class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+                <h2 class="mb-4 text-base font-bold text-gray-900 dark:text-white">Person Information</h2>
+                <div class="space-y-3 text-sm">
+                    <div class="flex items-center justify-between rounded-xl bg-gray-50 px-3 py-2 dark:bg-gray-800/80">
+                        <span class="text-gray-500 dark:text-gray-400">Person</span>
+                        <div class="flex items-center gap-3">
+                            <span class="text-emerald-600 dark:text-emerald-400">Added: <b id="person-added">0</b></span>
+                            <span class="text-red-600 dark:text-red-400">Not Added: <b id="person-not-added">0</b></span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between rounded-xl bg-gray-50 px-3 py-2 dark:bg-gray-800/80">
+                        <span class="text-gray-500 dark:text-gray-400">Face</span>
+                        <div class="flex items-center gap-3">
+                            <span class="text-emerald-600 dark:text-emerald-400">Added: <b id="face-added">0</b></span>
+                            <span class="text-red-600 dark:text-red-400">Not Added: <b id="face-not-added">0</b></span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between rounded-xl bg-gray-50 px-3 py-2 dark:bg-gray-800/80">
+                        <span class="text-gray-500 dark:text-gray-400">Card</span>
+                        <div class="flex items-center gap-3">
+                            <span class="text-emerald-600 dark:text-emerald-400">Added: <b id="card-added">0</b></span>
+                            <span class="text-red-600 dark:text-red-400">Not Added: <b id="card-not-added">0</b></span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+                <h2 class="mb-4 text-base font-bold text-gray-900 dark:text-white">Network Status</h2>
+                <div class="space-y-2 text-sm">
+                    <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/80">
+                        <span class="text-gray-700 dark:text-gray-200">Wired Network</span>
+                        <b id="ns-wired" class="rounded-full px-2.5 py-1 text-xs font-semibold text-gray-700 dark:text-gray-100">-</b>
+                    </div>
+                    <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/80">
+                        <span class="text-gray-700 dark:text-gray-200">ISUP</span>
+                        <b id="ns-isup" class="rounded-full px-2.5 py-1 text-xs font-semibold text-gray-700 dark:text-gray-100">-</b>
+                    </div>
+                    <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/80">
+                        <span class="text-gray-700 dark:text-gray-200">OTAP1</span>
+                        <b id="ns-otap1" class="rounded-full px-2.5 py-1 text-xs font-semibold text-gray-700 dark:text-gray-100">-</b>
+                    </div>
+                    <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/80">
+                        <span class="text-gray-700 dark:text-gray-200">OTAP2</span>
+                        <b id="ns-otap2" class="rounded-full px-2.5 py-1 text-xs font-semibold text-gray-700 dark:text-gray-100">-</b>
+                    </div>
+                    <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/80">
+                        <span class="text-gray-700 dark:text-gray-200">Hik-Connect</span>
+                        <b id="ns-hikconnect" class="rounded-full px-2.5 py-1 text-xs font-semibold text-gray-700 dark:text-gray-100">-</b>
+                    </div>
+                    <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/80">
+                        <span class="text-gray-700 dark:text-gray-200">VoIP</span>
+                        <b id="ns-voip" class="rounded-full px-2.5 py-1 text-xs font-semibold text-gray-700 dark:text-gray-100">-</b>
+                    </div>
+                </div>
+            </section>
+
+            <section class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+                <h2 class="mb-4 text-base font-bold text-gray-900 dark:text-white">Basic Information</h2>
+                <div class="space-y-2 text-sm">
+                    <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/80">
+                        <span class="text-gray-700 dark:text-gray-200">Model</span>
+                        <b id="bi-model" class="text-gray-900 dark:text-gray-100">-</b>
+                    </div>
+                    <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/80">
+                        <span class="text-gray-700 dark:text-gray-200">S/N</span>
+                        <b id="bi-serial" class="text-gray-900 dark:text-gray-100">-</b>
+                    </div>
+                    <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/80">
+                        <span class="text-gray-700 dark:text-gray-200">Firmware</span>
+                        <b id="bi-firmware" class="text-gray-900 dark:text-gray-100">-</b>
+                    </div>
+                    <div class="mt-3 rounded-xl border border-blue-100 bg-blue-50 px-3 py-3 text-xs dark:border-blue-900/40 dark:bg-blue-900/20">
+                        <div class="mb-1 font-semibold text-blue-700 dark:text-blue-300">Device Capacity</div>
+                        <div id="bi-capacity" class="text-blue-700/90 dark:text-blue-200">Person 0/0, Face 0/0, Card 0/0, Event 0/0</div>
+                    </div>
+                    <div class="rounded-xl bg-gray-50 px-3 py-2 text-xs dark:bg-gray-800/80">
+                        <div><span class="text-gray-500 dark:text-gray-400">IP:</span> <b id="bi-ip" class="text-gray-800 dark:text-gray-100">-</b></div>
+                        <div><span class="text-gray-500 dark:text-gray-400">MAC:</span> <b id="bi-mac" class="text-gray-800 dark:text-gray-100">-</b></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+            <section class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900 xl:col-span-2">
+                <h2 class="mb-4 text-base font-bold text-gray-900 dark:text-white">Ushbu kameraga foydalanuvchi qo'shish (rasm bilan)</h2>
+                <form id="camera-user-form" class="space-y-4">
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div>
+                            <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Ism</label>
+                            <input id="form-first-name" required class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40"/>
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Familiya</label>
+                            <input id="form-last-name" required class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40"/>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="mb-1 flex flex-wrap items-center justify-between gap-2">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Shaxsiy ID (7 ta raqam)</label>
+                            <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800">
+                                <input id="pid-manual-toggle" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                Qo'lda kiritish
+                            </label>
+                        </div>
+                        <div class="flex flex-col gap-2 sm:flex-row">
+                            <input id="form-personal-id" inputmode="numeric" maxlength="7" placeholder="Masalan: 1234567" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40 sm:flex-1"/>
+                            <button type="button" id="btn-generate-personal-id" class="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:-translate-y-0.5 hover:border-blue-300 hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-300 dark:hover:bg-blue-900/30">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                </svg>
+                                ID generatsiya
+                            </button>
+                        </div>
+                        <p id="personal-id-hint" class="mt-1 text-xs text-gray-500 dark:text-gray-400">ID avtomatik generatsiya qilinadi.</p>
+                    </div>
+
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Yuz rasmi</label>
+                        <input id="form-image" type="file" accept="image/*" class="hidden"/>
+                        <label id="image-dropzone" for="form-image" class="group flex cursor-pointer items-center gap-3 rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-4 transition hover:border-blue-300 hover:bg-blue-50 dark:border-gray-700 dark:bg-gray-800/70 dark:hover:border-blue-700 dark:hover:bg-gray-800">
+                            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-blue-600 shadow-sm transition group-hover:scale-105 dark:bg-gray-900 dark:text-blue-400">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 0115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                                </svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <p class="truncate text-sm font-semibold text-gray-800 dark:text-gray-100">Rasm tanlash yoki tashlab yuborish</p>
+                                <p id="image-file-name" class="truncate text-xs text-gray-500 dark:text-gray-400">Hozircha fayl tanlanmagan</p>
+                            </div>
+                            <img id="image-preview" class="hidden h-12 w-12 rounded-xl border border-gray-200 object-cover dark:border-gray-700" alt="Preview"/>
+                        </label>
+                        <div class="mt-2 flex flex-wrap items-center gap-2">
+                            <button type="button" id="btn-browse-image" class="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-100 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h5l2 2h11v10a2 2 0 01-2 2H3a2 2 0 01-2-2V9a2 2 0 012-2z"/>
+                                </svg>
+                                Rasm tanlash
+                            </button>
+                            <button type="button" id="btn-clear-image" class="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 dark:border-red-900/40 dark:text-red-300 dark:hover:bg-red-900/20">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                                Tozalash
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <button type="submit" id="btn-add-user" class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70">
+                            <svg id="btn-add-user-spinner" class="hidden h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z"></path>
+                            </svg>
+                            <svg id="btn-add-user-icon" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                            </svg>
+                            <span id="btn-add-user-text">Foydalanuvchi qo'shish</span>
+                        </button>
+                        <span class="text-xs text-gray-500 dark:text-gray-400">Avval local bazaga saqlanadi, keyin ISUP orqali kameraga face yuboriladi.</span>
+                    </div>
+                </form>
+            </section>
+
+            <section class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+                <h2 class="mb-4 text-base font-bold text-gray-900 dark:text-white">Amallar</h2>
+                <div class="space-y-3">
+                    <button id="btn-import-from-camera" class="group inline-flex w-full items-center justify-center gap-2 rounded-xl border border-indigo-500 bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-70">
+                        <svg id="btn-import-from-camera-spinner" class="hidden h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z"></path>
+                        </svg>
+                        <svg id="btn-import-from-camera-icon" class="h-4 w-4 transition group-hover:scale-105" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M8 12l4 4m0 0l4-4m-4 4V3"/>
+                        </svg>
+                        <span id="btn-import-from-camera-text">Kameradagi yuzlarni bazaga yuklash</span>
+                    </button>
+                    <button id="btn-refresh-users" class="group inline-flex w-full items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:-translate-y-0.5 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-70 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800">
+                        <svg id="btn-refresh-users-spinner" class="hidden h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z"></path>
+                        </svg>
+                        <svg id="btn-refresh-users-icon" class="h-4 w-4 transition group-hover:rotate-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356-2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0A8.003 8.003 0 015.03 15m14.389 0H15"/>
+                        </svg>
+                        <span id="btn-refresh-users-text">Kameradagi foydalanuvchilar ro'yxatini yangilash</span>
+                    </button>
+                    <button id="btn-sync-metadata" class="group inline-flex w-full items-center justify-center gap-2 rounded-xl border border-cyan-500 bg-cyan-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-70">
+                        <svg id="btn-sync-metadata-spinner" class="hidden h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z"></path>
+                        </svg>
+                        <svg id="btn-sync-metadata-icon" class="h-4 w-4 transition group-hover:rotate-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h6m-6 4h10M5 4h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z"/>
+                        </svg>
+                        <span id="btn-sync-metadata-text">Kamera metadata sinxronlash</span>
+                    </button>
+                </div>
+            </section>
+        </div>
+
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+            <div class="mb-4 flex items-center justify-between gap-3">
+                <h2 class="text-base font-bold text-gray-900 dark:text-white">Kameradagi foydalanuvchilar ro'yxati</h2>
+                <span id="users-count-badge" class="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300">0 ta</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500 dark:bg-gray-800/70 dark:text-gray-300">
+                        <tr>
+                            <th class="px-4 py-3">Employee No</th>
+                            <th class="px-4 py-3">Ism</th>
+                            <th class="px-4 py-3">User Type</th>
+                            <th class="px-4 py-3">Valid</th>
+                        </tr>
+                    </thead>
+                    <tbody id="camera-users-body" class="divide-y divide-gray-100 dark:divide-gray-800"></tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</div>
+
+<script>
+const pageState = {
+    camId: null,
+    snapshot: null,
+    users: [],
+    usersUnsupported: false,
+    imagePreviewUrl: null,
+};
+
+const PERSONAL_ID_PATTERN = /^[1-9]\d{6}$/;
+
+function setAlert(message, kind = "info") {
+    const box = document.getElementById("alert-box");
+    box.classList.remove("hidden", "border-red-200", "bg-red-50", "text-red-700", "border-emerald-200", "bg-emerald-50", "text-emerald-700", "border-blue-200", "bg-blue-50", "text-blue-700");
+    if (kind === "error") {
+        box.classList.add("border-red-200", "bg-red-50", "text-red-700");
+    } else if (kind === "success") {
+        box.classList.add("border-emerald-200", "bg-emerald-50", "text-emerald-700");
+    } else {
+        box.classList.add("border-blue-200", "bg-blue-50", "text-blue-700");
+    }
+    box.textContent = message;
+}
+
+function setButtonLoading(buttonId, loading, loadingText) {
+    const button = document.getElementById(buttonId);
+    if (!button) return;
+    const spinner = document.getElementById(`${buttonId}-spinner`);
+    const icon = document.getElementById(`${buttonId}-icon`);
+    const text = document.getElementById(`${buttonId}-text`);
+    button.disabled = Boolean(loading);
+    if (spinner) spinner.classList.toggle("hidden", !loading);
+    if (icon) icon.classList.toggle("hidden", Boolean(loading));
+    if (text) {
+        if (!text.dataset.originalText) {
+            text.dataset.originalText = text.textContent || "";
+        }
+        text.textContent = loading ? loadingText : (text.dataset.originalText || text.textContent || "");
+    }
+}
+
+function sanitizePersonalId(value) {
+    return String(value || "").replace(/\D/g, "").slice(0, 7);
+}
+
+function setPersonalIdHint(message, kind = "info") {
+    const hint = document.getElementById("personal-id-hint");
+    hint.classList.remove("text-gray-500", "text-emerald-600", "text-red-600", "dark:text-gray-400", "dark:text-emerald-400", "dark:text-red-400");
+    if (kind === "success") {
+        hint.classList.add("text-emerald-600", "dark:text-emerald-400");
+    } else if (kind === "error") {
+        hint.classList.add("text-red-600", "dark:text-red-400");
+    } else {
+        hint.classList.add("text-gray-500", "dark:text-gray-400");
+    }
+    hint.textContent = message;
+}
+
+function togglePersonalIdManualMode() {
+    const input = document.getElementById("form-personal-id");
+    const toggle = document.getElementById("pid-manual-toggle");
+    const isManual = Boolean(toggle.checked);
+    input.readOnly = !isManual;
+    if (!isManual) {
+        input.classList.add("bg-gray-100", "dark:bg-gray-800/70");
+        setPersonalIdHint("ID avtomatik generatsiya qilinadi.", "info");
+    } else {
+        input.classList.remove("bg-gray-100", "dark:bg-gray-800/70");
+        setPersonalIdHint("Qo'lda kiritish yoqildi. 7 xonali ID kiriting.", "info");
+    }
+}
+
+async function generateCameraPersonalId() {
+    const btn = document.getElementById("btn-generate-personal-id");
+    const input = document.getElementById("form-personal-id");
+    const old = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `
+        <svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z"></path>
+        </svg>
+        Generatsiya...
+    `;
+    try {
+        const data = await fetchJson("/api/employees/personal-id/generate");
+        input.value = String(data.personal_id || "");
+        setPersonalIdHint(`Generatsiya qilindi: ${input.value}`, "success");
+    } catch (err) {
+        setPersonalIdHint(`ID generatsiya xatoligi: ${err.message}`, "error");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = old;
+    }
+}
+
+async function validatePersonalIdAvailability(personalId) {
+    const data = await fetchJson(`/api/employees/personal-id/validate?personal_id=${encodeURIComponent(personalId)}`);
+    return Boolean(data.valid && data.available);
+}
+
+async function ensureCameraPersonalIdReady() {
+    const input = document.getElementById("form-personal-id");
+    const toggle = document.getElementById("pid-manual-toggle");
+    const value = sanitizePersonalId(input.value);
+    input.value = value;
+
+    if (!PERSONAL_ID_PATTERN.test(value)) {
+        setPersonalIdHint("Shaxsiy ID noto'g'ri. 7 ta raqam kiriting (0 bilan boshlanmasin).", "error");
+        return null;
+    }
+
+    if (toggle.checked) {
+        try {
+            const available = await validatePersonalIdAvailability(value);
+            if (!available) {
+                setPersonalIdHint("Bu ID bazada band. Boshqa ID kiriting.", "error");
+                return null;
+            }
+            setPersonalIdHint("ID tekshirildi va bo'sh.", "success");
+        } catch (_) {
+            setPersonalIdHint("ID tekshiruvini o'tkazib bo'lmadi, keyinroq urinib ko'ring.", "error");
+            return null;
+        }
+    }
+    return value;
+}
+
+function clearSelectedImage() {
+    const imageInput = document.getElementById("form-image");
+    const nameEl = document.getElementById("image-file-name");
+    const preview = document.getElementById("image-preview");
+    imageInput.value = "";
+    nameEl.textContent = "Hozircha fayl tanlanmagan";
+    preview.classList.add("hidden");
+    preview.removeAttribute("src");
+    if (pageState.imagePreviewUrl) {
+        URL.revokeObjectURL(pageState.imagePreviewUrl);
+        pageState.imagePreviewUrl = null;
+    }
+}
+
+function setSelectedImage(file) {
+    const nameEl = document.getElementById("image-file-name");
+    const preview = document.getElementById("image-preview");
+    if (!file) {
+        clearSelectedImage();
+        return;
+    }
+    nameEl.textContent = `${file.name} (${Math.max(1, Math.round(file.size / 1024))} KB)`;
+    if (file.type && file.type.startsWith("image/")) {
+        if (pageState.imagePreviewUrl) {
+            URL.revokeObjectURL(pageState.imagePreviewUrl);
+        }
+        pageState.imagePreviewUrl = URL.createObjectURL(file);
+        preview.src = pageState.imagePreviewUrl;
+        preview.classList.remove("hidden");
+    } else {
+        preview.classList.add("hidden");
+        preview.removeAttribute("src");
+    }
+}
+
+function initImageUploadUi() {
+    const imageInput = document.getElementById("form-image");
+    const browseBtn = document.getElementById("btn-browse-image");
+    const clearBtn = document.getElementById("btn-clear-image");
+    const dropzone = document.getElementById("image-dropzone");
+
+    imageInput.addEventListener("change", () => setSelectedImage(imageInput.files?.[0] || null));
+    browseBtn.addEventListener("click", () => imageInput.click());
+    clearBtn.addEventListener("click", clearSelectedImage);
+
+    dropzone.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        dropzone.classList.add("border-blue-400", "bg-blue-50", "dark:border-blue-700");
+    });
+    dropzone.addEventListener("dragleave", () => {
+        dropzone.classList.remove("border-blue-400", "bg-blue-50", "dark:border-blue-700");
+    });
+    dropzone.addEventListener("drop", (event) => {
+        event.preventDefault();
+        dropzone.classList.remove("border-blue-400", "bg-blue-50", "dark:border-blue-700");
+        const file = event.dataTransfer?.files?.[0];
+        if (!file) return;
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        imageInput.files = dt.files;
+        setSelectedImage(file);
+    });
+}
+
+function formatValid(validObj) {
+    if (!validObj || typeof validObj !== "object") return "-";
+    const begin = validObj.beginTime || "-";
+    const end = validObj.endTime || "-";
+    return `${begin} -> ${end}`;
+}
+
+function updateOnlinePill(isOnline) {
+    const pill = document.getElementById("camera-online-pill");
+    pill.classList.remove("hidden", "inline-flex", "bg-emerald-100", "text-emerald-700", "bg-red-100", "text-red-700");
+    pill.classList.add("inline-flex");
+    if (isOnline) {
+        pill.classList.add("bg-emerald-100", "text-emerald-700");
+        pill.textContent = "Online";
+    } else {
+        pill.classList.add("bg-red-100", "text-red-700");
+        pill.textContent = "Offline";
+    }
+}
+
+function statusKind(value) {
+    const text = String(value || "").trim().toLowerCase();
+    if (["connected", "registered", "online", "up", "active"].includes(text)) return "success";
+    if (["offline", "not registered", "not_registered", "down", "inactive"].includes(text)) return "danger";
+    return "neutral";
+}
+
+function paintNetworkStatus(elId, value) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    const text = value || "-";
+    const kind = statusKind(text);
+    el.textContent = text;
+    el.classList.remove(
+        "bg-emerald-100", "text-emerald-700", "dark:bg-emerald-900/30", "dark:text-emerald-300",
+        "bg-red-100", "text-red-700", "dark:bg-red-900/30", "dark:text-red-300",
+        "bg-gray-200", "text-gray-700", "dark:bg-gray-700", "dark:text-gray-200"
+    );
+    if (kind === "success") {
+        el.classList.add("bg-emerald-100", "text-emerald-700", "dark:bg-emerald-900/30", "dark:text-emerald-300");
+    } else if (kind === "danger") {
+        el.classList.add("bg-red-100", "text-red-700", "dark:bg-red-900/30", "dark:text-red-300");
+    } else {
+        el.classList.add("bg-gray-200", "text-gray-700", "dark:bg-gray-700", "dark:text-gray-200");
+    }
+}
+
+function renderSnapshot(data) {
+    const camera = data.camera || {};
+    const live = data.live || {};
+    const snapshot = data.snapshot || {};
+    pageState.snapshot = snapshot;
+
+    document.getElementById("camera-title").textContent = camera.name || "Kamera";
+    const subtitleParts = [];
+    if (camera.isup_device_id) subtitleParts.push(`Device ID: ${camera.isup_device_id}`);
+    if (camera.mac_address) subtitleParts.push(`MAC: ${camera.mac_address}`);
+    subtitleParts.push(`ISUP source: ${data.isup_source || "-"}`);
+    document.getElementById("camera-subtitle").textContent = subtitleParts.join(" | ");
+    updateOnlinePill(Boolean(live.online));
+
+    const person = (snapshot.person_information || {}).person || {};
+    const face = (snapshot.person_information || {}).face || {};
+    const card = (snapshot.person_information || {}).card || {};
+    document.getElementById("person-added").textContent = person.added ?? 0;
+    document.getElementById("person-not-added").textContent = person.not_added ?? 0;
+    document.getElementById("face-added").textContent = face.added ?? 0;
+    document.getElementById("face-not-added").textContent = face.not_added ?? 0;
+    document.getElementById("card-added").textContent = card.added ?? 0;
+    document.getElementById("card-not-added").textContent = card.not_added ?? 0;
+
+    const ns = snapshot.network_status || {};
+    paintNetworkStatus("ns-wired", ns.wired_network || "-");
+    paintNetworkStatus("ns-isup", ns.isup || "-");
+    paintNetworkStatus("ns-otap1", ns.otap1 || "-");
+    paintNetworkStatus("ns-otap2", ns.otap2 || "-");
+    paintNetworkStatus("ns-hikconnect", ns.hik_connect || "-");
+    paintNetworkStatus("ns-voip", ns.voip || "-");
+
+    const bi = snapshot.basic_information || {};
+    const cap = snapshot.capacity || {};
+    const net = snapshot.network || {};
+    document.getElementById("bi-model").textContent = bi.model || "-";
+    document.getElementById("bi-serial").textContent = bi.serial_no || "-";
+    document.getElementById("bi-firmware").textContent = bi.firmware_version || "-";
+    document.getElementById("bi-capacity").textContent =
+        `Person ${cap.person_count ?? 0}/${cap.person_max ?? 0}, Face ${cap.face_count ?? 0}/${cap.face_max ?? 0}, Card ${cap.card_count ?? 0}/${cap.card_max ?? 0}, Event ${cap.event_count ?? 0}/${cap.event_max ?? 0}`;
+    document.getElementById("bi-ip").textContent = net.ip || "-";
+    document.getElementById("bi-mac").textContent = net.mac || "-";
+}
+
+function renderUsers(users) {
+    pageState.users = Array.isArray(users) ? users : [];
+    const body = document.getElementById("camera-users-body");
+    const badge = document.getElementById("users-count-badge");
+    body.innerHTML = "";
+    badge.textContent = `${pageState.users.length} ta`;
+
+    if (pageState.users.length === 0) {
+        const row = document.createElement("tr");
+        row.innerHTML = `<td colspan="4" class="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">Kamerada foydalanuvchi topilmadi.</td>`;
+        body.appendChild(row);
+        return;
+    }
+
+    for (const user of pageState.users) {
+        const row = document.createElement("tr");
+        row.className = "hover:bg-gray-50/80 dark:hover:bg-gray-800/40";
+        const employeeNo = user.employeeNo || "-";
+        const name = user.name || "-";
+        const userType = user.userType || "-";
+        const valid = formatValid(user.Valid);
+        row.innerHTML = `
+            <td class="px-4 py-3 font-mono text-xs text-gray-700 dark:text-gray-200">${employeeNo}</td>
+            <td class="px-4 py-3 text-gray-700 dark:text-gray-200">${name}</td>
+            <td class="px-4 py-3 text-gray-500 dark:text-gray-400">${userType}</td>
+            <td class="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">${valid}</td>
+        `;
+        body.appendChild(row);
+    }
+}
+
+function renderUsersUnsupported(message) {
+    pageState.users = [];
+    const body = document.getElementById("camera-users-body");
+    const badge = document.getElementById("users-count-badge");
+    badge.textContent = "0 ta";
+    body.innerHTML = "";
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 4;
+    cell.className = "px-4 py-6 text-center text-sm text-amber-700 dark:text-amber-300";
+    cell.textContent = message || "Bu kamera modeli foydalanuvchi/yuz ro'yxatini qo'llamaydi.";
+    row.appendChild(cell);
+    body.appendChild(row);
+}
+
+function setImportButtonUnsupported(unsupported, message) {
+    const btn = document.getElementById("btn-import-from-camera");
+    const text = document.getElementById("btn-import-from-camera-text");
+    if (!btn || !text) return;
+    if (!text.dataset.originalText) {
+        text.dataset.originalText = text.textContent || "";
+    }
+    btn.disabled = Boolean(unsupported);
+    btn.title = unsupported ? (message || "Bu model importni qo'llamaydi") : "";
+    text.textContent = unsupported ? "Import qo'llanmaydi" : text.dataset.originalText;
+}
+
+async function fetchJson(url, options = {}) {
+    const res = await fetch(url, options);
+    let data = {};
+    try {
+        data = await res.json();
+    } catch (_) {
+        data = {};
+    }
+    if (!res.ok) {
+        const msg = data.detail || data.message || "So'rov bajarilmadi";
+        throw new Error(msg);
+    }
+    return data;
+}
+
+async function loadSnapshot() {
+    const data = await fetchJson(`/api/cameras/${pageState.camId}/snapshot`);
+    renderSnapshot(data);
+}
+
+async function loadUsers(options = {}) {
+    const withLoader = options.withLoader !== false;
+    const body = document.getElementById("camera-users-body");
+    if (withLoader && body) {
+        body.innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">Kameradagi ro\'yxat yuklanmoqda...</td></tr>';
+    }
+    try {
+        const data = await fetchJson(`/api/cameras/${pageState.camId}/camera-users?limit=500`);
+        if (data.unsupported) {
+            pageState.usersUnsupported = true;
+            renderUsersUnsupported(data.message || "Bu kamera modeli foydalanuvchi/yuz ro'yxatini qo'llamaydi.");
+            setImportButtonUnsupported(true, data.message || "");
+            return data;
+        }
+        pageState.usersUnsupported = false;
+        setImportButtonUnsupported(false, "");
+        renderUsers(data.users || []);
+        return data;
+    } catch (err) {
+        if (body) {
+            body.innerHTML = `<tr><td colspan="4" class="px-4 py-6 text-center text-sm text-red-600">${err.message || "Ro'yxatni yuklab bo'lmadi"}</td></tr>`;
+        }
+        throw err;
+    }
+}
+
+async function refreshAll() {
+    setButtonLoading("btn-refresh-all", true, "Yangilanmoqda...");
+    setAlert("Ma'lumotlar yangilanmoqda...", "info");
+    try {
+        const [, usersData] = await Promise.all([loadSnapshot(), loadUsers({ withLoader: true })]);
+        if (usersData && usersData.unsupported) {
+            setAlert(usersData.message || "Bu kamera foydalanuvchi import/ro'yxat funksiyasini qo'llamaydi.", "info");
+        } else {
+            setAlert("Kamera ma'lumotlari muvaffaqiyatli yangilandi.", "success");
+        }
+    } catch (err) {
+        setAlert(`Xatolik: ${err.message}`, "error");
+    } finally {
+        setButtonLoading("btn-refresh-all", false, "Yangilash");
+    }
+}
+
+async function importFromCamera() {
+    setButtonLoading("btn-import-from-camera", true, "Yuklanmoqda...");
+    setAlert("Kameradan bazaga import boshlanmoqda...", "info");
+    try {
+        const data = await fetchJson(`/api/cameras/${pageState.camId}/import-camera-users?limit=800`, { method: "POST" });
+        if (data.unsupported) {
+            setAlert(data.message || "Bu kamera modeli import funksiyasini qo'llamaydi.", "info");
+            return;
+        }
+        setAlert(data.message || "Import yakunlandi.", "success");
+        await loadUsers({ withLoader: true });
+    } catch (err) {
+        setAlert(`Import xatoligi: ${err.message}`, "error");
+    } finally {
+        setButtonLoading("btn-import-from-camera", false, "Kameradagi yuzlarni bazaga yuklash");
+    }
+}
+
+async function refreshUsersAction() {
+    setButtonLoading("btn-refresh-users", true, "Yuklanmoqda...");
+    try {
+        const data = await loadUsers({ withLoader: true });
+        if (data && data.unsupported) {
+            setAlert(data.message || "Bu kamera foydalanuvchi ro'yxatini qo'llamaydi.", "info");
+        } else {
+            setAlert("Kameradagi foydalanuvchilar ro'yxati yangilandi.", "success");
+        }
+    } catch (err) {
+        setAlert(`Ro'yxatni yangilashda xatolik: ${err.message}`, "error");
+    } finally {
+        setButtonLoading("btn-refresh-users", false, "Kameradagi foydalanuvchilar ro'yxatini yangilash");
+    }
+}
+
+async function syncCameraMetadataAction() {
+    setButtonLoading("btn-sync-metadata", true, "Sinxronlash...");
+    try {
+        const data = await fetchJson(`/api/cameras/${pageState.camId}/sync-metadata`, { method: "POST" });
+        const updated = data.updated_fields || {};
+        const updatedKeys = Object.keys(updated);
+        let message = data.message || "Kamera metadata sinxronlandi.";
+        if (updatedKeys.length > 0) {
+            const details = updatedKeys.map((key) => `${key}: ${updated[key]}`).join(", ");
+            message = `${message} Yangilandi: ${details}.`;
+        }
+        const skipped = Array.isArray(data.skipped) ? data.skipped : [];
+        if (skipped.length > 0) {
+            message = `${message} Eslatma: ${skipped.join(" | ")}`;
+        }
+        setAlert(message, "success");
+        await loadSnapshot();
+    } catch (err) {
+        setAlert(`Metadata sinxronlashda xatolik: ${err.message}`, "error");
+    } finally {
+        setButtonLoading("btn-sync-metadata", false, "Kamera metadata sinxronlash");
+    }
+}
+
+async function submitCameraUser(event) {
+    event.preventDefault();
+    const firstName = document.getElementById("form-first-name").value.trim();
+    const lastName = document.getElementById("form-last-name").value.trim();
+    const imageInput = document.getElementById("form-image");
+
+    if (!firstName || !lastName) {
+        setAlert("Ism va familiya majburiy.", "error");
+        return;
+    }
+
+    const personalId = await ensureCameraPersonalIdReady();
+    if (!personalId) return;
+
+    const fd = new FormData();
+    fd.append("first_name", firstName);
+    fd.append("last_name", lastName);
+    fd.append("personal_id", personalId);
+    if (imageInput.files && imageInput.files[0]) fd.append("image", imageInput.files[0]);
+
+    const btn = document.getElementById("btn-add-user");
+    const spinner = document.getElementById("btn-add-user-spinner");
+    const icon = document.getElementById("btn-add-user-icon");
+    const text = document.getElementById("btn-add-user-text");
+    btn.disabled = true;
+    spinner.classList.remove("hidden");
+    icon.classList.add("hidden");
+    text.textContent = "Saqlanmoqda...";
+    try {
+        const data = await fetchJson(`/api/cameras/${pageState.camId}/users/upload`, {
+            method: "POST",
+            body: fd,
+        });
+        const cameraPushError = data.camera_push_error || "";
+        const faceRes = data.set_face_response;
+        if (cameraPushError) {
+            setAlert(data.message || `Foydalanuvchi local bazaga saqlandi, lekin kamera pushda muammo: ${cameraPushError}`, "info");
+        } else if (imageInput.files && imageInput.files[0] && faceRes && faceRes.accepted_with_warning) {
+            const warn = faceRes.warning || "Rasm qo'llanishi fon rejimida tugashi mumkin";
+            setAlert(`Foydalanuvchi local bazaga saqlandi va face yuborildi. Eslatma: ${warn}`, "info");
+        } else if (imageInput.files && imageInput.files[0] && faceRes && faceRes.ok === false) {
+            const err = faceRes.error || "Rasmni kamera bazasiga yozishda xatolik";
+            if (faceRes.skipped && data.local_saved) {
+                setAlert(data.message || `Foydalanuvchi local bazaga saqlandi, kamera vaqtincha ulanmagan: ${err}`, "info");
+            } else {
+                setAlert(`Foydalanuvchi local bazaga saqlandi, lekin rasmda muammo: ${err}`, "error");
+            }
+        } else {
+            setAlert(data.message || "Foydalanuvchi qo'shildi.", "success");
+        }
+        document.getElementById("camera-user-form").reset();
+        clearSelectedImage();
+        document.getElementById("pid-manual-toggle").checked = false;
+        togglePersonalIdManualMode();
+        await generateCameraPersonalId();
+        void Promise.allSettled([loadSnapshot(), loadUsers()]);
+    } catch (err) {
+        setAlert(`Qo'shishda xatolik: ${err.message}`, "error");
+    } finally {
+        btn.disabled = false;
+        spinner.classList.add("hidden");
+        icon.classList.remove("hidden");
+        text.textContent = "Foydalanuvchi qo'shish";
+    }
+}
+
+async function initCameraPage() {
+    const params = new URLSearchParams(window.location.search);
+    const camId = params.get("id");
+    if (!camId) {
+        window.location.href = "/devices";
+        return;
+    }
+    pageState.camId = camId;
+
+    const pidInput = document.getElementById("form-personal-id");
+    const manualToggle = document.getElementById("pid-manual-toggle");
+    const generateBtn = document.getElementById("btn-generate-personal-id");
+    pidInput.addEventListener("input", () => {
+        pidInput.value = sanitizePersonalId(pidInput.value);
+    });
+    manualToggle.addEventListener("change", async () => {
+        togglePersonalIdManualMode();
+        if (!manualToggle.checked) {
+            await generateCameraPersonalId();
+        }
+    });
+    generateBtn.addEventListener("click", generateCameraPersonalId);
+    togglePersonalIdManualMode();
+    initImageUploadUi();
+
+    document.getElementById("btn-refresh-all").addEventListener("click", refreshAll);
+    document.getElementById("btn-refresh-users").addEventListener("click", refreshUsersAction);
+    document.getElementById("btn-import-from-camera").addEventListener("click", importFromCamera);
+    document.getElementById("btn-sync-metadata").addEventListener("click", syncCameraMetadataAction);
+    document.getElementById("camera-user-form").addEventListener("submit", submitCameraUser);
+
+    try {
+        await generateCameraPersonalId();
+        await refreshAll();
+    } finally {
+        document.getElementById("loading-block").classList.add("hidden");
+        document.getElementById("camera-page").classList.remove("hidden");
+    }
+}
+
+initCameraPage();
+</script>
+{% endblock %}

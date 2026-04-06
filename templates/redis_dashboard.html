@@ -1,0 +1,369 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div id="redis-app">
+    <div class="mb-6 flex flex-col justify-between gap-4">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">Live monitor</p>
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ page_title }}</h1>
+                <p class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+                    Redis servisining real holati, porti, ping javobi, channel va key ma'lumotlari shu yerda jonli ko'rinadi.
+                </p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2 rounded-2xl border border-gray-200 bg-white/90 p-2 shadow-sm dark:border-gray-800 dark:bg-gray-900/90">
+                <input
+                    id="pattern-input"
+                    type="text"
+                    value="*"
+                    placeholder="Pattern, masalan bioface:*"
+                    class="w-full min-w-56 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500 transition shadow-sm"
+                >
+                <select
+                    id="limit-input"
+                    class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500 transition shadow-sm"
+                >
+                    <option value="50">50 ta</option>
+                    <option value="100">100 ta</option>
+                    <option value="200" selected>200 ta</option>
+                    <option value="500">500 ta</option>
+                </select>
+                <label class="inline-flex items-center gap-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50 dark:hover:border-emerald-700/60 dark:hover:bg-emerald-900/20">
+                    <input id="auto-refresh-input" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" checked>
+                    Auto refresh
+                </label>
+                <button
+                    id="redis-refresh-btn"
+                    class="group inline-flex items-center gap-3 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-emerald-900/20 transition-all duration-200 hover:-translate-y-0.5 hover:from-emerald-600 hover:to-emerald-800 hover:shadow-lg hover:shadow-emerald-900/25 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                    <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/20 transition group-hover:bg-white/20" aria-hidden="true">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16.023 9.348h4.992V4.356m-1.643 14.296A9 9 0 1 1 21 12m-9 4v-4l-3-3"></path>
+                        </svg>
+                    </span>
+                    <span class="whitespace-nowrap">Yangilash</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="redis-banner" class="hidden rounded-2xl border px-4 py-3 text-sm"></div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4 mb-6">
+        <article class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 shadow-sm card-hover">
+            <p class="text-xs font-medium uppercase tracking-widest text-gray-500 dark:text-gray-400">Redis holati</p>
+            <div class="mt-3 flex items-center gap-3">
+                <span id="redis-status-dot" class="w-3 h-3 rounded-full bg-gray-300"></span>
+                <strong id="redis-status-text" class="text-2xl font-bold text-gray-900 dark:text-white">Tekshirilmoqda...</strong>
+            </div>
+            <p id="redis-target" class="mt-3 text-sm text-gray-500 dark:text-gray-400">127.0.0.1:6379</p>
+            <p id="redis-last-checked" class="mt-1 text-xs text-gray-400 dark:text-gray-500">So'nggi tekshiruv: -</p>
+        </article>
+
+        <article class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 shadow-sm card-hover">
+            <p class="text-xs font-medium uppercase tracking-widest text-gray-500 dark:text-gray-400">Ping va client</p>
+            <div class="mt-3 flex items-end gap-3">
+                <strong id="redis-ping" class="text-3xl font-bold text-gray-900 dark:text-white">-</strong>
+                <span class="pb-1 text-sm text-gray-500 dark:text-gray-400">ms</span>
+            </div>
+            <p id="redis-clients" class="mt-3 text-sm text-gray-500 dark:text-gray-400">Clients: -</p>
+            <p id="redis-blocked-clients" class="mt-1 text-xs text-gray-400 dark:text-gray-500">Blocked: -</p>
+        </article>
+
+        <article class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 shadow-sm card-hover">
+            <p class="text-xs font-medium uppercase tracking-widest text-gray-500 dark:text-gray-400">Key snapshot</p>
+            <strong id="db-size" class="mt-3 block text-3xl font-bold text-gray-900 dark:text-white">0</strong>
+            <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">Jami key soni</p>
+            <p id="snapshot-count" class="mt-1 text-xs text-gray-400 dark:text-gray-500">Snapshot: 0 ta</p>
+        </article>
+
+        <article class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 shadow-sm card-hover">
+            <p class="text-xs font-medium uppercase tracking-widest text-gray-500 dark:text-gray-400">Channel va xotira</p>
+            <strong id="redis-memory" class="mt-3 block text-2xl font-bold text-gray-900 dark:text-white">-</strong>
+            <p id="channel-count" class="mt-3 text-sm text-gray-500 dark:text-gray-400">0 ta pub/sub channel</p>
+            <p id="service-listening" class="mt-1 text-xs text-gray-400 dark:text-gray-500">Port holati: -</p>
+        </article>
+    </div>
+
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-[360px,1fr]">
+        <div class="space-y-6">
+            <article class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Xizmat diagnostikasi</h2>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Redis porti va runtime statistikasi</p>
+                </div>
+                <dl class="grid grid-cols-1 gap-4 p-5 text-sm">
+                    <div>
+                        <dt class="text-gray-500 dark:text-gray-400">Pattern</dt>
+                        <dd id="pattern-badge" class="mt-1 inline-flex rounded-full bg-emerald-50 dark:bg-emerald-900/30 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">*</dd>
+                    </div>
+                    <div>
+                        <dt class="text-gray-500 dark:text-gray-400">Service PID</dt>
+                        <dd id="redis-service-pid" class="mt-1 font-medium text-gray-900 dark:text-white">-</dd>
+                    </div>
+                    <div>
+                        <dt class="text-gray-500 dark:text-gray-400">Total commands</dt>
+                        <dd id="redis-total-commands" class="mt-1 font-medium text-gray-900 dark:text-white">-</dd>
+                    </div>
+                    <div>
+                        <dt class="text-gray-500 dark:text-gray-400">Total connections</dt>
+                        <dd id="redis-total-connections" class="mt-1 font-medium text-gray-900 dark:text-white">-</dd>
+                    </div>
+                    <div>
+                        <dt class="text-gray-500 dark:text-gray-400">Cache hit ratio</dt>
+                        <dd id="redis-hit-ratio" class="mt-1 font-medium text-gray-900 dark:text-white">-</dd>
+                    </div>
+                    <div>
+                        <dt class="text-gray-500 dark:text-gray-400">Oxirgi xato</dt>
+                        <dd id="redis-last-error" class="mt-1 break-words text-gray-900 dark:text-white">-</dd>
+                    </div>
+                </dl>
+            </article>
+
+            <article class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Pub/Sub channels</h2>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Faol channel ro'yxati</p>
+                    </div>
+                    <span id="channel-badge" class="inline-flex items-center justify-center min-w-8 h-8 px-2 rounded-full bg-gray-100 dark:bg-gray-800 text-xs font-bold text-gray-700 dark:text-gray-300">0</span>
+                </div>
+                <div id="channels-list" class="p-5 space-y-2">
+                    <div class="rounded-xl bg-gray-50 dark:bg-gray-800 px-4 py-3 text-sm text-gray-500 dark:text-gray-400">Channel ma'lumoti kutilmoqda...</div>
+                </div>
+            </article>
+        </div>
+
+        <article class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+            <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between gap-3">
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Redis keys</h2>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Har bir key uchun type, ttl, size va preview</p>
+                </div>
+            </div>
+            <div id="keys-grid" class="grid grid-cols-1 gap-4 p-5 lg:grid-cols-2">
+                <div class="lg:col-span-2 rounded-xl bg-gray-50 dark:bg-gray-800 px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                    Redis snapshot yuklanmoqda...
+                </div>
+            </div>
+        </article>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const statusDot = document.getElementById("redis-status-dot");
+    const statusText = document.getElementById("redis-status-text");
+    const redisTarget = document.getElementById("redis-target");
+    const lastChecked = document.getElementById("redis-last-checked");
+    const pingValue = document.getElementById("redis-ping");
+    const clientsValue = document.getElementById("redis-clients");
+    const blockedClientsValue = document.getElementById("redis-blocked-clients");
+    const dbSize = document.getElementById("db-size");
+    const snapshotCount = document.getElementById("snapshot-count");
+    const redisMemory = document.getElementById("redis-memory");
+    const channelCount = document.getElementById("channel-count");
+    const serviceListening = document.getElementById("service-listening");
+    const servicePid = document.getElementById("redis-service-pid");
+    const totalCommands = document.getElementById("redis-total-commands");
+    const totalConnections = document.getElementById("redis-total-connections");
+    const hitRatio = document.getElementById("redis-hit-ratio");
+    const lastError = document.getElementById("redis-last-error");
+    const channelBadge = document.getElementById("channel-badge");
+    const channelsList = document.getElementById("channels-list");
+    const keysGrid = document.getElementById("keys-grid");
+    const patternBadge = document.getElementById("pattern-badge");
+    const banner = document.getElementById("redis-banner");
+    const patternInput = document.getElementById("pattern-input");
+    const limitInput = document.getElementById("limit-input");
+    const autoRefreshInput = document.getElementById("auto-refresh-input");
+    const refreshButton = document.getElementById("redis-refresh-btn");
+
+    let refreshInFlight = false;
+
+    function setButtonBusy(button, busy) {
+        button.classList.toggle("action-busy", busy);
+        button.classList.toggle("animate-pulse", busy);
+        button.setAttribute("aria-disabled", busy ? "true" : "false");
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? "")
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#39;");
+    }
+
+    function showBanner(message, tone = "info") {
+        const tones = {
+            info: "border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-200",
+            success: "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200",
+            error: "border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-200",
+        };
+        banner.className = `rounded-2xl border px-4 py-3 text-sm ${tones[tone] || tones.info}`;
+        banner.textContent = message;
+        banner.classList.remove("hidden");
+    }
+
+    function hideBanner() {
+        banner.classList.add("hidden");
+        banner.textContent = "";
+    }
+
+    function formatTime(value) {
+        if (!value) return "-";
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return value;
+        return date.toLocaleString();
+    }
+
+    function formatNumber(value) {
+        if (value === null || value === undefined || value === "") return "-";
+        const number = Number(value);
+        if (Number.isFinite(number)) {
+            return number.toLocaleString();
+        }
+        return String(value);
+    }
+
+    function formatRatio(hits, misses) {
+        const hitCount = Number(hits || 0);
+        const missCount = Number(misses || 0);
+        const total = hitCount + missCount;
+        if (!total) return "-";
+        return `${((hitCount / total) * 100).toFixed(1)}%`;
+    }
+
+    function formatValue(value) {
+        if (value === null || value === undefined) return "-";
+        if (typeof value === "string") return value;
+        try {
+            return JSON.stringify(value, null, 2);
+        } catch (_error) {
+            return String(value);
+        }
+    }
+
+    function renderChannels(channels) {
+        channelBadge.textContent = channels.length;
+        channelCount.textContent = `${channels.length} ta pub/sub channel`;
+
+        if (!channels.length) {
+            channelsList.innerHTML = '<div class="rounded-xl bg-gray-50 dark:bg-gray-800 px-4 py-3 text-sm text-gray-500 dark:text-gray-400">Faol pub/sub channel topilmadi.</div>';
+            return;
+        }
+
+        channelsList.innerHTML = channels.map((channel) => `
+            <div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3 font-mono text-xs text-gray-700 dark:text-gray-200">
+                ${escapeHtml(channel)}
+            </div>
+        `).join("");
+    }
+
+    function renderKeys(keys) {
+        if (!keys.length) {
+            keysGrid.innerHTML = '<div class="lg:col-span-2 rounded-xl bg-gray-50 dark:bg-gray-800 px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Tanlangan pattern bo\'yicha key topilmadi.</div>';
+            return;
+        }
+
+        keysGrid.innerHTML = keys.map((item) => `
+            <article class="bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 card-hover">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="truncate font-semibold text-gray-900 dark:text-white">${escapeHtml(item.key)}</div>
+                        <div class="mt-2 flex flex-wrap gap-2 text-xs text-gray-500 dark:text-gray-400">
+                            <span class="rounded-full bg-white dark:bg-gray-900 px-2.5 py-1">type: ${escapeHtml(item.type)}</span>
+                            <span class="rounded-full bg-white dark:bg-gray-900 px-2.5 py-1">ttl: ${escapeHtml(item.ttl)}</span>
+                            <span class="rounded-full bg-white dark:bg-gray-900 px-2.5 py-1">size: ${escapeHtml(item.size)}</span>
+                            ${item.truncated ? '<span class="rounded-full bg-amber-100 dark:bg-amber-900/30 px-2.5 py-1 text-amber-700 dark:text-amber-300">truncated</span>' : ""}
+                        </div>
+                    </div>
+                </div>
+                <pre class="mt-4 max-h-80 overflow-auto rounded-xl bg-gray-950 px-4 py-3 text-xs text-emerald-200">${escapeHtml(formatValue(item.value))}</pre>
+            </article>
+        `).join("");
+    }
+
+    function renderSnapshot(data) {
+        const isConnected = Boolean(data.connected);
+        const listening = data.service?.listening;
+        const listeningLabel = listening === true ? "Listening" : (listening === false ? "Not listening" : "Unknown");
+
+        statusText.textContent = isConnected ? "Online" : "Disconnected";
+        statusDot.className = `w-3 h-3 rounded-full ${isConnected ? "bg-emerald-500" : "bg-rose-500"}`;
+        redisTarget.textContent = `${data.host || "127.0.0.1"}:${data.port || 6379}`;
+        lastChecked.textContent = `So'nggi tekshiruv: ${formatTime(data.checked_at)}`;
+        pingValue.textContent = data.ping_ms === null || data.ping_ms === undefined ? "-" : Number(data.ping_ms).toFixed(2);
+        clientsValue.textContent = `Clients: ${formatNumber(data.stats?.connected_clients)}`;
+        blockedClientsValue.textContent = `Blocked: ${formatNumber(data.stats?.blocked_clients)}`;
+        dbSize.textContent = formatNumber(data.dbsize || 0);
+        snapshotCount.textContent = `Snapshot: ${formatNumber((data.keys || []).length)} ta`;
+        redisMemory.textContent = data.stats?.used_memory_human || "-";
+        serviceListening.textContent = `Port holati: ${listeningLabel}`;
+        servicePid.textContent = data.service?.pid || "-";
+        totalCommands.textContent = formatNumber(data.stats?.total_commands_processed);
+        totalConnections.textContent = formatNumber(data.stats?.total_connections_received);
+        hitRatio.textContent = formatRatio(data.stats?.keyspace_hits, data.stats?.keyspace_misses);
+        lastError.textContent = data.error || "-";
+        patternBadge.textContent = data.pattern || "*";
+
+        renderChannels(data.channels || []);
+        renderKeys(data.keys || []);
+
+        if (isConnected) {
+            hideBanner();
+        } else if (listening === true) {
+            showBanner(data.error || "Redis porti ochiq, lekin xizmat PING javob bermayapti.", "error");
+        } else {
+            showBanner(data.error || "Redis ishlamayapti yoki ulanish mavjud emas.", "error");
+        }
+    }
+
+    async function fetchSnapshot() {
+        if (refreshInFlight) {
+            return;
+        }
+
+        refreshInFlight = true;
+        setButtonBusy(refreshButton, true);
+
+        try {
+            const pattern = patternInput.value.trim() || "*";
+            const limit = limitInput.value || "200";
+            const response = await fetch(`/api/redis/snapshot?pattern=${encodeURIComponent(pattern)}&limit=${encodeURIComponent(limit)}`);
+            const data = await response.json();
+            renderSnapshot(data);
+        } catch (error) {
+            statusText.textContent = "Error";
+            statusDot.className = "w-3 h-3 rounded-full bg-rose-500";
+            lastChecked.textContent = `So'nggi tekshiruv: ${formatTime(new Date().toISOString())}`;
+            showBanner(`Redis monitoring xatoligi: ${error.message}`, "error");
+            keysGrid.innerHTML = `<div class="lg:col-span-2 rounded-xl bg-rose-50 dark:bg-rose-900/20 px-4 py-8 text-center text-sm text-rose-700 dark:text-rose-300">${escapeHtml(error.message)}</div>`;
+            channelsList.innerHTML = '<div class="rounded-xl bg-gray-50 dark:bg-gray-800 px-4 py-3 text-sm text-gray-500 dark:text-gray-400">Channel ma\'lumoti olinmadi.</div>';
+        } finally {
+            refreshInFlight = false;
+            setButtonBusy(refreshButton, false);
+        }
+    }
+
+    refreshButton.addEventListener("click", fetchSnapshot);
+    patternInput.addEventListener("change", fetchSnapshot);
+    patternInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+            fetchSnapshot();
+        }
+    });
+    limitInput.addEventListener("change", fetchSnapshot);
+
+    fetchSnapshot();
+    setInterval(() => {
+        if (autoRefreshInput.checked) {
+            fetchSnapshot();
+        }
+    }, 3000);
+});
+</script>
+{% endblock %}

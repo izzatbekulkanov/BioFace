@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mb-6 flex flex-col justify-between items-start gap-4">
+    <div>
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{% if lang == "ru" %}Редактировать сотрудника{% else %}Xodimni Tahrirlash{% endif %}</h2>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{% if lang == "ru" %}Изменение данных сотрудника{% else %}Mavjud xodim ma'lumotlarini o'zgartirish{% endif %}</p>
+    </div>
+</div>
+
+<div class="bg-white border border-gray-200 rounded-xl shadow-sm dark:bg-gray-800 dark:border-gray-700 p-6 md:p-8">
+    <form id="editEmployeeForm" onsubmit="saveEditedEmployee(event)">
+        <input type="hidden" id="empId" value="{{ emp.id }}">
+        
+        <div class="grid gap-6 mb-6 grid-cols-1 md:grid-cols-2">
+            <div>
+                <label for="firstName" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{{ t.first_name }} <span class="text-red-500">*</span></label>
+                <input type="text" id="firstName" value="{{ emp.first_name }}" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" required>
+            </div>
+            <div>
+                <label for="lastName" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{{ t.last_name }} <span class="text-red-500">*</span></label>
+                <input type="text" id="lastName" value="{{ emp.last_name }}" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" required>
+            </div>
+            <div>
+                <label for="department" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{{ t.department }}</label>
+                <input type="text" id="department" value="{{ emp.department or '' }}" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
+            </div>
+            <div>
+                <label for="position" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{{ t.position }}</label>
+                <input type="text" id="position" value="{{ emp.position or '' }}" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
+            </div>
+
+            <div class="col-span-1 md:col-span-2">
+                <label for="inpOrg" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{{ t.organization }}</label>
+                <select id="inpOrg" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" onchange="filterCamerasByOrg()">
+                    <option value="">-- Tashkilot tanlanmagan --</option>
+                    {% for org in organizations %}
+                    <option value="{{ org.id }}" {% if emp.organization_id == org.id %}selected{% endif %}>{{ org.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-span-1 md:col-span-2">
+                <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Ulangan kameralar (ISUP)</label>
+                <div id="cam-list" class="flex flex-wrap gap-2 p-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg min-h-[48px] text-sm text-gray-400">
+                    Kameralar yuklanmoqda...
+                </div>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Shu xodim qaysi kameralarga yuborilganini tanlang.</p>
+            </div>
+            
+            <div class="col-span-1 md:col-span-2">
+                <label for="personalId" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Shaxsiy Tabel Yoki Kamera ID (Ixtiyoriy)</label>
+                <input type="text" id="personalId" value="{{ emp.personal_id or '' }}" placeholder="Masalan: 0014 yoki A-123" class="bg-gray-50 font-mono border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
+                <p class="text-xs text-gray-500 mt-1">Kameralar bu xodimni yuzidan taniganda yuboradigan maxsus raqam/id.</p>
+            </div>
+            
+            <div class="col-span-1 md:col-span-2 flex flex-col sm:flex-row gap-6">
+                {% if emp.image_url %}
+                <div class="flex-shrink-0 relative group">
+                    <img src="{{ emp.image_url }}" class="w-24 h-24 sm:w-32 sm:h-32 rounded-xl object-cover bg-gray-100 border border-gray-200 dark:border-gray-600" alt="Avatar">
+                    <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center">
+                        <span class="text-white text-xs text-center px-2">Joriy rasm</span>
+                    </div>
+                </div>
+                {% endif %}
+                <div class="flex-1">
+                    <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{% if lang == 'ru' %}Сменить фото (Необязательно){% else %}Rasmni almashtirish (Ixtiyoriy){% endif %}</label>
+                    <input class="hidden" id="image" type="file" accept="image/*">
+                    <div id="emp-image-dropzone" class="relative rounded-2xl border-2 border-dashed border-blue-300/80 dark:border-blue-700/60 bg-gradient-to-br from-blue-50 via-indigo-50 to-sky-50 dark:from-gray-900 dark:via-gray-900 dark:to-blue-950/20 p-4 transition-all cursor-pointer hover:shadow-md hover:border-blue-400 dark:hover:border-blue-600">
+                        <div id="emp-upload-empty" class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-blue-100 dark:border-gray-700 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M12 13v8m0-8l-3 3m3-3l3 3"/>
+                                </svg>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-sm font-semibold text-gray-800 dark:text-gray-100">{% if lang == 'ru' %}Перетащите фото или выберите файл{% else %}Rasmni tashlang yoki fayl tanlang{% endif %}</p>
+                                <button type="button" id="emp-btn-open-file" class="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                    </svg>
+                                    {% if lang == 'ru' %}Выбрать{% else %}Tanlash{% endif %}
+                                </button>
+                            </div>
+                        </div>
+                        <div id="emp-upload-preview" class="hidden items-center gap-3">
+                            <img id="emp-upload-preview-img" src="" alt="Preview" class="w-16 h-16 rounded-xl object-cover ring-2 ring-white dark:ring-gray-800 shadow-md">
+                            <div class="min-w-0 flex-1">
+                                <p id="emp-upload-file-name" class="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate"></p>
+                                <p id="emp-upload-file-size" class="text-xs text-gray-500 dark:text-gray-400 mt-1"></p>
+                                <div class="mt-2 flex items-center gap-2">
+                                    <button type="button" id="emp-btn-change-file" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition">{% if lang == 'ru' %}Заменить{% else %}Almashtirish{% endif %}</button>
+                                    <button type="button" id="emp-btn-remove-file" class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200 text-xs font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition">{% if lang == 'ru' %}Удалить{% else %}O'chirish{% endif %}</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-span-1 md:col-span-2 mt-4">
+                <h4 class="text-base font-medium text-gray-900 dark:text-white mb-2 pb-2 border-b border-gray-200 dark:border-gray-700">{% if lang == "ru" %}Персональное рабочее время (по желанию){% else %}Shaxsiy Ish Vaqti (Ixtiyoriy){% endif %}</h4>
+                
+                <div class="grid gap-6 grid-cols-1 sm:grid-cols-2">
+                    <div>
+                        <label for="startTime" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Kelish (Masalan: 08:30)</label>
+                        <input type="time" id="startTime" value="{{ emp.start_time or '' }}" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="endTime" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Ketish (Masalan: 17:30)</label>
+                        <input type="time" id="endTime" value="{{ emp.end_time or '' }}" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="formError" class="hidden mb-4 p-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400" role="alert"></div>
+
+        <div class="flex items-center gap-4 mt-8 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <a href="/employees" class="text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 dark:focus:ring-gray-700">
+                {% if lang == "ru" %}Отмена{% else %}Bekor qilish{% endif %}
+            </a>
+            <button type="submit" class="text-white bg-amber-600 hover:bg-amber-700 focus:ring-4 focus:outline-none focus:ring-amber-300 font-medium rounded-lg text-sm w-full sm:w-auto px-6 py-2.5 text-center flex items-center gap-2">
+                <svg id="saveSpinner" class="hidden w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                O'zgarishlarni Saqlash
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+const PRESELECTED_CAMERA_IDS = {{ (linked_camera_ids or []) | tojson }};
+let selectedCameraIds = new Set(PRESELECTED_CAMERA_IDS.map((x) => Number(x)));
+const empImageInput = document.getElementById('image');
+const empDropzone = document.getElementById('emp-image-dropzone');
+const empUploadEmpty = document.getElementById('emp-upload-empty');
+const empUploadPreview = document.getElementById('emp-upload-preview');
+const empUploadPreviewImg = document.getElementById('emp-upload-preview-img');
+const empUploadFileName = document.getElementById('emp-upload-file-name');
+const empUploadFileSize = document.getElementById('emp-upload-file-size');
+const empBtnOpenFile = document.getElementById('emp-btn-open-file');
+const empBtnChangeFile = document.getElementById('emp-btn-change-file');
+const empBtnRemoveFile = document.getElementById('emp-btn-remove-file');
+
+function empHumanFileSize(bytes) {
+    if (!bytes) return '0 KB';
+    const kb = bytes / 1024;
+    if (kb < 1024) return `${kb.toFixed(1)} KB`;
+    return `${(kb / 1024).toFixed(2)} MB`;
+}
+
+function showEmployeeUploadEmpty() {
+    empUploadEmpty.classList.remove('hidden');
+    empUploadPreview.classList.add('hidden');
+    empUploadPreview.classList.remove('flex');
+}
+
+function showEmployeeUploadPreview(file) {
+    if (!file) {
+        showEmployeeUploadEmpty();
+        return;
+    }
+    empUploadFileName.textContent = file.name || 'image';
+    empUploadFileSize.textContent = `${empHumanFileSize(file.size)} - ${file.type || 'image/*'}`;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        empUploadPreviewImg.src = e.target.result;
+        empUploadEmpty.classList.add('hidden');
+        empUploadPreview.classList.remove('hidden');
+        empUploadPreview.classList.add('flex');
+    };
+    reader.readAsDataURL(file);
+}
+
+function setEmployeeSelectedImage(file) {
+    if (!file || !String(file.type || '').startsWith('image/')) return;
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    empImageInput.files = dt.files;
+    showEmployeeUploadPreview(file);
+}
+
+function setEmployeeDropzoneActive(active) {
+    if (active) {
+        empDropzone.classList.add('ring-2', 'ring-blue-400', 'border-blue-500');
+    } else {
+        empDropzone.classList.remove('ring-2', 'ring-blue-400', 'border-blue-500');
+    }
+}
+
+async function filterCamerasByOrg() {
+    const orgId = document.getElementById('inpOrg').value;
+    const camList = document.getElementById('cam-list');
+    if (!orgId) {
+        camList.innerHTML = 'Avval tashkilotni tanlang...';
+        selectedCameraIds = new Set();
+        return;
+    }
+
+    camList.innerHTML = '<span class="text-gray-400 text-xs animate-pulse">Yuklanmoqda...</span>';
+    try {
+        const res = await fetch('/api/cameras/by-org/' + orgId);
+        const allCameras = await res.json();
+        if (!Array.isArray(allCameras) || allCameras.length === 0) {
+            camList.innerHTML = '<span class="text-gray-400 text-xs">Bu tashkilotda kamera yo\'q</span>';
+            selectedCameraIds = new Set();
+            return;
+        }
+
+        const availableIds = new Set(allCameras.map((c) => Number(c.id)));
+        selectedCameraIds = new Set([...selectedCameraIds].filter((id) => availableIds.has(Number(id))));
+
+        camList.innerHTML = allCameras.map(c => {
+            const checked = selectedCameraIds.has(Number(c.id)) ? 'checked' : '';
+            const badge = c.is_online
+                ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-900/30'
+                : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700';
+            const dot = c.is_online ? 'bg-green-500' : 'bg-gray-400';
+            return `
+                <label class="flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-lg border ${badge}">
+                    <input type="checkbox" value="${c.id}" class="cam-check w-4 h-4 text-blue-600 cursor-pointer" ${checked}>
+                    <span class="text-sm text-gray-800 dark:text-gray-200">${c.name}</span>
+                    <span class="w-1.5 h-1.5 rounded-full ml-1 ${dot}"></span>
+                </label>
+            `;
+        }).join('');
+
+        camList.querySelectorAll('.cam-check').forEach((input) => {
+            input.addEventListener('change', () => {
+                const id = Number(input.value);
+                if (input.checked) {
+                    selectedCameraIds.add(id);
+                } else {
+                    selectedCameraIds.delete(id);
+                }
+            });
+        });
+    } catch (_) {
+        camList.innerHTML = '<span class="text-red-400 text-xs">Kameralarni yuklashda xato</span>';
+        selectedCameraIds = new Set();
+    }
+}
+
+empDropzone.addEventListener('click', (e) => {
+    if (e.target.closest('button')) return;
+    empImageInput.click();
+});
+empBtnOpenFile.addEventListener('click', () => empImageInput.click());
+empBtnChangeFile.addEventListener('click', () => empImageInput.click());
+empBtnRemoveFile.addEventListener('click', () => {
+    empImageInput.value = '';
+    showEmployeeUploadEmpty();
+});
+empImageInput.addEventListener('change', () => {
+    const file = empImageInput.files?.[0];
+    showEmployeeUploadPreview(file || null);
+});
+empDropzone.addEventListener('dragenter', (e) => {
+    e.preventDefault();
+    setEmployeeDropzoneActive(true);
+});
+empDropzone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    setEmployeeDropzoneActive(true);
+});
+empDropzone.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    if (!empDropzone.contains(e.relatedTarget)) setEmployeeDropzoneActive(false);
+});
+empDropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    setEmployeeDropzoneActive(false);
+    const file = e.dataTransfer?.files?.[0];
+    if (!file) return;
+    setEmployeeSelectedImage(file);
+});
+
+async function saveEditedEmployee(event) {
+    event.preventDefault();
+    const btnSpinner = document.getElementById('saveSpinner');
+    const errBlock = document.getElementById('formError');
+    const empId = document.getElementById('empId').value;
+    
+    errBlock.classList.add('hidden');
+    btnSpinner.classList.remove('hidden');
+
+    const formData = new FormData();
+    formData.append('first_name', document.getElementById('firstName').value.trim());
+    formData.append('last_name', document.getElementById('lastName').value.trim());
+    
+    const pid = document.getElementById('personalId').value.trim();
+    if (pid) formData.append('personal_id', pid);
+    
+    const dept = document.getElementById('department').value.trim();
+    if (dept) formData.append('department', dept);
+    
+    const pos = document.getElementById('position').value.trim();
+    if (pos) formData.append('position', pos);
+    
+    const stime = document.getElementById('startTime').value.trim();
+    if (stime) formData.append('start_time', stime);
+    
+    const etime = document.getElementById('endTime').value.trim();
+    if (etime) formData.append('end_time', etime);
+
+    const orgId = document.getElementById('inpOrg').value;
+    if (orgId) {
+        formData.append('organization_id', orgId);
+    }
+
+    const selectedCameras = Array.from(selectedCameraIds).filter((x) => Number.isInteger(x) && x > 0);
+    formData.append('camera_ids', JSON.stringify(selectedCameras));
+
+    const imageFile = document.getElementById('image').files[0];
+    if (imageFile) formData.append('image', imageFile);
+
+    try {
+        const res = await fetch('/api/employees/' + empId, {
+            method: 'PUT',
+            body: formData
+        });
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.detail || 'Xato yuz berdi');
+        }
+        window.location.href = '/employees';
+    } catch(e) {
+        errBlock.textContent = e.message;
+        errBlock.classList.remove('hidden');
+    } finally {
+        btnSpinner.classList.add('hidden');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    filterCamerasByOrg();
+    showEmployeeUploadEmpty();
+});
+</script>
+{% endblock %}

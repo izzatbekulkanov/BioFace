@@ -1,0 +1,249 @@
+@import "tailwindcss";
+@source "../templates";
+
+/* Tailwind v4 theme extensions previously in CDN */
+@theme {
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-500: #3b82f6;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+}
+
+/* Enable dark mode via .dark class */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ─── Custom animations ─── */
+@keyframes blob {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(30px, -50px) scale(1.1); }
+  66%       { transform: translate(-20px, 20px) scale(0.9); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+/* ─── Utility classes ─── */
+.animate-blob      { animation: blob 7s infinite; }
+.animation-delay-2000 { animation-delay: 2s; }
+.animation-delay-4000 { animation-delay: 4s; }
+.animate-fade-in   { animation: fadeIn 0.4s ease both; }
+.animate-pulse-dot { animation: pulse-dot 1.5s ease-in-out infinite; }
+
+/* Glassmorphism */
+.glass {
+  background: rgba(255,255,255,0.15);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar        { width: 6px; height: 6px; }
+::-webkit-scrollbar-track  { background: #f1f5f9; }
+::-webkit-scrollbar-thumb  { background: #cbd5e1; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* Sidebar transition */
+#sidebar { transition: transform 0.25s ease; }
+
+/* Card hover lift */
+.card-hover { transition: box-shadow 0.2s, transform 0.2s; }
+.card-hover:hover { box-shadow: 0 10px 30px -5px rgba(0,0,0,0.12); transform: translateY(-2px); }
+
+/* Status dot pulse */
+.dot-pulse {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+/* Force background on specific classes missed by scanner */
+.bg-red-500    { background-color: #ef4444 !important; }
+.bg-yellow-500 { background-color: #eab308 !important; }
+.bg-blue-600   { background-color: #2563eb !important; }
+
+/* Shared action buttons for Redis and ISUP pages */
+.page-action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.75rem;
+  border: 1px solid transparent;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color 0.18s ease,
+    background-image 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease,
+    opacity 0.18s ease;
+  box-shadow: 0 8px 18px -14px rgba(15, 23, 42, 0.55);
+}
+
+.page-action-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px -18px rgba(15, 23, 42, 0.45);
+}
+
+.page-action-button:focus-visible {
+  outline: 2px solid rgba(37, 99, 235, 0.35);
+  outline-offset: 2px;
+}
+
+.page-action-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+  transform: none;
+  box-shadow: none;
+}
+
+.page-action-button.is-loading {
+  opacity: 0.82;
+}
+
+.page-action-button__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.7rem;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+.page-action-button__icon svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.page-action-button__label {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.page-action-button--neutral {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  color: #374151;
+  border-color: #d1d5db;
+}
+
+.page-action-button--neutral:hover {
+  background: linear-gradient(180deg, #ffffff 0%, #eef2f7 100%);
+  color: #111827;
+  border-color: #cbd5e1;
+}
+
+.page-action-button--success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+}
+
+.page-action-button--success:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: #ffffff;
+}
+
+.page-action-button--warning {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #ffffff;
+}
+
+.page-action-button--warning:hover {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  color: #ffffff;
+}
+
+.page-action-button--danger {
+  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+  color: #ffffff;
+  border-color: #be123c;
+}
+
+.page-action-button--danger:hover {
+  background: linear-gradient(135deg, #e11d48 0%, #be123c 100%);
+  color: #ffffff;
+  border-color: #9f1239;
+}
+
+.action-busy {
+  pointer-events: none;
+  opacity: 0.82;
+  filter: saturate(0.9);
+}
+
+.action-busy:hover {
+  transform: none !important;
+}
+
+.page-action-button--neutral .page-action-button__icon {
+  background: #e2e8f0;
+  color: #334155;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.dark .page-action-button--neutral {
+  background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
+  color: #e5e7eb;
+  border-color: #374151;
+}
+
+.dark .page-action-button--neutral:hover {
+  background: linear-gradient(180deg, #111827 0%, #0b1220 100%);
+  color: #ffffff;
+  border-color: #4b5563;
+}
+
+.dark .page-action-button--neutral .page-action-button__icon {
+  background: #374151;
+  color: #f8fafc;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.dark .page-action-button--success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+}
+
+.dark .page-action-button--success:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: #ffffff;
+}
+
+.dark .page-action-button--warning {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #ffffff;
+}
+
+.dark .page-action-button--warning:hover {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  color: #ffffff;
+}
+
+.dark .page-action-button--danger {
+  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+  color: #ffffff;
+  border-color: #be123c;
+}
+
+.dark .page-action-button--danger:hover {
+  background: linear-gradient(135deg, #e11d48 0%, #be123c 100%);
+  color: #ffffff;
+  border-color: #9f1239;
+}

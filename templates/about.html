@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="relative min-h-[80vh] flex flex-col mb-6 rounded-2xl shrink-0">
+    <!-- Background Decorators inside a clipping layer -->
+    <div class="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+        <div class="absolute top-0 inset-x-0 h-64 bg-gradient-to-b from-blue-500/20 to-transparent"></div>
+        <div class="absolute -top-24 -right-24 w-96 h-96 bg-blue-400/30 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob"></div>
+        <div class="absolute -bottom-24 -left-24 w-72 h-72 bg-indigo-400/30 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-2000"></div>
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-purple-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-4000"></div>
+    </div>
+
+    <!-- Main Content Container with Glassmorphism -->
+    <div class="relative z-10 flex-1 flex flex-col items-center justify-start p-6 md:p-12 w-full max-w-6xl mx-auto">
+        
+        <!-- Header -->
+        <div class="text-center mb-16 mt-8">
+            <div class="w-24 h-24 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl flex items-center justify-center text-white font-bold text-5xl mx-auto mb-6 shadow-xl transform transition-transform hover:scale-105">BF</div>
+            <h1 class="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white tracking-tight mb-4 drop-shadow-sm">
+                BioFace Tizimiga Xush Kelibsiz
+            </h1>
+            <p class="text-lg md:text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto font-medium leading-relaxed">
+                Bu dastur oddiy qilib aytganda — korxonangiz, maktabingiz yoki ofisingiz eshigidagi "aqlli qorovul". U kim kelganini yuzidan taniydi, xodimlarning davomatini aniq hisoblab beradi va begonalarni ichkariga kiritmaydi.
+            </p>
+        </div>
+
+        <div class="max-w-5xl mx-auto space-y-12">
+            
+            <!-- What is it in Simple Terms -->
+            <div class="backdrop-blur-md bg-white/80 dark:bg-gray-800/80 border border-white/50 dark:border-gray-700/50 shadow-lg rounded-2xl p-8">
+                <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-6">BioFace o'zi nima va u qanday ishlaydi?</h2>
+                <div class="space-y-4 text-gray-700 dark:text-gray-300 text-lg leading-relaxed">
+                    <p>
+                        Tasavvur qiling: xodimingiz ishga keldi. U qorovulga o'zini tanishtirmaydi, hech qanday qog'ozga imzo chekmaydi va hatto maxsus kartochkasini ham qidirmaydi. U shunchaki eshik tagiga o'rnatilgan kameraga (terminalga) bir soniya qaraydi.
+                    </p>
+                    <p>
+                        <strong>Shu bir soniya ichida BioFace tizimi quyidagilarni bajaradi:</strong>
+                    </p>
+                    <ul class="list-disc pl-6 space-y-2 mt-4 text-gray-600 dark:text-gray-400">
+                        <li>Kompyuter tarmog'i orqali insonning yuzini skaner qiladi va bazadagi 10 minglab rasm ichidan qidirib topadi.</li>
+                        <li>Agar bu o'z xodimingiz bo'lsa, avtomat rottada eshik yoki turniketni ochadi.</li>
+                        <li>Agar bu begona shaxs bo'lsa, eshik ochilmaydi va tizim bu haqida darhol xabar beradi.</li>
+                        <li>Xodimning ishga kelgan aniq vaqtini (soat va soniyasigacha) qayd etadi va ushbu platformaga jo'natadi.</li>
+                    </ul>
+                    <p class="mt-4 font-medium text-gray-900 dark:text-white">
+                        Va bularning barchasi atigi yuz millisoniya (ko'z ochib yumguncha bo'lgan vaqt) ichida ro'y beradi!
+                    </p>
+                </div>
+            </div>
+
+            <!-- Everyday Problems Solved -->
+            <div>
+                <h2 class="text-3xl font-bold text-center text-gray-900 dark:text-white mb-8">Biz qaysi kundalik muammolarni hal qilamiz?</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
+                    
+                    <!-- Problem 1: Qo'l mehnati -->
+                    <div class="backdrop-blur-md bg-red-50/70 dark:bg-red-900/10 border border-red-100/50 dark:border-red-800/30 shadow-lg rounded-2xl p-8 hover:-translate-y-1 transition-transform duration-300">
+                        <div class="w-14 h-14 bg-red-100 dark:bg-red-900/50 rounded-full flex items-center justify-center text-red-600 mb-6">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">"Jurnalga yozib qo'yish" o'tmishda qoldi</h3>
+                        <p class="text-gray-600 dark:text-gray-400 leading-relaxed">
+                            Qorovul daftariga qalam bilan kim soat nechada kelganini yozish nafaqat eskirgan, balki juda noto'g'ri tizim. Odamlar bir-birini o'rniga yozib qo'yishi yoki vaqtni aldamasligi uchun tizim har bir kirish-chiqishni rasm bilan birga (dalil sifatida) saqlaydi.
+                        </p>
+                    </div>
+
+                    <!-- Problem 2: Aldovlar -->
+                    <div class="backdrop-blur-md bg-orange-50/70 dark:bg-orange-900/10 border border-orange-100/50 dark:border-orange-800/30 shadow-lg rounded-2xl p-8 hover:-translate-y-1 transition-transform duration-300">
+                        <div class="w-14 h-14 bg-orange-100 dark:bg-orange-900/50 rounded-full flex items-center justify-center text-orange-600 mb-6">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Kartochka bilan bo'ladigan qallobliklar</h3>
+                        <p class="text-gray-600 dark:text-gray-400 leading-relaxed">
+                            Agar tashkilotingizda eshiklar kartochka bilan ochilsa, bir xodim o'zining do'stining kartasini ham eshikka bosib ishga keldi qilib qo'yishi mumkin. BioFace da esa kartochka xodimning aynan yuzi hisoblanadi. Yuzni kimgadir berib turishning iloji yo'q!
+                        </p>
+                    </div>
+
+                    <!-- Problem 3: Oylik hisobotlarning azobi -->
+                    <div class="backdrop-blur-md bg-blue-50/70 dark:bg-blue-900/10 border border-blue-100/50 dark:border-blue-800/30 shadow-lg rounded-2xl p-8 hover:-translate-y-1 transition-transform duration-300">
+                        <div class="w-14 h-14 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center text-blue-600 mb-6">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Oylik hisoblash (Buxgalteriya)</h3>
+                        <p class="text-gray-600 dark:text-gray-400 leading-relaxed">
+                            Oy oxirida yuzlab xodimlarga oylik chiqarish uchun ularning kim necha marta kechikkani yoki kelmaganini hisoblash kadrlar bo'limi uchun katta bosh og'riq. BioFace hamma tayyor sanalgan jadvallarni "1 tugma" bilan (Excel yoki PDF) formatida chiqarib beradi.
+                        </p>
+                    </div>
+
+                    <!-- Problem 4: Nazorat vositalari -->
+                    <div class="backdrop-blur-md bg-purple-50/70 dark:bg-purple-900/10 border border-purple-100/50 dark:border-purple-800/30 shadow-lg rounded-2xl p-8 hover:-translate-y-1 transition-transform duration-300">
+                        <div class="w-14 h-14 bg-purple-100 dark:bg-purple-900/50 rounded-full flex items-center justify-center text-purple-600 mb-6">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Ko'p filialli korxonalar</h3>
+                        <p class="text-gray-600 dark:text-gray-400 leading-relaxed">
+                            Agar sizda shahar bo'ylab bir nechta ofis yoki do'konlaringiz (masalan maktab filiali, klinika tarmoqlari) bo'lsa, har bir filialni alohida aylanib chiqish shart emas. Tizim markazlashgan va qayerda qaysi xodim ishlayotganini sizning telefoningizda / kompyuteringizda ko'rsatib turadi.
+                        </p>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Everyday Benefits Simple Grid -->
+            <div>
+                <h2 class="text-3xl font-bold text-center text-gray-900 dark:text-white mb-8">Kimlarga Eng Ko'p Foyda Keltiradi?</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white/60 dark:bg-gray-800/60 p-6 rounded-2xl text-center shadow-sm border border-gray-100 dark:border-gray-700 backdrop-blur-md">
+                        <div class="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900 flex mx-auto items-center justify-center text-3xl mb-4">👨‍💼</div>
+                        <h4 class="text-lg font-bold text-gray-900 dark:text-white mb-2">Rahbarlar uchun</h4>
+                        <p class="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">Ish tartibiga rioya etilishini masofadan turib telefon orqali kuzatish va nazorat qilish. Faoliyat smaradorligini sezilarli darajada oshiradi.</p>
+                    </div>
+                    <div class="bg-white/60 dark:bg-gray-800/60 p-6 rounded-2xl text-center shadow-sm border border-gray-100 dark:border-gray-700 backdrop-blur-md">
+                        <div class="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900 flex mx-auto items-center justify-center text-3xl mb-4">👩‍💻</div>
+                        <h4 class="text-lg font-bold text-gray-900 dark:text-white mb-2">Buxgalteriya va HR</h4>
+                        <p class="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">Oy oxirida kim qancha ishlaganini qo'lda sanamasdan, bir zumda aniq jadvallarni dasturdan olish va haqiqiy ishlagan soatiga pul to'lash.</p>
+                    </div>
+                    <div class="bg-white/60 dark:bg-gray-800/60 p-6 rounded-2xl text-center shadow-sm border border-gray-100 dark:border-gray-700 backdrop-blur-md">
+                        <div class="w-16 h-16 rounded-full bg-yellow-100 dark:bg-yellow-900 flex mx-auto items-center justify-center text-3xl mb-4">🛡️</div>
+                        <h4 class="text-lg font-bold text-gray-900 dark:text-white mb-2">Xavfsizlik Bo'limi</h4>
+                        <p class="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">Hududga begonalar / bloklangan shaxslar kirishini mutlaqo cheklash va ruxsatsiz urinishlardan xabardor bo'lish imkoniyati.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Author & Tech Stack Section Simplified -->
+            <div class="backdrop-blur-md bg-white/70 dark:bg-gray-800/70 rounded-2xl p-8 border border-white/50 dark:border-gray-700/50 shadow-lg relative overflow-hidden">
+                <div class="absolute -right-20 -bottom-20 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl"></div>
+                <div class="flex flex-col md:flex-row items-center gap-8 relative z-10">
+                    <div class="flex-shrink-0">
+                        <div class="w-24 h-24 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 p-1 flex items-center justify-center shadow-xl">
+                            <div class="w-full h-full bg-white dark:bg-gray-800 rounded-full flex items-center justify-center">
+                                <span class="text-3xl font-extrabold text-blue-600 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">IU</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex-1 text-center md:text-left">
+                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Loyiha Muallifi: Izzatbek Ulkanov</h3>
+                        <p class="text-gray-600 dark:text-gray-400 mb-4 leading-relaxed max-w-2xl">
+                            Ushbu tizim O'zbekistonda tadbirkorlarga, maktab va ofislarga ishlarni yengillashtirish hamda zamonaviy texnologiyalardan unumli foydalanish maqsadida noldan boshlab loyihalashtirildi. 
+                            Maxsus katta serverlarsiz va ortiqcha xarajatlarsiz ishlashi uchun juda kuchli (FastAPI) vositalarda yozildi.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        
+        <!-- Footer Note -->
+        <div class="mt-16 text-center text-sm font-medium text-gray-500 dark:text-gray-400 tracking-wide">
+            Loyihalashtirildi &copy; 2024-2026. Barcha mualliflik huquqlari himoyalangan.
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Custom animations for the background blobs */
+    @keyframes blob {
+        0% { transform: translate(0px, 0px) scale(1); }
+        33% { transform: translate(30px, -50px) scale(1.1); }
+        66% { transform: translate(-20px, 20px) scale(0.9); }
+        100% { transform: translate(0px, 0px) scale(1); }
+    }
+    .animate-blob {
+        animation: blob 7s infinite;
+    }
+    .animation-delay-2000 {
+        animation-delay: 2s;
+    }
+    .animation-delay-4000 {
+        animation-delay: 4s;
+    }
+</style>
+{% endblock %}

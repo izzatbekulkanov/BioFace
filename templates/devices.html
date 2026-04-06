@@ -1,0 +1,334 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<!-- Page Header -->
+<div class="mb-6 flex flex-col justify-between gap-4">
+    <div class="flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Kameralar Ro'yxati</h1>
+            <p id="cam-count" class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Yuklanmoqda...</p>
+        </div>
+        <div class="flex gap-2">
+            <a href="/devices/guide"
+                class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 dark:text-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700 rounded-xl transition shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                Qo'llanmani o'qish
+            </a>
+            <a href="/devices/add"
+                class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition shadow">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                Yangi qo'shish
+            </a>
+        </div>
+    </div>
+    
+    <!-- Filters -->
+    <div class="flex flex-col sm:flex-row gap-3">
+        <div class="relative w-full sm:w-64">
+            <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            </div>
+            <input type="text" id="filter-search" placeholder="Nomi, MAC yoki Device ID bo'yicha qidiruv" oninput="applyFilters()"
+                class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white text-sm rounded-xl pl-9 px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition shadow-sm">
+        </div>
+        <select id="filter-org" onchange="applyFilters()" class="w-full sm:w-64 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition shadow-sm">
+            <option value="">Barcha tashkilotlar</option>
+            {% for org in organizations %}
+            <option value="{{ org.id }}">{{ org.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</div>
+
+<!-- Camera Grid -->
+<div id="cam-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+    <div class="col-span-3 py-16 text-center text-gray-400 dark:text-gray-600">
+        <svg class="w-12 h-12 mx-auto mb-3 animate-spin text-blue-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+        <p class="text-sm">Kameralar yuklanmoqda...</p>
+    </div>
+</div>
+
+<!-- Empty state -->
+<div id="cam-empty" class="hidden py-16 text-center">
+    <svg class="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-1">Hech qanday kamera yo'q</h3>
+    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Qidiruvga mos qurilma topilmadi yoki hali qo'shilmagan.</p>
+    <a href="/devices/add" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        Yangi qo'shish
+    </a>
+</div>
+
+
+<!-- ══ EDIT CAMERA MODAL ══ -->
+<div id="edit-modal" class="hidden fixed inset-0 z-50 items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeEditModal()"></div>
+    <div class="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh] my-4 pointer-events-auto z-10">
+        <div class="px-6 py-5 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between sticky top-0 bg-white dark:bg-gray-900 z-10">
+            <div>
+                <h3 class="font-bold text-gray-900 dark:text-white">Kamerani Tahrirlash</h3>
+                <p class="text-xs text-gray-500 mt-0.5">Mavjud qurilmani o'zgartirish</p>
+            </div>
+            <button onclick="closeEditModal()" class="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        
+        <!-- FORM BODY (SCROLLABLE) -->
+        <div class="px-6 py-5 space-y-4 overflow-y-auto flex-1 custom-scrollbar">
+            <input type="hidden" id="edit-id">
+            <div>
+                <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">Kamera Nomi <span class="text-red-500">*</span></label>
+                <input id="edit-name" type="text"
+                    class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">MAC Manzili yoki Seriya raqami <span class="text-red-500">*</span></label>
+                <input id="edit-mac" type="text"
+                    class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-mono rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition uppercase">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">Model</label>
+                    <input id="edit-model" type="text"
+                        class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">Tashkilot</label>
+                    <select id="edit-org" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition">
+                        <option value="">Tanlang...</option>
+                        {% for org in organizations %}
+                        <option value="{{ org.id }}">{{ org.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">ISUP Device ID</label>
+                <input id="edit-isup-device-id" type="text" placeholder="Masalan: CAM1111"
+                    class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-mono rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition">
+            </div>
+            <!-- Auth Fields -->
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">Login</label>
+                    <input id="edit-username" type="text"
+                        class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">Yangi Parol</label>
+                    <input id="edit-password" type="password" placeholder="...kiritmasangiz o'zgarmaydi"
+                        class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition">
+                </div>
+            </div>
+            <div id="edit-error" class="hidden text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-4 py-2.5 rounded-xl"></div>
+        </div>
+
+        <div class="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-800 flex gap-3 justify-end sticky bottom-0">
+            <button onclick="closeEditModal()" class="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition">Bekor qilish</button>
+            <button onclick="saveEditCamera()" class="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition flex items-center gap-2">
+                <svg id="edit-spinner" class="w-4 h-4 hidden animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                Saqlash
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- DELETE CONFIRM MODAL -->
+<div id="del-modal" class="hidden fixed inset-0 z-50 items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+    <div class="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center z-10">
+        <div class="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 flex items-center justify-center mx-auto mb-4">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        </div>
+        <h3 class="font-bold text-gray-900 dark:text-white mb-2">Kamerani o'chirish</h3>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-6"><span id="del-name" class="font-bold text-gray-800 dark:text-gray-200"></span> kamerasini o'chirmoqchimisiz? Shu kameraga bog'liq barcha hodisalar ham o'chib ketishi mumkin.</p>
+        <div class="flex gap-3 justify-center">
+            <button onclick="document.getElementById('del-modal').classList.add('hidden'); document.getElementById('del-modal').classList.remove('flex');" class="px-5 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition w-1/2">Bekor qilish</button>
+            <button id="del-confirm" class="px-5 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-xl transition w-1/2">O'chirish</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let cameras = [];
+
+async function loadCameras() {
+    try {
+        const res = await fetch('/api/cameras');
+        cameras = await res.json();
+        applyFilters();
+    } catch(e) {
+        document.getElementById('cam-grid').innerHTML = '<div class="col-span-3 py-16 text-center text-red-500">Kameralarni yuklashda xato</div>';
+    }
+}
+
+function applyFilters() {
+    const search = document.getElementById('filter-search').value.toLowerCase();
+    const org = document.getElementById('filter-org').value;
+    
+    const filtered = cameras.filter(c => {
+        const mac = (c.mac_address || '').toLowerCase();
+        const isupId = (c.isup_device_id || '').toLowerCase();
+        const matchSearch = c.name.toLowerCase().includes(search) || mac.includes(search) || isupId.includes(search);
+        const matchOrg = org === "" || c.organization_id == org;
+        return matchSearch && matchOrg;
+    });
+    
+    renderCameras(filtered);
+}
+
+function renderCameras(filteredCameras) {
+    const grid = document.getElementById('cam-grid');
+    const empty = document.getElementById('cam-empty');
+    if (document.getElementById('cam-count')) {
+        document.getElementById('cam-count').textContent = filteredCameras.filter(c => c.is_online).length + ' faol / ' + filteredCameras.length + ' jami kamera';
+    }
+
+    if (!filteredCameras.length) { grid.classList.add('hidden'); empty.classList.remove('hidden'); return; }
+    
+    grid.classList.remove('hidden'); empty.classList.add('hidden');
+    const used_pct = c => c.max_memory ? Math.round((c.used_faces / c.max_memory) * 100) : 0;
+    const bar_color = pct => pct > 80 ? 'bg-red-500' : pct > 50 ? 'bg-amber-400' : 'bg-blue-500';
+
+    grid.innerHTML = filteredCameras.map(c => `
+    <div class="bg-white dark:bg-gray-900 border ${c.is_online ? 'border-gray-200 dark:border-gray-800' : 'border-red-200 dark:border-red-900/50'} rounded-2xl shadow-sm card-hover flex flex-col overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-start justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="w-10 h-10 rounded-xl ${c.is_online ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400' : 'bg-red-100 dark:bg-red-900/40 text-red-500'} flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                </div>
+                <div class="min-w-0">
+                    <h4 class="font-bold text-sm text-gray-900 dark:text-white leading-tight truncate">${c.name}</h4>
+                    <p class="text-xs text-gray-400 dark:text-gray-500 truncate">${c.location || '—'}</p>
+                </div>
+            </div>
+            <span class="shrink-0 inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${c.is_online ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'}">
+                <span class="w-1.5 h-1.5 rounded-full ${c.is_online ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}"></span>
+                ${c.is_online ? 'Faol' : 'Offline'}
+            </span>
+        </div>
+        <div class="px-5 py-4 flex-1 grid grid-cols-2 gap-y-2.5 text-sm">
+            <span class="text-gray-500 dark:text-gray-400 text-xs">Device ID</span>
+            <span class="font-mono text-xs text-gray-800 dark:text-gray-200 text-right truncate bg-gray-50 dark:bg-gray-800 px-1.5 rounded">${c.isup_device_id || '—'}</span>
+            <span class="text-gray-500 dark:text-gray-400 text-xs">MAC / Seriya</span>
+            <span class="font-mono text-xs text-gray-800 dark:text-gray-200 text-right truncate bg-gray-50 dark:bg-gray-800 px-1.5 rounded">${c.mac_address || '—'}</span>
+            <span class="text-gray-500 dark:text-gray-400 text-xs">Model</span>
+            <span class="text-xs text-gray-700 dark:text-gray-300 text-right truncate">${c.model || '—'}</span>
+            <span class="text-gray-500 dark:text-gray-400 text-xs">Bugun hodisa</span>
+            <span class="text-xs font-bold text-gray-900 dark:text-white text-right">${c.events_today}</span>
+        </div>
+        <div class="px-5 pb-4">
+            <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
+                <span>Yuz bazasi</span><span>${c.used_faces} / ${c.max_memory}</span>
+            </div>
+            <div class="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-1.5">
+                <div class="h-1.5 rounded-full ${bar_color(used_pct(c))}" style="width:${used_pct(c)}%"></div>
+            </div>
+        </div>
+        <div class="border-t border-gray-100 dark:border-gray-800 px-5 py-3 flex items-center justify-between bg-gray-50 dark:bg-gray-800/20">
+            <div class="flex gap-4">
+                <a href="/camera-info?id=${c.id}" class="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Batafsil
+                </a>
+                <a href="/commands?cam=${c.id}" class="text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    Buyruq
+                </a>
+                <a href="/devices/edit?id=${c.id}" class="text-xs font-medium text-amber-500 hover:text-amber-600 flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                    Tahrir
+                </a>
+            </div>
+            <button onclick="confirmDelete(${c.id}, '${c.name.replace(/'/g,"\\'")}')" class="text-xs font-medium text-red-500 hover:text-red-700">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            </button>
+        </div>
+    </div>`).join('');
+}
+
+
+
+function openEditModal(id) {
+    const cam = cameras.find(c => c.id === id);
+    if (!cam) return;
+    
+    document.getElementById('edit-id').value = cam.id;
+    document.getElementById('edit-name').value = cam.name;
+    document.getElementById('edit-mac').value = cam.mac_address;
+    document.getElementById('edit-model').value = cam.model || '';
+    document.getElementById('edit-username').value = cam.username || 'admin';
+    document.getElementById('edit-password').value = '';
+    document.getElementById('edit-isup-device-id').value = cam.isup_device_id || '';
+    
+    const org_select = document.getElementById('edit-org');
+    org_select.value = cam.organization_id || '';
+    document.getElementById('edit-error').classList.add('hidden');
+    document.getElementById('edit-modal').classList.remove('hidden');
+    document.getElementById('edit-modal').classList.add('flex');
+}
+
+function closeEditModal() {
+    document.getElementById('edit-modal').classList.add('hidden');
+    document.getElementById('edit-modal').classList.remove('flex');
+}
+
+async function saveEditCamera() {
+    const id = document.getElementById('edit-id').value;
+    const name = document.getElementById('edit-name').value.trim();
+    const mac_address = document.getElementById('edit-mac').value.trim().toUpperCase();
+    const org_id = document.getElementById('edit-org').value;
+    const organization_id = org_id ? parseInt(org_id) : null;
+    const model = document.getElementById('edit-model').value.trim();
+    const isup_device_id = document.getElementById('edit-isup-device-id').value.trim();
+    const username = document.getElementById('edit-username').value.trim();
+    const password = document.getElementById('edit-password').value.trim();
+    const errEl = document.getElementById('edit-error');
+    
+    if (!name || !mac_address || !username) { errEl.textContent = 'Nom, MAC va Login majburiy maydonlardir'; errEl.classList.remove('hidden'); return; }
+    
+    errEl.classList.add('hidden');
+    document.getElementById('edit-spinner').classList.remove('hidden');
+    
+    try {
+        const payload = { name, mac_address, organization_id, model, username, isup_device_id: isup_device_id || null };
+        if (password) payload.password = password; // Only send if user typed a new password
+
+        const res = await fetch('/api/cameras/' + id, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) { errEl.textContent = data.detail || 'Xato yuz berdi'; errEl.classList.remove('hidden'); return; }
+        
+        closeEditModal();
+        loadCameras(); // Already calls applyFilters()
+    } catch(e) {
+        errEl.textContent = 'Tarmoq xatosi'; errEl.classList.remove('hidden');
+    } finally {
+        document.getElementById('edit-spinner').classList.add('hidden');
+    }
+}
+
+
+
+let deletingId = null;
+function confirmDelete(id, name) {
+    deletingId = id;
+    document.getElementById('del-name').textContent = name;
+    document.getElementById('del-modal').classList.remove('hidden');
+    document.getElementById('del-modal').classList.add('flex');
+    document.getElementById('del-confirm').onclick = async () => {
+        await fetch('/api/cameras/' + id, {method: 'DELETE'});
+        document.getElementById('del-modal').classList.add('hidden');
+        document.getElementById('del-modal').classList.remove('flex');
+        loadCameras(); // Already calls applyFilters()
+    };
+}
+
+loadCameras();
+</script>
+{% endblock %}

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mx-auto max-w-2xl space-y-6">
+    <div class="flex items-center gap-3">
+        <a href="/organizations" class="text-gray-400 transition hover:text-gray-600 dark:hover:text-gray-300">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+        </a>
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{% if lang == "ru" %}Добавить организацию{% else %}Yangi tashkilot{% endif %}</h1>
+            <p class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">{% if lang == "ru" %}Создание новой организации{% else %}Yangi tashkilot ma'lumotlarini kiriting{% endif %}</p>
+        </div>
+    </div>
+
+    <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <div class="sm:col-span-2">
+                <label class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Tashkilot nomi <span class="text-red-500">*</span></label>
+                <input id="org-name" type="text" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
+            </div>
+            <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Tashkilot turi</label>
+                <select id="org-type" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
+                    {% for item in organization_types %}
+                    <option value="{{ item.value }}" {% if item.value == "boshqa" %}selected{% endif %}>{{ item.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Ish boshlanishi</label>
+                <input id="org-start" type="time" value="09:00" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
+            </div>
+            <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Ish tugashi</label>
+                <input id="org-end" type="time" value="18:00" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
+            </div>
+        </div>
+
+        <div id="form-error" class="mt-4 hidden rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-600 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300"></div>
+
+        <div class="mt-6 flex items-center gap-3 border-t border-gray-100 pt-5 dark:border-gray-800">
+            <a href="/organizations" class="rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">Bekor qilish</a>
+            <button type="button" onclick="saveOrganization()" class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700">
+                <svg id="save-spinner" class="hidden h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                Saqlash
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+async function saveOrganization() {
+    const errorEl = document.getElementById("form-error");
+    const spinner = document.getElementById("save-spinner");
+    errorEl.classList.add("hidden");
+
+    const payload = {
+        name: (document.getElementById("org-name").value || "").trim(),
+        organization_type: document.getElementById("org-type").value || "boshqa",
+        default_start_time: document.getElementById("org-start").value || "09:00",
+        default_end_time: document.getElementById("org-end").value || "18:00",
+    };
+
+    if (!payload.name) {
+        errorEl.textContent = "Tashkilot nomi majburiy.";
+        errorEl.classList.remove("hidden");
+        return;
+    }
+
+    spinner.classList.remove("hidden");
+    try {
+        const res = await fetch("/api/organizations", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.ok === false) {
+            throw new Error(data.detail || data.message || "Saqlashda xatolik.");
+        }
+        window.location.href = "/organizations";
+    } catch (err) {
+        errorEl.textContent = err.message || "Saqlashda xatolik.";
+        errorEl.classList.remove("hidden");
+    } finally {
+        spinner.classList.add("hidden");
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<!-- ── Page Header ── -->
+<div class="mb-6">
+    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t.dashboard_title }}</h1>
+    <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+        {% if lang == 'ru' %}{{ menus.app_name }} — система посещаемости{% else %}{{ menus.app_name }} — davomat tizimi{% endif %}
+    </p>
+</div>
+
+<!-- ── Stat Cards ── -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <!-- Total employees -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 shadow-sm card-hover flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
+            <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+        </div>
+        <div>
+        <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t.total_employees }}</p>
+            <p class="text-2xl font-bold text-gray-900 dark:text-white mt-0.5">{{ total_employees }}</p>
+        </div>
+    </div>
+    <!-- Active cameras -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 shadow-sm card-hover flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center shrink-0">
+            <svg class="w-6 h-6 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+        </div>
+        <div>
+            <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t.active_cameras }}</p>
+            <p class="text-2xl font-bold text-gray-900 dark:text-white mt-0.5">{{ active_cameras }}<span class="text-sm text-gray-400 font-normal">/{{ total_cameras }}</span></p>
+        </div>
+    </div>
+    <!-- On time today -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 shadow-sm card-hover flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center shrink-0">
+            <svg class="w-6 h-6 text-violet-600 dark:text-violet-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+        </div>
+        <div>
+            <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t.today_attendance }}</p>
+            <p class="text-2xl font-bold text-gray-900 dark:text-white mt-0.5">{{ today_attendance }}</p>
+        </div>
+    </div>
+    <!-- Late-->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-red-100 dark:border-red-900/50 p-5 shadow-sm card-hover flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-red-100 dark:bg-red-900/40 flex items-center justify-center shrink-0">
+            <svg class="w-6 h-6 text-red-500 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <div>
+            <p class="text-xs font-medium text-red-500 dark:text-red-400">{{ t.late_today }}</p>
+            <p class="text-2xl font-bold text-red-600 dark:text-red-400 mt-0.5">{{ late_count }}</p>
+        </div>
+    </div>
+</div>
+
+<!-- ── Two Column Grid ── -->
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+
+    <!-- Kech kelganlar -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse inline-block"></span>
+                <h2 class="font-semibold text-gray-900 dark:text-white text-sm">{{ t.late_employees_title }}</h2>
+                <span class="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full">{{ late_count }}</span>
+            </div>
+            <a href="/reports" class="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 font-medium hover:underline">{{ t.all_reports }}</a>
+        </div>
+        {% if late_arrivals %}
+        <ul class="divide-y divide-gray-50 dark:divide-gray-800">
+            {% for l in late_arrivals %}
+            <li class="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                <img src="{{ l.avatar }}" alt="{{ l.full_name }}" class="w-10 h-10 rounded-full object-cover border-2 border-white dark:border-gray-700 shadow-sm shrink-0">
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{ l.full_name }}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate">Kamera: {{ l.camera }}</p>
+                </div>
+                <div class="text-right shrink-0">
+                    <p class="text-sm font-bold text-red-600 dark:text-red-400">{{ l.arrival_time.strftime('%H:%M') if l.arrival_time else '-' }}</p>
+                    <p class="text-xs text-gray-400">+{{ l.delay_human or (l.delay_minutes ~ ' ' ~ t.minutes_short) }}</p>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="py-10 text-center">
+            <svg class="w-10 h-10 text-emerald-400 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+            <p class="text-sm text-gray-500 dark:text-gray-400">{{ t.no_late_arrivals }}</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- So'nggi hodisalar -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse inline-block"></span>
+                <h2 class="font-semibold text-gray-900 dark:text-white text-sm">{{ t.recent_events }}</h2>
+            </div>
+            <a href="/events" class="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 font-medium hover:underline">{{ t.all_events }}</a>
+        </div>
+        <ul class="divide-y divide-gray-50 dark:divide-gray-800">
+            {% for ev in recent_events %}
+            <li class="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                <img src="{{ ev.avatar }}" alt="{{ ev.full_name }}" class="w-10 h-10 rounded-full object-cover border-2 border-white dark:border-gray-700 shadow-sm shrink-0">
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{ ev.full_name }}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate">Kamera: {{ ev.camera }}</p>
+                </div>
+                <div class="text-right shrink-0">
+                    <p class="text-xs text-gray-400 mb-1">{{ ev.timestamp.strftime('%H:%M') if ev.timestamp else '-' }}</p>
+                    {% if ev.status == "Ruxsat berildi" %}
+                    <span class="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full">
+                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                        Kirdi
+                    </span>
+                    {% else %}
+                    <span class="inline-flex items-center gap-1 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded-full">
+                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                        {{ t.denied }}
+                    </span>
+                    {% endif %}
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %}

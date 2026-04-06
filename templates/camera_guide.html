@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mb-6">
+    <div class="flex items-center gap-3 mb-2">
+        <a href="/devices" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+        </a>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ page_title }}</h1>
+    </div>
+    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 ml-9">
+        Hikvision DS-K1T341 / DS-K1T343 qurilmalarini BioFace ga toliq ISUP 5.0 asosida ulash tartibi
+    </p>
+</div>
+
+<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 md:p-8 shadow-sm space-y-7">
+    <section>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">1. Kamera veb interfeysiga kirish</h3>
+        <ul class="list-disc ml-6 text-gray-600 dark:text-gray-400 space-y-2">
+            <li>Kamera IP manzilini brauzerda oching (masalan: <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-red-500 dark:text-red-400">http://10.10.0.16</code>).</li>
+            <li>Login odatda <strong class="text-gray-900 dark:text-white">admin</strong>, parol esa qurilma aktivatsiyasida qoyilgan parol.</li>
+        </ul>
+    </section>
+
+    <section>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">2. Platform Access - ISUP 5.0 sozlamasi</h3>
+        <ol class="list-decimal ml-6 text-gray-600 dark:text-gray-400 space-y-2">
+            <li><strong class="text-gray-900 dark:text-white">Network -> Advanced Settings -> Platform Access -> ISUP</strong> bolimiga oting.</li>
+            <li><strong class="text-gray-900 dark:text-white">Enable</strong> ni yoqing va <strong class="text-gray-900 dark:text-white">Protocol Version = ISUP5.0</strong> qiling.</li>
+            <li><strong class="text-gray-900 dark:text-white">Server IP Address</strong> sifatida BioFace server IP sini kiriting:
+                <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-red-500 dark:text-red-400">{{ isup_guide.server_host }}</code>
+            </li>
+            <li><strong class="text-gray-900 dark:text-white">Port</strong> (Register/CMS):
+                <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-red-500 dark:text-red-400">{{ isup_guide.register_port }}</code>
+            </li>
+            <li><strong class="text-gray-900 dark:text-white">Device ID</strong> ni BioFace dagi kamera <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">isup_device_id</code> qiymati bilan bir xil kiriting (masalan: <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">CAM1111</code>).</li>
+            <li><strong class="text-gray-900 dark:text-white">Encryption Key</strong>:
+                <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-red-500 dark:text-red-400">{{ isup_guide.isup_key }}</code>
+            </li>
+            <li><strong class="text-gray-900 dark:text-white">Save</strong> qiling va Registration Status ni <strong class="text-gray-900 dark:text-white">Refresh</strong> bilan tekshiring.</li>
+        </ol>
+    </section>
+
+    <section>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">3. ISUP Listening (Alarm/Picture) sozlamasi</h3>
+        <ol class="list-decimal ml-6 text-gray-600 dark:text-gray-400 space-y-2">
+            <li><strong class="text-gray-900 dark:text-white">ISUP Alarm Center IP/Domain Name</strong>:
+                <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-red-500 dark:text-red-400">{{ isup_guide.server_host }}</code>
+            </li>
+            <li><strong class="text-gray-900 dark:text-white">ISUP Alarm Center URL</strong>: <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">/</code></li>
+            <li><strong class="text-gray-900 dark:text-white">ISUP Alarm Center Port</strong>:
+                <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-red-500 dark:text-red-400">{{ isup_guide.alarm_port }}</code>
+            </li>
+            <li>Agar qurilmada alohida Picture server maydoni bolsa, uni ham shu server IP va
+                <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-red-500 dark:text-red-400">{{ isup_guide.picture_port }}</code>
+                portga moslang.
+            </li>
+        </ol>
+    </section>
+
+    <section>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">4. BioFace ichida tekshirish</h3>
+        <ul class="list-disc ml-6 text-gray-600 dark:text-gray-400 space-y-2">
+            <li><a href="/isup-server" class="text-blue-600 dark:text-blue-400 hover:underline">ISUP Server</a> sahifasida quyilarni tekshiring:
+                portlar <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">{{ isup_guide.register_port }}</code>,
+                <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">{{ isup_guide.alarm_port }}</code>,
+                <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">{{ isup_guide.picture_port }}</code>
+                listening holatda bolsin va qurilma Connected royxatida chiqsin.
+            </li>
+            <li>Quick API tekshiruv:
+                <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">{{ isup_guide.health_url }}</code>,
+                <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">{{ isup_guide.process_url }}</code>,
+                <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">{{ isup_guide.devices_url }}</code>.
+            </li>
+        </ul>
+    </section>
+
+    <section class="rounded-xl border border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-900/20 px-4 py-4 text-sm text-amber-800 dark:text-amber-200">
+        <p class="font-semibold mb-2">Muhim eslatmalar</p>
+        <ul class="list-disc ml-6 space-y-1">
+            <li>ISUP rejimida register, alarm va picture oqimi toliq ISUP kanallari orqali ishlaydi.</li>
+            <li>Kamera serverga chiqishi uchun firewall da TCP <strong>{{ isup_guide.register_port }}</strong>, <strong>{{ isup_guide.alarm_port }}</strong>, <strong>{{ isup_guide.picture_port }}</strong> ochiq bolishi kerak.</li>
+            <li>Server bind manzili <code>{{ isup_guide.bind_host }}</code> bo'lishi normal. Kamera ichiga esa har doim real server IP/DNS yoziladi: <code>{{ isup_guide.server_host }}</code>.</li>
+            <li>Agar Registration Status offline qolsa, avval network mask, gateway va Encryption Key ni qayta tekshiring.</li>
+        </ul>
+    </section>
+</div>
+{% endblock %}

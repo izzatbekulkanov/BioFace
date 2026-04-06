@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local IDE / editor state
+.idea/
+.vscode/
+.qodo/
+
+# Local runtime and data
+.runtime/
+.env
+bioface.db
+*.db-journal
+*.sqlite3
+menu.json
+cookies.txt
+isup_log.txt
+isup_err.txt
+isup_trigger.txt
+
+# Generated uploads
+static/uploads/
+hikvision_sdk/*.db
+
+# Build artifacts
+isup_server/build/
+build/
+dist/
+*.egg-info/
+
+# OS files
+.DS_Store
+Thumbs.db

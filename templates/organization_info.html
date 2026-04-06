@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="mb-6 flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center">
+    <div class="flex items-center gap-3">
+        <a href="/organizations" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+        </a>
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white" id="org-title">Yuklanmoqda...</h1>
+            <p class="text-xs text-gray-500 font-mono" id="org-subtitle"></p>
+        </div>
+    </div>
+    <span id="org-status-badge" class="hidden px-3 py-1 rounded-full text-sm font-medium"></span>
+</div>
+
+<!-- Stat cards -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6" id="stats-row">
+    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 shadow-sm">
+        <p class="text-xs text-gray-400 mb-1">Xodimlar</p>
+        <p class="text-2xl font-bold text-gray-900 dark:text-white" id="stat-emp">—</p>
+    </div>
+    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 shadow-sm">
+        <p class="text-xs text-gray-400 mb-1">Kameralar</p>
+        <p class="text-2xl font-bold text-gray-900 dark:text-white" id="stat-cam">—</p>
+    </div>
+    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 shadow-sm">
+        <p class="text-xs text-gray-400 mb-1">Adminlar</p>
+        <p class="text-2xl font-bold text-gray-900 dark:text-white" id="stat-usr">—</p>
+    </div>
+    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 shadow-sm">
+        <p class="text-xs text-gray-400 mb-1">Bugun kirish</p>
+        <p class="text-2xl font-bold text-gray-900 dark:text-white" id="stat-att">—</p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Cameras -->
+    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+            <h2 class="font-semibold text-gray-900 dark:text-white">Kameralar</h2>
+            <a href="/devices" class="text-xs text-blue-500 hover:underline">Barchasi →</a>
+        </div>
+        <div id="cams-list" class="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
+            <p class="p-5 text-gray-400">Yuklanmoqda...</p>
+        </div>
+    </div>
+
+    <!-- Employees -->
+    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+            <h2 class="font-semibold text-gray-900 dark:text-white">Xodimlar</h2>
+            <a href="/employees" class="text-xs text-blue-500 hover:underline">Barchasi →</a>
+        </div>
+        <div id="emps-list" class="divide-y divide-gray-100 dark:divide-gray-800 text-sm max-h-72 overflow-y-auto">
+            <p class="p-5 text-gray-400">Yuklanmoqda...</p>
+        </div>
+    </div>
+
+    <!-- Admin Users -->
+    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+            <h2 class="font-semibold text-gray-900 dark:text-white">Admin Foydalanuvchilar</h2>
+        </div>
+        <div id="users-list" class="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
+            <p class="p-5 text-gray-400">Yuklanmoqda...</p>
+        </div>
+    </div>
+
+    <!-- Org info -->
+    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-5">
+        <h2 class="font-semibold text-gray-900 dark:text-white mb-4">Tashkilot Ma'lumotlari</h2>
+        <div class="space-y-3 text-sm">
+            <div class="flex justify-between"><span class="text-gray-400">Nomi</span><span class="font-medium dark:text-white" id="info-name">—</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">Turi</span><span class="font-medium dark:text-white" id="info-type">—</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">Ish boshlanishi</span><span class="font-medium dark:text-white" id="info-start">—</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">Ish tugashi</span><span class="font-medium dark:text-white" id="info-end">—</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">Obuna</span><span class="font-medium dark:text-white" id="info-sub">—</span></div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function loadOrgInfo() {
+    const orgId = new URLSearchParams(window.location.search).get('id');
+    if (!orgId) { window.location.href = '/organizations'; return; }
+
+    try {
+        // Load org basic info
+        const orgRes = await fetch('/api/organizations');
+        const orgs = await orgRes.json();
+        const org = orgs.find(o => o.id == orgId);
+        if (!org) throw new Error('Tashkilot topilmadi');
+
+        document.getElementById('org-title').textContent = org.name;
+        document.getElementById('org-subtitle').textContent = 'ID: ' + org.id;
+        document.getElementById('info-name').textContent = org.name;
+        document.getElementById('info-type').textContent = org.organization_type_label || org.organization_type || 'Boshqa';
+        document.getElementById('info-start').textContent = org.default_start_time || '09:00';
+        document.getElementById('info-end').textContent = org.default_end_time || '18:00';
+        document.getElementById('info-sub').textContent = org.subscription_end_date
+            ? new Date(org.subscription_end_date).toLocaleDateString('uz-UZ') : 'Cheklanmagan';
+
+        const badge = document.getElementById('org-status-badge');
+        badge.classList.remove('hidden');
+        const isActive = String(org.subscription_status || '').toLowerCase().includes('active');
+        badge.className += isActive
+            ? ' bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+            : ' bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+        badge.textContent = isActive ? 'Faol' : 'Faol emas';
+
+        // Cameras
+        const camsRes = await fetch('/api/cameras/by-org/' + orgId);
+        const cams = await camsRes.json();
+        document.getElementById('stat-cam').textContent = cams.length;
+        document.getElementById('cams-list').innerHTML = cams.length === 0
+            ? '<p class="p-5 text-gray-400 text-center">Kamera yo\'q</p>'
+            : cams.map(c => `
+                <div class="px-5 py-3 flex items-center justify-between">
+                    <div>
+                        <p class="font-medium text-gray-900 dark:text-white">${c.name}</p>
+                        <p class="text-xs text-gray-400 font-mono">${c.mac_address}</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full ${c.is_online ? 'bg-emerald-500' : 'bg-gray-400'}"></span>
+                        <span class="text-xs ${c.is_online ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400'}">${c.is_online ? 'Online' : 'Offline'}</span>
+                        <a href="/camera-info?id=${c.id}" class="text-xs text-blue-500 hover:underline ml-2">Kirish</a>
+                    </div>
+                </div>`).join('');
+
+        // Employees
+        const empsRes = await fetch('/api/employees');
+        const allEmps = await empsRes.json();
+        const emps = allEmps.filter ? allEmps.filter(e => e.organization_id == orgId) : [];
+        document.getElementById('stat-emp').textContent = emps.length;
+        document.getElementById('emps-list').innerHTML = emps.length === 0
+            ? '<p class="p-5 text-gray-400 text-center">Xodim yo\'q</p>'
+            : emps.map(e => `
+                <div class="px-5 py-3 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 font-bold text-sm">
+                            ${e.full_name ? e.full_name[0] : '?'}
+                        </div>
+                        <div>
+                            <p class="font-medium text-gray-900 dark:text-white text-sm">${e.full_name}</p>
+                            <p class="text-xs text-gray-400">${e.department || e.position || ''}</p>
+                        </div>
+                    </div>
+                    <a href="/employees/${e.id}" class="text-xs text-blue-500 hover:underline">Profil</a>
+                </div>`).join('');
+
+        // Users (admins) for this org — use /api/users endpoint
+        try {
+            const usrsRes = await fetch('/api/users');
+            const allUsers = await usrsRes.json();
+            const orgUsers = allUsers.filter(u => u.organization_id == orgId);
+            document.getElementById('stat-usr').textContent = orgUsers.length;
+            document.getElementById('users-list').innerHTML = orgUsers.length === 0
+                ? '<p class="p-5 text-gray-400 text-center">Admin yo\'q</p>'
+                : orgUsers.map(u => `
+                    <div class="px-5 py-3 flex items-center justify-between">
+                        <div>
+                            <p class="font-medium text-gray-900 dark:text-white text-sm">${u.name}</p>
+                            <p class="text-xs text-gray-400">${u.email} · ${u.role}</p>
+                        </div>
+                    </div>`).join('');
+        } catch(e2) {
+            document.getElementById('stat-usr').textContent = '—';
+        }
+
+        // Attendance today
+        try {
+            const today = new Date().toISOString().split('T')[0];
+            const evtRes = await fetch('/api/events?limit=500');
+            const evts = await evtRes.json();
+            const todayEvts = evts.filter(ev => ev.timestamp && ev.timestamp.startsWith(today));
+            // Filter by org cameras
+            const camIds = new Set(cams.map(c => c.id));
+            const orgEvts = todayEvts.filter(ev => camIds.has(ev.device_id));
+            document.getElementById('stat-att').textContent = orgEvts.length;
+        } catch { document.getElementById('stat-att').textContent = '—'; }
+
+    } catch(e) {
+        document.querySelector('#stats-row').innerHTML = `<p class="col-span-4 text-red-500 p-4">Xatolik: ${e.message}</p>`;
+    }
+}
+document.addEventListener('DOMContentLoaded', loadOrgInfo);
+</script>
+{% endblock %}

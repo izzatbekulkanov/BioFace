@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex flex-col gap-3">
+        <p class="text-xs font-semibold uppercase tracking-widest text-blue-600 dark:text-blue-400">ISUP Integration</p>
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">API Helper</h1>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                {% if lang == 'ru' %}
+                Эта страница описывает интеграцию BioFace через ISUP, Redis и внутренние API.
+                {% else %}
+                Bu sahifa BioFace tizimidagi ISUP, Redis va ichki API integratsiyasini ko'rsatadi.
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
+    <section class="overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-blue-950 to-slate-800 p-6 text-white shadow-xl shadow-slate-900/15">
+        <div class="grid gap-6 xl:grid-cols-[1.5fr,1fr]">
+            <div>
+                <div class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-blue-100">
+                    BioFace ISUP stack
+                </div>
+                <h2 class="mt-4 text-3xl font-bold leading-tight">
+                    {% if lang == 'ru' %}
+                    Система работает через ISUP register, alarm, picture, REST API и Redis bridge.
+                    {% else %}
+                    Tizim webhook emas, ISUP register, alarm, picture, REST API va Redis bridge asosida ishlaydi.
+                    {% endif %}
+                </h2>
+                <p class="mt-3 max-w-3xl text-sm leading-6 text-blue-100/85">
+                    {% if lang == 'ru' %}
+                    Камера подключается к ISUP серверу, BioFace читает статус через REST API и отправляет команды через Redis/ISUP transport.
+                    {% else %}
+                    Kamera ISUP serverga ulanadi, BioFace holatni REST API orqali oladi va buyruqlarni Redis/ISUP transport orqali yuboradi.
+                    {% endif %}
+                </p>
+
+                <div class="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <div class="rounded-2xl border border-white/10 bg-white/8 p-4 backdrop-blur-sm">
+                        <p class="text-xs font-semibold uppercase tracking-widest text-blue-100/70">Register</p>
+                        <p class="mt-2 text-xl font-bold">{{ isup_config.bind_host }}:{{ isup_config.register_port }}</p>
+                        <p class="mt-1 text-xs text-blue-100/70">ISUP CMS / register bind</p>
+                    </div>
+                    <div class="rounded-2xl border border-white/10 bg-white/8 p-4 backdrop-blur-sm">
+                        <p class="text-xs font-semibold uppercase tracking-widest text-blue-100/70">Alarm</p>
+                        <p class="mt-2 text-xl font-bold">{{ isup_config.bind_host }}:{{ isup_config.alarm_port }}</p>
+                        <p class="mt-1 text-xs text-blue-100/70">Alarm va event callback bind</p>
+                    </div>
+                    <div class="rounded-2xl border border-white/10 bg-white/8 p-4 backdrop-blur-sm">
+                        <p class="text-xs font-semibold uppercase tracking-widest text-blue-100/70">Picture</p>
+                        <p class="mt-2 text-xl font-bold">{{ isup_config.bind_host }}:{{ isup_config.picture_port }}</p>
+                        <p class="mt-1 text-xs text-blue-100/70">Snapshot / picture upload bind</p>
+                    </div>
+                    <div class="rounded-2xl border border-white/10 bg-white/8 p-4 backdrop-blur-sm">
+                        <p class="text-xs font-semibold uppercase tracking-widest text-blue-100/70">REST API</p>
+                        <p class="mt-2 text-xl font-bold">{{ isup_config.bind_host }}:{{ isup_config.api_port }}</p>
+                        <p class="mt-1 text-xs text-blue-100/70">BioFace monitoring va health bind</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rounded-3xl border border-white/10 bg-white/8 p-5 backdrop-blur-sm">
+                <p class="text-xs font-semibold uppercase tracking-widest text-blue-100/70">
+                    {% if lang == 'ru' %}Подключение камеры{% else %}Kamera sozlash{% endif %}
+                </p>
+                <ol class="mt-4 space-y-3 text-sm text-blue-50/90">
+                    <li>1. `Platform Access` bo'limida `Protocol = ISUP` tanlang.</li>
+                    <li>2. ISUP listener bind manzili `{{ isup_config.bind_host }}`. Kamera ichida esa serverning real IP yoki domenini yozing.</li>
+                    <li>3. `Register/CMS Port` uchun `{{ isup_config.register_port }}` kiriting.</li>
+                    <li>4. `Alarm Port` uchun `{{ isup_config.alarm_port }}` kiriting.</li>
+                    <li>5. `Picture Port` uchun `{{ isup_config.picture_port }}` kiriting.</li>
+                    <li>6. `ISUP Key` sifatida `{{ isup_config.isup_key }}` ishlating.</li>
+                </ol>
+                <div class="mt-5 rounded-2xl bg-black/20 p-4">
+                    <p class="text-xs font-semibold uppercase tracking-widest text-blue-100/70">Redis bridge</p>
+                    <p class="mt-2 text-sm text-blue-50/90">{{ isup_config.redis_host }}:{{ isup_config.redis_port }}</p>
+                    <p class="mt-1 text-xs text-blue-100/70">Buyruqlar va javoblar Redis orqali almashadi.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-[1.3fr,1fr]">
+        <section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <div class="border-b border-gray-100 px-5 py-4 dark:border-gray-800">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+                    {% if lang == 'ru' %}ISUP endpoint'lar{% else %}ISUP endpointlar{% endif %}
+                </h2>
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                    {% if lang == 'ru' %}Основные API для health, process, devices и Redis.{% else %}Health, process, devices va Redis uchun asosiy API lar.{% endif %}
+                </p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-left text-sm">
+                    <thead class="bg-gray-50 text-xs uppercase tracking-widest text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                        <tr>
+                            <th class="px-5 py-3">Method</th>
+                            <th class="px-5 py-3">Endpoint</th>
+                            <th class="px-5 py-3">Izoh</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                        <tr>
+                            <td class="px-5 py-4"><span class="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">GET</span></td>
+                            <td class="px-5 py-4 font-mono text-xs text-gray-800 dark:text-gray-200">{{ isup_config.api_url }}</td>
+                            <td class="px-5 py-4 text-gray-500 dark:text-gray-400">ISUP health, ports va sys info</td>
+                        </tr>
+                        <tr>
+                            <td class="px-5 py-4"><span class="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">GET</span></td>
+                            <td class="px-5 py-4 font-mono text-xs text-gray-800 dark:text-gray-200">{{ isup_config.sdk_url }}</td>
+                            <td class="px-5 py-4 text-gray-500 dark:text-gray-400">Hikvision SDK mode va DLL readiness holati</td>
+                        </tr>
+                        <tr>
+                            <td class="px-5 py-4"><span class="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">GET</span></td>
+                            <td class="px-5 py-4 font-mono text-xs text-gray-800 dark:text-gray-200">{{ isup_config.process_url }}</td>
+                            <td class="px-5 py-4 text-gray-500 dark:text-gray-400">ISUP process holati, PID va start command</td>
+                        </tr>
+                        <tr>
+                            <td class="px-5 py-4"><span class="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">GET</span></td>
+                            <td class="px-5 py-4 font-mono text-xs text-gray-800 dark:text-gray-200">{{ isup_config.devices_url }}</td>
+                            <td class="px-5 py-4 text-gray-500 dark:text-gray-400">ISUP orqali ulangan live qurilmalar</td>
+                        </tr>
+                        <tr>
+                            <td class="px-5 py-4"><span class="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">POST</span></td>
+                            <td class="px-5 py-4 font-mono text-xs text-gray-800 dark:text-gray-200">{{ isup_config.process_url }}/start</td>
+                            <td class="px-5 py-4 text-gray-500 dark:text-gray-400">ISUP serverni ishga tushiradi</td>
+                        </tr>
+                        <tr>
+                            <td class="px-5 py-4"><span class="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">POST</span></td>
+                            <td class="px-5 py-4 font-mono text-xs text-gray-800 dark:text-gray-200">{{ isup_config.command_example_url }}</td>
+                            <td class="px-5 py-4 text-gray-500 dark:text-gray-400">Kameraga buyruq yuborish (`ping`, `sync_faces`, `reboot` ...)</td>
+                        </tr>
+                        <tr>
+                            <td class="px-5 py-4"><span class="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">GET</span></td>
+                            <td class="px-5 py-4 font-mono text-xs text-gray-800 dark:text-gray-200">{{ isup_config.redis_url }}?pattern=bioface:*&limit=50</td>
+                            <td class="px-5 py-4 text-gray-500 dark:text-gray-400">Redis snapshot va channel holati</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="space-y-6">
+            <article class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+                <div class="border-b border-gray-100 px-5 py-4 dark:border-gray-800">
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Command payload</h2>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">ISUP buyruq yuborish uchun namunaviy JSON</p>
+                </div>
+                <div class="p-5">
+                    <pre class="overflow-x-auto rounded-2xl bg-gray-950 p-4 text-xs leading-6 text-emerald-300">{
+  "command": "ping",
+  "params": {
+    "trace_id": "demo-001",
+    "requested_by": "admin"
+  }
+}</pre>
+                    <div class="mt-4 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                        <p><span class="font-semibold text-gray-900 dark:text-white">`command`</span> - kamera uchun amal nomi.</p>
+                        <p><span class="font-semibold text-gray-900 dark:text-white">`params`</span> - buyruqqa tegishli qo'shimcha maydonlar.</p>
+                        <p><span class="font-semibold text-gray-900 dark:text-white">Transport</span> - buyruqlar faqat `isup_redis` orqali yuboriladi; offline qurilmaga yuborish bloklanadi.</p>
+                    </div>
+                </div>
+            </article>
+
+            <article class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+                <div class="border-b border-gray-100 px-5 py-4 dark:border-gray-800">
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Local kameralar</h2>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">DB ga saqlangan qurilmalar va ularning ISUP identifikatori</p>
+                </div>
+                {% if cameras %}
+                <ul class="divide-y divide-gray-100 dark:divide-gray-800">
+                    {% for cam in cameras %}
+                    <li class="px-5 py-4">
+                        <div class="flex items-start justify-between gap-4">
+                            <div class="min-w-0">
+                                <p class="truncate text-sm font-semibold text-gray-900 dark:text-white">{{ cam.name }}</p>
+                                <div class="mt-1 flex flex-wrap gap-2 text-xs text-gray-500 dark:text-gray-400">
+                                    <span class="rounded-full bg-gray-100 px-2.5 py-1 dark:bg-gray-800">DB ID: {{ cam.id }}</span>
+                                    <span class="rounded-full bg-gray-100 px-2.5 py-1 font-mono dark:bg-gray-800">MAC: {{ cam.mac_address }}</span>
+                                    <span class="rounded-full bg-gray-100 px-2.5 py-1 font-mono dark:bg-gray-800">
+                                        ISUP: {{ cam.isup_device_id or "biriktirilmagan" }}
+                                    </span>
+                                    {% if cam.model %}
+                                    <span class="rounded-full bg-gray-100 px-2.5 py-1 dark:bg-gray-800">{{ cam.model }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="shrink-0 text-right">
+                                <span class="inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-semibold {% if cam.is_online %}bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300{% else %}bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300{% endif %}">
+                                    <span class="h-2 w-2 rounded-full {% if cam.is_online %}bg-emerald-500{% else %}bg-gray-400{% endif %}"></span>
+                                    {% if cam.is_online %}Online{% else %}Offline{% endif %}
+                                </span>
+                                <p class="mt-2 text-xs text-gray-400">
+                                    {% if cam.last_seen_at %}{{ cam.last_seen_at[:16].replace('T', ' ') }}{% else %}Hech qachon{% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="px-5 py-10 text-center text-sm text-gray-500 dark:text-gray-400">Hali kamera qo'shilmagan.</div>
+                {% endif %}
+            </article>
+        </section>
+    </div>
+
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-[1fr,1.2fr]">
+        <section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <div class="border-b border-gray-100 px-5 py-4 dark:border-gray-800">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Quick test</h2>
+                <p class="text-sm text-gray-500 dark:text-gray-400">ISUP va Redis endpointlarni shu sahifadan tekshirish mumkin</p>
+            </div>
+            <div class="p-5 space-y-4">
+                <div class="grid gap-3 sm:grid-cols-2">
+                    <button type="button" onclick="runHelperRequest('{{ isup_config.api_url }}')" class="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700">
+                        ISUP Health
+                    </button>
+                    <button type="button" onclick="runHelperRequest('{{ isup_config.sdk_url }}')" class="inline-flex items-center justify-center gap-2 rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-cyan-700">
+                        SDK Status
+                    </button>
+                    <button type="button" onclick="runHelperRequest('{{ isup_config.devices_url }}')" class="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-800 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600">
+                        ISUP Devices
+                    </button>
+                    <button type="button" onclick="runHelperRequest('{{ isup_config.process_url }}')" class="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700">
+                        ISUP Process
+                    </button>
+                    <button type="button" onclick="runHelperRequest('{{ isup_config.redis_url }}?pattern=*&limit=25')" class="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-amber-600">
+                        Redis Snapshot
+                    </button>
+                </div>
+
+                <div class="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950">
+                    <label class="mb-2 block text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">Command test</label>
+                    <div class="grid gap-3 md:grid-cols-[1fr,180px,auto]">
+                        <select id="helper-camera-id" class="rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white">
+                            <option value="">Kamerani tanlang</option>
+                            {% for cam in cameras %}
+                            <option value="{{ cam.id }}">{{ cam.name }} {% if cam.isup_device_id %}({{ cam.isup_device_id }}){% endif %}</option>
+                            {% endfor %}
+                        </select>
+                        <select id="helper-command" class="rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white">
+                            <option value="ping">ping</option>
+                            <option value="get_info">get_info</option>
+                            <option value="sync_faces">sync_faces</option>
+                            <option value="get_face_count">get_face_count</option>
+                            <option value="reboot">reboot</option>
+                        </select>
+                        <button type="button" onclick="sendHelperCommand()" class="inline-flex items-center justify-center rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700">
+                            Yuborish
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <div class="border-b border-gray-100 px-5 py-4 dark:border-gray-800">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Natija</h2>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Endpoint yoki command natijasi shu yerda ko'rinadi</p>
+            </div>
+            <div class="p-5">
+                <pre id="helper-result" class="min-h-[360px] overflow-auto rounded-2xl bg-gray-950 p-4 text-xs leading-6 text-emerald-300">{
+  "ready": true,
+  "message": "ISUP helper tayyor"
+}</pre>
+            </div>
+        </section>
+    </div>
+</div>
+
+<script>
+const helperResult = document.getElementById("helper-result");
+
+function setHelperResult(data) {
+    helperResult.textContent = typeof data === "string" ? data : JSON.stringify(data, null, 2);
+}
+
+async function runHelperRequest(url) {
+    setHelperResult({ loading: true, url });
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+        setHelperResult(data);
+    } catch (error) {
+        setHelperResult({ ok: false, error: error.message });
+    }
+}
+
+async function sendHelperCommand() {
+    const cameraId = document.getElementById("helper-camera-id").value;
+    const command = document.getElementById("helper-command").value;
+
+    if (!cameraId) {
+        setHelperResult({ ok: false, error: "Avval kamerani tanlang" });
+        return;
+    }
+
+    const url = `/api/cameras/${encodeURIComponent(cameraId)}/command`;
+    const payload = {
+        command,
+        params: {
+            trace_id: `helper-${Date.now()}`
+        }
+    };
+
+    setHelperResult({ loading: true, url, payload });
+    try {
+        const response = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
+        const data = await response.json();
+        setHelperResult(data);
+    } catch (error) {
+        setHelperResult({ ok: false, error: error.message });
+    }
+}
+</script>
+{% endblock %}

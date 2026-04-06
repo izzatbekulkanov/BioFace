@@ -1,0 +1,511 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div id="isup-app">
+    <div class="mb-6 flex flex-col justify-between gap-4">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-widest text-blue-600 dark:text-blue-400">ISUP control</p>
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ page_title }}</h1>
+                <p class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+                    ISUP process, API, portlar va ulangan kameralar holatini shu sahifada real kuzatish va boshqarish mumkin.
+                </p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2 rounded-2xl border border-gray-200 bg-white/90 p-2 shadow-sm dark:border-gray-800 dark:bg-gray-900/90">
+                <label class="inline-flex items-center gap-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm transition hover:border-blue-300 hover:bg-blue-50 dark:hover:border-blue-700/60 dark:hover:bg-blue-900/20">
+                    <input id="auto-refresh-input" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" checked>
+                    Auto refresh
+                </label>
+                <button id="refresh-btn" class="group inline-flex items-center gap-3 rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-gray-400 hover:bg-gray-50 hover:text-gray-900 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:hover:border-gray-600 dark:hover:bg-gray-700">
+                    <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gray-100 text-gray-700 shadow-inner transition group-hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100 dark:group-hover:bg-gray-600" aria-hidden="true">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m14.835 2A8.001 8.001 0 0 0 4.582 9m0 0H9m11 11v-5h-.581m0 0A8.003 8.003 0 0 1 5 15m14.419 0H15"></path>
+                        </svg>
+                    </span>
+                    <span class="whitespace-nowrap">Yangilash</span>
+                </button>
+                <button id="start-btn" class="group inline-flex items-center gap-3 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-emerald-900/20 transition-all duration-200 hover:-translate-y-0.5 hover:from-emerald-600 hover:to-emerald-800 hover:shadow-lg hover:shadow-emerald-900/25 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/20 transition group-hover:bg-white/20" aria-hidden="true">
+                        <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M6.5 4.5a1 1 0 0 0-1.5.866v9.268a1 1 0 0 0 1.5.866l8-4.634a1 1 0 0 0 0-1.732l-8-4.634Z"></path>
+                        </svg>
+                    </span>
+                    <span class="whitespace-nowrap">Start</span>
+                </button>
+                <button id="restart-btn" class="group inline-flex items-center gap-3 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-amber-900/20 transition-all duration-200 hover:-translate-y-0.5 hover:from-amber-500 hover:to-amber-700 hover:shadow-lg hover:shadow-amber-900/25 focus:outline-none focus:ring-2 focus:ring-amber-400">
+                    <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/20 transition group-hover:bg-white/20" aria-hidden="true">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 1l4 4-4 4M3 11a8 8 0 0 1 13.657-5.657L21 9M7 23l-4-4 4-4m14-2a8 8 0 0 1-13.657 5.657L3 15"></path>
+                        </svg>
+                    </span>
+                    <span class="whitespace-nowrap">Restart</span>
+                </button>
+                <button id="stop-btn" class="group inline-flex items-center gap-3 rounded-xl bg-gradient-to-br from-rose-500 to-rose-700 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-rose-900/20 transition-all duration-200 hover:-translate-y-0.5 hover:from-rose-600 hover:to-rose-800 hover:shadow-lg hover:shadow-rose-900/25 focus:outline-none focus:ring-2 focus:ring-rose-500">
+                    <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/20 transition group-hover:bg-white/20" aria-hidden="true">
+                        <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M6 5.75A1.75 1.75 0 0 1 7.75 4h4.5A1.75 1.75 0 0 1 14 5.75v8.5A1.75 1.75 0 0 1 12.25 16h-4.5A1.75 1.75 0 0 1 6 14.25v-8.5Z"></path>
+                        </svg>
+                    </span>
+                    <span class="whitespace-nowrap">Stop</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="action-banner" class="hidden rounded-2xl border px-4 py-3 text-sm"></div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4 mb-6">
+        <article class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 shadow-sm card-hover">
+            <p class="text-xs font-medium uppercase tracking-widest text-gray-500 dark:text-gray-400">ISUP holati</p>
+            <div class="mt-3 flex items-center gap-3">
+                <span id="status-dot" class="w-3 h-3 rounded-full bg-gray-300"></span>
+                <strong id="status-text" class="text-2xl font-bold text-gray-900 dark:text-white">Tekshirilmoqda...</strong>
+            </div>
+            <p id="server-url" class="mt-3 text-sm text-gray-500 dark:text-gray-400">API: -</p>
+            <p id="sdk-mode" class="mt-1 text-xs text-gray-400 dark:text-gray-500">SDK mode: -</p>
+            <p id="last-checked" class="mt-1 text-xs text-gray-400 dark:text-gray-500">So'nggi tekshiruv: -</p>
+        </article>
+
+        <article class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 shadow-sm card-hover">
+            <p class="text-xs font-medium uppercase tracking-widest text-gray-500 dark:text-gray-400">Process</p>
+            <div class="mt-3 flex items-end gap-3">
+                <strong id="pid-value" class="text-3xl font-bold text-gray-900 dark:text-white">-</strong>
+                <span class="pb-1 text-sm text-gray-500 dark:text-gray-400">PID</span>
+            </div>
+            <p id="uptime-value" class="mt-3 text-sm text-gray-500 dark:text-gray-400">Uptime: -</p>
+        </article>
+
+        <article class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 shadow-sm card-hover">
+            <p class="text-xs font-medium uppercase tracking-widest text-gray-500 dark:text-gray-400">Resurs sarfi</p>
+            <div class="mt-3 grid grid-cols-2 gap-3">
+                <div class="rounded-xl bg-gray-50 dark:bg-gray-800 p-3">
+                    <p class="text-xs text-gray-500 dark:text-gray-400">RAM</p>
+                    <strong id="ram-value" class="text-xl font-bold text-gray-900 dark:text-white">0 MB</strong>
+                </div>
+                <div class="rounded-xl bg-gray-50 dark:bg-gray-800 p-3">
+                    <p class="text-xs text-gray-500 dark:text-gray-400">CPU</p>
+                    <strong id="cpu-value" class="text-xl font-bold text-gray-900 dark:text-white">0%</strong>
+                </div>
+            </div>
+        </article>
+
+        <article class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 shadow-sm card-hover">
+            <p class="text-xs font-medium uppercase tracking-widest text-gray-500 dark:text-gray-400">Qurilmalar va portlar</p>
+            <div class="mt-3 flex items-end gap-3">
+                <strong id="device-count" class="text-3xl font-bold text-gray-900 dark:text-white">0</strong>
+                <span class="pb-1 text-sm text-gray-500 dark:text-gray-400">ta qurilma</span>
+            </div>
+            <p id="port-summary" class="mt-3 text-sm text-gray-500 dark:text-gray-400">Portlar: -</p>
+            <p id="panel-bind" class="mt-1 text-xs text-gray-400 dark:text-gray-500">BioFace: -</p>
+        </article>
+    </div>
+
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-[1.6fr,1fr]">
+        <div class="space-y-6">
+            <article class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">ISUP port map</h2>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Register, alarm, picture, REST API va BioFace portlari</p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-left text-sm">
+                        <thead class="bg-gray-50 dark:bg-gray-800 text-xs uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                            <tr>
+                                <th class="px-5 py-3">Xizmat</th>
+                                <th class="px-5 py-3">Manzil</th>
+                                <th class="px-5 py-3">Maqsad</th>
+                                <th class="px-5 py-3 text-right">Holat</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ports-table" class="divide-y divide-gray-100 dark:divide-gray-800">
+                            <tr>
+                                <td colspan="4" class="px-5 py-8 text-center text-gray-500 dark:text-gray-400">Portlar yuklanmoqda...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+
+            <article class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Ulangan ISUP qurilmalar</h2>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Chapda holat (Online/Offline), o'ngdagi tugma esa boshqaruv amali.</p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-left text-sm">
+                        <thead class="bg-gray-50 dark:bg-gray-800 text-xs uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                            <tr>
+                                <th class="px-5 py-3">Device</th>
+                                <th class="px-5 py-3">IP / Port</th>
+                                <th class="px-5 py-3">Model</th>
+                                <th class="px-5 py-3">Registered</th>
+                                <th class="px-5 py-3 text-right">Boshqaruv</th>
+                            </tr>
+                        </thead>
+                        <tbody id="devices-table" class="divide-y divide-gray-100 dark:divide-gray-800">
+                            <tr>
+                                <td colspan="5" class="px-5 py-8 text-center text-gray-500 dark:text-gray-400">Qurilmalar tekshirilmoqda...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+        </div>
+
+        <div class="space-y-6">
+            <article class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Runtime ma'lumotlari</h2>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Binary, command, Redis va binding ma'lumotlari</p>
+                </div>
+                <dl class="space-y-4 p-5 text-sm">
+                    <div>
+                        <dt class="text-gray-500 dark:text-gray-400">Binary path</dt>
+                        <dd id="binary-path" class="mt-1 break-all font-medium text-gray-900 dark:text-white">-</dd>
+                    </div>
+                    <div>
+                        <dt class="text-gray-500 dark:text-gray-400">Start command</dt>
+                        <dd id="start-command" class="mt-1 break-all rounded-xl bg-gray-50 dark:bg-gray-800 px-3 py-2 font-mono text-xs text-gray-700 dark:text-gray-200">-</dd>
+                    </div>
+                    <div>
+                        <dt class="text-gray-500 dark:text-gray-400">Redis</dt>
+                        <dd id="redis-target" class="mt-1 font-medium text-gray-900 dark:text-white">-</dd>
+                    </div>
+                    <div>
+                        <dt class="text-gray-500 dark:text-gray-400">BioFace panel</dt>
+                        <dd id="runtime-panel-bind" class="mt-1 font-medium text-gray-900 dark:text-white">-</dd>
+                    </div>
+                </dl>
+            </article>
+
+            <article class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Hikvision sozlash</h2>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Kamerada ISUP ni to'g'ri yoqish uchun qisqa tartib</p>
+                </div>
+                <ol class="space-y-3 p-5 text-sm text-gray-600 dark:text-gray-300">
+                    <li>1. `Configuration -> Network -> Advanced Settings -> Platform Access` bo'limiga o'ting.</li>
+                    <li>2. `Enable` ni yoqing va `Protocol` ni `ISUP` qiling.</li>
+                    <li>3. `Server Address` ga BioFace server IP manzilini yozing.</li>
+                    <li>4. `Register/CMS` port sifatida odatda `7660` ishlatiladi.</li>
+                    <li>5. `Alarm` uchun `7661`, `Picture` uchun `7662` tavsiya qilinadi.</li>
+                    <li>6. `ISUP Key` qiymatini `bioface2024` bilan mos saqlang.</li>
+                </ol>
+                <div class="mx-5 mb-5 rounded-xl border border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+                    Eslatma: BioFace bu sahifada real Hikvision SDK (`hikvision_sdk`) listenerlari bilan ishlaydi. Register, Alarm va Picture portlari bevosita SDK orqali ochiladi.
+                </div>
+            </article>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const statusDot = document.getElementById("status-dot");
+    const statusText = document.getElementById("status-text");
+    const serverUrl = document.getElementById("server-url");
+    const sdkMode = document.getElementById("sdk-mode");
+    const lastChecked = document.getElementById("last-checked");
+    const pidValue = document.getElementById("pid-value");
+    const uptimeValue = document.getElementById("uptime-value");
+    const ramValue = document.getElementById("ram-value");
+    const cpuValue = document.getElementById("cpu-value");
+    const deviceCount = document.getElementById("device-count");
+    const portSummary = document.getElementById("port-summary");
+    const panelBind = document.getElementById("panel-bind");
+    const runtimePanelBind = document.getElementById("runtime-panel-bind");
+    const binaryPath = document.getElementById("binary-path");
+    const startCommand = document.getElementById("start-command");
+    const redisTarget = document.getElementById("redis-target");
+    const portsTable = document.getElementById("ports-table");
+    const devicesTable = document.getElementById("devices-table");
+    const actionBanner = document.getElementById("action-banner");
+    const autoRefreshInput = document.getElementById("auto-refresh-input");
+    const refreshButton = document.getElementById("refresh-btn");
+    const actionButtons = {
+        start: document.getElementById("start-btn"),
+        restart: document.getElementById("restart-btn"),
+        stop: document.getElementById("stop-btn"),
+    };
+
+    let refreshInFlight = false;
+    let lastStatusBanner = "";
+
+    function setButtonBusy(button, busy) {
+        if (!button) return;
+        button.classList.toggle("action-busy", busy);
+        button.classList.toggle("animate-pulse", busy);
+        button.setAttribute("aria-disabled", busy ? "true" : "false");
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? "")
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#39;");
+    }
+
+    function formatDuration(seconds) {
+        if (!seconds && seconds !== 0) return "-";
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${hours}h ${minutes}m ${secs}s`;
+    }
+
+    function formatDate(value) {
+        if (!value) return "-";
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return value;
+        return date.toLocaleString();
+    }
+
+    function showBanner(message, tone = "info") {
+        const tones = {
+            info: "border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-200",
+            success: "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200",
+            error: "border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-200",
+        };
+        actionBanner.className = `rounded-2xl border px-4 py-3 text-sm ${tones[tone] || tones.info}`;
+        actionBanner.textContent = message;
+        actionBanner.classList.remove("hidden");
+    }
+
+    function hideBanner() {
+        actionBanner.classList.add("hidden");
+        actionBanner.textContent = "";
+    }
+
+    function setControlsDisabled(disabled) {
+        setButtonBusy(refreshButton, disabled);
+
+        Object.values(actionButtons).forEach((button) => {
+            setButtonBusy(button, disabled);
+        });
+    }
+
+    function countListeningPorts(ports) {
+        return (ports || []).filter((port) => port.listening === true).length;
+    }
+
+    function renderStatus(health, process, devices) {
+        const ports = health.ports || process.ports || [];
+        const online = Boolean(health.running);
+        const processRunning = Boolean(process.running);
+        const listeningPorts = countListeningPorts(ports);
+
+        statusText.textContent = online ? "Online" : (processRunning ? "Process running" : "Stopped");
+        statusDot.className = `w-3 h-3 rounded-full ${online ? "bg-emerald-500" : (processRunning ? "bg-amber-500" : "bg-rose-500")}`;
+        serverUrl.textContent = `API: ${health.isup_server_url || "-"}`;
+        const sdk = health.sdk || process.sdk || {};
+        const mode = sdk.mode || "emulated";
+        sdkMode.textContent = `SDK mode: ${mode}${sdk.ready ? " (ready)" : ""}`;
+        lastChecked.textContent = `So'nggi tekshiruv: ${formatDate(health.checked_at)}`;
+        pidValue.textContent = process.pid || "-";
+        uptimeValue.textContent = `Uptime: ${formatDuration(process.uptime_seconds)}`;
+        ramValue.textContent = `${process.memory_mb || health.sys_info?.ram_mb || 0} MB`;
+        cpuValue.textContent = `${process.cpu_percent || health.sys_info?.cpu_percent || 0}%`;
+        deviceCount.textContent = Array.isArray(devices) ? devices.length : (health.devices || 0);
+        portSummary.textContent = `Portlar: ${listeningPorts}/${ports.length || 0} listening`;
+        panelBind.textContent = `BioFace: ${process.panel?.bind || "0.0.0.0:8000"}`;
+        runtimePanelBind.textContent = process.panel?.bind || "0.0.0.0:8000";
+        binaryPath.textContent = process.binary_path || "-";
+        startCommand.textContent = (process.start_command || []).join(" ") || "-";
+        redisTarget.textContent = `${process.redis?.host || "127.0.0.1"}:${process.redis?.port || 6379}`;
+    }
+
+    function renderPorts(ports) {
+        if (!ports || ports.length === 0) {
+            portsTable.innerHTML = '<tr><td colspan="4" class="px-5 py-8 text-center text-gray-500 dark:text-gray-400">Port ma\'lumoti yo\'q.</td></tr>';
+            return;
+        }
+
+        portsTable.innerHTML = ports.map((port) => {
+            let badge = '<span class="inline-flex rounded-full bg-gray-100 dark:bg-gray-800 px-2.5 py-1 text-xs font-semibold text-gray-600 dark:text-gray-300">Unknown</span>';
+            if (port.listening === true) {
+                badge = '<span class="inline-flex rounded-full bg-emerald-100 dark:bg-emerald-900/30 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">Listening</span>';
+            } else if (port.listening === false) {
+                badge = '<span class="inline-flex rounded-full bg-rose-100 dark:bg-rose-900/30 px-2.5 py-1 text-xs font-semibold text-rose-700 dark:text-rose-300">Not listening</span>';
+            }
+
+            return `
+                <tr class="align-top">
+                    <td class="px-5 py-4 font-semibold text-gray-900 dark:text-white">${escapeHtml(port.title)}</td>
+                    <td class="px-5 py-4 text-gray-600 dark:text-gray-300">${escapeHtml(port.host)}:${escapeHtml(port.port)}</td>
+                    <td class="px-5 py-4 text-gray-500 dark:text-gray-400">${escapeHtml(port.purpose)}</td>
+                    <td class="px-5 py-4 text-right">${badge}</td>
+                </tr>
+            `;
+        }).join("");
+    }
+
+    function renderDevices(devices) {
+        if (!devices || devices.length === 0) {
+            devicesTable.innerHTML = '<tr><td colspan="5" class="px-5 py-8 text-center text-gray-500 dark:text-gray-400">Hozircha ulangan ISUP qurilmalar topilmadi.</td></tr>';
+            return;
+        }
+
+        devicesTable.innerHTML = devices.map((device) => {
+            const source = device.source || "isup_rest";
+            const isConfiguredOnly = source === "configured_only" || device.connection_state === "not_registered";
+            const isOnline = device.online !== false;
+            const onlineBadge = !isOnline
+                ? '<span class="inline-flex rounded-full bg-rose-100 dark:bg-rose-900/30 px-2.5 py-1 text-xs font-semibold text-rose-700 dark:text-rose-300">Offline</span>'
+                : '<span class="inline-flex rounded-full bg-emerald-100 dark:bg-emerald-900/30 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">Online</span>';
+            const sourceBadge = isConfiguredOnly
+                ? '<span class="inline-flex rounded-full bg-amber-100 dark:bg-amber-900/30 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:text-amber-300">Configured</span>'
+                : '<span class="inline-flex rounded-full bg-blue-100 dark:bg-blue-900/30 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:text-blue-300">Live</span>';
+            const displayName = device.display_name || device.camera_name || "";
+            const disconnectAction = isConfiguredOnly
+                ? '<span class="text-xs text-gray-400 dark:text-gray-500">Ro\'yxatda</span>'
+                : (!isOnline
+                    ? '<span class="text-xs text-gray-400 dark:text-gray-500">Offline</span>'
+                    : `<button class="disconnect-btn inline-flex items-center gap-2 rounded-xl bg-rose-50 dark:bg-rose-900/20 px-3 py-2 text-xs font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition" title="Qurilma ulanishini serverdan uzadi" data-device-id="${escapeHtml(device.device_id || "")}">
+                                Ulanishni uzish
+                            </button>`);
+
+            return `
+                <tr class="align-top">
+                    <td class="px-5 py-4">
+                        <div class="font-semibold text-gray-900 dark:text-white">${escapeHtml(device.device_id || "-")}</div>
+                        ${displayName ? `<div class="mt-1 text-xs text-gray-500 dark:text-gray-400">${escapeHtml(displayName)}</div>` : ""}
+                        <div class="mt-2 flex flex-wrap items-center gap-2">${onlineBadge}${sourceBadge}</div>
+                    </td>
+                    <td class="px-5 py-4 text-gray-600 dark:text-gray-300">
+                        ${escapeHtml(device.remote_ip || device.ip || "-")}:${escapeHtml(device.remote_port || device.port || "-")}
+                    </td>
+                    <td class="px-5 py-4 text-gray-600 dark:text-gray-300">
+                        <div>${escapeHtml(device.device_model || device.model || "-")}</div>
+                        <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">${escapeHtml(device.firmware_version || device.firmware || "-")}</div>
+                    </td>
+                    <td class="px-5 py-4 text-gray-500 dark:text-gray-400">${escapeHtml(formatDate(device.registered_at || device.last_seen || device.last_seen_at))}</td>
+                    <td class="px-5 py-4 text-right">${disconnectAction}</td>
+                </tr>
+            `;
+        }).join("");
+
+        devicesTable.querySelectorAll(".disconnect-btn").forEach((button) => {
+            button.addEventListener("click", async () => {
+                const deviceId = button.dataset.deviceId;
+                if (!deviceId) return;
+                if (!confirm(`${deviceId} qurilmasining joriy ISUP ulanishini uzishni xohlaysizmi?`)) return;
+
+                try {
+                    await fetchJson(`/api/isup-devices/${encodeURIComponent(deviceId)}`, { method: "DELETE" });
+                    showBanner(`${deviceId} ulanishi uzildi.`, "success");
+                    await refreshDashboard({ showLoading: false, preserveBanner: true });
+                } catch (error) {
+                    showBanner(`Ulanishni uzishda xatolik: ${error.message}`, "error");
+                }
+            });
+        });
+    }
+
+    async function fetchJson(url, options = {}) {
+        const response = await fetch(url, options);
+        const contentType = response.headers.get("content-type") || "";
+        const data = contentType.includes("application/json") ? await response.json() : {};
+
+        if (!response.ok) {
+            const detail = data.detail || data.message || `HTTP ${response.status}`;
+            throw new Error(detail);
+        }
+
+        return data;
+    }
+
+    async function refreshDashboard(options = {}) {
+        const { preserveBanner = false } = options;
+
+        if (refreshInFlight) {
+            return;
+        }
+
+        refreshInFlight = true;
+        setButtonBusy(refreshButton, true);
+
+        try {
+            const [health, devices, processData] = await Promise.all([
+                fetchJson("/api/isup-health"),
+                fetchJson("/api/isup-devices"),
+                fetchJson("/api/isup/process"),
+            ]);
+
+            const process = processData.status || {};
+            const hasConfiguredOnly = Array.isArray(devices) && devices.some((d) => (d.source || "") === "configured_only");
+            const hasLive = Array.isArray(devices) && devices.some((d) => (d.source || "") !== "configured_only");
+            renderStatus(health, process, devices);
+            renderPorts(health.ports || process.ports || []);
+            renderDevices(devices);
+
+            let statusMessage = "";
+            let statusTone = "info";
+            if (!process.binary_exists) {
+                statusMessage = "ISUP SDK server script topilmadi. isup_sdk_server.py mavjudligini tekshiring.";
+                statusTone = "error";
+            } else if (!process.running) {
+                statusMessage = "ISUP process hozir ishlamayapti. Start tugmasi bilan ishga tushiring.";
+            } else if (!health.running) {
+                statusMessage = "Process ishlayapti, lekin ISUP API health javobi olinmadi.";
+            } else if ((health.sdk?.mode || process.sdk?.mode || "emulated") !== "hikvision_sdk") {
+                statusMessage = "ISUP hozir emulated mode da. Haqiqiy Hikvision SDK uchun mode=hikvision_sdk bo'lishi kerak.";
+            } else if (!Boolean(health.sdk?.ready ?? process.sdk?.ready ?? false)) {
+                statusMessage = "Hikvision SDK runtime tayyor emas. DLL path va SDK statusni tekshiring.";
+                statusTone = "error";
+            } else if (hasConfiguredOnly && !hasLive) {
+                statusMessage = "Kamera DB da sozlangan, lekin ISUP register bo'lmagan. Kamera ichida Server IP/Port va ISUP Key (bioface2024) ni tekshiring.";
+            }
+
+            if (!preserveBanner) {
+                if (statusMessage) {
+                    const bannerKey = `${statusTone}:${statusMessage}`;
+                    if (bannerKey !== lastStatusBanner) {
+                        showBanner(statusMessage, statusTone);
+                        lastStatusBanner = bannerKey;
+                    }
+                } else {
+                    if (lastStatusBanner) {
+                        hideBanner();
+                        lastStatusBanner = "";
+                    }
+                }
+            }
+        } catch (error) {
+            lastStatusBanner = "";
+            showBanner(`Yangilash xatoligi: ${error.message}`, "error");
+        } finally {
+            refreshInFlight = false;
+            setButtonBusy(refreshButton, false);
+        }
+    }
+
+    async function runAction(action) {
+        setControlsDisabled(true);
+        try {
+            const data = await fetchJson(`/api/isup/process/${action}`, { method: "POST" });
+            showBanner(data.message || "Amal bajarildi.", "success");
+            await refreshDashboard({ preserveBanner: true });
+        } catch (error) {
+            showBanner(`${action} xatoligi: ${error.message}`, "error");
+        } finally {
+            setControlsDisabled(false);
+        }
+    }
+
+    refreshButton.addEventListener("click", () => refreshDashboard());
+    actionButtons.start.addEventListener("click", () => runAction("start"));
+    actionButtons.restart.addEventListener("click", () => runAction("restart"));
+    actionButtons.stop.addEventListener("click", () => runAction("stop"));
+
+    refreshDashboard();
+    setInterval(() => {
+        if (autoRefreshInput.checked) {
+            refreshDashboard();
+        }
+    }, 5000);
+});
+</script>
+{% endblock %}

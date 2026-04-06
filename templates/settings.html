@@ -1,0 +1,645 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Add SortableJS CDN at the top for dragging -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+
+<!-- Page Header -->
+<div class="mb-4 flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t.settings_title }}</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{% if lang == 'ru' %}Редактирование настроек системы, меню и интеграций{% else %}Tizim, menyu va integratsiyalar bo'yicha sozlamalarni tahrirlang{% endif %}</p>
+    </div>
+    <button id="save-btn" onclick="handleSave()"
+        class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-xl transition shadow-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+        <span id="save-label">{{ t.save_settings }}</span>
+    </button>
+</div>
+
+<!-- TABS NAVIGATION -->
+<div class="mb-6 border-b border-gray-200 dark:border-gray-800">
+    <ul class="flex flex-wrap -mb-px text-sm font-medium text-center">
+        <li class="mr-2">
+            <button onclick="switchTab('system')" id="tab-btn-system" class="inline-block p-4 text-blue-600 border-b-2 border-blue-600 rounded-t-lg font-semibold dark:text-blue-400 dark:border-blue-400" aria-current="page">{{ t.settings_general }}</button>
+        </li>
+        <li class="mr-2">
+            <button onclick="switchTab('menus')" id="tab-btn-menus" class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300 font-medium text-gray-500 dark:text-gray-400">{{ t.settings_menus }}</button>
+        </li>
+        <li class="mr-2">
+            <button onclick="switchTab('integrations')" id="tab-btn-integrations" class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300 font-medium text-gray-500 dark:text-gray-400">{{ t.settings_integrations }}</button>
+        </li>
+    </ul>
+</div>
+
+<!-- TABS CONTENT CONTAINER -->
+<div id="settings-tab-content">
+    
+    <!-- TAB PANE: SYSTEM -->
+    <div id="tab-content-system">
+
+<!-- ══════════════════════════════════════
+     WORKING HOURS CARD
+══════════════════════════════════════ -->
+<div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm mb-5 overflow-hidden">
+    <div class="px-6 py-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-800">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center shrink-0">
+                <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <div>
+                <h2 class="font-semibold text-gray-900 dark:text-white text-sm leading-tight">{{ t.working_hours }}</h2>
+                <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{% if lang == 'ru' %}Стандартное время начала и окончания{% else %}Tashkilot uchun standart kelish va ketish vaqti{% endif %}</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="px-6 py-5 grid md:grid-cols-2 gap-5">
+        <div class="md:col-span-2 mb-2">
+            <label for="app_name" class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">{% if lang == 'ru' %}Название программы{% else %}Dastur Nomi{% endif %}</label>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">{% if lang == 'ru' %}Отображается в логотипе и на вкладках браузера{% else %}Logotip va brauzer oynasida ko'rinadi{% endif %}</p>
+            <input type="text" id="app_name" value="{{ menus.app_name | default('BioFace') }}" placeholder="BioFace"
+                class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+        </div>
+        <div class="mb-2">
+            <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">{% if lang == 'ru' %}Логотип программы{% else %}Dastur Logotipi{% endif %}</label>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">{% if lang == 'ru' %}Основной логотип программы{% else %}Dasturning asosiy logotipi{% endif %}</p>
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center shrink-0">
+                    <img id="logo_preview" src="{{ menus.logo_url | default('/static/images/default-logo.png') }}" class="w-full h-full object-contain" onerror="this.style.display='none'">
+                </div>
+                <div class="flex-1">
+                    <input type="file" id="logo_file" accept="image/*" onchange="previewImage(this, 'logo_preview')" class="block w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/30 dark:file:text-blue-400 transition cursor-pointer">
+                </div>
+            </div>
+            <input type="hidden" id="logo_url" value="{{ menus.logo_url | default('') }}">
+        </div>
+        <div class="mb-2">
+            <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">Favicon</label>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">{% if lang == 'ru' %}Иконка вкладки браузера{% else %}Brauzer oynasi ikonasi{% endif %}</p>
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center shrink-0">
+                    <img id="favicon_preview" src="{{ menus.favicon_url | default('/favicon.ico') }}" class="w-6 h-6 object-contain" onerror="this.style.display='none'">
+                </div>
+                <div class="flex-1">
+                    <input type="file" id="favicon_file" accept=".ico,.png,.jpg,.jpeg" onchange="previewImage(this, 'favicon_preview')" class="block w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/30 dark:file:text-blue-400 transition cursor-pointer">
+                </div>
+            </div>
+            <input type="hidden" id="favicon_url" value="{{ menus.favicon_url | default('') }}">
+        </div>
+        
+        <div class="col-span-1 border-t border-gray-100 dark:border-gray-800 pt-4 md:border-none md:pt-0">
+            <label for="default_start_time" class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">{{ t.default_start }}</label>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Masalan: 09:00</p>
+            <input type="time" id="default_start_time" value="09:00"
+                class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+        </div>
+        <div>
+            <label for="default_end_time" class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">{{ t.default_end }}</label>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Masalan: 18:00</p>
+            <input type="time" id="default_end_time" value="18:00"
+                class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+        </div>
+        <div class="md:col-span-2 border-t border-gray-100 dark:border-gray-800 pt-4">
+            <label for="isup_public_host" class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">ISUP Server Host (Local/Global)</label>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Kamera ichida `Server Address` sifatida yoziladi: masalan `10.10.1.10` yoki `203.0.113.10`.</p>
+            <input type="text" id="isup_public_host" placeholder="10.10.1.10 yoki 203.0.113.10"
+                class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+            <p id="isup_public_host_hint" class="mt-2 text-xs text-gray-500 dark:text-gray-400">Bo'sh qoldirsangiz server avtomatik lokal IP ishlatadi.</p>
+        </div>
+        <div class="md:col-span-2">
+            <label for="public_web_base_url" class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">Public Web Base URL</label>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Kamera rasmni shu manzildan oladi. Masalan: <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">https://example.com</code>.</p>
+            <input type="text" id="public_web_base_url" placeholder="https://example.com"
+                class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Bo'sh qoldirsangiz joriy ochilgan host ishlatiladi; tashqi kamera uchun aniq public domain/URL tavsiya etiladi.</p>
+        </div>
+    </div>
+</div>
+    </div> <!-- END TAB PANE: SYSTEM -->
+    
+    <!-- TAB PANE: MENUS -->
+    <div id="tab-content-menus" class="hidden">
+<!-- ══════════════════════════════════════
+     MENU SETTINGS CARD
+══════════════════════════════════════ -->
+<div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm mb-5 overflow-hidden">
+    <div class="px-6 py-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-800">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center shrink-0">
+                <svg class="w-5 h-5 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            </div>
+            <div>
+                <h2 class="font-semibold text-gray-900 dark:text-white text-sm leading-tight">Menyu Nomlari</h2>
+                <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Chap paneldagi (Sidebar) menyu matnlarini o'zgartirish</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="px-6 py-5">
+        <p class="text-xs text-gray-500 dark:text-gray-400 mb-4 bg-blue-50 dark:bg-blue-900/20 p-3 rounded-xl border border-blue-100 dark:border-blue-800">
+            <svg class="w-4 h-4 inline-block mr-1 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            {{ t.menu_order_hint }}
+        </p>
+        
+        <ul id="menu-sortable-list" class="space-y-3">
+            {% for m in menus.__list__ %}
+            {% if m.type == 'group' %}
+            <li data-key="{{ m.key }}" class="flex items-center gap-3 p-3 bg-orange-50/50 dark:bg-orange-900/10 border border-orange-200/50 dark:border-orange-900/30 rounded-xl transition hover:border-orange-300 dark:hover:border-orange-800">
+                <button type="button" class="drag-handle p-1.5 text-gray-400 hover:text-orange-700 dark:hover:text-orange-200 cursor-move rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/50 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"/></svg>
+                </button>
+                <div class="w-10 h-10 rounded-lg flex flex-col items-center justify-center shrink-0 text-orange-600 dark:text-orange-400 text-xs font-bold uppercase tracking-wider">
+                    GR
+                </div>
+                <div class="flex-1 w-full pl-2">
+                    <div class="flex flex-col w-full gap-1 mb-1">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-orange-600/50 dark:text-orange-400/50 font-bold w-6">UZ</span>
+                            <input type="text" id="{{ m.key }}_uz" value="{{ m.translations.uz }}" placeholder="Guruh Nomi (UZ)"
+                            class="w-full bg-transparent border-none focus:ring-0 text-orange-900 dark:text-orange-100 font-bold uppercase tracking-wide text-sm p-0 m-0">
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-orange-600/50 dark:text-orange-400/50 font-bold w-6">RU</span>
+                            <input type="text" id="{{ m.key }}_ru" value="{{ m.translations.ru }}" placeholder="Guruh Nomi (RU)"
+                            class="w-full bg-transparent border-none focus:ring-0 text-orange-900 dark:text-orange-100 font-bold uppercase tracking-wide text-sm p-0 m-0">
+                        </div>
+                    </div>
+                </div>
+            </li>
+            {% else %}
+            <li data-key="{{ m.key }}" class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl transition hover:border-gray-300 dark:hover:border-gray-600">
+                <button type="button" class="drag-handle p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-move rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"/></svg>
+                </button>
+                <div class="w-10 h-10 rounded-lg {% if m.key == 'dashboard' %}bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400{% else %}bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400{% endif %} flex flex-col items-center justify-center shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">{{ m.icon|safe }}</svg>
+                </div>
+                <div class="flex-1 w-full pl-2">
+                    <div class="flex flex-col w-full gap-1">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] text-gray-400 font-bold w-6">UZ</span>
+                            <input type="text" id="menu_{{ m.key }}_uz" value="{{ m.translations.uz }}" placeholder="Menyu Nomi (UZ)"
+                            class="w-full bg-transparent border-none focus:ring-0 text-gray-900 dark:text-white font-medium text-sm p-0 m-0">
+                        </div>
+                        <div class="flex items-center gap-2 border-b border-gray-100 dark:border-gray-800/50 pb-1">
+                            <span class="text-[10px] text-gray-400 font-bold w-6">RU</span>
+                            <input type="text" id="menu_{{ m.key }}_ru" value="{{ m.translations.ru }}" placeholder="Menyu Nomi (RU)"
+                            class="w-full bg-transparent border-none focus:ring-0 text-gray-900 dark:text-white font-medium text-sm p-0 m-0">
+                        </div>
+                        <p class="text-[10px] text-gray-400 dark:text-gray-500 font-mono mt-0.5 ml-8">Link: {{ m.href }}</p>
+                    </div>
+                </div>
+            </li>
+            {% endif %}
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+    </div> <!-- END TAB PANE: MENUS -->
+    
+    <!-- TAB PANE: INTEGRATIONS -->
+    <div id="tab-content-integrations" class="hidden">
+
+<!-- ══════════════════════════════════════
+     TELEGRAM BOT CARD
+══════════════════════════════════════ -->
+<div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm mb-5 overflow-hidden">
+
+    <!-- Card Header with Toggle -->
+    <div class="px-6 py-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-800">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
+                <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.888-.662 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                </svg>
+            </div>
+            <div>
+                <h2 class="font-semibold text-gray-900 dark:text-white text-sm leading-tight">Telegram Bot Integratsiyasi</h2>
+                <p id="bot-status-text" class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Yoqilgan — xabarnomalar yuborilmoqda</p>
+            </div>
+        </div>
+
+        <!-- Toggle switch -->
+        <label class="relative inline-flex items-center cursor-pointer select-none" title="Yoqish / O'chirish">
+            <input type="checkbox" id="bot-toggle" class="sr-only peer" checked onchange="toggleSection('bot')">
+            <div class="w-11 h-6 rounded-full transition-colors duration-300
+                        bg-blue-600 peer-checked:bg-blue-600
+                        peer-not-checked:bg-gray-200 dark:peer-not-checked:bg-gray-700"
+                 id="bot-track"
+                 style="background-color: #2563eb;">
+            </div>
+            <div id="bot-thumb"
+                 class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-300 translate-x-5">
+            </div>
+        </label>
+    </div>
+
+    <!-- Card Body (collapsible) -->
+    <div id="bot-body" class="px-6 py-5 grid md:grid-cols-2 gap-5 transition-all duration-300">
+
+        <!-- Bot token -->
+        <div class="md:col-span-2">
+            <label for="bot_token" class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">Bot Tokeni</label>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Telegram'dagi <strong class="text-gray-700 dark:text-gray-300">@BotFather</strong> botidan olingan maxfiy kalit.</p>
+            <div class="relative">
+                <input type="password" id="bot_token" value=""
+                    class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 pr-12 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                    placeholder="123456789:AAH_...">
+                <button type="button" onclick="togglePassword('bot_token')"
+                    class="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Chat ID -->
+        <div>
+            <label for="admin_chat_id" class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">Admin Chat ID</label>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-2"><strong>@userinfobot</strong> orqali olsa bo'ladi.</p>
+            <input type="text" id="admin_chat_id" value=""
+                class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                placeholder="-100123456789">
+        </div>
+
+        <!-- Send rules -->
+        <div>
+            <p class="text-sm font-semibold text-gray-900 dark:text-white mb-1">Qachon xabar yuborilsin?</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">Har bir hodisa uchun alohida belgilang</p>
+            <div class="space-y-2.5">
+                <label class="flex items-center gap-2.5 cursor-pointer">
+                    <input type="checkbox" checked class="w-4 h-4 text-blue-600 rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 focus:ring-blue-500 accent-blue-600">
+                    <span class="text-sm text-gray-700 dark:text-gray-300">Xodim kirganda (darvozadan o'tganda)</span>
+                </label>
+                <label class="flex items-center gap-2.5 cursor-pointer">
+                    <input type="checkbox" checked class="w-4 h-4 text-blue-600 rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 focus:ring-blue-500 accent-blue-600">
+                    <span class="text-sm text-gray-700 dark:text-gray-300">Noma'lum shaxs aniqlanganda</span>
+                </label>
+                <label class="flex items-center gap-2.5 cursor-pointer">
+                    <input type="checkbox" class="w-4 h-4 text-blue-600 rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 focus:ring-blue-500 accent-blue-600">
+                    <span class="text-sm text-gray-700 dark:text-gray-300">Har kuni soat 18:00 da hisobot</span>
+                </label>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     SMS GATEWAY CARD
+══════════════════════════════════════ -->
+<div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm mb-5 overflow-hidden">
+
+    <!-- Card Header with Toggle -->
+    <div class="px-6 py-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-800">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center shrink-0">
+                <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                </svg>
+            </div>
+            <div>
+                <h2 class="font-semibold text-gray-900 dark:text-white text-sm leading-tight">SMS Xabarnoma (Eskiz.uz)</h2>
+                <p id="sms-status-text" class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">O'chirilgan — SMS yuborilmaydi</p>
+            </div>
+        </div>
+
+        <!-- Toggle switch -->
+        <label class="relative inline-flex items-center cursor-pointer select-none" title="Yoqish / O'chirish">
+            <input type="checkbox" id="sms-toggle" class="sr-only peer" onchange="toggleSection('sms')">
+            <div id="sms-track"
+                 class="w-11 h-6 rounded-full transition-colors duration-300"
+                 style="background-color: #d1d5db;">
+            </div>
+            <div id="sms-thumb"
+                 class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-300">
+            </div>
+        </label>
+    </div>
+
+    <!-- Card Body (collapsed by default since toggle is off) -->
+    <div id="sms-body" class="hidden px-6 py-5 grid md:grid-cols-2 gap-5">
+
+        <!-- Provider -->
+        <div class="md:col-span-2">
+            <label for="sms_provider" class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">SMS Provayderi</label>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Qaysi kompaniya orqali SMS yuborasiz?</p>
+            <select id="sms_provider"
+                class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition">
+                <option value="eskiz">Eskiz.uz — O'zbek provayderi (tavsiya etiladi)</option>
+                <option value="playmobile">PlayMobile.uz</option>
+                <option value="twilio">Twilio — Xalqaro (qimmatroq)</option>
+            </select>
+        </div>
+
+        <!-- Email -->
+        <div>
+            <label for="sms_email" class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">Login (Email)</label>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">SMS xizmatiga ro'yxatdan o'tishda ishlatilgan email</p>
+            <input type="email" id="sms_email" value=""
+                class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition"
+                placeholder="info@korxona.uz">
+        </div>
+
+        <!-- Password -->
+        <div>
+            <label for="sms_password" class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">Parol / API token</label>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Eskiz.uz kabinet ichidagi API kalitingiz</p>
+            <div class="relative">
+                <input type="password" id="sms_password" value=""
+                    class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 pr-12 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition"
+                    placeholder="••••••••">
+                <button type="button" onclick="togglePassword('sms_password')"
+                    class="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- SMS rules -->
+        <div class="md:col-span-2">
+            <p class="text-sm font-semibold text-gray-900 dark:text-white mb-1">SMS yuborish shartlari</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">Qaysi holatlarda xodimlarga SMS yuborilsin?</p>
+            <div class="grid sm:grid-cols-2 gap-3">
+                <label class="flex items-start gap-3 p-3.5 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-emerald-400 dark:hover:border-emerald-600 cursor-pointer transition">
+                    <input type="checkbox" checked class="w-4 h-4 mt-0.5 text-emerald-600 rounded border-gray-300 dark:border-gray-600 accent-emerald-600">
+                    <div>
+                        <p class="text-sm font-medium text-gray-800 dark:text-gray-200">Kelmagan hollarda</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Soat 10:00 gacha kelmagan xodimga</p>
+                    </div>
+                </label>
+                <label class="flex items-start gap-3 p-3.5 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-emerald-400 dark:hover:border-emerald-600 cursor-pointer transition">
+                    <input type="checkbox" checked class="w-4 h-4 mt-0.5 text-emerald-600 rounded border-gray-300 dark:border-gray-600 accent-emerald-600">
+                    <div>
+                        <p class="text-sm font-medium text-gray-800 dark:text-gray-200">Kechikkan hollarda</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Belgilangan vaqtdan keyin kelganda</p>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <!-- Test button -->
+        <div class="md:col-span-2 pt-1 flex items-center gap-3">
+            <button type="button"
+                class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-emerald-700 dark:text-emerald-400 border border-emerald-500 dark:border-emerald-600 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Ulanishni Tekshirish
+            </button>
+            <span class="text-xs text-gray-400">Saqlashdan avval tekshirib ko'ring</span>
+        </div>
+    </div>
+</div>
+    </div> <!-- END TAB PANE: INTEGRATIONS -->
+</div> <!-- END TABS CONTENT CONTAINER -->
+
+<!-- Toast notification -->
+<div id="toast" class="hidden fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-2xl shadow-xl text-sm font-medium">
+    <svg class="w-4 h-4 text-emerald-400 dark:text-emerald-600 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+    <span id="toast-msg">Sozlamalar saqlandi!</span>
+</div>
+
+<script>
+    // ── Tabs Switching logic ──
+    function switchTab(tabId) {
+        const tabs = ['system', 'menus', 'integrations'];
+        tabs.forEach(t => {
+            const btn = document.getElementById('tab-btn-' + t);
+            const pane = document.getElementById('tab-content-' + t);
+            
+            if (t === tabId) {
+                // Active state
+                pane.classList.remove('hidden');
+                btn.className = "inline-block p-4 text-blue-600 border-b-2 border-blue-600 rounded-t-lg font-semibold dark:text-blue-400 dark:border-blue-400";
+            } else {
+                // Inactive state
+                pane.classList.add('hidden');
+                btn.className = "inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300 font-medium text-gray-500 dark:text-gray-400";
+            }
+        });
+    }
+
+    // ── Toggle section visibility ──
+    function toggleSection(key) {
+        const toggle  = document.getElementById(key + '-toggle');
+        const body    = document.getElementById(key + '-body');
+        const track   = document.getElementById(key + '-track');
+        const thumb   = document.getElementById(key + '-thumb');
+        const statusEl = document.getElementById(key + '-status-text');
+        const isOn    = toggle.checked;
+
+        // Track colour
+        track.style.backgroundColor = isOn
+            ? (key === 'bot' ? '#2563eb' : '#059669')
+            : '#d1d5db';
+
+        // Thumb position
+        thumb.style.transform = isOn ? 'translateX(20px)' : 'translateX(0px)';
+
+        // Body
+        if (isOn) {
+            body.classList.remove('hidden');
+        } else {
+            body.classList.add('hidden');
+        }
+
+        // Status text
+        if (statusEl) {
+            statusEl.textContent = isOn
+                ? (key === 'bot' ? 'Yoqilgan — xabarnomalar yuborilmoqda' : 'Yoqilgan — SMS xabarnomalar faol')
+                : (key === 'bot' ? 'O\'chirilgan — bot xabar yubormasdi' : 'O\'chirilgan — SMS yuborilmaydi');
+        }
+    }
+
+    // ── File Previews ──
+    function previewImage(input, previewId) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = document.getElementById(previewId);
+                img.src = e.target.result;
+                img.style.display = 'block';
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    // ── Password show/hide ──
+    function togglePassword(id) {
+        const el = document.getElementById(id);
+        el.type = el.type === 'password' ? 'text' : 'password';
+    }
+
+    // ── Save button ──
+    async function handleSave() {
+        const btn   = document.getElementById('save-btn');
+        const label = document.getElementById('save-label');
+        btn.disabled = true;
+        btn.classList.replace('bg-blue-600', 'bg-emerald-600');
+        btn.classList.replace('hover:bg-blue-700', 'hover:bg-emerald-700');
+        label.textContent = 'Saqlanmoqda...';
+
+        const appName   = document.getElementById('app_name').value;
+        const startTime = document.getElementById('default_start_time').value;
+        const endTime   = document.getElementById('default_end_time').value;
+        const isupPublicHost = document.getElementById('isup_public_host').value.trim();
+        const publicWebBaseUrl = document.getElementById('public_web_base_url').value.trim();
+
+        try {
+            // Check and upload files first if selected
+            let finalLogoUrl = document.getElementById('logo_url').value;
+            let finalFaviconUrl = document.getElementById('favicon_url').value;
+            
+            const logoFile = document.getElementById('logo_file').files[0];
+            if (logoFile) {
+                const fd = new FormData();
+                fd.append("file", logoFile);
+                const res = await fetch("/api/settings/upload_logo", { method: "POST", body: fd });
+                const dat = await res.json();
+                if(dat.ok) finalLogoUrl = dat.url;
+            }
+            
+            const faviconFile = document.getElementById('favicon_file').files[0];
+            if (faviconFile) {
+                const fd = new FormData();
+                fd.append("file", faviconFile);
+                const res = await fetch("/api/settings/upload_favicon", { method: "POST", body: fd });
+                const dat = await res.json();
+                if(dat.ok) finalFaviconUrl = dat.url;
+            }
+
+            // First call: Update Default Times & App Name
+            const resp = await fetch("/api/settings", {
+                method: "PUT",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    app_name: appName,
+                    logo_url: finalLogoUrl,
+                    favicon_url: finalFaviconUrl,
+                    default_start_time: startTime,
+                    default_end_time: endTime,
+                    isup_public_host: isupPublicHost,
+                    public_web_base_url: publicWebBaseUrl
+                })
+            });
+            const data = await resp.json();
+            if (!resp.ok || !data.ok) {
+                throw new Error(data.detail || data.message || "Sozlamalarni saqlashda xatolik.");
+            }
+
+            // Second call: Update Menu Settings
+            const listItems = document.querySelectorAll('#menu-sortable-list li');
+            const newOrder = [];
+            const menusPayload = {};
+
+            listItems.forEach((li) => {
+                const key = li.getAttribute('data-key');
+                newOrder.push(key);
+                
+                const elementIdUz = key.startsWith('group_') ? key + '_uz' : 'menu_' + key + '_uz';
+                const elementIdRu = key.startsWith('group_') ? key + '_ru' : 'menu_' + key + '_ru';
+                
+                const iptUz = document.getElementById(elementIdUz);
+                const iptRu = document.getElementById(elementIdRu);
+                
+                if (iptUz && iptRu) {
+                    menusPayload[key] = {
+                        "uz": iptUz.value,
+                        "ru": iptRu.value
+                    };
+                }
+            });
+
+            const respMenus = await fetch("/api/menu_settings", {
+                method: "PUT",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({ menus: menusPayload, order: newOrder })
+            });
+            const menusData = await respMenus.json();
+            if (!respMenus.ok || !menusData.ok) {
+                throw new Error(menusData.detail || menusData.message || "Menyu sozlamalarini saqlashda xatolik.");
+            }
+
+            if(data.ok && menusData.ok) {
+                label.textContent = '✓ Saqlandi!';
+                const toast = document.getElementById('toast');
+                toast.classList.remove('hidden');
+                setTimeout(() => {
+                    toast.classList.add('hidden');
+                    btn.disabled = false;
+                    btn.classList.replace('bg-emerald-600', 'bg-blue-600');
+                    btn.classList.replace('hover:bg-emerald-700', 'hover:bg-blue-700');
+                    label.textContent = 'Sozlamalarni Saqlash';
+                    
+                    // Reload the page to reflect the new Sidebar items instantly
+                    window.location.reload();
+                }, 1500);
+            } else {
+                alert("Xatolik bo'ldi.");
+            }
+        } catch(e) {
+            console.error(e);
+            alert(e.message || "Ulanishda xatolik!");
+            btn.disabled = false;
+            btn.classList.replace('bg-emerald-600', 'bg-blue-600');
+            btn.classList.replace('hover:bg-emerald-700', 'hover:bg-blue-700');
+            label.textContent = 'Sozlamalarni Saqlash';
+        }
+    }
+
+    // ── Init toggle states on load ──
+    document.addEventListener('DOMContentLoaded', async function() {
+        try {
+        // Load App Name & Default Times
+        const resp = await fetch("/api/settings");
+        const data = await resp.json();
+        if(data.ok) {
+            if (data.app_name) document.getElementById('app_name').value = data.app_name;
+            if (data.logo_url) {
+                document.getElementById('logo_url').value = data.logo_url;
+                document.getElementById('logo_preview').src = data.logo_url;
+                document.getElementById('logo_preview').style.display = 'block';
+            }
+            if (data.favicon_url) {
+                document.getElementById('favicon_url').value = data.favicon_url;
+                document.getElementById('favicon_preview').src = data.favicon_url;
+                document.getElementById('favicon_preview').style.display = 'block';
+            }
+            if (data.default_start_time) document.getElementById('default_start_time').value = data.default_start_time;
+            if (data.default_end_time) document.getElementById('default_end_time').value = data.default_end_time;
+            if (typeof data.isup_public_host === "string") {
+                document.getElementById('isup_public_host').value = data.isup_public_host;
+            }
+            if (typeof data.public_web_base_url === "string") {
+                document.getElementById('public_web_base_url').value = data.public_web_base_url;
+            }
+            if (data.detected_lan_ip) {
+                document.getElementById('isup_public_host_hint').textContent = `Bo'sh qoldirsangiz server avtomatik lokal IP ishlatadi (${data.detected_lan_ip}).`;
+            }
+        }
+
+            // Init SortableJS
+            var el = document.getElementById('menu-sortable-list');
+            var sortable = Sortable.create(el, {
+                handle: '.drag-handle',
+                animation: 150,
+                ghostClass: 'bg-blue-50'
+            });
+
+        } catch(e) {
+            console.error("Sozlamalarni yuklab bo'lmadi", e);
+        }
+        // Bot: checked by default → already open, set track colour
+        const botToggle = document.getElementById('bot-toggle');
+        const botTrack  = document.getElementById('bot-track');
+        const botThumb  = document.getElementById('bot-thumb');
+        botTrack.style.backgroundColor = botToggle.checked ? '#2563eb' : '#d1d5db';
+        botThumb.style.transform = botToggle.checked ? 'translateX(20px)' : 'translateX(0px)';
+
+        // SMS: unchecked by default → body already hidden
+        const smsTrack = document.getElementById('sms-track');
+        const smsThumb = document.getElementById('sms-thumb');
+        smsTrack.style.backgroundColor = '#d1d5db';
+        smsThumb.style.transform = 'translateX(0px)';
+    });
+</script>
+{% endblock %}
