@@ -217,21 +217,15 @@
             <div>
                 <h2 class="font-semibold text-gray-900 dark:text-white text-sm leading-tight">Telegram Bot Integratsiyasi</h2>
                 <p id="bot-status-text" class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Yoqilgan — xabarnomalar yuborilmoqda</p>
+                <p id="bot-users-text" class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Telegram foydalanuvchilar: 0</p>
             </div>
         </div>
 
         <!-- Toggle switch -->
         <label class="relative inline-flex items-center cursor-pointer select-none" title="Yoqish / O'chirish">
             <input type="checkbox" id="bot-toggle" class="sr-only peer" checked onchange="toggleSection('bot')">
-            <div class="w-11 h-6 rounded-full transition-colors duration-300
-                        bg-blue-600 peer-checked:bg-blue-600
-                        peer-not-checked:bg-gray-200 dark:peer-not-checked:bg-gray-700"
-                 id="bot-track"
-                 style="background-color: #2563eb;">
-            </div>
-            <div id="bot-thumb"
-                 class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-300 translate-x-5">
-            </div>
+            <div id="bot-track" class="w-11 h-6 rounded-full transition-colors duration-300" style="background-color: #d1d5db;"></div>
+            <div id="bot-thumb" class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-300"></div>
         </label>
     </div>
 
@@ -281,6 +275,22 @@
                 </label>
             </div>
         </div>
+
+        <div class="md:col-span-2 border-t border-gray-100 dark:border-gray-800 pt-4">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+                <div>
+                    <p class="text-sm font-semibold text-gray-900 dark:text-white">Bot jarayon boshqaruvi</p>
+                    <p id="bot-process-meta" class="text-xs text-gray-500 dark:text-gray-400">Holat yuklanmoqda...</p>
+                </div>
+                <span id="bot-process-state" class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">Noma'lum</span>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <button type="button" id="bot-start-btn" onclick="handleBotProcessAction('start')" class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition">Ishga tushirish</button>
+                <button type="button" id="bot-stop-btn" onclick="handleBotProcessAction('stop')" class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition">To'xtatish</button>
+                <button type="button" id="bot-restart-btn" onclick="handleBotProcessAction('restart')" class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 rounded-xl transition">Qayta ishga tushirish</button>
+                <button type="button" id="bot-refresh-btn" onclick="refreshBotProcessStatus(true)" class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl transition">Yangilash</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -325,7 +335,7 @@
             <label for="sms_provider" class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">SMS Provayderi</label>
             <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Qaysi kompaniya orqali SMS yuborasiz?</p>
             <select id="sms_provider"
-                class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition">
+                class="select-native w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition">
                 <option value="eskiz">Eskiz.uz — O'zbek provayderi (tavsiya etiladi)</option>
                 <option value="playmobile">PlayMobile.uz</option>
                 <option value="twilio">Twilio — Xalqaro (qimmatroq)</option>
@@ -392,13 +402,9 @@
     </div> <!-- END TAB PANE: INTEGRATIONS -->
 </div> <!-- END TABS CONTENT CONTAINER -->
 
-<!-- Toast notification -->
-<div id="toast" class="hidden fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-2xl shadow-xl text-sm font-medium">
-    <svg class="w-4 h-4 text-emerald-400 dark:text-emerald-600 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-    <span id="toast-msg">Sozlamalar saqlandi!</span>
-</div>
-
 <script>
+    let botProcessTimer = null;
+
     // ── Tabs Switching logic ──
     function switchTab(tabId) {
         const tabs = ['system', 'menus', 'integrations'];
@@ -469,6 +475,94 @@
         el.type = el.type === 'password' ? 'text' : 'password';
     }
 
+    function setBotButtonsDisabled(disabled) {
+        ['bot-start-btn', 'bot-stop-btn', 'bot-restart-btn', 'bot-refresh-btn'].forEach((id) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.disabled = disabled;
+            if (disabled) {
+                el.classList.add('opacity-60', 'cursor-not-allowed');
+            } else {
+                el.classList.remove('opacity-60', 'cursor-not-allowed');
+            }
+        });
+    }
+
+    function renderBotProcessStatus(status) {
+        const stateEl = document.getElementById('bot-process-state');
+        const metaEl = document.getElementById('bot-process-meta');
+        const statusTextEl = document.getElementById('bot-status-text');
+
+        if (!stateEl || !metaEl) return;
+
+        const isRunning = !!(status && status.running);
+        if (isRunning) {
+            stateEl.textContent = 'Ishlayapti';
+            stateEl.className = 'inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300';
+            const uptime = typeof status.uptime_seconds === 'number' ? `${status.uptime_seconds}s` : '-';
+            const pid = status.pid || '-';
+            const cpu = typeof status.cpu_percent === 'number' ? `${status.cpu_percent}%` : '-';
+            metaEl.textContent = `PID: ${pid} | Uptime: ${uptime} | CPU: ${cpu}`;
+            if (statusTextEl) {
+                statusTextEl.textContent = 'Yoqilgan — bot ishlayapti';
+            }
+        } else {
+            stateEl.textContent = 'To\'xtagan';
+            stateEl.className = 'inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300';
+            metaEl.textContent = 'Bot jarayoni hozir ishlamayapti.';
+            if (statusTextEl) {
+                statusTextEl.textContent = 'O\'chirilgan — bot ishlamayapti';
+            }
+        }
+
+        const startBtn = document.getElementById('bot-start-btn');
+        const stopBtn = document.getElementById('bot-stop-btn');
+        if (startBtn) startBtn.disabled = isRunning;
+        if (stopBtn) stopBtn.disabled = !isRunning;
+        if (startBtn) startBtn.classList.toggle('opacity-60', isRunning);
+        if (startBtn) startBtn.classList.toggle('cursor-not-allowed', isRunning);
+        if (stopBtn) stopBtn.classList.toggle('opacity-60', !isRunning);
+        if (stopBtn) stopBtn.classList.toggle('cursor-not-allowed', !isRunning);
+    }
+
+    async function refreshBotProcessStatus(showError = false) {
+        try {
+            const resp = await fetch('/api/telegram/process');
+            const data = await resp.json();
+            if (!resp.ok || !data.ok) {
+                throw new Error(data.detail || 'Bot holatini olishda xatolik.');
+            }
+            renderBotProcessStatus(data.status || {});
+        } catch (error) {
+            if (showError && window.AppNotify) {
+                window.AppNotify.error(error.message || 'Bot holatini olishda xatolik.');
+            }
+        }
+    }
+
+    async function handleBotProcessAction(action) {
+        setBotButtonsDisabled(true);
+        try {
+            const resp = await fetch(`/api/telegram/process/${action}`, { method: 'POST' });
+            const data = await resp.json();
+            if (!resp.ok || !data.ok) {
+                throw new Error(data.detail || data.message || 'Bot boshqaruvida xatolik.');
+            }
+
+            renderBotProcessStatus(data.status || {});
+            if (window.AppNotify) {
+                window.AppNotify.success(data.message || 'Amal bajarildi');
+            }
+        } catch (error) {
+            if (window.AppNotify) {
+                window.AppNotify.error(error.message || 'Bot boshqaruvida xatolik.');
+            }
+        } finally {
+            setBotButtonsDisabled(false);
+            await refreshBotProcessStatus(false);
+        }
+    }
+
     // ── Save button ──
     async function handleSave() {
         const btn   = document.getElementById('save-btn');
@@ -483,6 +577,9 @@
         const endTime   = document.getElementById('default_end_time').value;
         const isupPublicHost = document.getElementById('isup_public_host').value.trim();
         const publicWebBaseUrl = document.getElementById('public_web_base_url').value.trim();
+        const telegramEnabled = document.getElementById('bot-toggle').checked;
+        const telegramAdminChatId = document.getElementById('admin_chat_id').value.trim();
+        const telegramBotToken = document.getElementById('bot_token').value.trim();
 
         try {
             // Check and upload files first if selected
@@ -518,7 +615,10 @@
                     default_start_time: startTime,
                     default_end_time: endTime,
                     isup_public_host: isupPublicHost,
-                    public_web_base_url: publicWebBaseUrl
+                    public_web_base_url: publicWebBaseUrl,
+                    telegram_enabled: telegramEnabled,
+                    telegram_admin_chat_id: telegramAdminChatId,
+                    telegram_bot_token: telegramBotToken
                 })
             });
             const data = await resp.json();
@@ -560,11 +660,15 @@
             }
 
             if(data.ok && menusData.ok) {
+                if (data.bot_runtime && data.bot_runtime.ok === false && window.AppNotify) {
+                    window.AppNotify.error(data.bot_runtime.error || 'Bot jarayonini avtomatik boshqarishda xatolik.');
+                }
                 label.textContent = '✓ Saqlandi!';
-                const toast = document.getElementById('toast');
-                toast.classList.remove('hidden');
+                if (window.AppNotify) {
+                    window.AppNotify.success('Sozlamalar saqlandi');
+                }
+                await refreshBotProcessStatus(false);
                 setTimeout(() => {
-                    toast.classList.add('hidden');
                     btn.disabled = false;
                     btn.classList.replace('bg-emerald-600', 'bg-blue-600');
                     btn.classList.replace('hover:bg-emerald-700', 'hover:bg-blue-700');
@@ -574,11 +678,15 @@
                     window.location.reload();
                 }, 1500);
             } else {
-                alert("Xatolik bo'ldi.");
+                if (window.AppNotify) {
+                    window.AppNotify.error("Xatolik bo'ldi.");
+                }
             }
         } catch(e) {
             console.error(e);
-            alert(e.message || "Ulanishda xatolik!");
+            if (window.AppNotify) {
+                window.AppNotify.error(e.message || "Ulanishda xatolik!");
+            }
             btn.disabled = false;
             btn.classList.replace('bg-emerald-600', 'bg-blue-600');
             btn.classList.replace('hover:bg-emerald-700', 'hover:bg-blue-700');
@@ -615,6 +723,24 @@
             if (data.detected_lan_ip) {
                 document.getElementById('isup_public_host_hint').textContent = `Bo'sh qoldirsangiz server avtomatik lokal IP ishlatadi (${data.detected_lan_ip}).`;
             }
+
+            const botToggle = document.getElementById('bot-toggle');
+            const botToken = document.getElementById('bot_token');
+            const adminChatId = document.getElementById('admin_chat_id');
+            if (typeof data.telegram_enabled === 'boolean') {
+                botToggle.checked = data.telegram_enabled;
+            }
+            if (typeof data.telegram_admin_chat_id === 'string') {
+                adminChatId.value = data.telegram_admin_chat_id;
+            }
+            if (data.telegram_token_configured) {
+                botToken.placeholder = data.telegram_bot_token_masked || '********';
+            }
+            if (typeof data.telegram_users_count === 'number') {
+                document.getElementById('bot-users-text').textContent = `Telegram foydalanuvchilar: ${data.telegram_users_count}`;
+            }
+
+            await refreshBotProcessStatus(false);
         }
 
             // Init SortableJS
@@ -629,17 +755,18 @@
             console.error("Sozlamalarni yuklab bo'lmadi", e);
         }
         // Bot: checked by default → already open, set track colour
-        const botToggle = document.getElementById('bot-toggle');
-        const botTrack  = document.getElementById('bot-track');
-        const botThumb  = document.getElementById('bot-thumb');
-        botTrack.style.backgroundColor = botToggle.checked ? '#2563eb' : '#d1d5db';
-        botThumb.style.transform = botToggle.checked ? 'translateX(20px)' : 'translateX(0px)';
+        toggleSection('bot');
 
         // SMS: unchecked by default → body already hidden
         const smsTrack = document.getElementById('sms-track');
         const smsThumb = document.getElementById('sms-thumb');
         smsTrack.style.backgroundColor = '#d1d5db';
         smsThumb.style.transform = 'translateX(0px)';
+
+        if (botProcessTimer) {
+            clearInterval(botProcessTimer);
+        }
+        botProcessTimer = setInterval(() => refreshBotProcessStatus(false), 10000);
     });
 </script>
 {% endblock %}

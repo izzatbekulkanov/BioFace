@@ -18,27 +18,35 @@
     class="fixed inset-y-0 left-0 z-40 w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col -translate-x-full sm:translate-x-0 sm:relative sm:inset-auto"
     aria-label="Sidebar">
 
-    <div class="flex-1 flex flex-col overflow-y-auto px-3 py-5">
-        <a href="/" class="flex items-center gap-3 px-2 mb-7">
+    <div class="sidebar-brand shrink-0 px-3 py-3">
+        <a href="/" class="sidebar-brand-link flex items-center gap-3 rounded-2xl px-2 py-2">
             {% if menus.logo_url %}
-            <div class="w-14 h-14 flex items-center justify-center shrink-0">
+            <div class="sidebar-brand-logo flex h-10 w-10 items-center justify-center shrink-0">
                 <img src="{{ menus.logo_url }}" alt="Logo" class="max-w-full max-h-full object-contain drop-shadow">
             </div>
             {% else %}
-            <div class="w-9 h-9 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center text-white shadow-md shrink-0">
+            <div class="sidebar-brand-logo flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-md shrink-0">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
             </div>
             {% endif %}
             <div class="flex-1 min-w-0">
-                <p class="truncate text-base font-bold text-gray-900 dark:text-white leading-none">{{ menus.app_name|default('BioFace') }}</p>
-                <p class="truncate text-xs text-gray-400 dark:text-gray-500 mt-1">{% if lang == 'ru' %}Sistema poseshchaemosti{% else %}Davomat Tizimi{% endif %}</p>
+                <p class="sidebar-brand-title truncate text-sm font-bold text-gray-900 dark:text-white leading-none">{{ menus.app_name|default('BioFace') }}</p>
+                <p class="sidebar-brand-subtitle mt-1 truncate text-[11px] text-gray-400 dark:text-gray-500">{% if lang == 'ru' %}Sistema poseshchaemosti{% else %}Davomat Tizimi{% endif %}</p>
             </div>
         </a>
+    </div>
 
-        {% macro nav_link(href, label, icon_path) %}
-            {% set is_active = (href == '/' and request.url.path == '/') or (href != '/' and request.url.path.startswith(href)) %}
+    <div class="sidebar-scroll min-h-0 flex-1 overflow-y-auto px-3 py-3">
+        {% macro nav_link(href, label, icon_path, exact=False) %}
+            {% if href == '/' %}
+                {% set is_active = request.url.path == '/' %}
+            {% elif exact %}
+                {% set is_active = request.url.path == href %}
+            {% else %}
+                {% set is_active = request.url.path.startswith(href) %}
+            {% endif %}
             <a href="{{ href }}"
-               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
+               class="sidebar-nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
                       {% if is_active %}
                           bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-semibold
                       {% else %}
@@ -56,15 +64,15 @@
             </a>
         {% endmacro %}
 
-        <nav class="flex flex-col gap-0.5">
+        <nav class="sidebar-nav flex flex-col gap-0.5">
             {% for item in menus.__list__ %}
                 {% if item.type == 'group' %}
-                    <p class="px-3 pt-4 pb-1.5 text-xs font-semibold text-gray-400 dark:text-gray-600 uppercase tracking-widest">{{ item.title }}</p>
+                    <p class="sidebar-group-title px-3 pt-4 pb-1.5 text-xs font-semibold text-gray-400 dark:text-gray-600 uppercase tracking-widest">{{ item.title }}</p>
                 {% elif item.type == 'link' %}
                     {% if item.key == 'reports' %}
                         {% set is_reports = request.url.path.startswith('/reports') %}
                         <a href="{{ item.href }}"
-                           class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
+                           class="sidebar-nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
                                   {% if is_reports %}bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 font-semibold
                                   {% else %}text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-red-600 dark:hover:text-red-400{% endif %}">
                             <svg class="w-5 h-5 shrink-0 {% if is_reports %}text-red-500{% else %}text-gray-400{% endif %}"
@@ -76,6 +84,8 @@
                             <span class="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full shrink-0">{{ notifs.total }}</span>
                             {% endif %}
                         </a>
+                    {% elif item.key == 'attendance' or item.key == 'sync_attendance' %}
+                        {{ nav_link(item.href, item.title, item.icon, True) }}
                     {% else %}
                         {{ nav_link(item.href, item.title, item.icon) }}
                     {% endif %}
@@ -84,7 +94,7 @@
         </nav>
     </div>
 
-    <div class="px-4 py-3 border-t border-gray-100 dark:border-gray-800 flex items-center gap-3">
+    <div class="sidebar-user-panel shrink-0 px-4 py-3 border-t border-gray-100 dark:border-gray-800 flex items-center gap-3">
         {% if side_user_avatar %}
         <img src="{{ side_user_avatar }}" alt="user" class="w-8 h-8 rounded-full object-cover border border-gray-200 dark:border-gray-700 shrink-0">
         {% else %}

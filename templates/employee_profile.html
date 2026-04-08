@@ -11,7 +11,7 @@
             </div>
             {% endif %}
             <div>
-                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ emp.first_name }} {{ emp.last_name }}</h1>
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ emp.first_name }} {{ emp.last_name }}{% if emp.middle_name %} {{ emp.middle_name }}{% endif %}</h1>
                 <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ emp.position or "Lavozim kiritilmagan" }}{% if emp.department %} | {{ emp.department }}{% endif %}</p>
                 <div class="mt-2 flex flex-wrap items-center gap-2">
                     <span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">ID: {{ emp.id }}</span>
@@ -68,6 +68,10 @@
                 <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/70">
                     <span class="text-gray-500 dark:text-gray-400">Lavozim</span>
                     <b class="text-gray-900 dark:text-gray-100">{{ emp.position or "-" }}</b>
+                </div>
+                <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/70">
+                    <span class="text-gray-500 dark:text-gray-400">Otasining ismi</span>
+                    <b class="text-gray-900 dark:text-gray-100">{{ emp.middle_name or "-" }}</b>
                 </div>
                 <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/70">
                     <span class="text-gray-500 dark:text-gray-400">Ish jadvali</span>

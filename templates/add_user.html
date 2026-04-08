@@ -95,12 +95,19 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ t.organization }}</label>
-                    <select id="inp-org" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100">
-                        <option value="">-- Barchasi / Yo'q --</option>
-                        {% for org in organizations %}
-                            <option value="{{ org.id }}">{{ org.name }}</option>
-                        {% endfor %}
-                    </select>
+                    <div id="inp-orgs-wrap" class="relative">
+                        <button type="button" id="inp-orgs-toggle" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-left outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 inline-flex items-center justify-between gap-2">
+                            <span id="inp-orgs-summary" class="truncate text-gray-500 dark:text-gray-400">Tashkilot tanlang...</span>
+                            <svg class="h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </button>
+                        <div id="inp-orgs-dropdown" class="absolute z-20 mt-1 hidden w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg">
+                            <div class="p-2 border-b border-gray-200 dark:border-gray-800">
+                                <input type="text" id="inp-orgs-search" placeholder="Tashkilot qidirish..." class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-md px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 placeholder-gray-400">
+                            </div>
+                            <div id="inp-orgs-list" class="max-h-56 overflow-auto p-1"></div>
+                        </div>
+                    </div>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Bir nechta tashkilotni qidirib tanlashingiz mumkin.</p>
                 </div>
 
                 <div class="md:col-span-2">
@@ -177,6 +184,73 @@ const passwordHint = document.getElementById('password-hint');
 const passwordConfirmHint = document.getElementById('password-confirm-hint');
 const togglePasswordBtn = document.getElementById('toggle-password');
 const togglePasswordConfirmBtn = document.getElementById('toggle-password-confirm');
+const orgWrap = document.getElementById('inp-orgs-wrap');
+const orgToggle = document.getElementById('inp-orgs-toggle');
+const orgSummary = document.getElementById('inp-orgs-summary');
+const orgSearchInput = document.getElementById('inp-orgs-search');
+const orgDropdown = document.getElementById('inp-orgs-dropdown');
+const orgList = document.getElementById('inp-orgs-list');
+const orgOptionsData = [
+    {% for org in organizations %}
+    { id: {{ org.id }}, name: {{ org.name|tojson }} },
+    {% endfor %}
+];
+const selectedOrgIds = new Set();
+
+function updateOrgSummary() {
+    const selected = orgOptionsData.filter((o) => selectedOrgIds.has(Number(o.id)));
+    if (!selected.length) {
+        orgSummary.textContent = 'Tashkilot tanlang...';
+        orgSummary.classList.add('text-gray-500', 'dark:text-gray-400');
+        return;
+    }
+    orgSummary.classList.remove('text-gray-500', 'dark:text-gray-400');
+    if (selected.length <= 2) {
+        orgSummary.textContent = selected.map((s) => s.name).join(', ');
+    } else {
+        orgSummary.textContent = `${selected.length} ta tashkilot tanlandi`;
+    }
+}
+
+function renderOrgList() {
+    const q = String(orgSearchInput?.value || '').trim().toLowerCase();
+    const filtered = orgOptionsData.filter((o) => !q || String(o.name || '').toLowerCase().includes(q));
+    if (!filtered.length) {
+        orgList.innerHTML = '<div class="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">Hech narsa topilmadi</div>';
+        return;
+    }
+    orgList.innerHTML = filtered.map((o) => {
+        const checked = selectedOrgIds.has(Number(o.id)) ? 'checked' : '';
+        return `<label class="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"><input type="checkbox" class="org-option h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" value="${o.id}" ${checked}><span class="text-sm text-gray-800 dark:text-gray-200">${String(o.name || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span></label>`;
+    }).join('');
+    for (const cb of orgList.querySelectorAll('.org-option')) {
+        cb.addEventListener('change', (e) => {
+            const v = Number(e.target.value);
+            if (e.target.checked) selectedOrgIds.add(v);
+            else selectedOrgIds.delete(v);
+            updateOrgSummary();
+        });
+    }
+}
+
+function bindOrganizationSearch() {
+    if (!orgWrap || !orgToggle || !orgDropdown || !orgSearchInput || !orgList) return;
+    orgToggle.addEventListener('click', () => {
+        orgDropdown.classList.toggle('hidden');
+        if (!orgDropdown.classList.contains('hidden')) {
+            orgSearchInput.focus();
+            renderOrgList();
+        }
+    });
+    orgSearchInput.addEventListener('input', renderOrgList);
+    document.addEventListener('click', (e) => {
+        if (!orgWrap.contains(e.target)) {
+            orgDropdown.classList.add('hidden');
+        }
+    });
+    updateOrgSummary();
+    renderOrgList();
+}
 
 function updateInitial() {
     const fromFirstName = firstNameInput.value.trim()[0];
@@ -388,7 +462,7 @@ async function saveUser() {
     const password = document.getElementById('inp-password').value.trim();
     const passwordConfirm = document.getElementById('inp-password-confirm').value.trim();
     const role = document.getElementById('inp-role').value;
-    const organization_id = document.getElementById('inp-org').value;
+    const organization_ids = Array.from(selectedOrgIds).map((v) => Number(v)).filter((v) => Number.isInteger(v) && v > 0);
     const image_url = document.getElementById('inp-image-url').value.trim();
     const image = imageInput.files?.[0];
 
@@ -426,7 +500,8 @@ async function saveUser() {
     formData.append('phone', phone);
     formData.append('password', password);
     formData.append('role', role);
-    formData.append('organization_id', organization_id);
+    formData.append('organization_ids', JSON.stringify(organization_ids));
+    formData.append('organization_id', organization_ids.length ? String(organization_ids[0]) : '');
     if (image_url) formData.append('image_url', image_url);
     if (image) formData.append('image', image);
 
@@ -453,5 +528,6 @@ async function saveUser() {
 updateInitial();
 showUploadEmpty();
 updatePasswordHints();
+bindOrganizationSearch();
 </script>
 {% endblock %}

@@ -8,20 +8,25 @@ SERVICE_NAME="${SERVICE_NAME:-bioface}"
 
 echo -e "${CYAN}BioFace server setup boshlanmoqda...${NC}"
 
-echo -e "${CYAN}[1/5] Python va pip tekshirish...${NC}"
+echo -e "${CYAN}[1/6] Tizim paketlarini tekshirish/o'rnatish (tzdata, python3-venv)...${NC}"
+export DEBIAN_FRONTEND=noninteractive
+sudo apt-get update -y
+sudo apt-get install -y tzdata python3 python3-venv python3-pip curl ca-certificates
+
+echo -e "${CYAN}[2/6] Python va pip tekshirish...${NC}"
 python3 --version
 pip3 --version
 
-echo -e "${CYAN}[2/5] Virtual environment yaratish...${NC}"
+echo -e "${CYAN}[3/6] Virtual environment yaratish...${NC}"
 cd "$APP_DIR"
 python3 -m venv venv
 source venv/bin/activate
 
-echo -e "${CYAN}[3/5] pip paketlarni o'rnatish...${NC}"
+echo -e "${CYAN}[4/6] pip paketlarni o'rnatish...${NC}"
 pip install --upgrade pip
 pip install -r requirements.txt
 
-echo -e "${CYAN}[4/5] Tailwind CSS o'rnatish va build qilish...${NC}"
+echo -e "${CYAN}[5/6] Tailwind CSS o'rnatish va build qilish...${NC}"
 if ! command -v node &> /dev/null; then
     echo "Node.js topilmadi, o'rnatilmoqda..."
     curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
@@ -38,7 +43,7 @@ mkdir -p static/css
 tailwindcss -i ./src/input.css -o ./static/css/output.css --minify
 echo -e "${GREEN}CSS build muvaffaqiyatli.${NC}"
 
-echo -e "${CYAN}[5/5] Systemd service yaratish...${NC}"
+echo -e "${CYAN}[6/6] Systemd service yaratish...${NC}"
 VENV_PATH="$APP_DIR/venv"
 
 sudo tee /etc/systemd/system/${SERVICE_NAME}.service > /dev/null <<EOF

@@ -12,10 +12,6 @@
       "uz": "Kameralar Ro'yxati",
       "ru": "Список камер"
     },
-    "events": {
-      "uz": "Kamera Hodisalari",
-      "ru": "События камер"
-    },
     "commands": {
       "uz": "Kameraga Buyruqlar",
       "ru": "Команды камере"
@@ -31,6 +27,10 @@
     "attendance": {
       "uz": "Davomat",
       "ru": "Посещаемость"
+    },
+    "psychological_portrait": {
+      "uz": "Psixologik Portret",
+      "ru": "Психологический портрет"
     },
     "reports": {
       "uz": "Kechikish Hisoboti",
@@ -73,11 +73,11 @@
     "dashboard",
     "group_cameras",
     "devices",
-    "events",
     "commands",
     "group_employees",
     "employees",
     "attendance",
+    "psychological_portrait",
     "reports",
     "group_management",
     "organizations",

@@ -4,7 +4,7 @@
 //  Usage:
 //    isup_server.exe [isup_key] [isup_port] [api_port] [redis_host] [redis_port] [alarm_port] [picture_port]
 //  Defaults:
-//    key=bioface2024, isup=7660, api=7670, redis=127.0.0.1:6379, alarm=7661, picture=7662
+//    key=facex2024, isup=7660, api=7670, redis=127.0.0.1:6379, alarm=7661, picture=7662
 // ============================================================
 
 #include "http_api.hpp"
@@ -35,7 +35,7 @@ int main(int argc, char* argv[]) {
     }
 #endif
 
-    std::string isup_key = (argc > 1) ? argv[1] : "bioface2024";
+    std::string isup_key = (argc > 1) ? argv[1] : "facex2024";
     uint16_t isup_port = (argc > 2) ? static_cast<uint16_t>(std::stoi(argv[2])) : 7660;
     uint16_t api_port = (argc > 3) ? static_cast<uint16_t>(std::stoi(argv[3])) : 7670;
     std::string redis_host = (argc > 4) ? argv[4] : "127.0.0.1";

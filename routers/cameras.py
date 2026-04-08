@@ -6,15 +6,18 @@ POST /api/cameras/{id}/command — kameraga buyruq
 """
 import asyncio
 import base64
+import csv
 from datetime import datetime, timedelta
+import io
 import json
 import os
 import random
 import re
+import time
 import uuid
-from fastapi import APIRouter, Request, Depends, HTTPException, File, UploadFile, Form
-from fastapi.responses import JSONResponse
-from sqlalchemy import or_
+from fastapi import APIRouter, Request, Depends, HTTPException, File, UploadFile, Form, BackgroundTasks
+from fastapi.responses import Response, StreamingResponse
+from sqlalchemy import or_, case, cast, func, String, literal
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Any, Optional
@@ -25,12 +28,33 @@ from io import BytesIO
 from database import get_db
 from hikvision_sdk import get_sdk_status
 from isup_manager import get_process_status
-from models import Device, AttendanceLog, Employee, Organization
+from models import Device, AttendanceLog, Employee, EmployeeWellbeingNote, Organization, EmployeeCameraLink, UserOrganizationLink
+from time_utils import now_tashkent, normalize_timestamp_tashkent, today_tashkent_range
 from system_config import (
     ISUP_API_URL,
     ISUP_KEY,
     get_public_web_base_url,
     normalize_public_web_base_url,
+)
+from routers.cameras_parts import (
+    CameraCreate,
+    CameraUpdate,
+    CommandPayload,
+    WebhookPayload,
+    _extract_command_camera_info,
+    _is_generic_camera_model,
+    _normalize_mac_address,
+    _pick_first_nonempty,
+    _prefer_persistent_model,
+    _resolve_public_web_base_url,
+    _strip_or_none,
+)
+from routers.cameras_parts.routes_event_ingest import router as event_ingest_router
+from routers.cameras_parts.psychology_utils import (
+    detect_psychological_state,
+    resolve_snapshot_path,
+    state_labels,
+    upsert_daily_psychological_state,
 )
 
 # ISUP server manzili (default localhost:7670) — health/info uchun ichki URL
@@ -38,22 +62,247 @@ from system_config import (
 # Redis bridge import (graceful fallback if Redis not available)
 try:
     from redis_client import (
+        EVENTS_CHANNEL,
         get_isup_device as get_isup_device_from_redis,
         get_isup_devices as get_isup_devices_from_redis,
+        get_redis,
         is_connected as redis_ok,
+        publish_camera_event,
         send_command_and_wait,
     )
 except ImportError:
+    EVENTS_CHANNEL = "bioface:events"
+    def get_redis(*a, **kw): return None
     def send_command_and_wait(*a, **kw): return None
+    def publish_camera_event(*a, **kw): return False
     def get_isup_devices_from_redis(): return []
     def get_isup_device_from_redis(*a, **kw): return None
     def redis_ok(): return False
 
 router = APIRouter()
+router.include_router(event_ingest_router)
 
 CAMERA_USER_IMAGE_DIR = os.path.join("static", "uploads", "employees")
 os.makedirs(CAMERA_USER_IMAGE_DIR, exist_ok=True)
 PERSONAL_ID_PATTERN = re.compile(r"^[1-9]\d{6}$")
+WELLBEING_NOTE_SOURCES = {"manual", "operator_observation", "external_ai"}
+
+MAX_FACE_UPLOAD_BYTES = 10 * 1024 * 1024
+MAX_FACE_OUTPUT_BYTES = 200 * 1024
+MIN_FACE_OUTPUT_BYTES = 2 * 1024
+MIN_FACE_SIDE = 160
+MAX_FACE_SIDE = 720
+MIN_FACE_ASPECT = 0.6
+MAX_FACE_ASPECT = 1.67
+
+
+def _today_local_range() -> tuple[datetime, datetime]:
+    return today_tashkent_range()
+
+
+def _today_utc_range() -> tuple[datetime, datetime]:
+    return today_tashkent_range()
+
+
+_CAMERA_EVENT_DEBUG = os.getenv("CAMERA_EVENT_DEBUG", "0").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _camera_event_debug(message: str) -> None:
+    if _CAMERA_EVENT_DEBUG:
+        print(message)
+
+
+def _safe_wellbeing_source(value: Optional[str]) -> str:
+    source = str(value or "manual").strip().lower() or "manual"
+    return source if source in WELLBEING_NOTE_SOURCES else "manual"
+
+
+def _resolve_event_wellbeing_snapshot(
+    db: Session,
+    employee: Optional[Employee],
+    *,
+    note_uz: Optional[str] = None,
+    note_ru: Optional[str] = None,
+    source: Optional[str] = None,
+) -> tuple[str, str, str]:
+    if employee is None:
+        return "", "", ""
+
+    uz = str(note_uz or "").strip()
+    ru = str(note_ru or "").strip()
+    if uz or ru:
+        if not uz:
+            uz = ru
+        if not ru:
+            ru = uz
+        src = _safe_wellbeing_source(source)
+        db.add(
+            EmployeeWellbeingNote(
+                employee_id=int(employee.id),
+                note_uz=uz,
+                note_ru=ru,
+                source=src,
+            )
+        )
+        return uz, ru, src
+
+    start_dt, end_dt = today_tashkent_range()
+    latest_today_note = (
+        db.query(EmployeeWellbeingNote)
+        .filter(
+            EmployeeWellbeingNote.employee_id == int(employee.id),
+            EmployeeWellbeingNote.created_at >= start_dt,
+            EmployeeWellbeingNote.created_at < end_dt,
+        )
+        .order_by(EmployeeWellbeingNote.created_at.desc(), EmployeeWellbeingNote.id.desc())
+        .first()
+    )
+    if latest_today_note is None:
+        return "", "", ""
+    return (
+        str(latest_today_note.note_uz or "").strip(),
+        str(latest_today_note.note_ru or "").strip(),
+        str(latest_today_note.source or "manual").strip() or "manual",
+    )
+
+
+def _get_today_attendance_summary(db: Session, cam: Device) -> dict[str, Any]:
+    start, end = _today_local_range()
+    total = int(
+        db.query(func.count(AttendanceLog.id))
+        .filter(
+            AttendanceLog.device_id == cam.id,
+            AttendanceLog.timestamp >= start,
+            AttendanceLog.timestamp < end,
+        )
+        .scalar()
+        or 0
+    )
+    known = int(
+        db.query(func.count(AttendanceLog.id))
+        .filter(
+            AttendanceLog.device_id == cam.id,
+            AttendanceLog.timestamp >= start,
+            AttendanceLog.timestamp < end,
+            AttendanceLog.employee_id.isnot(None),
+        )
+        .scalar()
+        or 0
+    )
+    unknown = max(0, total - known)
+    latest = (
+        db.query(AttendanceLog.timestamp)
+        .filter(
+            AttendanceLog.device_id == cam.id,
+            AttendanceLog.timestamp >= start,
+            AttendanceLog.timestamp < end,
+        )
+        .order_by(AttendanceLog.timestamp.desc(), AttendanceLog.id.desc())
+        .first()
+    )
+    return {
+        "date": start.strftime("%Y-%m-%d"),
+        "count": total,
+        "known_count": known,
+        "unknown_count": unknown,
+        "latest_timestamp": latest[0].isoformat() if latest and latest[0] else None,
+    }
+
+
+def _parse_camera_timestamp(value: Any) -> Optional[datetime]:
+    return normalize_timestamp_tashkent(value)
+
+
+def _parse_event_timestamp_local(value: Any) -> Optional[datetime]:
+    return _parse_camera_timestamp(value)
+
+
+def _summarize_today_events_from_isup_rows(rows: list[dict[str, Any]]) -> tuple[dict[str, Any], dict[str, Any]]:
+    start, end = _today_local_range()
+    total = 0
+    known = 0
+    latest_ts: Optional[datetime] = None
+    invalid_ts = 0
+
+    for row in rows:
+        if not isinstance(row, dict):
+            invalid_ts += 1
+            continue
+
+        dt = _parse_event_timestamp_local(row.get("timestamp"))
+        if dt is None:
+            invalid_ts += 1
+            continue
+        if not (start <= dt < end):
+            continue
+
+        total += 1
+        status_text = str(row.get("status") or "").strip().lower()
+        person_id = str(row.get("person_id") or "").strip()
+        person_name = str(row.get("person_name") or "").strip().lower()
+        if status_text == "aniqlandi" or person_id or (person_name and person_name not in {"noma'lum", "unknown", "-"}):
+            known += 1
+
+        if latest_ts is None or dt > latest_ts:
+            latest_ts = dt
+
+    summary = {
+        "date": start.strftime("%Y-%m-%d"),
+        "count": total,
+        "known_count": known,
+        "unknown_count": max(0, total - known),
+        "latest_timestamp": latest_ts.isoformat() if latest_ts else None,
+    }
+    diagnostics = {
+        "raw_event_count": len(rows),
+        "today_window_start": start.isoformat(),
+        "today_window_end": end.isoformat(),
+        "invalid_timestamp_count": invalid_ts,
+    }
+    return summary, diagnostics
+
+
+def _publish_attendance_event_redis(
+    *,
+    source: str,
+    log_id: Optional[int],
+    timestamp: Optional[datetime],
+    device: Optional[Device],
+    employee_id: Optional[int],
+    person_id: Optional[str],
+    person_name: Optional[str],
+    status: str,
+    snapshot_url: Optional[str],
+    psychological_state_key: Optional[str] = None,
+    psychological_state_uz: Optional[str] = None,
+    psychological_state_ru: Optional[str] = None,
+    psychological_state_source: Optional[str] = None,
+    wellbeing_note_uz: Optional[str] = None,
+    wellbeing_note_ru: Optional[str] = None,
+    wellbeing_note_source: Optional[str] = None,
+) -> None:
+    payload = {
+        "source": source,
+        "log_id": int(log_id) if log_id is not None else None,
+        "timestamp": timestamp.isoformat() if timestamp else None,
+        "camera_id": int(device.id) if device is not None else None,
+        "camera_name": str(device.name or "") if device is not None else "",
+        "camera_mac": str(device.mac_address or "") if device is not None else "",
+        "organization_id": int(device.organization_id) if device is not None and device.organization_id is not None else None,
+        "employee_id": int(employee_id) if employee_id is not None else None,
+        "person_id": str(person_id or ""),
+        "person_name": str(person_name or ""),
+        "status": str(status or ""),
+        "snapshot_url": str(snapshot_url or ""),
+        "psychological_state_key": str(psychological_state_key or ""),
+        "psychological_state_uz": str(psychological_state_uz or ""),
+        "psychological_state_ru": str(psychological_state_ru or ""),
+        "psychological_state_source": str(psychological_state_source or ""),
+        "wellbeing_note_uz": str(wellbeing_note_uz or ""),
+        "wellbeing_note_ru": str(wellbeing_note_ru or ""),
+        "wellbeing_note_source": str(wellbeing_note_source or ""),
+    }
+    publish_camera_event(payload)
 
 
 def _normalize_personal_id(value: Optional[str]) -> Optional[str]:
@@ -61,6 +310,14 @@ def _normalize_personal_id(value: Optional[str]) -> Optional[str]:
         return None
     clean = value.strip()
     return clean or None
+
+
+def _validate_personal_id_format(personal_id: str) -> None:
+    if not PERSONAL_ID_PATTERN.fullmatch(personal_id):
+        raise HTTPException(
+            status_code=422,
+            detail="Shaxsiy ID 7 ta raqam bo'lishi kerak va 0 bilan boshlanmasligi kerak",
+        )
 
 
 def _is_personal_id_taken(db: Session, personal_id: str, *, exclude_id: Optional[int] = None) -> bool:
@@ -88,27 +345,179 @@ def _split_full_name(name: str) -> tuple[str, str]:
     return parts[0], " ".join(parts[1:])
 
 
-def _parse_event_dt(value: Any) -> datetime:
-    text = str(value or "").strip()
-    if not text:
-        return datetime.utcnow()
+def _validate_face_geometry(width: int, height: int) -> None:
+    if width < MIN_FACE_SIDE or height < MIN_FACE_SIDE:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Rasm juda kichik: kamida {MIN_FACE_SIDE}x{MIN_FACE_SIDE} bo'lishi kerak",
+        )
+    ratio = width / float(height or 1)
+    if ratio < MIN_FACE_ASPECT or ratio > MAX_FACE_ASPECT:
+        raise HTTPException(
+            status_code=422,
+            detail="Rasm proporsiyasi noto'g'ri: kamera uchun 3:5 va 5:3 oralig'ida bo'lishi kerak",
+        )
 
-    if text.endswith("Z"):
-        text = text[:-1] + "+00:00"
+
+def _encode_camera_jpeg(img: Image.Image) -> bytes:
+    out = BytesIO()
+    img.save(out, format="JPEG", quality=88, optimize=True)
+    data = out.getvalue()
+    if len(data) <= MAX_FACE_OUTPUT_BYTES:
+        return data
+
+    for quality in (82, 76, 70, 64):
+        out = BytesIO()
+        img.save(out, format="JPEG", quality=quality, optimize=True)
+        data = out.getvalue()
+        if len(data) <= MAX_FACE_OUTPUT_BYTES:
+            return data
+
+    work = img.copy()
+    for side in (640, 560, 480):
+        if max(work.size) > side:
+            work.thumbnail((side, side), Image.Resampling.LANCZOS)
+        out = BytesIO()
+        work.save(out, format="JPEG", quality=74, optimize=True)
+        data = out.getvalue()
+        if len(data) <= MAX_FACE_OUTPUT_BYTES:
+            return data
+    raise HTTPException(status_code=422, detail="Rasm hajmi katta: 200KB dan oshmasligi kerak")
+
+
+async def _prepare_camera_face_image(image: UploadFile) -> tuple[str, bytes, str, dict[str, int]]:
+    if not image or not image.filename:
+        raise HTTPException(status_code=422, detail="Kameraga foydalanuvchi qo'shishda rasm majburiy")
+
+    raw = await image.read()
+    if not raw:
+        raise HTTPException(status_code=422, detail="Rasm fayli bo'sh")
+    if len(raw) > MAX_FACE_UPLOAD_BYTES:
+        raise HTTPException(status_code=422, detail="Rasm juda katta: 10MB dan oshmasligi kerak")
+
+    ext = image.filename.rsplit(".", 1)[-1].lower() if "." in image.filename else ""
+    if ext and ext not in {"jpg", "jpeg", "png", "webp"}:
+        raise HTTPException(status_code=422, detail="Rasm formati noto'g'ri (faqat jpg/png/webp)")
+
     try:
-        dt = datetime.fromisoformat(text)
-        if dt.tzinfo is not None:
-            return dt.astimezone().replace(tzinfo=None)
-        return dt
-    except Exception:
-        pass
+        with Image.open(BytesIO(raw)) as src:
+            frame_count = int(getattr(src, "n_frames", 1) or 1)
+            if frame_count > 1:
+                raise HTTPException(status_code=422, detail="Animatsion rasm qabul qilinmaydi")
 
-    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y/%m/%d %H:%M:%S", "%Y%m%d%H%M%S"):
-        try:
-            return datetime.strptime(text, fmt)
-        except Exception:
-            continue
-    return datetime.utcnow()
+            rgb = src.convert("RGB")
+            _validate_face_geometry(rgb.width, rgb.height)
+            if max(rgb.size) > MAX_FACE_SIDE:
+                rgb.thumbnail((MAX_FACE_SIDE, MAX_FACE_SIDE), Image.Resampling.LANCZOS)
+
+            encoded = _encode_camera_jpeg(rgb)
+            if len(encoded) < MIN_FACE_OUTPUT_BYTES:
+                raise HTTPException(status_code=422, detail="Rasm sifati past yoki juda kichik")
+
+            filename = f"{uuid.uuid4().hex}.jpg"
+            filepath = os.path.join(CAMERA_USER_IMAGE_DIR, filename)
+            with open(filepath, "wb") as f:
+                f.write(encoded)
+
+            image_url = f"/{CAMERA_USER_IMAGE_DIR.replace(os.sep, '/')}/{filename}"
+            return image_url, encoded, "image/jpeg", {
+                "width": int(rgb.width),
+                "height": int(rgb.height),
+                "bytes": int(len(encoded)),
+            }
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=422, detail="Rasm o'qilmadi yoki buzilgan")
+
+
+def _push_camera_user_and_face_sync(
+    *,
+    target_id: str,
+    first_name: str,
+    last_name: str,
+    personal_id: str,
+    face_b64: str,
+    face_mime: str,
+    face_url: str,
+    camera_label: str = "",
+) -> dict[str, Any]:
+    """Background worker: kameraga user va face yozishni requestdan ajratadi."""
+    try:
+        add_user_response = _send_isup_command_or_raise(
+            target_id,
+            "add_user",
+            {
+                "first_name": first_name,
+                "last_name": last_name,
+                "personal_id": personal_id,
+            },
+            timeout=12.0,
+        )
+
+        set_face_response: Optional[dict[str, Any]] = None
+        face_error: Optional[str] = None
+        delay = 0.0
+        for attempt in range(3):
+            if delay > 0:
+                time.sleep(delay)
+            try:
+                set_face_response = _send_isup_command_or_raise(
+                    target_id,
+                    "set_face",
+                    {
+                        "personal_id": personal_id,
+                        "face_b64": face_b64,
+                        "face_mime": face_mime,
+                        "face_url": face_url,
+                        "allow_http_fallback": True,
+                    },
+                    timeout=10.0,
+                )
+                face_error = None
+                break
+            except HTTPException as exc:
+                err = str(exc.detail)
+                low = err.lower()
+                transient = "code=10" in low or "fpid" in low or "isup javobi kelmadi" in low
+                if transient and attempt < 2:
+                    delay = 0.08 if attempt == 0 else 0.14
+                    continue
+                if transient:
+                    set_face_response = {
+                        "ok": True,
+                        "accepted_with_warning": True,
+                        "warning": err,
+                        "message": "Rasm kameraga yuborildi, yakuniy qo'llanish asinxron bo'lishi mumkin.",
+                    }
+                else:
+                    set_face_response = {"ok": False, "error": err}
+                    face_error = err
+                break
+
+        result = {
+            "ok": bool(add_user_response.get("ok", True)) and bool(set_face_response and set_face_response.get("ok") is not False),
+            "camera_label": camera_label,
+            "personal_id": personal_id,
+            "add_user_response": add_user_response,
+            "set_face_response": set_face_response,
+            "camera_push_error": face_error,
+        }
+        print(f"[CAMERA PUSH] background sync done for {camera_label or target_id}: {result}")
+        return result
+    except Exception as exc:
+        result = {
+            "ok": False,
+            "camera_label": camera_label,
+            "personal_id": personal_id,
+            "camera_push_error": str(exc),
+        }
+        print(f"[CAMERA PUSH] background sync failed for {camera_label or target_id}: {exc}")
+        return result
+
+
+def _parse_event_dt(value: Any) -> datetime:
+    return _parse_camera_timestamp(value) or now_tashkent()
 
 
 def _as_bool(value: Any) -> bool:
@@ -131,6 +540,23 @@ def _extract_users_from_command_response(payload: dict) -> list[dict]:
         if isinstance(nested, list):
             return [row for row in nested if isinstance(row, dict)]
     return []
+
+
+def _extract_face_presence_map(payload: dict) -> dict[str, bool]:
+    if not isinstance(payload, dict):
+        return {}
+    rows = payload.get("records")
+    if not isinstance(rows, list):
+        rows = []
+    result: dict[str, bool] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        fpid = str(row.get("fpid") or "").strip()
+        if not fpid:
+            continue
+        result[fpid] = True
+    return result
 
 
 def _download_face_to_local(face_url: str, username: str, password: str) -> Optional[str]:
@@ -160,115 +586,91 @@ def _download_face_to_local(face_url: str, username: str, password: str) -> Opti
         return None
 
 
-def _resolve_public_web_base_url(request: Request) -> str:
-    configured = normalize_public_web_base_url(get_public_web_base_url())
-    if configured:
-        return configured
-
-    forwarded_proto = (request.headers.get("x-forwarded-proto") or "").split(",")[0].strip()
-    scheme = forwarded_proto or request.url.scheme or "http"
-    forwarded_host = request.headers.get("x-forwarded-host") or request.headers.get("host") or ""
-    host = forwarded_host.split(",")[0].strip() or request.url.netloc or request.url.hostname or "127.0.0.1"
-    return f"{scheme}://{host}".rstrip("/")
+def _strip_data_uri_prefix(value: Any) -> str:
+    text = re.sub(r"\s+", "", str(value or "").strip())
+    if text.startswith("data:"):
+        comma = text.find(",")
+        if comma >= 0:
+            text = text[comma + 1 :]
+    return text
 
 
-# ── Pydantic schemalar ──────────────────────────────────
-class CameraCreate(BaseModel):
-    name: str
-    mac_address: Optional[str] = ""          # Masalan: AA:BB:CC:11:22:33
-    isup_device_id: Optional[str] = None  # Masalan: CAM1111 (ISUP Device ID)
-    location: Optional[str] = ""
-    model: Optional[str] = ""
-    max_memory: Optional[int] = 1500
-    organization_id: Optional[int] = None
-    username: Optional[str] = None
-    password: Optional[str] = None
-    isup_password: Optional[str] = ISUP_KEY
-
-class CameraUpdate(BaseModel):
-    name: Optional[str] = None
-    mac_address: Optional[str] = None
-    isup_device_id: Optional[str] = None
-    location: Optional[str] = None
-    model: Optional[str] = None
-    max_memory: Optional[int] = None
-    organization_id: Optional[int] = None
-    username: Optional[str] = None
-    password: Optional[str] = None
-    isup_password: Optional[str] = None
+def _decode_base64_payload(value: Any) -> Optional[bytes]:
+    text = _strip_data_uri_prefix(value)
+    if not text:
+        return None
+    padding = (-len(text)) % 4
+    if padding:
+        text += "=" * padding
+    try:
+        return base64.b64decode(text, validate=False)
+    except Exception:
+        return None
 
 
-def _pick_first_nonempty(device: dict, keys: tuple[str, ...]) -> Optional[str]:
-    for key in keys:
-        value = device.get(key)
-        if value is None:
-            continue
-        text = str(value).strip()
-        if text and text != "-":
-            return text
-    return None
-
-
-GENERIC_CAMERA_MODELS = {
-    "hikvision isup",
-    "hikvision_isup",
-    "hikvision-isup",
-    "isup",
-}
-
-
-def _normalize_model_key(value: Optional[str]) -> str:
-    text = str(value or "").strip().lower()
-    return re.sub(r"[\s_-]+", " ", text)
-
-
-def _is_generic_camera_model(value: Optional[str]) -> bool:
-    return _normalize_model_key(value) in GENERIC_CAMERA_MODELS
-
-
-def _prefer_persistent_model(current_model: Optional[str], live_model: Optional[str]) -> Optional[str]:
-    current = str(current_model or "").strip()
-    live = str(live_model or "").strip()
-
-    if not live:
-        return current or None
-    if current and not _is_generic_camera_model(current):
-        return current
-    if _is_generic_camera_model(live) and current:
-        return current
-    return live
-
-
-def _extract_command_camera_info(payload: Any) -> dict[str, Any]:
-    if not isinstance(payload, dict):
-        return {}
-    camera_info = payload.get("camera_info")
-    if isinstance(camera_info, dict):
-        return camera_info
-    nested = payload.get("response")
-    if isinstance(nested, dict):
-        nested_info = nested.get("camera_info")
-        if isinstance(nested_info, dict):
-            return nested_info
-    return {}
-
-
-def _normalize_mac_address(value: Optional[str]) -> Optional[str]:
-    raw = str(value or "").strip().upper()
+def _save_face_bytes_to_local(raw: bytes) -> Optional[str]:
     if not raw:
         return None
-    if re.fullmatch(r"[0-9A-F]{12}", raw):
-        return ":".join(raw[i:i + 2] for i in range(0, 12, 2))
-    if re.fullmatch(r"[0-9A-F]{2}([-:][0-9A-F]{2}){5}", raw):
-        return raw.replace("-", ":")
-    return raw
-
-
-def _strip_or_none(value: Optional[str]) -> Optional[str]:
-    if value is None:
+    if len(raw) > MAX_FACE_UPLOAD_BYTES:
         return None
-    cleaned = value.strip()
-    return cleaned if cleaned else None
+
+    try:
+        with Image.open(BytesIO(raw)) as src:
+            frame_count = int(getattr(src, "n_frames", 1) or 1)
+            if frame_count > 1:
+                return None
+
+            rgb = src.convert("RGB")
+            _validate_face_geometry(rgb.width, rgb.height)
+            if max(rgb.size) > MAX_FACE_SIDE:
+                rgb.thumbnail((MAX_FACE_SIDE, MAX_FACE_SIDE), Image.Resampling.LANCZOS)
+
+            encoded = _encode_camera_jpeg(rgb)
+            if len(encoded) < MIN_FACE_OUTPUT_BYTES:
+                return None
+
+            filename = f"{uuid.uuid4().hex}.jpg"
+            filepath = os.path.join(CAMERA_USER_IMAGE_DIR, filename)
+            with open(filepath, "wb") as f:
+                f.write(encoded)
+
+            return f"/{CAMERA_USER_IMAGE_DIR.replace(os.sep, '/')}/{filename}"
+    except Exception:
+        return None
+
+
+def _save_face_model_data_to_local(model_data: Any) -> Optional[str]:
+    raw = _decode_base64_payload(model_data)
+    if not raw:
+        return None
+    return _save_face_bytes_to_local(raw)
+
+
+def _read_face_capabilities(target_id: str) -> dict[str, Any]:
+    """Kameraning face qidiruv imkoniyatlarini o'qib beradi (best-effort)."""
+    try:
+        payload = _send_isup_command_or_raise(
+            target_id,
+            "raw_get",
+            {
+                "path": "/ISAPI/Intelligent/FDLib/capabilities?format=json",
+                "allow_http_fallback": True,
+            },
+            timeout=12.0,
+        )
+    except HTTPException:
+        return {}
+    text = str(payload.get("response") or "") if isinstance(payload, dict) else ""
+    if not text:
+        return {}
+    try:
+        parsed = json.loads(text)
+        return parsed if isinstance(parsed, dict) else {}
+    except Exception:
+        return {}
+
+
+# Schemas and shared helpers were extracted to routers/cameras_parts/*.
 
 
 def _resolve_device_identifier(raw: Optional[str], db: Session) -> str:
@@ -394,18 +796,13 @@ def _resolve_online_command_target(cam: Device) -> tuple[str, dict, str]:
     return target_id, live_info, source
 
 
-class WebhookPayload(BaseModel):
-    """Kamera yuboradigan JSON formati (Hikvision moslashtirilgan farazda)"""
-    camera_mac: str              # Qaysi kameradan: "AA:BB:CC:11:22:33"
-    person_id: Optional[str] = None
-    person_name: Optional[str] = None
-    snapshot_url: Optional[str] = None
-    timestamp: Optional[str] = None
+def _extract_camera_payload_timestamp(payload: WebhookPayload) -> datetime:
+    for candidate in (payload.timestamp,):
+        parsed = _parse_camera_timestamp(candidate)
+        if parsed is not None:
+            return parsed
+    return now_tashkent()
 
-
-class CommandPayload(BaseModel):
-    command: str         # "get_users", "sync_faces", "restart", "get_info", "clear_faces"
-    params: Optional[dict] = {}
 
 
 # ── GET /api/cameras — barcha kameralar ───────────────
@@ -413,7 +810,8 @@ class CommandPayload(BaseModel):
 def list_cameras(request: Request, db: Session = Depends(get_db)):
     cams = db.query(Device).order_by(Device.id).all()
     base_url = _resolve_public_web_base_url(request)
-    now = datetime.utcnow()
+    now = now_tashkent()
+    day_start, day_end = _today_local_range()
     isup_map, source = _get_live_isup_map()
     isup_available = source != "unavailable"
     # Kamera 10 daqiqa ichida ping yubormagan bo'lsa -> offline
@@ -446,6 +844,12 @@ def list_cameras(request: Request, db: Session = Depends(get_db)):
         # DB dagi is_online ni ham sinxron yangilaymiz (ixtiyoriy, lekin foydali)
         if c.is_online != dynamic_online:
             c.is_online = dynamic_online
+        today_count = db.query(AttendanceLog).filter(
+            AttendanceLog.device_id == c.id,
+            AttendanceLog.timestamp >= day_start,
+            AttendanceLog.timestamp < day_end,
+        ).count()
+
         result.append({
             "id": c.id,
             "name": c.name,
@@ -462,11 +866,9 @@ def list_cameras(request: Request, db: Session = Depends(get_db)):
             "is_online": dynamic_online,
             "last_seen_at": c.last_seen_at.isoformat() if c.last_seen_at else None,
             "created_at": c.created_at.isoformat() if c.created_at else None,
-            "webhook_url": f"{base_url}/api/webhook",
-            "events_today": db.query(AttendanceLog).filter(
-                AttendanceLog.device_id == c.id,
-                AttendanceLog.timestamp >= now.replace(hour=0, minute=0, second=0)
-            ).count()
+            "webhook_url": f"{base_url}/api/v1/httppost/",
+            "events_today": today_count,
+            "today_attendance_count": today_count,
         })
     db.commit()
     return result
@@ -492,14 +894,57 @@ def add_camera(request: Request, data: CameraCreate, db: Session = Depends(get_d
     username = _strip_or_none(data.username)
     password = _strip_or_none(data.password)
     isup_password = _strip_or_none(data.isup_password) or ISUP_KEY
+    
+    # ISUP orqali avtomatik ma'lumotlarni tortib olish
+    mac_val = mac_or_serial
+    model_val = data.model
+    max_memory_val = data.max_memory or 1500
+
+    if isup_device_id:
+        try:
+            from redis_client import send_command_and_wait
+            res = send_command_and_wait(isup_device_id, "get_info", {}, timeout=5)
+            if res.get("ok"):
+                c_info = res.get("camera_info", {})
+                d_info = res.get("device", {})
+                
+                fetched_mac = c_info.get("macAddress")
+                if fetched_mac and not mac_val:
+                    mac_val = fetched_mac.upper()
+
+                fetched_model = c_info.get("model") or d_info.get("model") or d_info.get("device_model")
+                if fetched_model and not model_val:
+                    model_val = fetched_model
+                    
+                # Modellarga qarab avtomatik memory hajmini aniqlash
+                if model_val:
+                    m_upper = model_val.upper()
+                    if "341" in m_upper:
+                        max_memory_val = 3000
+                    elif "343" in m_upper:
+                        max_memory_val = 1500
+                    elif "671" in m_upper:
+                        max_memory_val = 50000
+                    elif "320" in m_upper:
+                        max_memory_val = 500
+                    elif "321" in m_upper:
+                        max_memory_val = 500
+                    elif "607" in m_upper:
+                        max_memory_val = 6000
+                    elif "680" in m_upper:
+                        max_memory_val = 100000
+        except Exception as e:
+            # Xatolik bo'lsa indamay davom etamiz
+            print(f"[API] add_camera ISUP auto-fetch error: {e}")
+            pass
 
     cam = Device(
         name=name,
-        mac_address=mac_or_serial,
+        mac_address=mac_val or f"TEMP-{uuid.uuid4().hex[:8].upper()}",
         isup_device_id=isup_device_id,
         location=data.location,
-        model=data.model,
-        max_memory=data.max_memory,
+        model=model_val,
+        max_memory=max_memory_val,
         organization_id=data.organization_id,
         username=username,
         password=password,
@@ -511,7 +956,7 @@ def add_camera(request: Request, data: CameraCreate, db: Session = Depends(get_d
     
     # Siz ko'rsatgan tizim webhook manzili:
     base_url = _resolve_public_web_base_url(request)
-    webhook_url = f"{base_url}/api/webhook"
+    webhook_url = f"{base_url}/api/v1/httppost/"
     
     return {
         "ok": True, 
@@ -588,12 +1033,7 @@ def camera_webhook(payload: WebhookPayload, db: Session = Depends(get_db)):
     if not device:
         raise HTTPException(status_code=403, detail="Ruxsat etilmagan kamera (MAC manzil ro'yxatda yo'q)")
 
-    ts = datetime.utcnow()
-    if payload.timestamp:
-        try:
-            ts = datetime.fromisoformat(payload.timestamp)
-        except Exception:
-            pass
+    ts = _extract_camera_payload_timestamp(payload)
 
     person_id = (payload.person_id or "").strip()
     person_name = (payload.person_name or "").strip() or None
@@ -602,8 +1042,29 @@ def camera_webhook(payload: WebhookPayload, db: Session = Depends(get_db)):
         employee = db.query(Employee).filter(Employee.personal_id == person_id).first()
     if employee is None and person_id.isdigit():
         employee = db.query(Employee).filter(Employee.id == int(person_id)).first()
-    if employee is not None and not person_name:
+    if employee is not None:
         person_name = f"{employee.first_name or ''} {employee.last_name or ''}".strip() or None
+
+    note_uz, note_ru, note_source = _resolve_event_wellbeing_snapshot(
+        db,
+        employee,
+        note_uz=payload.wellbeing_note_uz,
+        note_ru=payload.wellbeing_note_ru,
+        source=payload.wellbeing_note_source,
+    )
+    photo_path = resolve_snapshot_path(payload.snapshot_url or "")
+    psychological_state_key = detect_psychological_state(photo_path)
+    psychological_state_uz, psychological_state_ru = state_labels(psychological_state_key)
+
+    if employee is not None:
+        upsert_daily_psychological_state(
+            db,
+            employee_id=int(employee.id),
+            state_key=psychological_state_key,
+            timestamp=ts,
+            note=f"webhook:{device.mac_address or payload.camera_mac}",
+            source="external_system",
+        )
 
     log = AttendanceLog(
         employee_id=employee.id if employee else None,
@@ -612,20 +1073,45 @@ def camera_webhook(payload: WebhookPayload, db: Session = Depends(get_db)):
         person_id=person_id or None,
         person_name=person_name,
         snapshot_url=(payload.snapshot_url or "").strip() or None,
+        wellbeing_note_uz=note_uz or None,
+        wellbeing_note_ru=note_ru or None,
+        wellbeing_note_source=note_source or None,
         timestamp=ts,
         status="aniqlandi" if employee else "noma'lum",
     )
     db.add(log)
+    db.flush()
     device.is_online = True
-    device.last_seen_at = datetime.utcnow()
+    device.last_seen_at = now_tashkent()
     db.commit()
-    db.refresh(log)
+
+    _publish_attendance_event_redis(
+        source="webhook",
+        log_id=log.id,
+        timestamp=log.timestamp,
+        device=device,
+        employee_id=int(employee.id) if employee else None,
+        person_id=person_id,
+        person_name=person_name,
+        status=log.status,
+        snapshot_url=log.snapshot_url,
+        psychological_state_key=psychological_state_key,
+        psychological_state_uz=psychological_state_uz,
+        psychological_state_ru=psychological_state_ru,
+        psychological_state_source="external_system" if employee else "",
+        wellbeing_note_uz=note_uz,
+        wellbeing_note_ru=note_ru,
+        wellbeing_note_source=note_source,
+    )
 
     return {
         "ok": True,
         "camera_name": device.name,
         "employee_found": employee is not None,
         "log_id": log.id,
+        "psychological_state_key": psychological_state_key,
+        "psychological_state_uz": psychological_state_uz,
+        "psychological_state_ru": psychological_state_ru,
         "message": "Ma'lumot qabul qilindi",
     }
 
@@ -697,12 +1183,7 @@ def camera_webhook(payload: WebhookPayload, db: Session = Depends(get_db)):
     if not device:
         raise HTTPException(status_code=403, detail="Ruxsat etilmagan kamera (MAC manzil ro'yxatda yo'q)")
 
-    ts = datetime.utcnow()
-    if payload.timestamp:
-        try:
-            ts = datetime.fromisoformat(payload.timestamp)
-        except Exception:
-            pass
+    ts = _extract_camera_payload_timestamp(payload)
 
     person_id = (payload.person_id or "").strip()
     person_name = (payload.person_name or "").strip() or None
@@ -711,8 +1192,29 @@ def camera_webhook(payload: WebhookPayload, db: Session = Depends(get_db)):
         employee = db.query(Employee).filter(Employee.personal_id == person_id).first()
     if employee is None and person_id.isdigit():
         employee = db.query(Employee).filter(Employee.id == int(person_id)).first()
-    if employee is not None and not person_name:
+    if employee is not None:
         person_name = f"{employee.first_name or ''} {employee.last_name or ''}".strip() or None
+
+    note_uz, note_ru, note_source = _resolve_event_wellbeing_snapshot(
+        db,
+        employee,
+        note_uz=payload.wellbeing_note_uz,
+        note_ru=payload.wellbeing_note_ru,
+        source=payload.wellbeing_note_source,
+    )
+    photo_path = resolve_snapshot_path(payload.snapshot_url or "")
+    psychological_state_key = detect_psychological_state(photo_path)
+    psychological_state_uz, psychological_state_ru = state_labels(psychological_state_key)
+
+    if employee is not None:
+        upsert_daily_psychological_state(
+            db,
+            employee_id=int(employee.id),
+            state_key=psychological_state_key,
+            timestamp=ts,
+            note=f"webhook:{device.mac_address or payload.camera_mac}",
+            source="external_system",
+        )
 
     log = AttendanceLog(
         employee_id=employee.id if employee else None,
@@ -721,20 +1223,45 @@ def camera_webhook(payload: WebhookPayload, db: Session = Depends(get_db)):
         person_id=person_id or None,
         person_name=person_name,
         snapshot_url=(payload.snapshot_url or "").strip() or None,
+        wellbeing_note_uz=note_uz or None,
+        wellbeing_note_ru=note_ru or None,
+        wellbeing_note_source=note_source or None,
         timestamp=ts,
         status="aniqlandi" if employee else "noma'lum",
     )
     db.add(log)
+    db.flush()
     device.is_online = True
-    device.last_seen_at = datetime.utcnow()
+    device.last_seen_at = now_tashkent()
     db.commit()
-    db.refresh(log)
+
+    _publish_attendance_event_redis(
+        source="webhook",
+        log_id=log.id,
+        timestamp=log.timestamp,
+        device=device,
+        employee_id=int(employee.id) if employee else None,
+        person_id=person_id,
+        person_name=person_name,
+        status=log.status,
+        snapshot_url=log.snapshot_url,
+        psychological_state_key=psychological_state_key,
+        psychological_state_uz=psychological_state_uz,
+        psychological_state_ru=psychological_state_ru,
+        psychological_state_source="external_system" if employee else "",
+        wellbeing_note_uz=note_uz,
+        wellbeing_note_ru=note_ru,
+        wellbeing_note_source=note_source,
+    )
 
     return {
         "ok": True,
         "camera_name": device.name,
         "employee_found": employee is not None,
         "log_id": log.id,
+        "psychological_state_key": psychological_state_key,
+        "psychological_state_uz": psychological_state_uz,
+        "psychological_state_ru": psychological_state_ru,
         "message": "Ma'lumot qabul qilindi"
     }
 
@@ -745,6 +1272,7 @@ ALLOWED_COMMANDS = {
     "get_device_snapshot": "Kameradan batafsil holat/capacity ma'lumotini olish",
     "get_users":    "Kameradagi yuzlar ro'yxatini olish",
     "get_attendance_events": "Kameradagi davomat eventlarini olish",
+    "get_today_attendance_count": "Bugungi attendance sonini olish",
     "get_face_records": "Kameradagi yuz (face record) ro'yxatini olish",
     "sync_faces":   "Serverdan yuz bazasini kameraga sinxronlashtirish",
     "get_face_count": "Kameradan yuz bazasi sonini olish va sinxronlash",
@@ -756,6 +1284,11 @@ ALLOWED_COMMANDS = {
     "open_door":    "Eshikni ochish / Qulfni ochish",
     "clear_logs":   "Kameradagi mahalliy jurnalni tozalash",
     "get_logs":     "Kameraning ichki jurnalini yuklab olish",
+    "get_alarm_server": "Kameradan HTTP notification (Event) sozlamalarini olish",
+    "set_alarm_server": "Kameraga EHome/Webhook sozlamalarini yozish",
+    "raw_get":      "ISAPI orqali ixtiyoriy GET so'rov qabul qilish",
+    "raw_put":      "ISAPI orqali ixtiyoriy PUT so'rov qabul qilish",
+    "raw_post":     "ISAPI orqali ixtiyoriy POST so'rov qabul qilish",
 }
 
 
@@ -806,6 +1339,53 @@ def send_command(cam_id: int, payload: CommandPayload, db: Session = Depends(get
     if not cam:
         raise HTTPException(status_code=404, detail="Kamera topilmadi")
 
+    if payload.command == "get_today_attendance_count":
+        target_id, _, source = _resolve_online_command_target(cam)
+        params = payload.params or {}
+        try:
+            hours = max(1, min(int(params.get("hours") or 168), 24 * 30))
+        except Exception:
+            hours = 168
+        try:
+            limit = max(1, min(int(params.get("limit") or 2000), 4000))
+        except Exception:
+            limit = 2000
+
+        isup_response = _send_isup_command_or_raise(
+            target_id,
+            "get_attendance_events",
+            {
+                "hours": hours,
+                "limit": limit,
+                "max_results": max(10, min(limit, 2000)),
+            },
+            timeout=35.0,
+        )
+        rows = isup_response.get("events", []) if isinstance(isup_response, dict) else []
+        if not isinstance(rows, list):
+            rows = []
+
+        today_attendance, diagnostics = _summarize_today_events_from_isup_rows(rows)
+        diagnostics["isup_attempts"] = isup_response.get("attempts") if isinstance(isup_response, dict) else None
+        return {
+            "ok": True,
+            "transport": "isup_redis",
+            "isup_source": source,
+            "camera": cam.name,
+            "command": payload.command,
+            "description": ALLOWED_COMMANDS[payload.command],
+            "target_device_id": target_id,
+            "today_attendance": today_attendance,
+            "diagnostics": diagnostics,
+            "response": {
+                **today_attendance,
+                "raw_event_count": diagnostics.get("raw_event_count"),
+                "invalid_timestamp_count": diagnostics.get("invalid_timestamp_count"),
+                "isup_attempts": diagnostics.get("isup_attempts"),
+            },
+            "message": f"ISUP orqali bugungi attendance soni: {today_attendance['count']} ta.",
+        }
+
     target_id, _, source = _resolve_online_command_target(cam)
 
     response = _send_isup_command_or_raise(
@@ -814,6 +1394,8 @@ def send_command(cam_id: int, payload: CommandPayload, db: Session = Depends(get
         payload.params or {},
         timeout=10.0,
     )
+
+    today_attendance = _get_today_attendance_summary(db, cam)
 
     return {
         "ok": True,
@@ -824,7 +1406,8 @@ def send_command(cam_id: int, payload: CommandPayload, db: Session = Depends(get
         "description": ALLOWED_COMMANDS[payload.command],
         "target_device_id": target_id,
         "response": response,
-        "message": f"'{ALLOWED_COMMANDS[payload.command]}' buyrug'i ISUP orqali yuborildi",
+        "today_attendance": today_attendance,
+        "message": f"'{ALLOWED_COMMANDS[payload.command]}' buyrug'i ISUP orqali yuborildi. Bugungi attendance: {today_attendance['count']} ta.",
     }
 
 
@@ -1039,14 +1622,47 @@ def get_camera_users(cam_id: int, limit: int = 300, db: Session = Depends(get_db
                 "message": "Bu kamera modeli foydalanuvchi/yuz ro'yxatini qo'llamaydi (PTZ/oddiy IP-kamera bo'lishi mumkin).",
             }
         raise
+
+    # Kamera user ro'yxatida har bir user uchun face bor/yo'qligini ko'rsatamiz.
+    face_status_available = False
+    face_status_error: Optional[str] = None
+    face_presence_map: dict[str, bool] = {}
+    try:
+        face_records_resp = _send_isup_command_or_raise(
+            target_id,
+            "get_face_records",
+            {"all": True, "limit": max(1, min(int(limit), 2000))},
+            timeout=20.0,
+        )
+        face_presence_map = _extract_face_presence_map(face_records_resp)
+        face_status_available = True
+    except HTTPException as exc:
+        face_status_error = str(exc.detail)
+
+    enriched_users: list[dict[str, Any]] = []
+    for row in users:
+        if not isinstance(row, dict):
+            continue
+        employee_no = str(row.get("employeeNo") or "").strip()
+        enriched = dict(row)
+        if not employee_no:
+            enriched["has_face_on_camera"] = None
+        elif face_status_available:
+            enriched["has_face_on_camera"] = bool(face_presence_map.get(employee_no))
+        else:
+            enriched["has_face_on_camera"] = None
+        enriched_users.append(enriched)
+
     return {
         "ok": True,
         "camera_id": cam.id,
         "camera_name": cam.name,
         "target_device_id": target_id,
         "isup_source": source,
-        "count": len(users),
-        "users": users,
+        "count": len(enriched_users),
+        "users": enriched_users,
+        "face_status_available": face_status_available,
+        "face_status_error": face_status_error,
     }
 
 
@@ -1054,7 +1670,9 @@ def get_camera_users(cam_id: int, limit: int = 300, db: Session = Depends(get_db
 def import_camera_users_to_db(
     cam_id: int,
     limit: int = 500,
-    allow_camera_http_download: bool = False,
+    allow_camera_http_download: bool = True,
+    face_import_mode: str = "if_missing",
+    employee_type: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
     cam = db.query(Device).filter(Device.id == cam_id).first()
@@ -1095,19 +1713,91 @@ def import_camera_users_to_db(
     except HTTPException as exc:
         face_records = []
         face_records_error = str(exc.detail)
-    face_url_map: dict[str, str] = {}
+    face_record_map: dict[str, dict[str, str]] = {}
+    face_records_with_url = 0
+    face_records_with_model_data = 0
     for row in face_records:
         if not isinstance(row, dict):
             continue
         fpid = str(row.get("fpid") or "").strip()
+        if not fpid or fpid in face_record_map:
+            continue
+        raw_face = row.get("raw") if isinstance(row.get("raw"), dict) else {}
+
         face_url = str(row.get("face_url") or "").strip()
-        if fpid and face_url and fpid not in face_url_map:
-            face_url_map[fpid] = face_url
+        if not face_url and isinstance(raw_face, dict):
+            face_url = _pick_first_nonempty(
+                raw_face,
+                (
+                    "faceURL",
+                    "faceUrl",
+                    "pictureURL",
+                    "pictureUrl",
+                    "picUrl",
+                    "picURL",
+                    "imageURL",
+                    "imageUrl",
+                    "url",
+                ),
+            ) or ""
+
+        model_data = ""
+        if isinstance(raw_face, dict):
+            model_data = _pick_first_nonempty(
+                raw_face,
+                (
+                    "modelData",
+                    "model_data",
+                    "faceModelData",
+                    "face_model_data",
+                    "pictureData",
+                    "picture_data",
+                    "imageData",
+                    "image_data",
+                    "faceData",
+                    "face_data",
+                    "photoData",
+                    "photo_data",
+                    "photo",
+                ),
+            ) or ""
+
+        if face_url:
+            face_records_with_url += 1
+        if model_data:
+            face_records_with_model_data += 1
+
+        face_record_map[fpid] = {
+            "face_url": face_url,
+            "model_data": model_data,
+        }
+
+    face_caps = _read_face_capabilities(target_id)
+    supports_fdsearch_data_package = bool(face_caps.get("isSupportFDSearchDataPackage") is True)
+
+    mode = str(face_import_mode or "if_missing").strip().lower()
+    if mode not in {"off", "if_missing", "overwrite"}:
+        raise HTTPException(status_code=422, detail="face_import_mode noto'g'ri (off/if_missing/overwrite)")
+    emp_type = str(employee_type or "").strip().lower() or None
+    if emp_type is not None and emp_type not in {"oquvchi", "oqituvchi", "hodim"}:
+        raise HTTPException(status_code=422, detail="employee_type noto'g'ri")
 
     created = 0
     updated = 0
     skipped = 0
     downloaded_faces = 0
+    linked_to_camera = 0
+    faces_camera_download_failed = 0
+    faces_model_data_not_image = 0
+    faces_model_data_save_failed = 0
+    faces_isup_direct_downloaded = 0
+
+    existing_links = {
+        int(row.employee_id)
+        for row in db.query(EmployeeCameraLink.employee_id)
+        .filter(EmployeeCameraLink.camera_id == cam.id)
+        .all()
+    }
 
     for row in users:
         employee_no = str(row.get("employeeNo") or "").strip()
@@ -1125,8 +1815,11 @@ def import_camera_users_to_db(
                 personal_id=employee_no,
                 has_access=True,
                 organization_id=cam.organization_id,
+                employee_type=emp_type,
             )
             db.add(emp)
+            # Ensure PK is available before creating camera link for imported user.
+            db.flush()
             created += 1
         else:
             changed = False
@@ -1139,15 +1832,56 @@ def import_camera_users_to_db(
             if changed:
                 updated += 1
 
-        face_url = face_url_map.get(employee_no)
-        if (
-            allow_camera_http_download
-            and face_url
-            and cam.username
-            and cam.password
-            and not emp.image_url
-        ):
-            image_url = _download_face_to_local(face_url, cam.username, cam.password)
+        if emp_type is not None and emp.employee_type != emp_type:
+            emp.employee_type = emp_type
+
+        if emp.id is not None and int(emp.id) not in existing_links:
+            db.add(EmployeeCameraLink(employee_id=int(emp.id), camera_id=int(cam.id)))
+            existing_links.add(int(emp.id))
+            linked_to_camera += 1
+
+        face_row = face_record_map.get(employee_no) or {}
+        face_url = str(face_row.get("face_url") or "")
+        model_data = str(face_row.get("model_data") or "")
+        should_import_face = mode != "off" and (mode == "overwrite" or not emp.image_url)
+        image_url = None
+        if should_import_face:
+            if face_url and allow_camera_http_download and cam.username and cam.password:
+                image_url = _download_face_to_local(face_url, cam.username, cam.password)
+                if image_url is None:
+                    faces_camera_download_failed += 1
+            if image_url is None and model_data:
+                model_image = _hik_decode_base64_image(model_data)
+                if model_image is None:
+                    faces_model_data_not_image += 1
+                else:
+                    image_url = _save_face_bytes_to_local(model_image)
+                    if image_url is None:
+                        faces_model_data_save_failed += 1
+            if image_url is None:
+                try:
+                    direct_face = _send_isup_command_or_raise(
+                        target_id,
+                        "get_face_image",
+                        {
+                            "personal_id": employee_no,
+                            "allow_http_fallback": True,
+                        },
+                        timeout=15.0,
+                    )
+                except HTTPException:
+                    direct_face = {}
+                if isinstance(direct_face, dict) and direct_face.get("ok"):
+                    image_b64 = str(direct_face.get("image_b64") or "").strip()
+                    if image_b64:
+                        try:
+                            raw = base64.b64decode(image_b64, validate=False)
+                        except Exception:
+                            raw = b""
+                        if raw:
+                            image_url = _save_face_bytes_to_local(raw)
+                            if image_url is not None:
+                                faces_isup_direct_downloaded += 1
             if image_url:
                 emp.image_url = image_url
                 downloaded_faces += 1
@@ -1157,6 +1891,23 @@ def import_camera_users_to_db(
     except Exception as exc:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Import paytida DB xatoligi: {exc}")
+
+    diagnostics: list[str] = []
+    if face_caps:
+        if not supports_fdsearch_data_package:
+            diagnostics.append("Kamera `FDSearchDataPackage` ni qo'llamaydi; import paytida yuz rasmi URL/blob qaytmasligi mumkin.")
+    else:
+        diagnostics.append("Kamera face capabilities o'qilmadi; rasm import imkoniyati modelga bog'liq bo'lishi mumkin.")
+    if face_records_with_model_data and not face_records_with_url and downloaded_faces == 0:
+        diagnostics.append("Kamera `get_face_records` javobida asosan `modelData` qaytardi; bu qurilmada bu maydon ko'pincha feature-vector bo'lib, rasm emas.")
+    if faces_camera_download_failed:
+        diagnostics.append(f"{faces_camera_download_failed} ta faceURL rasmni kameradan yuklab bo'lmadi.")
+    if faces_model_data_not_image:
+        diagnostics.append(f"{faces_model_data_not_image} ta modelData rasm formati emas (JPEG/PNG/GIF/BMP/WEBP emas).")
+    if faces_model_data_save_failed:
+        diagnostics.append(f"{faces_model_data_save_failed} ta modelData rasm saqlash validatsiyasidan o'tmadi.")
+    if faces_isup_direct_downloaded:
+        diagnostics.append(f"{faces_isup_direct_downloaded} ta rasm ISUP get_face_image fallback orqali olindi.")
 
     return {
         "ok": True,
@@ -1168,10 +1919,24 @@ def import_camera_users_to_db(
         "created": created,
         "updated": updated,
         "skipped": skipped,
+        "linked_to_camera": linked_to_camera,
         "faces_downloaded": downloaded_faces,
+        "face_records_total": len(face_records),
+        "face_records_with_url": face_records_with_url,
+        "face_records_with_model_data": face_records_with_model_data,
+        "supports_fdsearch_data_package": supports_fdsearch_data_package,
+        "faces_camera_download_failed": faces_camera_download_failed,
+        "faces_model_data_not_image": faces_model_data_not_image,
+        "faces_model_data_save_failed": faces_model_data_save_failed,
+        "faces_isup_direct_downloaded": faces_isup_direct_downloaded,
         "allow_camera_http_download": allow_camera_http_download,
+        "face_import_mode": mode,
         "face_records_error": face_records_error,
-        "message": f"Kameradan bazaga import yakunlandi: {created} yangi, {updated} yangilandi, {downloaded_faces} rasm olindi.",
+        "diagnostics": diagnostics,
+        "message": (
+            f"Kameradan bazaga import yakunlandi: {created} yangi, {updated} yangilandi, "
+            f"{linked_to_camera} kamera-bog'lanish yaratildi, {downloaded_faces} rasm olindi."
+        ),
     }
 
 
@@ -1205,7 +1970,8 @@ async def add_user_to_camera(
     }
 
     target_id, _, _ = _resolve_online_command_target(cam)
-    response = _send_isup_command_or_raise(
+    response = await asyncio.to_thread(
+        _send_isup_command_or_raise,
         target_id,
         "add_user",
         params,
@@ -1225,11 +1991,13 @@ async def add_user_to_camera(
 @router.post("/api/cameras/{cam_id}/users/upload")
 async def add_user_to_camera_with_image(
     request: Request,
+    background_tasks: BackgroundTasks,
     cam_id: int,
     first_name: str = Form(...),
     last_name: str = Form(...),
     personal_id: Optional[str] = Form(None),
     image: Optional[UploadFile] = File(None),
+    push_mode: str = Form("background"),
     db: Session = Depends(get_db),
 ):
     cam = db.query(Device).filter(Device.id == cam_id).first()
@@ -1238,49 +2006,13 @@ async def add_user_to_camera_with_image(
 
     pid = _normalize_personal_id(personal_id)
     if pid is None:
-        pid = _generate_unique_personal_id(db)
+        raise HTTPException(status_code=422, detail="Kameraga saqlash uchun personal_id majburiy")
+    _validate_personal_id_format(pid)
 
-    image_url = None
-    image_bytes: Optional[bytes] = None
-    image_mime = "image/jpeg"
-    if image and image.filename:
-        ext = image.filename.split(".")[-1].lower()
-        if ext not in {"jpg", "jpeg", "png", "webp"}:
-            raise HTTPException(status_code=400, detail="Rasm formati noto'g'ri (jpg/png/webp)")
-
-        # Kamera uchun eng mos format: JPEG. PNG/WEBP yuklansa ham JPEG qilib saqlaymiz.
-        filename = f"{uuid.uuid4().hex}.jpg"
-        filepath = os.path.join(CAMERA_USER_IMAGE_DIR, filename)
-        try:
-            raw = await image.read()
-            with Image.open(BytesIO(raw)) as img:
-                rgb = img.convert("RGB")
-                # Juda katta rasm yuborilsa ISUP PTXML yuklamasi sekinlashmasligi uchun o'lchamni me'yorlaymiz.
-                max_side = 720
-                if max(rgb.size) > max_side:
-                    rgb.thumbnail((max_side, max_side))
-                out = BytesIO()
-                rgb.save(out, format="JPEG", quality=88, optimize=True)
-                image_bytes = out.getvalue()
-            with open(filepath, "wb") as f:
-                f.write(image_bytes or b"")
-        except Exception:
-            # PIL bilan o'qilmasa, fallback sifatida original faylni saqlaymiz.
-            ext_fallback = "jpg" if ext in {"jpg", "jpeg"} else ext
-            filename = f"{uuid.uuid4().hex}.{ext_fallback}"
-            filepath = os.path.join(CAMERA_USER_IMAGE_DIR, filename)
-            if image_bytes is None:
-                image.file.seek(0)
-                image_bytes = image.file.read()
-            with open(filepath, "wb") as buffer:
-                buffer.write(image_bytes or b"")
-            if ext_fallback == "png":
-                image_mime = "image/png"
-            elif ext_fallback == "webp":
-                image_mime = "image/webp"
-            else:
-                image_mime = "image/jpeg"
-        image_url = f"/{CAMERA_USER_IMAGE_DIR.replace(os.sep, '/')}/{filename}"
+    if image is None or not image.filename:
+        raise HTTPException(status_code=422, detail="Kameraga foydalanuvchi qo'shishda rasm majburiy")
+    image_url, image_bytes, image_mime, image_meta = await _prepare_camera_face_image(image)
+    face_b64 = base64.b64encode(image_bytes).decode("ascii")
 
     employee = db.query(Employee).filter(Employee.personal_id == pid).first()
     if employee is None:
@@ -1303,19 +2035,83 @@ async def add_user_to_camera_with_image(
     db.commit()
     db.refresh(employee)
 
-    # Local user avval saqlanadi, keyin kamera tomonga ISUP push qilinadi.
+    push_mode_norm = str(push_mode or "background").strip().lower()
+    if push_mode_norm in {"background", "fast", "async", "queued"}:
+        add_user_response: dict[str, Any] = {
+            "ok": True,
+            "queued": True,
+            "message": "Foydalanuvchi kamera sinxroni fon rejimida yuboriladi",
+        }
+        set_face_response: dict[str, Any] = {
+            "ok": True,
+            "queued": True,
+            "message": "Rasm kamera sinxroni fon rejimida yuboriladi",
+        }
+        camera_push_error: Optional[str] = None
+        camera_push_attempted = False
+        try:
+            target_id, _, _ = _resolve_online_command_target(cam)
+            camera_push_attempted = True
+            public_base = _resolve_public_web_base_url(request)
+            face_url = f"{public_base}{image_url}"
+            background_tasks.add_task(
+                _push_camera_user_and_face_sync,
+                target_id=target_id,
+                first_name=first_name,
+                last_name=last_name,
+                personal_id=pid,
+                face_b64=face_b64,
+                face_mime=image_mime,
+                face_url=face_url,
+                camera_label=str(cam.name or ""),
+            )
+        except HTTPException as exc:
+            camera_push_error = str(exc.detail)
+            add_user_response = {
+                "ok": False,
+                "skipped": True,
+                "error": camera_push_error,
+            }
+            set_face_response = {
+                "ok": False,
+                "skipped": True,
+                "error": camera_push_error,
+            }
+
+        return {
+            "ok": True,
+            "camera_id": cam.id,
+            "camera_name": cam.name,
+            "personal_id": pid,
+            "employee_id": employee.id,
+            "image_url": image_url,
+            "local_saved": True,
+            "camera_push_ok": camera_push_error is None,
+            "camera_push_queued": bool(camera_push_attempted and camera_push_error is None),
+            "camera_push_error": camera_push_error,
+            "add_user_response": add_user_response,
+            "set_face_response": set_face_response,
+            "image_meta": image_meta,
+            "message": (
+                f"{first_name} {last_name} (ID: {pid}) local bazaga saqlandi. "
+                f"Kamera sinxroni fon rejimida davom etmoqda."
+            ),
+        }
+
+    # Local user saqlangandan keyin kamera tomoniga strict push qilamiz.
     add_user_response: dict[str, Any] = {
         "ok": False,
         "skipped": True,
         "error": "Kamera push hali urinilmadi",
     }
-    set_face_response = None
+    set_face_response: Optional[dict[str, Any]] = None
     camera_push_error: Optional[str] = None
     camera_push_attempted = False
     try:
         target_id, _, _ = _resolve_online_command_target(cam)
         camera_push_attempted = True
-        add_user_response = _send_isup_command_or_raise(
+        add_user_response = await asyncio.to_thread(
+            _send_isup_command_or_raise,
             target_id,
             "add_user",
             {
@@ -1326,15 +2122,18 @@ async def add_user_to_camera_with_image(
             timeout=12.0,
         )
 
-        if image_url and image_bytes:
-            public_base = _resolve_public_web_base_url(request)
-            face_url = f"{public_base}{image_url}"
+        public_base = _resolve_public_web_base_url(request)
+        face_url = f"{public_base}{image_url}"
 
-            # add_user dan keyin kamera yozuvni qabul qilishiga qisqa vaqt beramiz.
-            await asyncio.sleep(0.25)
+        # Kamera add_user dan keyin yozuvni darhol qabul qilmasligi mumkin,
+        # shuning uchun faqat zarur bo'lsa qisqa retry qilamiz (doimiy sleep yo'q).
+        transient_delay = 0.0
+        for attempt in range(3):
+            if transient_delay > 0:
+                await asyncio.sleep(transient_delay)
             try:
-                face_b64 = base64.b64encode(image_bytes).decode("ascii")
-                set_face_response = _send_isup_command_or_raise(
+                set_face_response = await asyncio.to_thread(
+                    _send_isup_command_or_raise,
                     target_id,
                     "set_face",
                     {
@@ -1342,13 +2141,19 @@ async def add_user_to_camera_with_image(
                         "face_b64": face_b64,
                         "face_mime": image_mime,
                         "face_url": face_url,
+                        "allow_http_fallback": True,
                     },
                     timeout=10.0,
                 )
+                break
             except HTTPException as exc:
                 err = str(exc.detail)
                 low = err.lower()
                 transient = "code=10" in low or "fpid" in low or "isup javobi kelmadi" in low
+                if transient and attempt < 2:
+                    # 0.08s -> 0.14s -> 0.22s. Umumiy vaqt kamayadi, lekin kamera tayyor bo'lmasa baribir qayta urinadi.
+                    transient_delay = 0.08 if attempt == 0 else 0.14
+                    continue
                 if transient:
                     # Kamera ko'pincha rasmni qabul qilib bo'ladi, lekin javob kechikadi.
                     set_face_response = {
@@ -1359,6 +2164,8 @@ async def add_user_to_camera_with_image(
                     }
                 else:
                     set_face_response = {"ok": False, "error": err}
+                    camera_push_error = err
+                break
     except HTTPException as exc:
         camera_push_error = str(exc.detail)
         add_user_response = {
@@ -1392,6 +2199,16 @@ async def add_user_to_camera_with_image(
         if set_face_response.get("ok") is False and not set_face_response.get("skipped"):
             camera_push_ok = False
 
+    # Kamera saqlash rejimi: foydalanuvchi + rasm ikkalasi ham kameraga yozilishi shart.
+    if not camera_push_ok:
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                f"Kamera saqlash muvaffaqiyatsiz: {camera_push_error or 'foydalanuvchi yoki rasm yozilmadi'}. "
+                f"Local employee_id={employee.id}, personal_id={pid} saqlandi."
+            ),
+        )
+
     if camera_push_error:
         message = f"{first_name} {last_name} (ID: {pid}) local bazaga saqlandi, lekin kamera pushda muammo: {camera_push_error}"
     elif image_url and image_bytes and set_face_response and set_face_response.get("accepted_with_warning"):
@@ -1419,6 +2236,7 @@ async def add_user_to_camera_with_image(
         "camera_push_error": camera_push_error,
         "add_user_response": add_user_response,
         "set_face_response": set_face_response,
+        "image_meta": image_meta,
         "message": message,
     }
 
@@ -1426,7 +2244,7 @@ async def add_user_to_camera_with_image(
 @router.get("/api/cameras/by-org/{org_id}")
 def cameras_by_org(org_id: int, db: Session = Depends(get_db)):
     """Return cameras belonging to a specific organization."""
-    now = datetime.utcnow()
+    now = now_tashkent()
     isup_map, source = _get_live_isup_map()
     isup_available = source != "unavailable"
     cams = db.query(Device).filter(Device.organization_id == org_id).order_by(Device.name).all()
@@ -1462,12 +2280,16 @@ def get_events(
     limit: int = 50,
     organization_id: Optional[int] = None,
     camera_id: Optional[int] = None,
+    today_only: bool = False,
     paginated: bool = False,
     page: int = 1,
     page_size: int = 50,
     db: Session = Depends(get_db),
 ):
     query = db.query(AttendanceLog)
+    if today_only:
+        day_start, day_end = _today_utc_range()
+        query = query.filter(AttendanceLog.timestamp >= day_start, AttendanceLog.timestamp < day_end)
     if camera_id is not None:
         query = query.filter(AttendanceLog.device_id == camera_id)
     if organization_id is not None:
@@ -1478,7 +2300,9 @@ def get_events(
             )
         )
 
-    order_query = query.order_by(AttendanceLog.timestamp.desc(), AttendanceLog.id.desc())
+    # Realtime ko'rinish uchun event kelish tartibini (id) ustuvor qilamiz.
+    # Kamera vaqti kech/yoki eski bo'lsa ham yangi yozuv tepada chiqadi.
+    order_query = query.order_by(AttendanceLog.id.desc(), AttendanceLog.timestamp.desc())
 
     if paginated:
         safe_page_size = max(1, min(int(page_size), 200))
@@ -1537,10 +2361,21 @@ def get_attendance(
     organization_id: Optional[int] = None,
     camera_id: Optional[int] = None,
     after_id: Optional[int] = None,
+    today_only: bool = False,
     db: Session = Depends(get_db),
 ):
     safe_limit = max(1, min(int(limit), 3000))
     query = db.query(AttendanceLog)
+    if today_only:
+        day_start, day_end = _today_utc_range()
+        query = query.filter(AttendanceLog.timestamp >= day_start, AttendanceLog.timestamp < day_end)
+    if organization_id is not None:
+        query = query.outerjoin(AttendanceLog.device).outerjoin(AttendanceLog.employee).filter(
+            or_(
+                Device.organization_id == organization_id,
+                Employee.organization_id == organization_id,
+            )
+        )
     if camera_id is not None:
         query = query.filter(AttendanceLog.device_id == camera_id)
     if after_id is not None:
@@ -1551,7 +2386,7 @@ def get_attendance(
     if after_id is not None:
         logs = query.order_by(AttendanceLog.id.asc()).limit(safe_limit).all()
     else:
-        logs = query.order_by(AttendanceLog.timestamp.desc(), AttendanceLog.id.desc()).limit(safe_limit).all()
+        logs = query.order_by(AttendanceLog.id.desc(), AttendanceLog.timestamp.desc()).limit(safe_limit).all()
 
     items = []
     last_id = int(after_id or 0)
@@ -1564,9 +2399,6 @@ def get_attendance(
         elif l.employee and l.employee.organization:
             organization = l.employee.organization
 
-        if organization_id is not None:
-            if not organization or int(organization.id) != int(organization_id):
-                continue
 
         employee_name = None
         personal_id = l.person_id
@@ -1598,6 +2430,982 @@ def get_attendance(
     return {"ok": True, "count": len(items), "items": items, "last_id": last_id}
 
 
+def _attendance_group_identity_expr():
+    fallback_key = func.coalesce(
+        func.nullif(func.trim(AttendanceLog.person_id), ""),
+        func.nullif(func.trim(AttendanceLog.person_name), ""),
+        func.nullif(func.trim(AttendanceLog.camera_mac), ""),
+        literal("unknown"),
+    )
+    return case(
+        (AttendanceLog.employee_id.isnot(None), literal("e:") + cast(AttendanceLog.employee_id, String)),
+        else_=literal("u:") + fallback_key,
+    )
+
+
+def _apply_attendance_filters(
+    query,
+    *,
+    organization_id: Optional[int],
+    camera_id: Optional[int],
+    personal_id: Optional[str],
+    year: Optional[int],
+    month: Optional[int],
+    day: Optional[int],
+):
+    if organization_id is not None:
+        query = query.filter(
+            or_(
+                AttendanceLog.device.has(Device.organization_id == organization_id),
+                AttendanceLog.employee.has(Employee.organization_id == organization_id),
+            )
+        )
+    if camera_id is not None:
+        query = query.filter(AttendanceLog.device_id == camera_id)
+    personal_id_val = _normalize_personal_id(personal_id)
+    if personal_id_val:
+        query = query.filter(
+            or_(
+                func.coalesce(func.nullif(func.trim(AttendanceLog.person_id), ""), "") == personal_id_val,
+                AttendanceLog.employee.has(Employee.personal_id == personal_id_val),
+            )
+        )
+    if year is not None:
+        query = query.filter(func.strftime("%Y", AttendanceLog.timestamp) == f"{int(year):04d}")
+    if month is not None:
+        query = query.filter(func.strftime("%m", AttendanceLog.timestamp) == f"{int(month):02d}")
+    if day is not None:
+        query = query.filter(func.strftime("%d", AttendanceLog.timestamp) == f"{int(day):02d}")
+    return query
+
+
+def _resolve_attendance_org_scope(request: Request, db: Session) -> dict[str, Any]:
+    auth_user = request.session.get("auth_user") or {}
+    org_query = db.query(Organization.id, Organization.name, Organization.subscription_status)
+    org_ids: set[int] = set()
+    user_id = auth_user.get("id")
+    has_linked_orgs = False
+    if user_id is not None:
+        rows = (
+            db.query(UserOrganizationLink.organization_id)
+            .filter(UserOrganizationLink.user_id == int(user_id))
+            .all()
+        )
+        org_ids.update(int(row.organization_id) for row in rows if row.organization_id is not None)
+        has_linked_orgs = bool(org_ids)
+
+    fallback_org_id = auth_user.get("organization_id")
+    if not has_linked_orgs and fallback_org_id is not None:
+        org_ids.add(int(fallback_org_id))
+
+    if not org_ids:
+        return {
+            "allowed_org_ids": [],
+            "pending_org_names": [],
+        }
+
+    org_rows = org_query.filter(Organization.id.in_(sorted(org_ids))).all()
+
+    if not org_rows:
+        return {
+            "allowed_org_ids": [],
+            "pending_org_names": [],
+        }
+
+    allowed_org_ids: list[int] = []
+    pending_org_names: list[str] = []
+    for org_id, org_name, sub_status in org_rows:
+        status = str(sub_status.value if hasattr(sub_status, "value") else sub_status or "").strip().lower()
+        if status == "expired":
+            continue
+        allowed_org_ids.append(int(org_id))
+        if status == "pending":
+            pending_org_names.append(str(org_name or ""))
+
+    return {
+        "allowed_org_ids": allowed_org_ids,
+        "pending_org_names": pending_org_names,
+    }
+
+
+@router.get("/api/attendance/filter-data")
+def get_attendance_filter_data(request: Request, db: Session = Depends(get_db)):
+    scope = _resolve_attendance_org_scope(request, db)
+    allowed_org_ids = list(scope.get("allowed_org_ids") or [])
+    if not allowed_org_ids:
+        return {"ok": True, "organizations": [], "cameras": []}
+
+    org_rows = (
+        db.query(Organization.id, Organization.name)
+        .filter(Organization.id.in_(allowed_org_ids))
+        .order_by(Organization.name.asc())
+        .all()
+    )
+    cam_rows = (
+        db.query(Device.id, Device.name, Device.organization_id)
+        .filter(Device.organization_id.in_(allowed_org_ids))
+        .order_by(Device.name.asc())
+        .all()
+    )
+
+    return {
+        "ok": True,
+        "organizations": [
+            {"id": int(row.id), "name": str(row.name or "")}
+            for row in org_rows
+        ],
+        "cameras": [
+            {
+                "id": int(row.id),
+                "name": str(row.name or ""),
+                "organization_id": int(row.organization_id) if row.organization_id is not None else None,
+            }
+            for row in cam_rows
+        ],
+    }
+
+
+def _parse_hhmm_or_default(value: Optional[str], default_h: int = 9, default_m: int = 0) -> tuple[int, int]:
+    raw = str(value or "").strip()
+    if not raw:
+        return default_h, default_m
+    parts = raw.split(":")
+    if len(parts) < 2:
+        return default_h, default_m
+    try:
+        h = max(0, min(23, int(parts[0])))
+        m = max(0, min(59, int(parts[1])))
+        return h, m
+    except Exception:
+        return default_h, default_m
+
+
+def _build_today_status_items(
+    db: Session,
+    *,
+    allowed_org_ids: list[int],
+    today_status: str,
+    target_day_start: datetime,
+    target_day_end: datetime,
+    organization_id: Optional[int],
+    camera_id: Optional[int],
+    personal_id: Optional[str],
+) -> list[dict[str, Any]]:
+    if not allowed_org_ids:
+        return []
+
+    employees_query = db.query(Employee).outerjoin(Employee.organization)
+    employees_query = employees_query.filter(Employee.organization_id.in_(allowed_org_ids))
+    if organization_id is not None:
+        employees_query = employees_query.filter(Employee.organization_id == organization_id)
+    if personal_id:
+        employees_query = employees_query.filter(Employee.personal_id == personal_id)
+    if camera_id is not None:
+        employees_query = employees_query.join(
+            EmployeeCameraLink,
+            EmployeeCameraLink.employee_id == Employee.id,
+        ).filter(EmployeeCameraLink.camera_id == camera_id)
+
+    employees = employees_query.order_by(Employee.id.desc()).all()
+    if not employees:
+        return []
+
+    employee_ids = [int(emp.id) for emp in employees]
+    logs_query = db.query(AttendanceLog).filter(
+        AttendanceLog.employee_id.in_(employee_ids),
+        AttendanceLog.timestamp >= target_day_start,
+        AttendanceLog.timestamp < target_day_end,
+    )
+    if camera_id is not None:
+        logs_query = logs_query.filter(AttendanceLog.device_id == camera_id)
+    day_logs = logs_query.order_by(AttendanceLog.timestamp.asc(), AttendanceLog.id.asc()).all()
+
+    logs_by_employee: dict[int, list[AttendanceLog]] = {}
+    for log in day_logs:
+        if log.employee_id is None:
+            continue
+        logs_by_employee.setdefault(int(log.employee_id), []).append(log)
+
+    items: list[dict[str, Any]] = []
+    for emp in employees:
+        emp_id = int(emp.id)
+        emp_logs = logs_by_employee.get(emp_id, [])
+        first_seen = emp_logs[0].timestamp if emp_logs else None
+        last_seen = emp_logs[-1].timestamp if emp_logs else None
+
+        org_start = emp.organization.default_start_time if emp.organization else "09:00"
+        h, m = _parse_hhmm_or_default(emp.start_time or org_start, 9, 0)
+        expected_start = target_day_start.replace(hour=h, minute=m, second=0, microsecond=0)
+        is_late = bool(first_seen and first_seen > expected_start)
+        late_minutes = int((first_seen - expected_start).total_seconds() // 60) if is_late and first_seen else 0
+
+        include = False
+        if today_status == "came":
+            include = len(emp_logs) > 0
+        elif today_status == "did_not_come":
+            include = len(emp_logs) == 0
+        elif today_status == "came_late":
+            include = len(emp_logs) > 0 and is_late
+
+        if not include:
+            continue
+
+        events = []
+        camera_ids: set[int] = set()
+        for log in sorted(emp_logs, key=lambda x: (x.timestamp or datetime.min, x.id or 0), reverse=True):
+            if log.device_id is not None:
+                camera_ids.add(int(log.device_id))
+            events.append(
+                {
+                    "id": log.id,
+                    "timestamp": log.timestamp.isoformat() if log.timestamp else None,
+                    "camera_id": log.device_id,
+                    "camera_name": log.device.name if log.device else None,
+                    "camera_mac": log.camera_mac,
+                    "snapshot_url": log.snapshot_url,
+                    "status": log.status,
+                }
+            )
+
+        base_url = normalize_public_web_base_url(get_public_web_base_url())
+        employee_image_url = None
+        if emp.image_url:
+            employee_image_url = f"{base_url}{emp.image_url}" if not str(emp.image_url).startswith("http") else emp.image_url
+
+        items.append(
+            {
+                "group_id": f"emp:{emp_id}:{target_day_start.strftime('%Y-%m-%d')}:{today_status}",
+                "event_date": target_day_start.strftime("%Y-%m-%d"),
+                "employee_id": emp_id,
+                "employee_name": f"{emp.first_name} {emp.last_name}".strip() or "Noma'lum",
+                "employee_image_url": employee_image_url,
+                "personal_id": emp.personal_id,
+                "organization_id": emp.organization_id,
+                "organization_name": emp.organization.name if emp.organization else None,
+                "first_timestamp": first_seen.isoformat() if first_seen else None,
+                "latest_timestamp": last_seen.isoformat() if last_seen else None,
+                "visit_count": len(emp_logs),
+                "camera_count": len(camera_ids),
+                "status": "kelmagan" if not emp_logs else ("kech" if is_late else "aniqlandi"),
+                "events": events,
+                "is_late": is_late,
+                "late_minutes": max(0, late_minutes),
+                "expected_start_time": expected_start.isoformat(),
+            }
+        )
+
+    items.sort(
+        key=lambda row: (
+            row.get("latest_timestamp") or "",
+            row.get("employee_name") or "",
+        ),
+        reverse=True,
+    )
+    return items
+
+
+def _compute_employee_daily_summary(
+    db: Session,
+    *,
+    allowed_org_ids: list[int],
+    target_day_start: datetime,
+    target_day_end: datetime,
+    organization_id: Optional[int],
+    camera_id: Optional[int],
+    personal_id: Optional[str],
+) -> dict[str, int]:
+    if not allowed_org_ids:
+        return {
+            "total_employees": 0,
+            "came": 0,
+            "did_not_come": 0,
+            "came_late": 0,
+        }
+
+    employees_query = (
+        db.query(Employee)
+        .outerjoin(Employee.organization)
+        .filter(Employee.organization_id.in_(allowed_org_ids))
+    )
+    if organization_id is not None:
+        employees_query = employees_query.filter(Employee.organization_id == organization_id)
+    if personal_id:
+        employees_query = employees_query.filter(Employee.personal_id == personal_id)
+    if camera_id is not None:
+        employees_query = employees_query.join(
+            EmployeeCameraLink,
+            EmployeeCameraLink.employee_id == Employee.id,
+        ).filter(EmployeeCameraLink.camera_id == camera_id)
+
+    employees = employees_query.order_by(Employee.id.desc()).all()
+    if not employees:
+        return {
+            "total_employees": 0,
+            "came": 0,
+            "did_not_come": 0,
+            "came_late": 0,
+        }
+
+    employee_ids = [int(emp.id) for emp in employees]
+    logs_query = db.query(AttendanceLog).filter(
+        AttendanceLog.employee_id.in_(employee_ids),
+        AttendanceLog.timestamp >= target_day_start,
+        AttendanceLog.timestamp < target_day_end,
+    )
+    if camera_id is not None:
+        logs_query = logs_query.filter(AttendanceLog.device_id == camera_id)
+    logs = logs_query.order_by(AttendanceLog.timestamp.asc(), AttendanceLog.id.asc()).all()
+
+    first_log_by_emp: dict[int, AttendanceLog] = {}
+    for log in logs:
+        if log.employee_id is None:
+            continue
+        emp_id = int(log.employee_id)
+        if emp_id not in first_log_by_emp:
+            first_log_by_emp[emp_id] = log
+
+    came = 0
+    came_late = 0
+    for emp in employees:
+        emp_id = int(emp.id)
+        first_log = first_log_by_emp.get(emp_id)
+        if not first_log or not first_log.timestamp:
+            continue
+        came += 1
+        org_start = emp.organization.default_start_time if emp.organization else "09:00"
+        h, m = _parse_hhmm_or_default(emp.start_time or org_start, 9, 0)
+        expected_start = target_day_start.replace(hour=h, minute=m, second=0, microsecond=0)
+        if first_log.timestamp > expected_start:
+            came_late += 1
+
+    total_employees = len(employees)
+    did_not_come = max(0, total_employees - came)
+    return {
+        "total_employees": total_employees,
+        "came": came,
+        "did_not_come": did_not_come,
+        "came_late": came_late,
+    }
+
+
+@router.get("/api/attendance/groups")
+def get_attendance_groups(
+    request: Request,
+    page: int = 1,
+    page_size: int = 15,
+    organization_id: Optional[int] = None,
+    camera_id: Optional[int] = None,
+    today_status: Optional[str] = None,
+    personal_id: Optional[str] = None,
+    year: Optional[int] = None,
+    month: Optional[int] = None,
+    day: Optional[int] = None,
+    db: Session = Depends(get_db),
+):
+    safe_page = max(1, int(page or 1))
+    safe_page_size = max(1, min(int(page_size or 15), 100))
+    personal_id = _normalize_personal_id(personal_id)
+    today_status = str(today_status or "").strip().lower() or None
+    if today_status not in {None, "all", "came", "did_not_come", "came_late"}:
+        raise HTTPException(status_code=422, detail="today_status noto'g'ri")
+
+    # Bugungi holat filtrlari uchun default sana: bugun
+    if today_status in {"came", "did_not_come", "came_late"}:
+        now = now_tashkent()
+        year = int(year or now.year)
+        month = int(month or now.month)
+        day = int(day or now.day)
+
+    scope = _resolve_attendance_org_scope(request, db)
+    allowed_org_ids = list(scope.get("allowed_org_ids") or [])
+    pending_org_names = list(scope.get("pending_org_names") or [])
+
+    target_day_start = None
+    target_day_end = None
+    if year is not None and month is not None and day is not None:
+        target_day_start = datetime(int(year), int(month), int(day), 0, 0, 0)
+        target_day_end = target_day_start + timedelta(days=1)
+    else:
+        now = now_tashkent()
+        target_day_start = datetime(now.year, now.month, now.day, 0, 0, 0)
+        target_day_end = target_day_start + timedelta(days=1)
+
+    if organization_id is not None and organization_id not in allowed_org_ids:
+        allowed_org_ids = []
+
+    employee_summary = _compute_employee_daily_summary(
+        db,
+        allowed_org_ids=allowed_org_ids,
+        target_day_start=target_day_start,
+        target_day_end=target_day_end,
+        organization_id=organization_id,
+        camera_id=camera_id,
+        personal_id=personal_id,
+    )
+
+    if not allowed_org_ids:
+        return {
+            "ok": True,
+            "page": 1,
+            "page_size": safe_page_size,
+            "total": 0,
+            "total_pages": 1,
+            "items": [],
+            "available_days": [],
+            "summary": {
+                "total_groups": 0,
+                "total_visits": 0,
+                "known_groups": 0,
+                "unknown_groups": 0,
+                "employee_summary": employee_summary,
+            },
+            "scope": {
+                "pending_org_names": pending_org_names,
+            },
+        }
+    day_expr = func.strftime("%d", AttendanceLog.timestamp)
+
+    available_days_query = _apply_attendance_filters(
+        db.query(AttendanceLog),
+        organization_id=organization_id,
+        camera_id=camera_id,
+        personal_id=personal_id,
+        year=year,
+        month=month,
+        day=None,
+    ).filter(
+        or_(
+            AttendanceLog.device.has(Device.organization_id.in_(allowed_org_ids)),
+            AttendanceLog.employee.has(Employee.organization_id.in_(allowed_org_ids)),
+        )
+    )
+    available_days = [
+        str(row[0])
+        for row in available_days_query.with_entities(day_expr)
+        .group_by(day_expr)
+        .order_by(day_expr)
+        .all()
+        if row[0]
+    ]
+
+    if today_status in {"came", "did_not_come", "came_late"} and target_day_start is not None and target_day_end is not None:
+        status_items = _build_today_status_items(
+            db,
+            allowed_org_ids=allowed_org_ids,
+            today_status=today_status,
+            target_day_start=target_day_start,
+            target_day_end=target_day_end,
+            organization_id=organization_id,
+            camera_id=camera_id,
+            personal_id=personal_id,
+        )
+        total_groups = len(status_items)
+        total_visits = int(sum(int(item.get("visit_count") or 0) for item in status_items))
+        known_groups = total_groups
+        total_pages = max(1, (total_groups + safe_page_size - 1) // safe_page_size)
+        safe_page = min(safe_page, total_pages)
+        start_idx = (safe_page - 1) * safe_page_size
+        paged_items = status_items[start_idx:start_idx + safe_page_size]
+        return {
+            "ok": True,
+            "page": safe_page,
+            "page_size": safe_page_size,
+            "total": total_groups,
+            "total_pages": total_pages,
+            "items": paged_items,
+            "available_days": available_days,
+            "summary": {
+                "total_groups": total_groups,
+                "total_visits": total_visits,
+                "known_groups": known_groups,
+                "unknown_groups": 0,
+                "employee_summary": employee_summary,
+            },
+            "scope": {
+                "pending_org_names": pending_org_names,
+            },
+        }
+
+    base_query = _apply_attendance_filters(
+        db.query(AttendanceLog),
+        organization_id=organization_id,
+        camera_id=camera_id,
+        personal_id=personal_id,
+        year=year,
+        month=month,
+        day=day,
+    ).filter(
+        or_(
+            AttendanceLog.device.has(Device.organization_id.in_(allowed_org_ids)),
+            AttendanceLog.employee.has(Employee.organization_id.in_(allowed_org_ids)),
+        )
+    )
+
+    event_date_expr = func.date(AttendanceLog.timestamp)
+    group_identity_expr = _attendance_group_identity_expr()
+
+    grouped_subq = (
+        base_query.with_entities(
+            event_date_expr.label("event_date"),
+            group_identity_expr.label("group_identity"),
+            func.max(AttendanceLog.timestamp).label("latest_timestamp"),
+            func.min(AttendanceLog.timestamp).label("first_timestamp"),
+            func.count(AttendanceLog.id).label("visit_count"),
+            func.count(func.distinct(AttendanceLog.device_id)).label("camera_count"),
+            func.max(AttendanceLog.employee_id).label("employee_id"),
+            func.max(AttendanceLog.person_id).label("person_id"),
+            func.max(AttendanceLog.person_name).label("person_name"),
+            func.max(AttendanceLog.status).label("status"),
+        )
+        .group_by(event_date_expr, group_identity_expr)
+        .subquery()
+    )
+
+    totals_row = db.query(
+        func.count(),
+        func.coalesce(func.sum(grouped_subq.c.visit_count), 0),
+        func.coalesce(func.sum(case((grouped_subq.c.employee_id.isnot(None), 1), else_=0)), 0),
+    ).select_from(grouped_subq).one()
+    total_groups = int(totals_row[0] or 0)
+    total_visits = int(totals_row[1] or 0)
+    known_groups = int(totals_row[2] or 0)
+    total_pages = max(1, (total_groups + safe_page_size - 1) // safe_page_size)
+    safe_page = min(safe_page, total_pages)
+
+    rows = (
+        db.query(grouped_subq)
+        .order_by(grouped_subq.c.latest_timestamp.desc(), grouped_subq.c.event_date.desc(), grouped_subq.c.group_identity.desc())
+        .offset((safe_page - 1) * safe_page_size)
+        .limit(safe_page_size)
+        .all()
+    )
+
+    items = []
+    for row in rows:
+        employee = None
+        employee_image_url = None
+        employee_name = None
+        late_minutes = 0
+        employee_id = int(row.employee_id) if row.employee_id is not None else None
+        if employee_id is not None:
+            employee = db.query(Employee).filter(Employee.id == employee_id).first()
+            if employee is not None:
+                # Rasimni to'liq URL ga aylantiramiz
+                if employee.image_url:
+                    base_url = normalize_public_web_base_url(get_public_web_base_url())
+                    employee_image_url = f"{base_url}{employee.image_url}" if not employee.image_url.startswith("http") else employee.image_url
+                employee_name = f"{employee.first_name} {employee.last_name}".strip()
+                if row.first_timestamp:
+                    org_start = employee.organization.default_start_time if employee.organization else "09:00"
+                    h, m = _parse_hhmm_or_default(employee.start_time or org_start, 9, 0)
+                    expected_start = row.first_timestamp.replace(hour=h, minute=m, second=0, microsecond=0)
+                    if row.first_timestamp > expected_start:
+                        late_minutes = int((row.first_timestamp - expected_start).total_seconds() // 60)
+
+        group_identity = str(row.group_identity or "")
+        detail_query = _apply_attendance_filters(
+            db.query(AttendanceLog),
+            organization_id=organization_id,
+            camera_id=camera_id,
+            personal_id=personal_id,
+            year=year,
+            month=month,
+            day=day,
+        ).filter(
+            func.date(AttendanceLog.timestamp) == row.event_date,
+            or_(
+                AttendanceLog.device.has(Device.organization_id.in_(allowed_org_ids)),
+                AttendanceLog.employee.has(Employee.organization_id.in_(allowed_org_ids)),
+            ),
+        )
+
+        if group_identity.startswith("e:") and employee_id is not None:
+            detail_query = detail_query.filter(AttendanceLog.employee_id == employee_id)
+        else:
+            detail_key = group_identity[2:] if group_identity.startswith("u:") else group_identity
+            detail_query = detail_query.filter(AttendanceLog.employee_id.is_(None))
+            detail_query = detail_query.filter(
+                or_(
+                    func.coalesce(func.nullif(func.trim(AttendanceLog.person_id), ""), "") == detail_key,
+                    func.coalesce(func.nullif(func.trim(AttendanceLog.person_name), ""), "") == detail_key,
+                    func.coalesce(func.nullif(func.trim(AttendanceLog.camera_mac), ""), "") == detail_key,
+                )
+            )
+
+        event_logs = detail_query.order_by(AttendanceLog.timestamp.desc(), AttendanceLog.id.desc()).all()
+        events = []
+        camera_ids: set[int] = set()
+        for log in event_logs:
+            if log.device_id is not None:
+                camera_ids.add(int(log.device_id))
+            events.append(
+                {
+                    "id": log.id,
+                    "timestamp": log.timestamp.isoformat() if log.timestamp else None,
+                    "camera_id": log.device_id,
+                    "camera_name": log.device.name if log.device else None,
+                    "camera_mac": log.camera_mac,
+                    "snapshot_url": log.snapshot_url,
+                    "status": log.status,
+                }
+            )
+
+        camera_count = len(camera_ids) if camera_ids else int(row.camera_count or 0)
+        
+        # Tashkilot nomini olamiz
+        org_name = None
+        org_id = organization_id
+        if employee is not None and employee.organization_id is not None:
+            org_id = employee.organization_id
+            org = db.query(Organization).filter(Organization.id == org_id).first()
+            if org:
+                org_name = org.name
+        
+        items.append(
+            {
+                "group_id": group_identity,
+                "event_date": row.event_date,
+                "employee_id": employee_id,
+                "employee_name": employee_name or row.person_name or "Noma'lum",
+                "employee_image_url": employee_image_url,
+                "personal_id": row.person_id,
+                "organization_id": org_id,
+                "organization_name": org_name,
+                "first_timestamp": row.first_timestamp.isoformat() if row.first_timestamp else None,
+                "latest_timestamp": row.latest_timestamp.isoformat() if row.latest_timestamp else None,
+                "visit_count": int(row.visit_count or 0),
+                "camera_count": camera_count,
+                "status": row.status,
+                "late_minutes": max(0, late_minutes),
+                "events": events,
+            }
+        )
+
+    unknown_groups = max(0, total_groups - known_groups)
+    return {
+        "ok": True,
+        "page": safe_page,
+        "page_size": safe_page_size,
+        "total": total_groups,
+        "total_pages": total_pages,
+        "items": items,
+        "available_days": available_days,
+        "summary": {
+            "total_groups": total_groups,
+            "total_visits": total_visits,
+            "known_groups": known_groups,
+            "unknown_groups": unknown_groups,
+            "employee_summary": employee_summary,
+        },
+        "scope": {
+            "pending_org_names": pending_org_names,
+        },
+    }
+
+
+@router.get("/api/attendance/stream")
+async def attendance_stream(
+    request: Request,
+    organization_id: Optional[int] = None,
+    camera_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+):
+    scope = _resolve_attendance_org_scope(request, db)
+    allowed_org_ids = {int(v) for v in (scope.get("allowed_org_ids") or [])}
+
+    redis_conn = get_redis(check_connection=True)
+    pubsub = None
+    if redis_conn is not None:
+        try:
+            pubsub = redis_conn.pubsub(ignore_subscribe_messages=True)
+            pubsub.subscribe(EVENTS_CHANNEL)
+        except Exception:
+            pubsub = None
+
+    async def _event_generator():
+        last_ping = time.monotonic()
+        try:
+            ready_payload = {"ok": True, "redis": bool(pubsub is not None)}
+            yield f"event: ready\ndata: {json.dumps(ready_payload, ensure_ascii=False)}\n\n"
+
+            while True:
+                if await request.is_disconnected():
+                    break
+
+                message = None
+                if pubsub is not None:
+                    message = await asyncio.to_thread(pubsub.get_message, timeout=1.0)
+
+                if message and message.get("type") == "message":
+                    try:
+                        payload = json.loads(message.get("data") or "{}")
+                    except Exception:
+                        payload = {}
+
+                    org_id = payload.get("organization_id")
+                    cam_id = payload.get("camera_id")
+                    try:
+                        org_id_int = int(org_id) if org_id is not None and str(org_id).strip() != "" else None
+                    except Exception:
+                        org_id_int = None
+                    try:
+                        cam_id_int = int(cam_id) if cam_id is not None and str(cam_id).strip() != "" else None
+                    except Exception:
+                        cam_id_int = None
+
+                    if allowed_org_ids and org_id_int is not None and org_id_int not in allowed_org_ids:
+                        continue
+                    if organization_id is not None and org_id_int != int(organization_id):
+                        continue
+                    if camera_id is not None and cam_id_int != int(camera_id):
+                        continue
+
+                    event_payload = {
+                        "log_id": payload.get("log_id"),
+                        "timestamp": payload.get("timestamp"),
+                        "camera_id": cam_id_int,
+                        "organization_id": org_id_int,
+                        "status": payload.get("status"),
+                    }
+                    yield f"event: attendance\ndata: {json.dumps(event_payload, ensure_ascii=False)}\n\n"
+
+                now = time.monotonic()
+                if now - last_ping >= 15:
+                    yield "event: ping\ndata: {}\n\n"
+                    last_ping = now
+        finally:
+            if pubsub is not None:
+                try:
+                    pubsub.unsubscribe(EVENTS_CHANNEL)
+                except Exception:
+                    pass
+                try:
+                    pubsub.close()
+                except Exception:
+                    pass
+
+    return StreamingResponse(
+        _event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+def _collect_attendance_groups_for_export(
+    request: Request,
+    db: Session,
+    *,
+    organization_id: Optional[int],
+    camera_id: Optional[int],
+    today_status: Optional[str],
+    personal_id: Optional[str],
+    year: Optional[int],
+    month: Optional[int],
+    day: Optional[int],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    first_page = get_attendance_groups(
+        request=request,
+        page=1,
+        page_size=100,
+        organization_id=organization_id,
+        camera_id=camera_id,
+        today_status=today_status,
+        personal_id=personal_id,
+        year=year,
+        month=month,
+        day=day,
+        db=db,
+    )
+
+    all_items = list(first_page.get("items") or [])
+    total_pages = int(first_page.get("total_pages") or 1)
+    if total_pages > 1:
+        for page_no in range(2, total_pages + 1):
+            page_data = get_attendance_groups(
+                request=request,
+                page=page_no,
+                page_size=100,
+                organization_id=organization_id,
+                camera_id=camera_id,
+                today_status=today_status,
+                personal_id=personal_id,
+                year=year,
+                month=month,
+                day=day,
+                db=db,
+            )
+            all_items.extend(page_data.get("items") or [])
+
+    return all_items, dict(first_page.get("summary") or {})
+
+
+def _format_export_dt(value: Optional[str]) -> str:
+    if not value:
+        return ""
+    try:
+        return datetime.fromisoformat(str(value)).strftime("%Y-%m-%d %H:%M:%S")
+    except Exception:
+        return str(value)
+
+
+@router.get("/api/attendance/groups/export/excel")
+def export_attendance_groups_excel(
+    request: Request,
+    organization_id: Optional[int] = None,
+    camera_id: Optional[int] = None,
+    today_status: Optional[str] = None,
+    personal_id: Optional[str] = None,
+    year: Optional[int] = None,
+    month: Optional[int] = None,
+    day: Optional[int] = None,
+    db: Session = Depends(get_db),
+):
+    items, _ = _collect_attendance_groups_for_export(
+        request,
+        db,
+        organization_id=organization_id,
+        camera_id=camera_id,
+        today_status=today_status,
+        personal_id=personal_id,
+        year=year,
+        month=month,
+        day=day,
+    )
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow([
+        "#",
+        "Sana",
+        "Birinchi vaqt",
+        "Oxirgi vaqt",
+        "Xodim",
+        "Shaxsiy ID",
+        "Tashkilot",
+        "Kameralar soni",
+        "O'tish soni",
+        "Status",
+    ])
+    for idx, row in enumerate(items, start=1):
+        writer.writerow([
+            idx,
+            row.get("event_date") or "",
+            _format_export_dt(row.get("first_timestamp")),
+            _format_export_dt(row.get("latest_timestamp")),
+            row.get("employee_name") or "",
+            row.get("personal_id") or "",
+            row.get("organization_name") or "",
+            row.get("camera_count") or 0,
+            row.get("visit_count") or 0,
+            row.get("status") or "",
+        ])
+
+    filename = f"attendance_{now_tashkent().strftime('%Y%m%d_%H%M%S')}.csv"
+    csv_content = "\ufeff" + buffer.getvalue()
+    return Response(
+        content=csv_content,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/api/attendance/groups/export/pdf")
+def export_attendance_groups_pdf(
+    request: Request,
+    organization_id: Optional[int] = None,
+    camera_id: Optional[int] = None,
+    today_status: Optional[str] = None,
+    personal_id: Optional[str] = None,
+    year: Optional[int] = None,
+    month: Optional[int] = None,
+    day: Optional[int] = None,
+    db: Session = Depends(get_db),
+):
+    try:
+        from fpdf import FPDF
+    except Exception:
+        raise HTTPException(status_code=503, detail="PDF export uchun fpdf2 kerak")
+
+    items, summary = _collect_attendance_groups_for_export(
+        request,
+        db,
+        organization_id=organization_id,
+        camera_id=camera_id,
+        today_status=today_status,
+        personal_id=personal_id,
+        year=year,
+        month=month,
+        day=day,
+    )
+
+    pdf = FPDF(orientation="L", unit="mm", format="A4")
+    pdf.set_auto_page_break(auto=True, margin=8)
+    pdf.add_page()
+
+    uses_unicode_font = False
+    font_path = os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "Fonts", "arial.ttf")
+    if os.path.exists(font_path):
+        try:
+            pdf.add_font("ArialUnicode", "", font_path)
+            uses_unicode_font = True
+        except Exception:
+            uses_unicode_font = False
+
+    font_name = "ArialUnicode" if uses_unicode_font else "Helvetica"
+
+    def safe_text(value: Any) -> str:
+        text = str(value or "")
+        if uses_unicode_font:
+            return text
+        return text.encode("latin-1", errors="ignore").decode("latin-1")
+
+    pdf.set_font(font_name, "", 12)
+    pdf.cell(0, 8, safe_text("Davomat export"), ln=1)
+    filter_line = f"Filtr: holat={today_status or 'all'}, yil={year or 'all'}, oy={month or 'all'}, kun={day or 'all'}"
+    pdf.set_font(font_name, "", 9)
+    pdf.cell(0, 6, safe_text(filter_line), ln=1)
+    pdf.cell(0, 6, safe_text(f"Jami guruh: {summary.get('total_groups', len(items))}, jami o'tish: {summary.get('total_visits', 0)}"), ln=1)
+    pdf.ln(2)
+
+    headers = ["#", "Sana", "Oxirgi vaqt", "Xodim", "ID", "Tashkilot", "Kamera", "Otish", "Status"]
+    widths = [10, 24, 30, 55, 22, 40, 18, 16, 20]
+    pdf.set_font(font_name, "", 8)
+    for h, w in zip(headers, widths):
+        pdf.cell(w, 7, safe_text(h), border=1)
+    pdf.ln()
+
+    for idx, row in enumerate(items, start=1):
+        cells = [
+            str(idx),
+            str(row.get("event_date") or ""),
+            _format_export_dt(row.get("latest_timestamp")),
+            str(row.get("employee_name") or ""),
+            str(row.get("personal_id") or ""),
+            str(row.get("organization_name") or ""),
+            str(row.get("camera_count") or 0),
+            str(row.get("visit_count") or 0),
+            str(row.get("status") or ""),
+        ]
+        for value, w in zip(cells, widths):
+            txt = safe_text(value)
+            if len(txt) > 42:
+                txt = txt[:39] + "..."
+            pdf.cell(w, 6, txt, border=1)
+        pdf.ln()
+
+    filename = f"attendance_{now_tashkent().strftime('%Y%m%d_%H%M%S')}.pdf"
+    pdf_bytes = bytes(pdf.output(dest="S"))
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 # ── GET /api/isup-devices — ISUP orqali ulangan kameralar ──────
 def _sync_attendance_for_camera(
     cam: Device,
@@ -1605,6 +3413,7 @@ def _sync_attendance_for_camera(
     *,
     backfill_hours: int,
     max_events: int,
+    sync_date: Optional[str] = None,
 ) -> dict[str, Any]:
     try:
         target_id, _, source = _resolve_online_command_target(cam)
@@ -1619,16 +3428,39 @@ def _sync_attendance_for_camera(
             "error": str(exc.detail),
         }
 
+    start_dt: Optional[datetime] = None
+    end_dt: Optional[datetime] = None
+    if sync_date:
+        try:
+            day = datetime.strptime(str(sync_date).strip(), "%Y-%m-%d")
+            start_dt = day.replace(hour=0, minute=0, second=0, microsecond=0)
+            end_dt = start_dt + timedelta(days=1)
+        except Exception:
+            return {
+                "camera_id": cam.id,
+                "camera_name": cam.name,
+                "ok": False,
+                "fetched": 0,
+                "inserted": 0,
+                "duplicates": 0,
+                "error": "sync_date noto'g'ri formatda. Kutilgan format: YYYY-MM-DD",
+            }
+
+    cmd_params: dict[str, Any] = {
+        "hours": max(1, min(int(backfill_hours), 24 * 30)),
+        "limit": max(1, min(int(max_events), 2000)),
+        "max_results": 10,
+    }
+    if start_dt is not None and end_dt is not None:
+        cmd_params["start_time"] = start_dt.isoformat()
+        cmd_params["end_time"] = end_dt.isoformat()
+
     try:
         resp = _send_isup_command_or_raise(
             target_id,
             "get_attendance_events",
-            {
-                "hours": max(1, min(int(backfill_hours), 24 * 30)),
-                "limit": max(1, min(int(max_events), 2000)),
-                "max_results": 10,
-            },
-            timeout=25.0,
+            cmd_params,
+            timeout=180.0,
         )
     except HTTPException as exc:
         return {
@@ -1647,6 +3479,7 @@ def _sync_attendance_for_camera(
 
     inserted = 0
     duplicates = 0
+    attendance_items: list[dict[str, Any]] = []
     for row in rows:
         if not isinstance(row, dict):
             continue
@@ -1654,12 +3487,35 @@ def _sync_attendance_for_camera(
         person_name = str(row.get("person_name") or "").strip() or None
         snapshot_url = str(row.get("snapshot_url") or "").strip() or None
         ts = _parse_event_dt(row.get("timestamp"))
+        if start_dt is not None and end_dt is not None:
+            if not (start_dt <= ts < end_dt):
+                continue
 
         employee = None
         if person_id:
             employee = db.query(Employee).filter(Employee.personal_id == person_id).first()
             if employee is None and person_id.isdigit():
                 employee = db.query(Employee).filter(Employee.id == int(person_id)).first()
+
+        organization = cam.organization or (employee.organization if employee and employee.organization else None)
+        attendance_items.append(
+            {
+                "id": f"{cam.id}-{int(ts.timestamp()) if ts else 0}-{person_id or 'unknown'}",
+                "timestamp": ts.isoformat() if ts else None,
+                "employee_id": employee.id if employee else None,
+                "employee_name": f"{employee.first_name} {employee.last_name}".strip() if employee else (person_name or "Noma'lum"),
+                "personal_id": person_id,
+                "person_name": person_name,
+                "camera_id": cam.id,
+                "camera_name": cam.name,
+                "camera_mac": cam.mac_address,
+                "organization_id": organization.id if organization else cam.organization_id,
+                "organization_name": organization.name if organization else None,
+                "snapshot_url": snapshot_url,
+                "status": "aniqlandi" if employee else "noma'lum",
+                "inserted": True,
+            }
+        )
 
         existing_q = db.query(AttendanceLog.id).filter(
             AttendanceLog.device_id == cam.id,
@@ -1670,6 +3526,7 @@ def _sync_attendance_for_camera(
             existing_q = existing_q.filter(AttendanceLog.person_id == person_id)
         existing = existing_q.first()
         if existing:
+            attendance_items[-1]["inserted"] = False
             duplicates += 1
             continue
 
@@ -1688,34 +3545,53 @@ def _sync_attendance_for_camera(
         inserted += 1
 
     cam.is_online = True
-    cam.last_seen_at = datetime.utcnow()
+    cam.last_seen_at = now_tashkent()
+    
+    # Filter only newly inserted records so UI renders fast and skips duplicates
+    new_attendance_items = [item for item in attendance_items if item.get("inserted")]
+    
     return {
         "camera_id": cam.id,
         "camera_name": cam.name,
         "ok": True,
         "isup_source": source,
         "target_device_id": target_id,
+        "sync_date": sync_date,
         "fetched": len(rows),
         "inserted": inserted,
         "duplicates": duplicates,
+        "attendance_items": new_attendance_items,
     }
-
 
 @router.post("/api/attendance/sync")
 def sync_attendance(
+    request: Request,
     camera_id: Optional[int] = None,
+    organization_id: Optional[int] = None,
+    sync_date: Optional[str] = None,
     backfill_hours: int = 168,
     max_events: int = 600,
     db: Session = Depends(get_db),
 ):
-    cams_q = db.query(Device).order_by(Device.id)
+    scope = _resolve_attendance_org_scope(request, db)
+    allowed_org_ids = [int(x) for x in (scope.get("allowed_org_ids") or [])]
+    if not allowed_org_ids:
+        raise HTTPException(status_code=403, detail="Sinxronlash uchun ruxsat etilgan tashkilot topilmadi")
+
+    if organization_id is not None and int(organization_id) not in set(allowed_org_ids):
+        raise HTTPException(status_code=403, detail="Ushbu tashkilot uchun sinxronlashga ruxsat yo'q")
+
+    target_org_ids = [int(organization_id)] if organization_id is not None else allowed_org_ids
+
+    cams_q = db.query(Device).filter(Device.organization_id.in_(target_org_ids)).order_by(Device.id)
     if camera_id is not None:
         cams_q = cams_q.filter(Device.id == camera_id)
     cameras = cams_q.all()
     if not cameras:
-        raise HTTPException(status_code=404, detail="Kamera topilmadi")
+        raise HTTPException(status_code=404, detail="Kamera topilmadi yoki ruxsat yo'q")
 
     rows: list[dict[str, Any]] = []
+    attendance_items: list[dict[str, Any]] = []
     fetched = 0
     inserted = 0
     duplicates = 0
@@ -1725,20 +3601,33 @@ def sync_attendance(
             db,
             backfill_hours=backfill_hours,
             max_events=max_events,
+            sync_date=sync_date,
         )
         rows.append(result)
+        attendance_items.extend(result.get("attendance_items") or [])
         fetched += int(result.get("fetched") or 0)
         inserted += int(result.get("inserted") or 0)
         duplicates += int(result.get("duplicates") or 0)
 
     db.commit()
+    attendance_items.sort(
+        key=lambda item: (
+            str(item.get("timestamp") or ""),
+            int(item.get("camera_id") or 0),
+            str(item.get("personal_id") or ""),
+            str(item.get("id") or ""),
+        ),
+        reverse=True,
+    )
     return {
         "ok": True,
         "camera_count": len(cameras),
+        "sync_date": sync_date,
         "fetched": fetched,
         "inserted": inserted,
         "duplicates": duplicates,
         "rows": rows,
+        "attendance_items": attendance_items,
         "message": f"Davomat sinxronlandi: {inserted} yangi, {duplicates} dublikat.",
     }
 
@@ -1873,7 +3762,7 @@ def disconnect_isup_device(device_id: str):
 def isup_health():
     """ISUP server holati va xotira (RAM/CPU) ma'lumotlari"""
     process_status = get_process_status()
-    checked_at = datetime.utcnow().isoformat() + "Z"
+    checked_at = now_tashkent().isoformat()
     api_host = "0.0.0.0"
     api_port = 7670
     for port_info in process_status.get("ports", []):
@@ -1918,18 +3807,64 @@ def isup_health():
         }
 
 
+@router.get("/api/isup-traces")
+def isup_traces(limit: int = 100, filter: str = "all"):
+    try:
+        response = httpx.get(
+            f"{ISUP_API_URL}/traces",
+            params={"limit": max(1, min(int(limit), 300)), "filter": str(filter or "all")},
+            timeout=3.0,
+        )
+        response.raise_for_status()
+        data = response.json()
+        if isinstance(data, dict):
+            data.setdefault("ok", True)
+            return data
+        return {"ok": True, "count": 0, "items": []}
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"ISUP trace olinmadi: {exc}")
+
+
+@router.delete("/api/isup-traces")
+def clear_isup_traces():
+    try:
+        response = httpx.delete(f"{ISUP_API_URL}/traces", timeout=3.0)
+        response.raise_for_status()
+        data = response.json()
+        if isinstance(data, dict):
+            data.setdefault("ok", True)
+            return data
+        return {"ok": True, "removed": 0}
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"ISUP trace tozalanmadi: {exc}")
+
+
 @router.get("/api/isup-sdk-status")
 def isup_sdk_status():
     return get_sdk_status()
 
 
-# ── POST /api/hik-event — Hikvision native XML/multipart event ────────────
+# ── POST /api/v1/httppost/ — Hikvision native XML/multipart event ─────────
 # DS-K kameralar "Alarm Linkage → HTTP Push" yoki "EventNotificationAlert" orqali
 # yuz tanish eventini XML + face image (JPEG) sifatida yuboradi.
-# Kamera sozlamalari: Network → HTTP Listening Event → URL=/api/hik-event
+# Kamera sozlamalari: Network → HTTP Listening Event → URL=/api/v1/httppost/
 import xml.etree.ElementTree as _ET
 _HIK_SNAP_DIR = os.path.join("static", "uploads", "isup")
 os.makedirs(_HIK_SNAP_DIR, exist_ok=True)
+
+
+def _hik_store_snapshot_bytes(raw: bytes, *, ext: str = "jpg") -> Optional[str]:
+    if not raw:
+        return None
+    safe_ext = str(ext or "jpg").strip().lower().lstrip(".")
+    if safe_ext not in {"jpg", "jpeg", "png", "gif", "bmp", "webp"}:
+        safe_ext = "jpg"
+    ts_str = now_tashkent().strftime("%Y%m%d_%H%M%S_%f")
+    fname = f"hik_{ts_str}.{safe_ext if safe_ext != 'jpeg' else 'jpg'}"
+    fpath = os.path.join(_HIK_SNAP_DIR, fname)
+    with open(fpath, "wb") as f:
+        f.write(raw)
+    return f"/static/uploads/isup/{fname}"
 
 
 def _hik_try_parse_json(text: str) -> Any:
@@ -2026,6 +3961,8 @@ def _hik_decode_base64_image(value: Any) -> Optional[bytes]:
         return None
     return raw if _hik_is_image_bytes(raw) else None
 
+@router.post("/api/v1/httppost/")
+@router.post("/api/v1/httppost")
 @router.post("/api/hik-event")
 async def hik_event_webhook(request: Request, db: Session = Depends(get_db)):
     """
@@ -2033,7 +3970,7 @@ async def hik_event_webhook(request: Request, db: Session = Depends(get_db)):
     Kamera sozlamalari:
       Configuration → Network → Advanced Settings → HTTP Listening
       yoki Event → Basic Event → Alarm Linkage → HTTP Push
-    URL: https://example.com/api/hik-event
+    URL: https://example.com/api/v1/httppost/
     """
     content_type = (request.headers.get("content-type", "") or "").lower()
     xml_text = ""
@@ -2061,47 +3998,52 @@ async def hik_event_webhook(request: Request, db: Session = Depends(get_db)):
         "picdata",
     }
 
+    body = await request.body()
+
     if "multipart" in content_type:
-        try:
-            form = await request.form()
-        except Exception:
-            form = {}
-        for key, val in form.items():
-            key_name = str(key or "").strip()
-            lowered_key = key_name.lower()
-            text_value = ""
+        boundary = b""
+        if "boundary=" in content_type:
+            b_str = content_type.split("boundary=")[-1].split(";")[0].strip('"').strip()
+            boundary = f"--{b_str}".encode("utf-8")
 
-            if hasattr(val, "read"):
-                raw = await val.read()
-                if raw:
-                    filename = getattr(val, "filename", "") or ""
-                    if image_bytes is None and (lowered_key in image_part_keys or _hik_is_image_bytes(raw)):
-                        image_bytes = raw
-                        image_ext = _hik_guess_image_ext(raw, filename)
+        # Hikvision ko'p hollarda Content-Disposition yubormaydi, FastAPI form() uni tashlab yuboradi.
+        # Shu sababli manual split qilamiz
+        if boundary and boundary in body:
+            for part in body.split(boundary):
+                if b"\r\n\r\n" in part:
+                    header, content = part.split(b"\r\n\r\n", 1)
+                    if content.endswith(b"\r\n"):
+                        content = content[:-2]
+                    
+                    if not content.strip():
                         continue
-                    text_value = raw.decode("utf-8", errors="ignore").strip()
-            else:
-                text_value = str(val).strip()
-
-            if not text_value:
-                continue
-            text_parts.append(text_value)
-
-            if image_bytes is None and lowered_key in image_b64_keys:
-                decoded_image = _hik_decode_base64_image(text_value)
-                if decoded_image is not None:
-                    image_bytes = decoded_image
-                    image_ext = _hik_guess_image_ext(decoded_image)
-                    continue
-
-            if json_payload is None:
-                parsed_json = _hik_try_parse_json(text_value)
-                if parsed_json is not None:
-                    json_payload = parsed_json
-            if not xml_text and "<" in text_value and ">" in text_value:
-                xml_text = text_value
+                    
+                    if _hik_is_image_bytes(content):
+                        image_bytes = content
+                        image_ext = _hik_guess_image_ext(content)
+                    else:
+                        txt = content.decode("utf-8", errors="ignore").strip()
+                        if txt:
+                            text_parts.append(txt)
+        else:
+            # Fallback for Requestly yoki to'g'ri form-data clientlar uchun
+            try:
+                form = await request.form()
+                for key, val in form.items():
+                    if hasattr(val, "read"):
+                        raw = await val.read()
+                        if _hik_is_image_bytes(raw):
+                            image_bytes = raw
+                            image_ext = _hik_guess_image_ext(raw)
+                        else:
+                            txt = raw.decode("utf-8", errors="ignore").strip()
+                            if txt: text_parts.append(txt)
+                    else:
+                        txt = str(val).strip()
+                        if txt: text_parts.append(txt)
+            except Exception:
+                pass
     else:
-        body = await request.body()
         if body and _hik_is_image_bytes(body):
             image_bytes = body
             image_ext = _hik_guess_image_ext(body)
@@ -2109,9 +4051,6 @@ async def hik_event_webhook(request: Request, db: Session = Depends(get_db)):
             body_text = body.decode("utf-8", errors="ignore").strip()
             if body_text:
                 text_parts.append(body_text)
-                json_payload = _hik_try_parse_json(body_text)
-                if "<" in body_text and ">" in body_text:
-                    xml_text = body_text
 
     if not xml_text:
         for part in text_parts:
@@ -2132,6 +4071,9 @@ async def hik_event_webhook(request: Request, db: Session = Depends(get_db)):
     camera_serial: Optional[str] = None
     camera_mac: Optional[str] = None
     event_time_str: Optional[str] = None
+    wellbeing_note_uz_val: Optional[str] = None
+    wellbeing_note_ru_val: Optional[str] = None
+    wellbeing_note_source_val: Optional[str] = None
     snapshot_url = (
         _hik_find_first_value(json_payload, {"snapshotUrl", "snapshot_url", "faceURL", "pictureURL", "picUrl"})
         or xml_tags.get("snapshotUrl")
@@ -2188,6 +4130,27 @@ async def hik_event_webhook(request: Request, db: Session = Depends(get_db)):
         or xml_tags.get("timestamp")
         or ""
     ).strip() or None
+    wellbeing_note_uz_val = (
+        _hik_find_first_value(json_payload, {"wellbeing_note_uz", "wellbeingNoteUz", "state_uz"})
+        or xml_tags.get("wellbeing_note_uz")
+        or xml_tags.get("wellbeingNoteUz")
+        or xml_tags.get("state_uz")
+        or ""
+    ).strip() or None
+    wellbeing_note_ru_val = (
+        _hik_find_first_value(json_payload, {"wellbeing_note_ru", "wellbeingNoteRu", "state_ru"})
+        or xml_tags.get("wellbeing_note_ru")
+        or xml_tags.get("wellbeingNoteRu")
+        or xml_tags.get("state_ru")
+        or ""
+    ).strip() or None
+    wellbeing_note_source_val = (
+        _hik_find_first_value(json_payload, {"wellbeing_note_source", "wellbeingNoteSource", "state_source"})
+        or xml_tags.get("wellbeing_note_source")
+        or xml_tags.get("wellbeingNoteSource")
+        or xml_tags.get("state_source")
+        or ""
+    ).strip() or None
 
     if image_bytes is None:
         encoded_image = (
@@ -2208,7 +4171,7 @@ async def hik_event_webhook(request: Request, db: Session = Depends(get_db)):
             image_ext = _hik_guess_image_ext(decoded_image)
 
     payload_format = "multipart" if "multipart" in content_type else ("json" if json_payload is not None else "xml")
-    print(
+    _camera_event_debug(
         f"[HIK-EVENT] received: format={payload_format}, serial={camera_serial}, mac={camera_mac}, "
         f"person={person_id_val}/{person_name_val}, ts={event_time_str}, has_image={image_bytes is not None}"
     )
@@ -2241,22 +4204,25 @@ async def hik_event_webhook(request: Request, db: Session = Depends(get_db)):
         emp = db.query(Employee).filter(Employee.personal_id == person_id_val).first()
         if emp is None and person_id_val.isdigit():
             emp = db.query(Employee).filter(Employee.id == int(person_id_val)).first()
-    if emp and not person_name_val:
+    if emp:
         person_name_val = f"{emp.first_name or ''} {emp.last_name or ''}".strip()
+
+    note_uz, note_ru, note_source = _resolve_event_wellbeing_snapshot(
+        db,
+        emp,
+        note_uz=wellbeing_note_uz_val,
+        note_ru=wellbeing_note_ru_val,
+        source=wellbeing_note_source_val,
+    )
 
     # Rasmni saqlaymiz
     snap_url: Optional[str] = snapshot_url
     if image_bytes:
         try:
-            ts_str = datetime.utcnow().strftime("%Y%m%d_%H%M%S_%f")
-            fname = f"hik_{ts_str}.{image_ext}"
-            fpath = os.path.join(_HIK_SNAP_DIR, fname)
-            with open(fpath, "wb") as f:
-                f.write(image_bytes)
-            snap_url = f"/static/uploads/isup/{fname}"
-            print(f"[HIK-EVENT] Rasm saqlandi: {snap_url}")
+            snap_url = _hik_store_snapshot_bytes(image_bytes, ext=image_ext)
+            _camera_event_debug(f"[HIK-EVENT] Rasm saqlandi: {snap_url}")
         except Exception as exc:
-            print(f"[HIK-EVENT] Rasm saqlash xatosi: {exc}")
+            _camera_event_debug(f"[HIK-EVENT] Rasm saqlash xatosi: {exc}")
 
     # Dedup: 8s oyna
     from sqlalchemy import text as _sqlt
@@ -2275,9 +4241,11 @@ async def hik_event_webhook(request: Request, db: Session = Depends(get_db)):
     log_id: Optional[int] = None
     if device:
         device.is_online = True
-        device.last_seen_at = datetime.utcnow()
+        device.last_seen_at = now_tashkent()
 
     if not is_dup:
+        psychological_state_key = detect_psychological_state(resolve_snapshot_path(snap_url))
+        psychological_state_uz, psychological_state_ru = state_labels(psychological_state_key)
         new_log = AttendanceLog(
             employee_id=emp.id if emp else None,
             device_id=device.id if device else None,
@@ -2285,14 +4253,44 @@ async def hik_event_webhook(request: Request, db: Session = Depends(get_db)):
             person_id=person_id_val,
             person_name=person_name_val,
             snapshot_url=snap_url,
+            wellbeing_note_uz=note_uz or None,
+            wellbeing_note_ru=note_ru or None,
+            wellbeing_note_source=note_source or None,
             timestamp=ts_event,
             status="aniqlandi" if emp else "noma'lum",
         )
         db.add(new_log)
+        if emp is not None:
+            upsert_daily_psychological_state(
+                db,
+                employee_id=int(emp.id),
+                state_key=psychological_state_key,
+                timestamp=ts_event,
+                note=f"hik_event:{device.mac_address if device else (camera_mac or camera_serial)}",
+                source="external_system",
+            )
+        db.flush()
         db.commit()
-        db.refresh(new_log)
         log_id = new_log.id
-        print(f"[HIK-EVENT] Saqlandi: log_id={log_id}, person={person_id_val}/{person_name_val}, snap={snap_url}")
+        _publish_attendance_event_redis(
+            source="hik_event",
+            log_id=log_id,
+            timestamp=ts_event,
+            device=device,
+            employee_id=int(emp.id) if emp else None,
+            person_id=person_id_val,
+            person_name=person_name_val,
+            status=new_log.status,
+            snapshot_url=snap_url,
+            psychological_state_key=psychological_state_key,
+            psychological_state_uz=psychological_state_uz,
+            psychological_state_ru=psychological_state_ru,
+            psychological_state_source="external_system" if emp else "",
+            wellbeing_note_uz=note_uz,
+            wellbeing_note_ru=note_ru,
+            wellbeing_note_source=note_source,
+        )
+        _camera_event_debug(f"[HIK-EVENT] Saqlandi: log_id={log_id}, person={person_id_val}/{person_name_val}, snap={snap_url}")
     else:
         log_id = existing_log_id
         if existing_log_id and snap_url:
@@ -2301,7 +4299,7 @@ async def hik_event_webhook(request: Request, db: Session = Depends(get_db)):
                 {"snap": snap_url, "log_id": existing_log_id},
             )
         db.commit()
-        print(f"[HIK-EVENT] Duplicate event: log_id={existing_log_id}, person={person_id_val}/{person_name_val}, snap={snap_url}")
+        _camera_event_debug(f"[HIK-EVENT] Duplicate event: log_id={existing_log_id}, person={person_id_val}/{person_name_val}, snap={snap_url}")
 
     return {
         "ok": True,
@@ -2310,4 +4308,5 @@ async def hik_event_webhook(request: Request, db: Session = Depends(get_db)):
         "device_id": device.id if device else None,
         "payload_format": payload_format,
         "has_image": image_bytes is not None,
+        "snapshot_url": snap_url,
     }

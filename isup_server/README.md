@@ -42,7 +42,7 @@ make -j4
 ## Ishga tushirish
 
 ```bash
-# Default (port 7660, API 7670, key: bioface2024)
+# Default (port 7660, API 7670, key: facex2024)
 ./isup_server
 
 # Custom
@@ -61,7 +61,7 @@ Configuration → Network → Advanced → Platform Access
   ├── Server Address: <BioFace serveringiz IP manzili>
   ├── Port:           7660
   ├── Device ID:      <ixtiyoriy nom, masalan: cam-001>
-  └── ISUP Key:       bioface2024   (main.cpp dagi kalit bilan bir xil bo'lishi kerak)
+  └── ISUP Key:       facex2024   (main.cpp dagi kalit bilan bir xil bo'lishi kerak)
 ```
 
 ## REST API (port 7670)

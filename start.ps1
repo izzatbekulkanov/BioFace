@@ -38,4 +38,4 @@ Write-Host "      http://0.0.0.0:8000" -ForegroundColor Cyan
 Write-Host "      http://localhost:8000" -ForegroundColor Cyan
 Write-Host ""
 
-& $UVICORN main:app --host 0.0.0.0 --port 8000 --reload
+& $PYTHON -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload --reload-dir . --timeout-graceful-shutdown 3

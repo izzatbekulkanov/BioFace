@@ -55,6 +55,95 @@
         <div id="action-banner" class="hidden rounded-2xl border px-4 py-3 text-sm"></div>
     </div>
 
+    <template id="save-camera-modal-template">
+        <form id="save-camera-form" class="space-y-4">
+            <input type="hidden" id="sc-isup-device-id">
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">ISUP Device ID</label>
+                    <input type="text" id="sc-isup-device-id-display" readonly class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-mono rounded-xl px-4 py-3 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Kamera Nomi <span class="text-red-500">*</span></label>
+                    <input type="text" id="sc-name" required class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">MAC Manzili yoki Seriya raqami</label>
+                    <input type="text" id="sc-mac" required class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-mono rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition uppercase">
+                    <p id="sc-mac-help" class="mt-1 text-xs text-gray-400">ISUP dan MAC topilmasa namunaviy format ko'rsatiladi.</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Tashkilot</label>
+                    <select id="sc-org" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition">
+                        <option value="">Tanlang...</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Model (ixtiyoriy)</label>
+                    <input type="text" id="sc-model" list="sc-model-suggestions" placeholder="Masalan: DS-K1T343MFWX" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition">
+                    <datalist id="sc-model-suggestions">
+                        <option value="DS-K1T343MFWX">
+                        <option value="DS-K1T343MX">
+                        <option value="DS-K1T341CMF">
+                        <option value="DS-K1T342MFWX">
+                        <option value="DS-K1T671TM-3XF">
+                        <option value="DS-K1T320MFWX">
+                        <option value="DS-K1T607MF">
+                        <option value="DS-K1T321MFWX">
+                        <option value="DS-K1T680DFW">
+                    </datalist>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                        <button type="button" class="sc-model-pick rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-300" data-model-value="DS-K1T343MFWX">DS-K1T343MFWX</button>
+                        <button type="button" class="sc-model-pick rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-300" data-model-value="DS-K1T343MX">DS-K1T343MX</button>
+                        <button type="button" class="sc-model-pick rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-300" data-model-value="DS-K1T341CMF">DS-K1T341CMF</button>
+                        <button type="button" class="sc-model-pick rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-300" data-model-value="DS-K1T671TM-3XF">DS-K1T671TM-3XF</button>
+                    </div>
+                    <p id="sc-model-help" class="mt-1 text-xs text-gray-400">Agar model aniqlanmasa, taxminiy variantlardan birini tanlang.</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Joylashuv</label>
+                    <input type="text" id="sc-location" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Kamera Logini</label>
+                    <input type="text" id="sc-username" value="admin" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Kamera Paroli</label>
+                    <input type="password" id="sc-password" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">ISUP Paroli <span class="text-red-500">*</span></label>
+                    <input type="text" id="sc-isup-key" value="facex2024" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-mono rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Maks xotira</label>
+                    <input type="number" id="sc-memory" value="1500" min="1" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition">
+                </div>
+            </div>
+
+            <div id="sc-error" class="hidden mt-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-4 py-3 rounded-xl"></div>
+
+            <div class="mt-5 flex justify-end gap-2 border-t border-gray-100 dark:border-gray-800 pt-4">
+                <button type="button" id="sc-close-btn" class="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">Bekor qilish</button>
+                <button type="submit" id="sc-submit-btn" class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">Saqlash</button>
+            </div>
+        </form>
+    </template>
+
     <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4 mb-6">
         <article class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 shadow-sm card-hover">
             <p class="text-xs font-medium uppercase tracking-widest text-gray-500 dark:text-gray-400">ISUP holati</p>
@@ -101,72 +190,45 @@
         </article>
     </div>
 
-    <div class="grid grid-cols-1 gap-6 xl:grid-cols-[1.6fr,1fr]">
-        <div class="space-y-6">
-            <article class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
-                <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
-                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">ISUP port map</h2>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Register, alarm, picture, REST API va BioFace portlari</p>
+    <div class="space-y-6">
+        <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <article class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden xl:col-span-2">
+                <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">ISUP port map</h2>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Register, alarm, picture, REST API va BioFace portlari</p>
+                    </div>
                 </div>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-left text-sm">
-                        <thead class="bg-gray-50 dark:bg-gray-800 text-xs uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                <div class="overflow-x-auto max-h-[400px] overflow-y-auto">
+                    <table class="min-w-full text-left text-sm relative">
+                        <thead class="bg-gray-50 dark:bg-gray-800 text-xs uppercase tracking-widest text-gray-500 dark:text-gray-400 sticky top-0 z-10 shadow-sm">
                             <tr>
                                 <th class="px-5 py-3">Xizmat</th>
-                                <th class="px-5 py-3">Manzil</th>
-                                <th class="px-5 py-3">Maqsad</th>
+                                <th class="px-5 py-3">Manzil/Port</th>
                                 <th class="px-5 py-3 text-right">Holat</th>
                             </tr>
                         </thead>
                         <tbody id="ports-table" class="divide-y divide-gray-100 dark:divide-gray-800">
                             <tr>
-                                <td colspan="4" class="px-5 py-8 text-center text-gray-500 dark:text-gray-400">Portlar yuklanmoqda...</td>
+                                <td colspan="3" class="px-5 py-8 text-center text-gray-500 dark:text-gray-400">Portlar yuklanmoqda...</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             </article>
 
-            <article class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
-                <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
-                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Ulangan ISUP qurilmalar</h2>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Chapda holat (Online/Offline), o'ngdagi tugma esa boshqaruv amali.</p>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-left text-sm">
-                        <thead class="bg-gray-50 dark:bg-gray-800 text-xs uppercase tracking-widest text-gray-500 dark:text-gray-400">
-                            <tr>
-                                <th class="px-5 py-3">Device</th>
-                                <th class="px-5 py-3">IP / Port</th>
-                                <th class="px-5 py-3">Model</th>
-                                <th class="px-5 py-3">Registered</th>
-                                <th class="px-5 py-3 text-right">Boshqaruv</th>
-                            </tr>
-                        </thead>
-                        <tbody id="devices-table" class="divide-y divide-gray-100 dark:divide-gray-800">
-                            <tr>
-                                <td colspan="5" class="px-5 py-8 text-center text-gray-500 dark:text-gray-400">Qurilmalar tekshirilmoqda...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </article>
-        </div>
-
-        <div class="space-y-6">
-            <article class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+            <article class="col-span-1 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
                 <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Runtime ma'lumotlari</h2>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Binary, command, Redis va binding ma'lumotlari</p>
                 </div>
-                <dl class="space-y-4 p-5 text-sm">
+                <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-5 text-sm">
                     <div>
                         <dt class="text-gray-500 dark:text-gray-400">Binary path</dt>
                         <dd id="binary-path" class="mt-1 break-all font-medium text-gray-900 dark:text-white">-</dd>
                     </div>
                     <div>
                         <dt class="text-gray-500 dark:text-gray-400">Start command</dt>
-                        <dd id="start-command" class="mt-1 break-all rounded-xl bg-gray-50 dark:bg-gray-800 px-3 py-2 font-mono text-xs text-gray-700 dark:text-gray-200">-</dd>
+                        <dd id="start-command" class="mt-1 truncate max-w-[200px] rounded-xl bg-gray-50 dark:bg-gray-800 px-3 py-2 font-mono text-xs text-gray-700 dark:text-gray-200" title="-">-</dd>
                     </div>
                     <div>
                         <dt class="text-gray-500 dark:text-gray-400">Redis</dt>
@@ -190,13 +252,86 @@
                     <li>3. `Server Address` ga BioFace server IP manzilini yozing.</li>
                     <li>4. `Register/CMS` port sifatida odatda `7660` ishlatiladi.</li>
                     <li>5. `Alarm` uchun `7661`, `Picture` uchun `7662` tavsiya qilinadi.</li>
-                    <li>6. `ISUP Key` qiymatini `bioface2024` bilan mos saqlang.</li>
+                    <li>6. `ISUP Key` qiymatini `facex2024` bilan mos saqlang.</li>
                 </ol>
                 <div class="mx-5 mb-5 rounded-xl border border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
                     Eslatma: BioFace bu sahifada real Hikvision SDK (`hikvision_sdk`) listenerlari bilan ishlaydi. Register, Alarm va Picture portlari bevosita SDK orqali ochiladi.
                 </div>
             </article>
         </div>
+
+        <article class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+            <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Ulangan ISUP qurilmalar</h2>
+                    <p id="isup-device-summary" class="mt-1 text-sm text-gray-500 dark:text-gray-400">ISUP Registry</p>
+                </div>
+                <div class="mt-4 overflow-x-auto">
+                    <div class="flex min-w-max items-end gap-3">
+                        <label class="block w-[25rem]">
+                            <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">Qidiruv</span>
+                            <span class="flex overflow-hidden rounded-xl border border-gray-200 bg-gray-50 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                                <span class="flex w-11 shrink-0 items-center justify-center border-r border-gray-200 text-gray-400 dark:border-gray-700">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                    </svg>
+                                </span>
+                                <input id="isup-device-search" type="text" placeholder="Device ID, IP, model, MAC..." class="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:text-white">
+                            </span>
+                        </label>
+                        <label class="block xl:min-w-[10rem]">
+                            <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">Sahifa hajmi</span>
+                            <select id="isup-device-page-size" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
+                                <option value="25">25 ta</option>
+                                <option value="50" selected>50 ta</option>
+                                <option value="100">100 ta</option>
+                            </select>
+                        </label>
+                        <div class="grid w-[15rem] grid-cols-2 overflow-hidden rounded-xl border border-gray-300 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                                <button id="isup-device-apply" type="button" class="inline-flex items-center justify-center gap-2 border-r border-gray-300 px-4 py-2.5 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 dark:border-gray-700 dark:text-blue-300 dark:hover:bg-blue-900/20">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                    Qo'llash
+                                </button>
+                                <button id="isup-device-reset" type="button" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h5M20 20v-5h-5M5.636 18.364A9 9 0 1018.364 5.636"></path>
+                                    </svg>
+                                    Tozalash
+                                </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="overflow-auto max-h-[72vh] min-h-[560px]">
+                <table class="min-w-full text-left text-sm relative">
+                    <thead class="bg-gray-50 dark:bg-gray-800 text-xs uppercase tracking-widest text-gray-500 dark:text-gray-400 sticky top-0 z-10 shadow-sm">
+                        <tr>
+                            <th class="w-16 px-5 py-3 text-center">T/r</th>
+                            <th class="px-5 py-3">Device</th>
+                            <th class="px-5 py-3 hidden md:table-cell">IP / Port</th>
+                            <th class="px-5 py-3 hidden lg:table-cell">Model</th>
+                            <th class="px-5 py-3">Registered</th>
+                            <th class="px-5 py-3 text-right">Harakatlar</th>
+                        </tr>
+                    </thead>
+                    <tbody id="devices-table" class="divide-y divide-gray-100 dark:divide-gray-800">
+                        <tr>
+                            <td colspan="6" class="px-5 py-8 text-center text-gray-500 dark:text-gray-400">Qurilmalar tekshirilmoqda...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="flex flex-col gap-3 border-t border-gray-100 px-5 py-4 dark:border-gray-800 md:flex-row md:items-center md:justify-between">
+                <p id="isup-device-page-info" class="text-sm text-gray-500 dark:text-gray-400">0 ta natija</p>
+                <div class="flex flex-wrap items-center gap-2">
+                    <button id="isup-device-prev" type="button" class="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">Oldingi</button>
+                    <div id="isup-device-page-numbers" class="flex flex-wrap items-center gap-2"></div>
+                    <button id="isup-device-next" type="button" class="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">Keyingi</button>
+                </div>
+            </div>
+        </article>
     </div>
 </div>
 
@@ -220,6 +355,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const redisTarget = document.getElementById("redis-target");
     const portsTable = document.getElementById("ports-table");
     const devicesTable = document.getElementById("devices-table");
+    const isupDeviceSummary = document.getElementById("isup-device-summary");
+    const isupDeviceSearch = document.getElementById("isup-device-search");
+    const isupDevicePageSize = document.getElementById("isup-device-page-size");
+    const isupDeviceApply = document.getElementById("isup-device-apply");
+    const isupDeviceReset = document.getElementById("isup-device-reset");
+    const isupDevicePageInfo = document.getElementById("isup-device-page-info");
+    const isupDevicePrev = document.getElementById("isup-device-prev");
+    const isupDeviceNext = document.getElementById("isup-device-next");
+    const isupDevicePageNumbers = document.getElementById("isup-device-page-numbers");
     const actionBanner = document.getElementById("action-banner");
     const autoRefreshInput = document.getElementById("auto-refresh-input");
     const refreshButton = document.getElementById("refresh-btn");
@@ -231,6 +375,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let refreshInFlight = false;
     let lastStatusBanner = "";
+    const isupDevicesState = {
+        all: [],
+        filtered: [],
+        page: 1,
+        pageSize: 50,
+    };
 
     function setButtonBusy(button, busy) {
         if (!button) return;
@@ -246,6 +396,43 @@ document.addEventListener("DOMContentLoaded", () => {
             .replaceAll(">", "&gt;")
             .replaceAll('"', "&quot;")
             .replaceAll("'", "&#39;");
+    }
+
+    const SAMPLE_MAC_PLACEHOLDER = "A1:B1:C1:D1:E1:F1";
+
+    function firstNonEmptyValue(...values) {
+        for (const value of values) {
+            const text = String(value || "").trim();
+            if (text) return text;
+        }
+        return "";
+    }
+
+    function resolveDeviceIdentifier(device) {
+        const actual = firstNonEmptyValue(
+            device.mac_address,
+            device.mac,
+            device.macAddress,
+            device.serial,
+            device.serial_no,
+            device.serialNumber,
+            device.device_serial,
+        );
+        return {
+            value: actual,
+            placeholder: SAMPLE_MAC_PLACEHOLDER,
+        };
+    }
+
+    function resolveDeviceModel(device) {
+        return firstNonEmptyValue(
+            device.camera_model,
+            device.device_model,
+            device.model,
+            device.model_name,
+            device.product,
+            device.deviceType,
+        );
     }
 
     function formatDuration(seconds) {
@@ -264,6 +451,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function showBanner(message, tone = "info") {
+        hideBanner();
+        if (window.AppNotify) {
+            const notifyTone = tone === "error" ? "error" : (tone === "success" ? "success" : "info");
+            window.AppNotify[notifyTone](message, { duration: 4200 });
+            return;
+        }
         const tones = {
             info: "border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-200",
             success: "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200",
@@ -319,7 +512,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function renderPorts(ports) {
         if (!ports || ports.length === 0) {
-            portsTable.innerHTML = '<tr><td colspan="4" class="px-5 py-8 text-center text-gray-500 dark:text-gray-400">Port ma\'lumoti yo\'q.</td></tr>';
+            portsTable.innerHTML = '<tr><td colspan="3" class="px-5 py-8 text-center text-gray-500 dark:text-gray-400">Port ma\'lumoti yo\'q.</td></tr>';
             return;
         }
 
@@ -332,57 +525,138 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             return `
-                <tr class="align-top">
-                    <td class="px-5 py-4 font-semibold text-gray-900 dark:text-white">${escapeHtml(port.title)}</td>
-                    <td class="px-5 py-4 text-gray-600 dark:text-gray-300">${escapeHtml(port.host)}:${escapeHtml(port.port)}</td>
-                    <td class="px-5 py-4 text-gray-500 dark:text-gray-400">${escapeHtml(port.purpose)}</td>
+                <tr class="align-top hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+                    <td class="px-5 py-4 font-semibold text-gray-900 dark:text-white">
+                        <div>${escapeHtml(port.title)}</div>
+                        <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">${escapeHtml(port.purpose)}</div>
+                    </td>
+                    <td class="px-5 py-4 text-gray-600 dark:text-gray-300 font-mono text-sm">${escapeHtml(port.host)}:${escapeHtml(port.port)}</td>
                     <td class="px-5 py-4 text-right">${badge}</td>
                 </tr>
             `;
         }).join("");
     }
 
-    function renderDevices(devices) {
-        if (!devices || devices.length === 0) {
-            devicesTable.innerHTML = '<tr><td colspan="5" class="px-5 py-8 text-center text-gray-500 dark:text-gray-400">Hozircha ulangan ISUP qurilmalar topilmadi.</td></tr>';
+    function isupDevicesPageCount() {
+        return Math.max(1, Math.ceil(isupDevicesState.filtered.length / isupDevicesState.pageSize));
+    }
+
+    function clampIsupDevicesPage() {
+        isupDevicesState.page = Math.min(Math.max(1, isupDevicesState.page), isupDevicesPageCount());
+    }
+
+    function currentIsupDeviceFilters() {
+        return {
+            search: String(isupDeviceSearch.value || "").trim().toLowerCase(),
+        };
+    }
+
+    function renderIsupDevicesPagination() {
+        const totalPages = isupDevicesPageCount();
+        const total = isupDevicesState.filtered.length;
+        const start = total === 0 ? 0 : ((isupDevicesState.page - 1) * isupDevicesState.pageSize) + 1;
+        const end = Math.min(total, isupDevicesState.page * isupDevicesState.pageSize);
+        isupDevicePrev.disabled = isupDevicesState.page <= 1;
+        isupDeviceNext.disabled = isupDevicesState.page >= totalPages;
+        isupDevicePageInfo.textContent = `${start}-${end} / ${total} ta natija`;
+        isupDeviceSummary.textContent = `${total} ta qurilma filter natijasi / ${isupDevicesState.all.length} jami`;
+
+        isupDevicePageNumbers.innerHTML = "";
+        const pages = [];
+        const from = Math.max(1, isupDevicesState.page - 2);
+        const to = Math.min(totalPages, isupDevicesState.page + 2);
+        for (let page = from; page <= to; page += 1) {
+            pages.push(page);
+        }
+        if (from > 1) {
+            pages.unshift(1);
+            if (from > 2) pages.splice(1, 0, "dots-left");
+        }
+        if (to < totalPages) {
+            if (to < totalPages - 1) pages.push("dots-right");
+            pages.push(totalPages);
+        }
+
+        pages.forEach((item) => {
+            if (String(item).startsWith("dots")) {
+                const dots = document.createElement("span");
+                dots.className = "px-1 text-sm text-gray-400";
+                dots.textContent = "...";
+                isupDevicePageNumbers.appendChild(dots);
+                return;
+            }
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = item === isupDevicesState.page
+                ? "inline-flex h-9 min-w-[2.25rem] items-center justify-center rounded-xl bg-blue-600 px-3 text-sm font-semibold text-white shadow-sm"
+                : "inline-flex h-9 min-w-[2.25rem] items-center justify-center rounded-xl border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700";
+            button.textContent = String(item);
+            button.addEventListener("click", () => {
+                isupDevicesState.page = Number(item);
+                renderIsupDevicesTable();
+            });
+            isupDevicePageNumbers.appendChild(button);
+        });
+    }
+
+    function renderIsupDevicesTable() {
+        clampIsupDevicesPage();
+        const startIndex = (isupDevicesState.page - 1) * isupDevicesState.pageSize;
+        const rows = isupDevicesState.filtered.slice(startIndex, startIndex + isupDevicesState.pageSize);
+
+        if (rows.length === 0) {
+            devicesTable.innerHTML = '<tr><td colspan="6" class="px-5 py-8 text-center text-gray-500 dark:text-gray-400">Hozircha ulangan ISUP qurilmalar topilmadi.</td></tr>';
+            renderIsupDevicesPagination();
             return;
         }
 
-        devicesTable.innerHTML = devices.map((device) => {
+        devicesTable.innerHTML = rows.map((device, index) => {
             const source = device.source || "isup_rest";
             const isConfiguredOnly = source === "configured_only" || device.connection_state === "not_registered";
             const isOnline = device.online !== false;
             const onlineBadge = !isOnline
-                ? '<span class="inline-flex rounded-full bg-rose-100 dark:bg-rose-900/30 px-2.5 py-1 text-xs font-semibold text-rose-700 dark:text-rose-300">Offline</span>'
-                : '<span class="inline-flex rounded-full bg-emerald-100 dark:bg-emerald-900/30 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">Online</span>';
+                ? '<span class="inline-flex rounded-full bg-rose-100 dark:bg-rose-900/30 px-2.5 py-1 text-[10px] font-semibold text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/50">Offline</span>'
+                : '<span class="inline-flex rounded-full bg-emerald-100 dark:bg-emerald-900/30 px-2.5 py-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/50">Online</span>';
             const sourceBadge = isConfiguredOnly
-                ? '<span class="inline-flex rounded-full bg-amber-100 dark:bg-amber-900/30 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:text-amber-300">Configured</span>'
-                : '<span class="inline-flex rounded-full bg-blue-100 dark:bg-blue-900/30 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:text-blue-300">Live</span>';
+                ? '<span class="inline-flex rounded-full bg-amber-100 dark:bg-amber-900/30 px-2.5 py-1 text-[10px] font-semibold text-amber-700 dark:text-amber-300">Configured</span>'
+                : '<span class="inline-flex rounded-full bg-blue-100 dark:bg-blue-900/30 px-2.5 py-1 text-[10px] font-semibold text-blue-700 dark:text-blue-300">Live</span>';
             const displayName = device.display_name || device.camera_name || "";
+            const isSaved = !!device.db_camera_id;
+            const absoluteIndex = startIndex + index + 1;
+
+            const saveAction = isSaved ? '' : `<button class="save-cam-btn inline-flex items-center gap-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1.5 text-[11px] font-semibold text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition border border-blue-200 dark:border-blue-900/30 whitespace-nowrap" title="Kamerani bazaga saqlash" data-device-id="${escapeHtml(device.device_id || "")}" data-mac="${escapeHtml(firstNonEmptyValue(device.mac_address, device.mac, device.macAddress))}" data-serial="${escapeHtml(firstNonEmptyValue(device.serial, device.serial_no, device.serialNumber, device.device_serial))}" data-model="${escapeHtml(resolveDeviceModel(device))}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>Saqlash</button>`;
             const disconnectAction = isConfiguredOnly
-                ? '<span class="text-xs text-gray-400 dark:text-gray-500">Ro\'yxatda</span>'
+                ? '<span class="text-xs text-gray-400 dark:text-gray-500 italic">DB dagi yozuv</span>'
                 : (!isOnline
-                    ? '<span class="text-xs text-gray-400 dark:text-gray-500">Offline</span>'
-                    : `<button class="disconnect-btn inline-flex items-center gap-2 rounded-xl bg-rose-50 dark:bg-rose-900/20 px-3 py-2 text-xs font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition" title="Qurilma ulanishini serverdan uzadi" data-device-id="${escapeHtml(device.device_id || "")}">
-                                Ulanishni uzish
-                            </button>`);
+                    ? '<span class="text-xs text-gray-400 dark:text-gray-500 italic">O\'chirilgan</span>'
+                    : `<button class="disconnect-btn inline-flex items-center gap-1.5 rounded-lg bg-rose-50 dark:bg-rose-900/20 px-2.5 py-1.5 text-[11px] font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition border border-rose-200 dark:border-rose-900/30 whitespace-nowrap" title="Qurilma ulanishini serverdan uzadi" data-device-id="${escapeHtml(device.device_id || "")}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>Uzish</button>`);
 
             return `
-                <tr class="align-top">
+                <tr class="align-top hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+                    <td class="px-5 py-4 text-center text-sm font-semibold text-gray-500 dark:text-gray-400">${absoluteIndex}</td>
                     <td class="px-5 py-4">
-                        <div class="font-semibold text-gray-900 dark:text-white">${escapeHtml(device.device_id || "-")}</div>
-                        ${displayName ? `<div class="mt-1 text-xs text-gray-500 dark:text-gray-400">${escapeHtml(displayName)}</div>` : ""}
-                        <div class="mt-2 flex flex-wrap items-center gap-2">${onlineBadge}${sourceBadge}</div>
+                        <div class="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                            ${escapeHtml(device.device_id || "-")}
+                        </div>
+                        ${displayName ? `<div class="mt-1 text-xs text-gray-500 dark:text-gray-400 font-medium">${escapeHtml(displayName)}</div>` : ""}
+                        <div class="mt-2 flex flex-wrap items-center gap-1.5">${onlineBadge}${sourceBadge}</div>
                     </td>
-                    <td class="px-5 py-4 text-gray-600 dark:text-gray-300">
-                        ${escapeHtml(device.remote_ip || device.ip || "-")}:${escapeHtml(device.remote_port || device.port || "-")}
+                    <td class="px-5 py-4 text-gray-600 dark:text-gray-300 hidden md:table-cell">
+                        <div class="font-mono text-sm bg-gray-100 dark:bg-gray-800/50 inline-block px-2 py-1 rounded truncate max-w-[180px]" title="${escapeHtml(device.remote_ip || device.ip || "-")}:${escapeHtml(device.remote_port || device.port || "-")}">${escapeHtml(device.remote_ip || device.ip || "-")}:${escapeHtml(device.remote_port || device.port || "-")}</div>
                     </td>
-                    <td class="px-5 py-4 text-gray-600 dark:text-gray-300">
-                        <div>${escapeHtml(device.device_model || device.model || "-")}</div>
-                        <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">${escapeHtml(device.firmware_version || device.firmware || "-")}</div>
+                    <td class="px-5 py-4 text-gray-600 dark:text-gray-300 hidden lg:table-cell">
+                        <div class="font-medium text-sm text-gray-800 dark:text-gray-200">${escapeHtml(device.device_model || device.model || "-")}</div>
+                        <div class="mt-1 text-[11px] text-gray-500 dark:text-gray-400 font-mono">v${escapeHtml(device.firmware_version || device.firmware || "-")}</div>
                     </td>
-                    <td class="px-5 py-4 text-gray-500 dark:text-gray-400">${escapeHtml(formatDate(device.registered_at || device.last_seen || device.last_seen_at))}</td>
-                    <td class="px-5 py-4 text-right">${disconnectAction}</td>
+                    <td class="px-5 py-4">
+                        <div class="text-sm text-gray-600 dark:text-gray-300">${escapeHtml(formatDate(device.registered_at || device.last_seen || device.last_seen_at))}</div>
+                    </td>
+                    <td class="px-5 py-4 text-right">
+                        <div class="flex flex-col sm:flex-row items-end sm:items-center justify-end gap-2">
+                            ${saveAction}
+                            ${disconnectAction}
+                        </div>
+                    </td>
                 </tr>
             `;
         }).join("");
@@ -391,17 +665,72 @@ document.addEventListener("DOMContentLoaded", () => {
             button.addEventListener("click", async () => {
                 const deviceId = button.dataset.deviceId;
                 if (!deviceId) return;
-                if (!confirm(`${deviceId} qurilmasining joriy ISUP ulanishini uzishni xohlaysizmi?`)) return;
+                const confirmed = window.AppDialog
+                    ? await window.AppDialog.confirm({
+                        title: "ISUP ulanishini uzish",
+                        message: `${deviceId} qurilmasining joriy ISUP ulanishini uzishni xohlaysizmi?`,
+                        tone: "danger",
+                        confirmText: "Uzish",
+                        cancelText: "Bekor qilish",
+                    })
+                    : confirm(`${deviceId} qurilmasining joriy ISUP ulanishini uzishni xohlaysizmi?`);
+                if (!confirmed) return;
 
                 try {
                     await fetchJson(`/api/isup-devices/${encodeURIComponent(deviceId)}`, { method: "DELETE" });
                     showBanner(`${deviceId} ulanishi uzildi.`, "success");
+                    if (window.AppNotify) {
+                        window.AppNotify.success(`${deviceId} ulanishi uzildi.`);
+                    }
                     await refreshDashboard({ showLoading: false, preserveBanner: true });
                 } catch (error) {
                     showBanner(`Ulanishni uzishda xatolik: ${error.message}`, "error");
+                    if (window.AppNotify) {
+                        window.AppNotify.error(`Ulanishni uzishda xatolik: ${error.message}`);
+                    }
                 }
             });
         });
+
+        devicesTable.querySelectorAll(".save-cam-btn").forEach((button) => {
+            button.addEventListener("click", () => {
+                openSaveModal({
+                    deviceId: button.dataset.deviceId || "",
+                    mac: button.dataset.mac || "",
+                    serial: button.dataset.serial || "",
+                    model: button.dataset.model || "",
+                });
+            });
+        });
+
+        renderIsupDevicesPagination();
+    }
+
+    function renderDevices(devices) {
+        isupDevicesState.all = Array.isArray(devices) ? devices : [];
+        const filters = currentIsupDeviceFilters();
+        const search = filters.search;
+        isupDevicesState.filtered = isupDevicesState.all.filter((device) => {
+            const haystack = [
+                device.device_id,
+                device.display_name,
+                device.camera_name,
+                device.remote_ip,
+                device.ip,
+                device.remote_port,
+                device.port,
+                device.mac_address,
+                device.mac,
+                device.device_model,
+                device.model,
+                device.firmware_version,
+                device.firmware,
+                device.source,
+            ].join(" ").toLowerCase();
+            return !search || haystack.includes(search);
+        });
+        clampIsupDevicesPage();
+        renderIsupDevicesTable();
     }
 
     async function fetchJson(url, options = {}) {
@@ -456,7 +785,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 statusMessage = "Hikvision SDK runtime tayyor emas. DLL path va SDK statusni tekshiring.";
                 statusTone = "error";
             } else if (hasConfiguredOnly && !hasLive) {
-                statusMessage = "Kamera DB da sozlangan, lekin ISUP register bo'lmagan. Kamera ichida Server IP/Port va ISUP Key (bioface2024) ni tekshiring.";
+                statusMessage = "Kamera DB da sozlangan, lekin ISUP register bo'lmagan. Kamera ichida Server IP/Port va ISUP Key (facex2024) ni tekshiring.";
             }
 
             if (!preserveBanner) {
@@ -487,25 +816,207 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             const data = await fetchJson(`/api/isup/process/${action}`, { method: "POST" });
             showBanner(data.message || "Amal bajarildi.", "success");
+            if (window.AppNotify) {
+                window.AppNotify.success(data.message || "Amal bajarildi.");
+            }
             await refreshDashboard({ preserveBanner: true });
         } catch (error) {
             showBanner(`${action} xatoligi: ${error.message}`, "error");
+            if (window.AppNotify) {
+                window.AppNotify.error(`${action} xatoligi: ${error.message}`);
+            }
         } finally {
             setControlsDisabled(false);
         }
     }
+
+    isupDeviceSearch.addEventListener("input", () => {
+        isupDevicesState.page = 1;
+        renderDevices(isupDevicesState.all);
+    });
+    isupDeviceSearch.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            isupDevicesState.page = 1;
+            renderDevices(isupDevicesState.all);
+        }
+    });
+    isupDevicePageSize.addEventListener("change", (event) => {
+        isupDevicesState.pageSize = Number(event.target.value || 50);
+        isupDevicesState.page = 1;
+        renderDevices(isupDevicesState.all);
+    });
+    isupDeviceApply.addEventListener("click", () => {
+        isupDevicesState.page = 1;
+        renderDevices(isupDevicesState.all);
+    });
+    isupDeviceReset.addEventListener("click", () => {
+        isupDeviceSearch.value = "";
+        isupDevicePageSize.value = "50";
+        isupDevicesState.pageSize = 50;
+        isupDevicesState.page = 1;
+        renderDevices(isupDevicesState.all);
+    });
+    isupDevicePrev.addEventListener("click", () => {
+        if (isupDevicesState.page > 1) {
+            isupDevicesState.page -= 1;
+            renderIsupDevicesTable();
+        }
+    });
+    isupDeviceNext.addEventListener("click", () => {
+        if (isupDevicesState.page < isupDevicesPageCount()) {
+            isupDevicesState.page += 1;
+            renderIsupDevicesTable();
+        }
+    });
 
     refreshButton.addEventListener("click", () => refreshDashboard());
     actionButtons.start.addEventListener("click", () => runAction("start"));
     actionButtons.restart.addEventListener("click", () => runAction("restart"));
     actionButtons.stop.addEventListener("click", () => runAction("stop"));
 
-    refreshDashboard();
-    setInterval(() => {
-        if (autoRefreshInput.checked) {
-            refreshDashboard();
+    // --- Save Camera Modal Logic (Global reusable modal host) ---
+    const saveTemplate = document.getElementById("save-camera-modal-template");
+    let cachedOrganizations = null;
+
+    async function getOrganizations() {
+        if (Array.isArray(cachedOrganizations)) {
+            return cachedOrganizations;
         }
-    }, 5000);
+        cachedOrganizations = await fetchJson("/api/organizations");
+        return Array.isArray(cachedOrganizations) ? cachedOrganizations : [];
+    }
+
+    window.openSaveModal = async function(deviceInfo) {
+        const appModal = window.AppModal;
+        if (!appModal || !saveTemplate) {
+            showBanner("Modal tizimi topilmadi", "error");
+            return;
+        }
+
+        const info = deviceInfo || {};
+        const deviceId = String(info.deviceId || "").trim();
+        const detectedIdentifier = resolveDeviceIdentifier({
+            mac_address: info.mac,
+            serial: info.serial,
+        });
+        const detectedModel = firstNonEmptyValue(info.model);
+
+        const bodyNode = saveTemplate.content.firstElementChild.cloneNode(true);
+        const scForm = bodyNode;
+        const scError = scForm.querySelector("#sc-error");
+        const scOrgSelect = scForm.querySelector("#sc-org");
+        const scCloseBtn = scForm.querySelector("#sc-close-btn");
+        const scMacInput = scForm.querySelector("#sc-mac");
+        const scMacHelp = scForm.querySelector("#sc-mac-help");
+        const scModelInput = scForm.querySelector("#sc-model");
+        const scModelHelp = scForm.querySelector("#sc-model-help");
+
+        scForm.querySelector("#sc-isup-device-id").value = deviceId;
+        scForm.querySelector("#sc-isup-device-id-display").value = deviceId;
+        scForm.querySelector("#sc-name").value = `Kamera ${deviceId}`;
+        scMacInput.value = detectedIdentifier.value ? detectedIdentifier.value.toUpperCase() : "";
+        scMacInput.placeholder = detectedIdentifier.value ? "" : detectedIdentifier.placeholder;
+        if (scMacHelp) {
+            scMacHelp.textContent = detectedIdentifier.value
+                ? "ISUP ro'yxatidan aniqlangan MAC/serial qo'yildi."
+                : `MAC topilmadi. Masalan: ${detectedIdentifier.placeholder}`;
+        }
+        scForm.querySelector("#sc-memory").value = "1500";
+        scForm.querySelector("#sc-location").value = "";
+        scModelInput.value = detectedModel;
+        if (scModelHelp) {
+            scModelHelp.textContent = detectedModel
+                ? `ISUP bo'yicha aniqlangan model: ${detectedModel}`
+                : "Agar model aniqlanmasa, taxminiy variantlardan birini tanlang.";
+        }
+        scForm.querySelector("#sc-username").value = "admin";
+        scForm.querySelector("#sc-password").value = "";
+        scForm.querySelector("#sc-isup-key").value = "facex2024";
+
+        scForm.querySelectorAll(".sc-model-pick").forEach((button) => {
+            button.addEventListener("click", () => {
+                scModelInput.value = String(button.dataset.modelValue || "");
+            });
+        });
+
+        appModal.open({ title: "Kamerani bazaga saqlash", size: "2xl", bodyNode });
+
+        scCloseBtn.addEventListener("click", () => appModal.close());
+
+        try {
+            const orgs = await getOrganizations();
+            scOrgSelect.innerHTML = '<option value="">Tanlang...</option>' + orgs.map((o) => `<option value="${o.id}">${escapeHtml(o.name)}</option>`).join("");
+        } catch (e) {
+            scError.textContent = "Tashkilotlarni yuklashda xatolik";
+            scError.classList.remove("hidden");
+        }
+
+        scForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            scError.classList.add("hidden");
+            const submitBtn = scForm.querySelector("#sc-submit-btn");
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Saqlanmoqda...";
+
+            const memoryVal = parseInt(scForm.querySelector("#sc-memory").value, 10);
+            const payload = {
+                name: scForm.querySelector("#sc-name").value.trim(),
+                mac_address: scForm.querySelector("#sc-mac").value.trim(),
+                isup_device_id: scForm.querySelector("#sc-isup-device-id").value.trim(),
+                max_memory: Number.isFinite(memoryVal) && memoryVal > 0 ? memoryVal : 1500,
+                location: scForm.querySelector("#sc-location").value.trim() || null,
+                model: scForm.querySelector("#sc-model").value.trim() || null,
+                username: scForm.querySelector("#sc-username").value.trim() || null,
+                password: scForm.querySelector("#sc-password").value.trim() || null,
+                isup_password: scForm.querySelector("#sc-isup-key").value.trim() || "facex2024",
+            };
+
+            const orgId = scOrgSelect.value;
+            if (orgId) {
+                payload.organization_id = parseInt(orgId, 10);
+            }
+
+            try {
+                const data = await fetchJson("/api/cameras", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+                appModal.close();
+                showBanner(data.message || `Kamera saqlandi: ${payload.name}`, "success");
+                if (window.AppNotify) {
+                    window.AppNotify.success(data.message || `Kamera saqlandi: ${payload.name}`);
+                }
+                await refreshDashboard({ preserveBanner: true });
+            } catch (err) {
+                scError.textContent = String(err.message || "Saqlashda xatolik");
+                scError.classList.remove("hidden");
+                if (window.AppNotify) {
+                    window.AppNotify.error(String(err.message || "Saqlashda xatolik"));
+                }
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Saqlash";
+            }
+        });
+    };
+
+    // Adaptive refresh loop: avoids stacked requests and skips hidden tabs.
+    function scheduleRefresh() {
+        setTimeout(async () => {
+            const modalOpen = Boolean(window.AppModal && window.AppModal.isOpen && window.AppModal.isOpen());
+            if (autoRefreshInput.checked && document.visibilityState === "visible" && !modalOpen) {
+                await refreshDashboard();
+            }
+            scheduleRefresh();
+        }, 8000);
+    }
+
+    requestAnimationFrame(() => {
+        void refreshDashboard();
+    });
+    scheduleRefresh();
 });
 </script>
 {% endblock %}

@@ -54,14 +54,13 @@ def login_page(request: Request):
     if request.session.get("auth_user"):
         return RedirectResponse(url="/", status_code=303)
     lang = request.cookies.get("lang", "uz")
-    t = get_translations(lang)
     brand = _get_brand_settings()
     return templates.TemplateResponse(
-        "login.html",
-        {
+        request=request,
+        name="login.html",
+        context={
             "request": request,
             "lang": lang,
-            "t": t,
             **brand,
         },
     )

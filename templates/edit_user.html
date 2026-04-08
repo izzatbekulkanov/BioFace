@@ -66,12 +66,19 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ t.organization }}</label>
-                    <select id="inp-org" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100">
-                        <option value="">-- Barchasi / Yo'q --</option>
-                        {% for org in organizations %}
-                            <option value="{{ org.id }}" {% if user.organization_id == org.id %}selected{% endif %}>{{ org.name }}</option>
-                        {% endfor %}
-                    </select>
+                    <div id="inp-orgs-wrap" class="relative">
+                        <button type="button" id="inp-orgs-toggle" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-left outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 inline-flex items-center justify-between gap-2">
+                            <span id="inp-orgs-summary" class="truncate text-gray-500 dark:text-gray-400">Tashkilot tanlang...</span>
+                            <svg class="h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </button>
+                        <div id="inp-orgs-dropdown" class="absolute z-20 mt-1 hidden w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg">
+                            <div class="p-2 border-b border-gray-200 dark:border-gray-800">
+                                <input type="text" id="inp-orgs-search" placeholder="Tashkilot qidirish..." class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-md px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 placeholder-gray-400">
+                            </div>
+                            <div id="inp-orgs-list" class="max-h-56 overflow-auto p-1"></div>
+                        </div>
+                    </div>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Bir nechta tashkilotni qidirib tanlashingiz mumkin.</p>
                 </div>
 
                 <div class="md:col-span-2">
@@ -103,7 +110,7 @@
                                 <p id="user-upload-file-size" class="text-xs text-gray-500 dark:text-gray-400 mt-1"></p>
                                 <div class="mt-2 flex items-center gap-2">
                                     <button type="button" id="user-btn-change-file" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition">Almashtirish</button>
-                                    <button type="button" id="user-btn-remove-file" class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200 text-xs font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition">O'chirish</button>
+                                    <button type="button" id="user-btn-remove-file" class="px-3 py-1.5 rounded-lg bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 text-xs font-medium hover:bg-red-200 dark:hover:bg-red-900/50 transition">Rasmni olib tashlash</button>
                                 </div>
                             </div>
                             <div id="avatar-preview-box" class="w-14 h-14 rounded-full overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center justify-center">
@@ -120,14 +127,6 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Rasm URL (ixtiyoriy)</label>
                     <input type="url" id="inp-image-url" value="{{ user.image_url or '' }}" placeholder="https://example.com/avatar.jpg" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 placeholder-gray-400">
-                </div>
-
-                <div class="md:col-span-2">
-                    <div class="flex justify-end">
-                        <button type="button" onclick="clearAvatar()" class="px-3 py-2 text-xs font-medium rounded-lg border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 dark:border-red-800/40 dark:text-red-300 dark:bg-red-900/20 dark:hover:bg-red-900/30">
-                            Rasmni olib tashlash
-                        </button>
-                    </div>
                 </div>
             </div>
 
@@ -156,8 +155,75 @@ const uploadFileSize = document.getElementById('user-upload-file-size');
 const btnOpenFile = document.getElementById('user-btn-open-file');
 const btnChangeFile = document.getElementById('user-btn-change-file');
 const btnRemoveFile = document.getElementById('user-btn-remove-file');
+const orgWrap = document.getElementById('inp-orgs-wrap');
+const orgToggle = document.getElementById('inp-orgs-toggle');
+const orgSummary = document.getElementById('inp-orgs-summary');
+const orgSearchInput = document.getElementById('inp-orgs-search');
+const orgDropdown = document.getElementById('inp-orgs-dropdown');
+const orgList = document.getElementById('inp-orgs-list');
+const orgOptionsData = [
+    {% for org in organizations %}
+    { id: {{ org.id }}, name: {{ org.name|tojson }} },
+    {% endfor %}
+];
+const selectedOrgIds = new Set({{ user_org_ids|tojson }});
 const currentImageUrl = "{{ user.image_url or '' }}";
 let shouldClearImage = false;
+
+function updateOrgSummary() {
+    const selected = orgOptionsData.filter((o) => selectedOrgIds.has(Number(o.id)));
+    if (!selected.length) {
+        orgSummary.textContent = 'Tashkilot tanlang...';
+        orgSummary.classList.add('text-gray-500', 'dark:text-gray-400');
+        return;
+    }
+    orgSummary.classList.remove('text-gray-500', 'dark:text-gray-400');
+    if (selected.length <= 2) {
+        orgSummary.textContent = selected.map((s) => s.name).join(', ');
+    } else {
+        orgSummary.textContent = `${selected.length} ta tashkilot tanlandi`;
+    }
+}
+
+function renderOrgList() {
+    const q = String(orgSearchInput?.value || '').trim().toLowerCase();
+    const filtered = orgOptionsData.filter((o) => !q || String(o.name || '').toLowerCase().includes(q));
+    if (!filtered.length) {
+        orgList.innerHTML = '<div class="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">Hech narsa topilmadi</div>';
+        return;
+    }
+    orgList.innerHTML = filtered.map((o) => {
+        const checked = selectedOrgIds.has(Number(o.id)) ? 'checked' : '';
+        return `<label class="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"><input type="checkbox" class="org-option h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" value="${o.id}" ${checked}><span class="text-sm text-gray-800 dark:text-gray-200">${String(o.name || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span></label>`;
+    }).join('');
+    for (const cb of orgList.querySelectorAll('.org-option')) {
+        cb.addEventListener('change', (e) => {
+            const v = Number(e.target.value);
+            if (e.target.checked) selectedOrgIds.add(v);
+            else selectedOrgIds.delete(v);
+            updateOrgSummary();
+        });
+    }
+}
+
+function bindOrganizationSearch() {
+    if (!orgWrap || !orgToggle || !orgDropdown || !orgSearchInput || !orgList) return;
+    orgToggle.addEventListener('click', () => {
+        orgDropdown.classList.toggle('hidden');
+        if (!orgDropdown.classList.contains('hidden')) {
+            orgSearchInput.focus();
+            renderOrgList();
+        }
+    });
+    orgSearchInput.addEventListener('input', renderOrgList);
+    document.addEventListener('click', (e) => {
+        if (!orgWrap.contains(e.target)) {
+            orgDropdown.classList.add('hidden');
+        }
+    });
+    updateOrgSummary();
+    renderOrgList();
+}
 
 function initialLetter() {
     const fromFirstName = firstNameInput.value.trim()[0];
@@ -310,18 +376,7 @@ dropzone.addEventListener('click', (e) => {
 });
 btnOpenFile.addEventListener('click', () => imageInput.click());
 btnChangeFile.addEventListener('click', () => imageInput.click());
-btnRemoveFile.addEventListener('click', () => {
-    imageInput.value = '';
-    showUploadEmpty();
-    const url = imageUrlInput.value.trim();
-    if (url) {
-        showUploadPreviewFromUrl(url, 'URL rasm');
-    } else {
-        const avatarBox = document.getElementById('avatar-preview-box');
-        if (avatarBox) avatarBox.innerHTML = '';
-        setAvatarLetter();
-    }
-});
+btnRemoveFile.addEventListener('click', clearAvatar);
 
 dropzone.addEventListener('dragenter', (e) => {
     e.preventDefault();
@@ -375,7 +430,7 @@ async function saveUser() {
     const phone = phoneRaw ? formatPhoneMask(phoneRaw) : '';
     const password = document.getElementById('inp-password').value.trim();
     const role = document.getElementById('inp-role').value;
-    const organization_id = document.getElementById('inp-org').value;
+    const organization_ids = Array.from(selectedOrgIds).map((v) => Number(v)).filter((v) => Number.isInteger(v) && v > 0);
     const image_url = document.getElementById('inp-image-url').value.trim();
     const image = imageInput.files?.[0];
 
@@ -402,7 +457,8 @@ async function saveUser() {
     formData.append('email', email);
     formData.append('phone', phone);
     formData.append('role', role);
-    formData.append('organization_id', organization_id);
+    formData.append('organization_ids', JSON.stringify(organization_ids));
+    formData.append('organization_id', organization_ids.length ? String(organization_ids[0]) : '');
     if (image_url) formData.append('image_url', image_url);
     if (password) formData.append('password', password);
     if (image) formData.append('image', image);
@@ -437,5 +493,6 @@ if (currentImageUrl) {
     showUploadEmpty();
     setAvatarLetter();
 }
+bindOrganizationSearch();
 </script>
 {% endblock %}

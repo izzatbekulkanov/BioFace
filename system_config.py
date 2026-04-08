@@ -8,10 +8,41 @@ from urllib.parse import urlsplit
 
 BASE_DIR = Path(__file__).resolve().parent
 
+
+def _load_dotenv_file() -> None:
+    """Load a local .env file if present, without overriding existing env vars."""
+    env_path = BASE_DIR / ".env"
+    if not env_path.exists():
+        return
+
+    try:
+        for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if line.lower().startswith("export "):
+                line = line[7:].strip()
+            if "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key = key.strip()
+            if not key or key in os.environ:
+                continue
+            value = value.strip()
+            if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
+                value = value[1:-1]
+            os.environ.setdefault(key, value)
+    except Exception:
+        # Never block startup if .env is malformed.
+        pass
+
+
+_load_dotenv_file()
+
 BIOFACE_HOST = os.getenv("BIOFACE_HOST", "0.0.0.0")
 BIOFACE_PORT = int(os.getenv("BIOFACE_PORT", "8000"))
 
-ISUP_KEY = os.getenv("ISUP_KEY", "bioface2024")
+ISUP_KEY = os.getenv("ISUP_KEY", "facex2024")
 ISUP_REGISTER_PORT = int(os.getenv("ISUP_REGISTER_PORT", "7660"))
 ISUP_ALARM_PORT = int(os.getenv("ISUP_ALARM_PORT", "7661"))
 ISUP_PICTURE_PORT = int(os.getenv("ISUP_PICTURE_PORT", "7662"))
@@ -46,6 +77,30 @@ def _detect_lan_ipv4() -> str:
 
 def get_detected_lan_ipv4() -> str:
     return _detect_lan_ipv4()
+
+
+def _public_web_host(value: str | None) -> str:
+    normalized = normalize_public_web_base_url(value)
+    if not normalized:
+        return ""
+    try:
+        parsed = urlsplit(normalized)
+    except Exception:
+        return ""
+    return normalize_isup_public_host(parsed.hostname)
+
+
+def _guess_public_web_base_url_from_host(host: str | None) -> str:
+    candidate = normalize_isup_public_host(host)
+    if not candidate:
+        return ""
+
+    try:
+        ipaddress.ip_address(candidate)
+        scheme = "http"
+    except ValueError:
+        scheme = "https"
+    return f"{scheme}://{candidate}"
 
 
 def normalize_isup_public_host(value: str | None) -> str:
@@ -98,6 +153,19 @@ def get_isup_public_host() -> str:
     if configured:
         return configured
 
+    try:
+        from menu_utils import get_menu_data
+
+        saved_web_host = _public_web_host(get_menu_data().get("public_web_base_url"))
+        if saved_web_host:
+            return saved_web_host
+    except Exception:
+        pass
+
+    env_web_host = _public_web_host(os.getenv("PUBLIC_WEB_BASE_URL"))
+    if env_web_host:
+        return env_web_host
+
     return _detect_lan_ipv4()
 
 
@@ -140,6 +208,21 @@ def get_public_web_base_url() -> str:
     configured = normalize_public_web_base_url(os.getenv("PUBLIC_WEB_BASE_URL"))
     if configured:
         return configured
+
+    try:
+        from menu_utils import get_menu_data
+
+        saved_host = normalize_isup_public_host(get_menu_data().get("isup_public_host"))
+        guessed = _guess_public_web_base_url_from_host(saved_host)
+        if guessed:
+            return guessed
+    except Exception:
+        pass
+
+    env_host = normalize_isup_public_host(os.getenv("ISUP_PUBLIC_HOST"))
+    guessed = _guess_public_web_base_url_from_host(env_host)
+    if guessed:
+        return guessed
 
     return ""
 

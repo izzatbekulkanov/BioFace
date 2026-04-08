@@ -1,9 +1,13 @@
 import enum
-from datetime import datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Enum as SQLEnum
+from datetime import datetime, timezone
+from sqlalchemy import CheckConstraint, Column, Integer, String, Boolean, DateTime, ForeignKey, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 
 from database import Base
+
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 class SubscriptionStatus(str, enum.Enum):
@@ -29,7 +33,11 @@ class Organization(Base):
     subscription_end_date = Column(DateTime, nullable=True)
     default_start_time = Column(String, default="09:00")  # HH:MM format
     default_end_time = Column(String, default="18:00")    # HH:MM format
+    telegram_enabled = Column(Boolean, default=False)
+    telegram_admin_chat_id = Column(String, nullable=True)
+    telegram_bot_token = Column(String, nullable=True)
     users = relationship("User", back_populates="organization", cascade="all, delete")
+    user_links = relationship("UserOrganizationLink", back_populates="organization", cascade="all, delete")
     devices = relationship("Device", back_populates="organization", cascade="all, delete")
     employees = relationship("Employee", back_populates="organization", cascade="all, delete")
 
@@ -48,6 +56,18 @@ class User(Base):
     role = Column(SQLEnum(UserRole), default=UserRole.tashkilot_admin)
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
     organization = relationship("Organization", back_populates="users")
+    organization_links = relationship("UserOrganizationLink", back_populates="user", cascade="all, delete")
+
+
+class UserOrganizationLink(Base):
+    __tablename__ = "user_organization_links"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False, index=True)
+    created_at = Column(DateTime, default=utc_now)
+
+    user = relationship("User", back_populates="organization_links")
+    organization = relationship("Organization", back_populates="user_links")
 
 
 class Device(Base):
@@ -61,12 +81,12 @@ class Device(Base):
     model = Column(String, nullable=True)                        # "DS-K1T343"
     username = Column(String, nullable=True, default="admin")
     password = Column(String, nullable=True)
-    isup_password = Column(String, nullable=True, default="bioface2024")
+    isup_password = Column(String, nullable=True, default="facex2024")
     max_memory = Column(Integer, default=1500)                   # modeliga qarab limit
     used_faces = Column(Integer, default=0)
     is_online = Column(Boolean, default=False)
     last_seen_at = Column(DateTime, nullable=True)               # So'nggi webhook vaqti
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
     organization = relationship("Organization", back_populates="devices")
     attendance_logs = relationship("AttendanceLog", back_populates="device", cascade="all, delete")
@@ -78,18 +98,35 @@ class Employee(Base):
     id = Column(Integer, primary_key=True, index=True)
     first_name = Column(String, nullable=False)
     last_name = Column(String, nullable=False)
+    middle_name = Column(String, nullable=True)
     personal_id = Column(String, unique=True, index=True, nullable=True)  # 7 xonali kamera ID
     department = Column(String, nullable=True)
     position = Column(String, nullable=True)
+    employee_type = Column(String, nullable=True)  # oquvchi, oqituvchi, hodim
     image_url = Column(String, nullable=True)
     has_access = Column(Boolean, default=True)
     start_time = Column(String, nullable=True)  # HH:MM format, override default
     end_time = Column(String, nullable=True)    # HH:MM format, override default
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
     organization = relationship("Organization", back_populates="employees")
     attendance_logs = relationship("AttendanceLog", back_populates="employee", cascade="all, delete")
     camera_links = relationship("EmployeeCameraLink", back_populates="employee", cascade="all, delete")
+    wellbeing_notes = relationship("EmployeeWellbeingNote", back_populates="employee", cascade="all, delete")
+    psychological_states = relationship("EmployeePsychologicalState", back_populates="employee", cascade="all, delete")
+
+
+class TelegramUserBinding(Base):
+    __tablename__ = "telegram_user_bindings"
+    id = Column(Integer, primary_key=True, index=True)
+    telegram_user_id = Column(String, unique=True, index=True, nullable=False)
+    telegram_chat_id = Column(String, nullable=True, index=True)
+    language = Column(String, nullable=False, default="uz")
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=True, index=True)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now)
+
+    employee = relationship("Employee")
 
 
 class AttendanceLog(Base):
@@ -101,7 +138,10 @@ class AttendanceLog(Base):
     person_id = Column(String, nullable=True)         # kamera ichidagi ID
     person_name = Column(String, nullable=True)       # kamera tanigan ism
     snapshot_url = Column(String, nullable=True)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    wellbeing_note_uz = Column(String, nullable=True)
+    wellbeing_note_ru = Column(String, nullable=True)
+    wellbeing_note_source = Column(String, nullable=True)
+    timestamp = Column(DateTime, default=utc_now)
     status = Column(String, nullable=False, default="aniqlandi")  # "aniqlandi", "noma'lum"
     employee = relationship("Employee", back_populates="attendance_logs")
     device = relationship("Device", back_populates="attendance_logs")
@@ -112,7 +152,45 @@ class EmployeeCameraLink(Base):
     id = Column(Integer, primary_key=True, index=True)
     employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False, index=True)
     camera_id = Column(Integer, ForeignKey("devices.id"), nullable=False, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     employee = relationship("Employee", back_populates="camera_links")
     camera = relationship("Device", back_populates="employee_links")
+
+
+class EmployeeWellbeingNote(Base):
+    __tablename__ = "employee_wellbeing_notes"
+    id = Column(Integer, primary_key=True, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False, index=True)
+    note_uz = Column(String, nullable=False)
+    note_ru = Column(String, nullable=False)
+    source = Column(String, nullable=False, default="manual")
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, nullable=False)
+
+    employee = relationship("Employee", back_populates="wellbeing_notes")
+
+
+class EmployeePsychologicalState(Base):
+    __tablename__ = "employee_psychological_states"
+    __table_args__ = (
+        CheckConstraint(
+            "source IN ('manual', 'psychologist_assessment', 'questionnaire', 'external_system')",
+            name="ck_employee_psychological_states_source",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False, index=True)
+    state_uz = Column(String, nullable=False)
+    state_ru = Column(String, nullable=False)
+    state_date = Column(String, nullable=False, index=True)
+    source = Column(String, nullable=False, default="manual")
+    note = Column(String, nullable=True)
+    assessed_at = Column(DateTime, default=utc_now, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, nullable=False)
+
+    employee = relationship("Employee", back_populates="psychological_states")
+
+

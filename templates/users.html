@@ -6,7 +6,7 @@
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t.users_title }}</h1>
         <p id="users-count-text" class="mt-1 text-sm text-gray-500 dark:text-gray-400">Yuklanmoqda...</p>
     </div>
-    <a href="/users/add" class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
+    <a href="/users/add" class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-700">
         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
         {{ t.add_user }}
     </a>
@@ -116,6 +116,8 @@ function renderTable() {
         const nameText = escapeHtml(fullName(u));
         const username = escapeHtml(String(u.name || "-"));
         const middleName = escapeHtml(String(u.middle_name || "-"));
+        const orgNames = Array.isArray(u.organization_names) ? u.organization_names.filter(Boolean) : [];
+        const orgText = orgNames.length ? orgNames.join(", ") : (u.organization_name || "-");
         const avatar = u.image_url ? `
             <img src="${escapeHtml(u.image_url)}" alt="avatar" class="h-10 w-10 rounded-full border border-gray-200 object-cover dark:border-gray-700">
         ` : `
@@ -145,7 +147,7 @@ function renderTable() {
                         ${escapeHtml(rolesMapping[u.role] || u.role || "-")}
                     </span>
                 </td>
-                <td class="px-5 py-4 whitespace-nowrap text-gray-500 dark:text-gray-400">${escapeHtml(u.organization_name || "-")}</td>
+                <td class="px-5 py-4 text-gray-500 dark:text-gray-400">${escapeHtml(orgText)}</td>
                 <td class="px-5 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div class="flex items-center justify-end gap-2">
                         <a href="/users/${u.id}/edit" title="${tEdit}" aria-label="${tEdit}" class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 transition-colors hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20">
@@ -174,17 +176,34 @@ async function loadUsers() {
 }
 
 async function deleteUser(id) {
-    if (!confirm("Haqiqatan ham o'chirmoqchimisiz?")) return;
+    const confirmed = window.AppDialog
+        ? await window.AppDialog.confirm({
+            title: "Foydalanuvchini o'chirish",
+            message: "Haqiqatan ham ushbu foydalanuvchini o'chirmoqchimisiz?",
+            tone: "danger",
+            confirmText: "O'chirish",
+            cancelText: "Bekor qilish",
+        })
+        : confirm("Haqiqatan ham o'chirmoqchimisiz?");
+    if (!confirmed) return;
     try {
         const res = await fetch(`/api/users/${id}`, { method: "DELETE" });
         if (!res.ok) {
             const data = await res.json().catch(() => ({}));
-            alert(data.detail || "O'chirishda xatolik");
+            if (window.AppNotify) {
+                window.AppNotify.error(data.detail || "O'chirishda xatolik");
+            }
             return;
+        }
+        if (window.AppNotify) {
+            window.AppNotify.success("Foydalanuvchi o'chirildi");
         }
         await loadUsers();
     } catch (e) {
         console.error("Delete user xatoligi", e);
+        if (window.AppNotify) {
+            window.AppNotify.error("Foydalanuvchini o'chirishda xatolik");
+        }
     }
 }
 

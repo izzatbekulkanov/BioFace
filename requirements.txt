@@ -18,8 +18,11 @@ itsdangerous==2.2.0
 python-multipart==0.0.22
 Pillow==12.1.1
 
-# ── Optional: Telegram Bot (kelajakda) ──
-# python-telegram-bot==21.0
+# ── Telegram Bot ────────────────────────
+python-telegram-bot>=21.0,<23.0
+
+# ── Timezone Data ───────────────────────
+tzdata>=2025.1
 
 # ── Optional: SMS Gateway (kelajakda) ───
 # requests==2.31.0
@@ -29,3 +32,5 @@ httpx==0.28.1
 bcrypt==5.0.0
 redis==7.3.0
 psutil==7.2.2
+fpdf2==2.8.3
+hsemotion==0.3.0

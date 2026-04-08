@@ -1,15 +1,16 @@
 import os
 import re
 import uuid
+import json
 from typing import Any, Dict, List, Optional
 
 import bcrypt
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import Organization, User, UserRole
+from models import Organization, User, UserOrganizationLink, UserRole
 
 router = APIRouter()
 
@@ -29,6 +30,8 @@ class UserResponse(BaseModel):
     role: str
     organization_id: Optional[int] = None
     organization_name: Optional[str] = None
+    organization_ids: List[int] = Field(default_factory=list)
+    organization_names: List[str] = Field(default_factory=list)
 
     class Config:
         from_attributes = True
@@ -89,6 +92,24 @@ def _split_name_if_needed(name: str) -> tuple[str, str]:
 
 
 def _serialize_user(user: User) -> Dict[str, Any]:
+    link_ids = sorted(
+        {
+            int(link.organization_id)
+            for link in (user.organization_links or [])
+            if getattr(link, "organization_id", None) is not None
+        }
+    )
+    org_names: List[str] = []
+    for link in (user.organization_links or []):
+        org = getattr(link, "organization", None)
+        if org and getattr(org, "name", None):
+            org_names.append(str(org.name))
+    if not link_ids and user.organization_id is not None:
+        link_ids = [int(user.organization_id)]
+    org_names = sorted({name for name in org_names if name})
+    if not org_names and user.organization and user.organization.name:
+        org_names = [str(user.organization.name)]
+
     return {
         "id": user.id,
         "name": user.name,
@@ -101,6 +122,8 @@ def _serialize_user(user: User) -> Dict[str, Any]:
         "role": user.role.value if user.role else "",
         "organization_id": user.organization_id,
         "organization_name": user.organization.name if user.organization else None,
+        "organization_ids": link_ids,
+        "organization_names": org_names,
     }
 
 
@@ -149,6 +172,56 @@ def _validate_org_exists(db: Session, organization_id: Optional[int]) -> None:
         raise HTTPException(status_code=400, detail="Tashkilot topilmadi")
 
 
+def _parse_optional_int_list(value: Any) -> List[int]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        raw_items = value
+    else:
+        text = _as_clean_str(value)
+        if not text:
+            return []
+        if text.startswith("["):
+            try:
+                parsed = json.loads(text)
+            except Exception as exc:
+                raise HTTPException(status_code=400, detail="organization_ids formati noto'g'ri") from exc
+            raw_items = parsed if isinstance(parsed, list) else [parsed]
+        else:
+            raw_items = [chunk.strip() for chunk in text.split(",") if chunk.strip()]
+
+    result: List[int] = []
+    seen: set[int] = set()
+    for item in raw_items:
+        try:
+            org_id = int(str(item).strip())
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail="organization_ids ichida ID noto'g'ri") from exc
+        if org_id <= 0 or org_id in seen:
+            continue
+        seen.add(org_id)
+        result.append(org_id)
+    return result
+
+
+def _validate_org_ids_exist(db: Session, organization_ids: List[int]) -> None:
+    if not organization_ids:
+        return
+    found = {
+        int(row[0])
+        for row in db.query(Organization.id).filter(Organization.id.in_(organization_ids)).all()
+    }
+    missing = [org_id for org_id in organization_ids if org_id not in found]
+    if missing:
+        raise HTTPException(status_code=400, detail=f"Tashkilot topilmadi: {missing[0]}")
+
+
+def _sync_user_organization_links(db: Session, user: User, organization_ids: List[int]) -> None:
+    db.query(UserOrganizationLink).filter(UserOrganizationLink.user_id == user.id).delete(synchronize_session=False)
+    for org_id in organization_ids:
+        db.add(UserOrganizationLink(user_id=int(user.id), organization_id=int(org_id)))
+
+
 async def _extract_payload(
     request: Request,
     *,
@@ -161,6 +234,7 @@ async def _extract_payload(
     password: Optional[str],
     role: Optional[str],
     organization_id: Optional[str],
+    organization_ids: Optional[str],
     image_url: Optional[str],
     clear_image: Optional[str],
 ) -> Dict[str, Any]:
@@ -183,6 +257,7 @@ async def _extract_payload(
         "password": password,
         "role": role,
         "organization_id": organization_id,
+        "organization_ids": organization_ids,
         "image_url": image_url,
         "clear_image": clear_image,
     }
@@ -206,6 +281,7 @@ async def create_user(
     password: Optional[str] = Form(None),
     role: Optional[str] = Form(None),
     organization_id: Optional[str] = Form(None),
+    organization_ids: Optional[str] = Form(None),
     image_url: Optional[str] = Form(None),
     clear_image: Optional[str] = Form(None),
     image: Optional[UploadFile] = File(None),
@@ -222,6 +298,7 @@ async def create_user(
         password=password,
         role=role,
         organization_id=organization_id,
+        organization_ids=organization_ids,
         image_url=image_url,
         clear_image=clear_image,
     )
@@ -241,6 +318,11 @@ async def create_user(
     password_val = _as_clean_str(payload.get("password"))
     role_val = _parse_role(payload.get("role"))
     org_id_val = _parse_optional_int(payload.get("organization_id"))
+    org_ids_val = _parse_optional_int_list(payload.get("organization_ids"))
+    if org_ids_val:
+        org_id_val = int(org_ids_val[0])
+    elif org_id_val is not None:
+        org_ids_val = [int(org_id_val)]
     image_url_val = _as_clean_str(payload.get("image_url"))
 
     if not first_name_val or not email_val or not password_val:
@@ -252,6 +334,7 @@ async def create_user(
         raise HTTPException(status_code=400, detail="Ushbu email ro'yxatdan o'tgan")
 
     _validate_org_exists(db, org_id_val)
+    _validate_org_ids_exist(db, org_ids_val)
     uploaded_image = await _save_user_image(image)
 
     pw_bytes = password_val.encode("utf-8")[:71]
@@ -274,6 +357,10 @@ async def create_user(
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+
+    _sync_user_organization_links(db, new_user, org_ids_val)
+    db.commit()
+    db.refresh(new_user)
     return _serialize_user(new_user)
 
 
@@ -290,6 +377,7 @@ async def update_user(
     password: Optional[str] = Form(None),
     role: Optional[str] = Form(None),
     organization_id: Optional[str] = Form(None),
+    organization_ids: Optional[str] = Form(None),
     image_url: Optional[str] = Form(None),
     clear_image: Optional[str] = Form(None),
     image: Optional[UploadFile] = File(None),
@@ -310,6 +398,7 @@ async def update_user(
         password=password,
         role=role,
         organization_id=organization_id,
+        organization_ids=organization_ids,
         image_url=image_url,
         clear_image=clear_image,
     )
@@ -341,10 +430,27 @@ async def update_user(
         user.role = _parse_role(payload.get("role"), default=user.role or UserRole.tashkilot_admin)
 
     has_org = (is_json and "organization_id" in payload) or (not is_json and organization_id is not None)
+    has_org_ids = (is_json and "organization_ids" in payload) or (not is_json and organization_ids is not None)
     if has_org:
         org_id_val = _parse_optional_int(payload.get("organization_id"))
         _validate_org_exists(db, org_id_val)
         user.organization_id = org_id_val
+    if has_org_ids:
+        org_ids_val = _parse_optional_int_list(payload.get("organization_ids"))
+        _validate_org_ids_exist(db, org_ids_val)
+        if org_ids_val:
+            user.organization_id = int(org_ids_val[0])
+        elif has_org:
+            # has_org allaqachon set qilgan qiymatni saqlaymiz
+            pass
+        else:
+            user.organization_id = None
+        db.flush()
+        _sync_user_organization_links(db, user, org_ids_val)
+    elif has_org:
+        fallback_ids = [int(user.organization_id)] if user.organization_id is not None else []
+        db.flush()
+        _sync_user_organization_links(db, user, fallback_ids)
 
     password_val = _as_clean_str(payload.get("password"))
     if password_val:

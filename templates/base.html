@@ -8,6 +8,7 @@
     <link rel="icon" href="{{ menus.favicon_url }}" />
     {% endif %}
     <link href="/static/css/output.css?v=20260317c" rel="stylesheet">
+    <link href="/static/css/global-overrides.css?v=20260407a" rel="stylesheet">
     <style>
         ::-webkit-scrollbar { width: 5px; height: 5px; }
         ::-webkit-scrollbar-track { background: #f1f5f9; }
@@ -17,31 +18,32 @@
         .glass { background: rgba(255,255,255,.15); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,.2); }
         #sidebar { transition: transform .25s ease; }
     </style>
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            var path = window.location.pathname;
-            document.querySelectorAll('#sidebar ul li a').forEach(function(link) {
-                var href = link.getAttribute('href');
-                if (href !== '/' && path.startsWith(href) || href === '/' && path === '/') {
-                    link.classList.add('bg-blue-50', 'text-blue-700', '!text-blue-700', 'dark:bg-blue-900/30', 'dark:text-blue-400', 'font-semibold');
-                    link.querySelectorAll('svg').forEach(s => s.classList.add('text-blue-600', 'dark:text-blue-400'));
-                }
-            });
-        });
-    </script>
 </head>
-<body class="bg-slate-50 dark:bg-gray-950 flex h-screen overflow-hidden font-sans antialiased">
-    
+<body class="ui-scale-xs ui-density-compact ui-width-ultra ui-wide bg-slate-50 dark:bg-gray-950 flex h-screen overflow-hidden font-sans antialiased">
+
     <!-- Global Page Loader -->
     <div id="page-loader" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-50 dark:bg-gray-950 transition-opacity duration-300">
         <div class="flex flex-col items-center gap-3">
-            <svg class="w-10 h-10 animate-spin text-blue-600 dark:text-blue-500" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-            </svg>
+            <video class="h-20 w-20 rounded-2xl object-contain" autoplay muted loop playsinline preload="auto">
+                <source src="/static/img/loader.webm" type="video/webm">
+            </video>
             <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Yuklanmoqda...</p>
         </div>
     </div>
+
+    <!-- Global Reusable Modal -->
+    <div id="global-modal" class="fixed inset-0 z-[200] hidden items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+        <div id="global-modal-panel" class="relative z-[201] w-full max-w-md rounded-2xl border border-gray-200 bg-white p-5 shadow-2xl dark:border-gray-800 dark:bg-gray-900 max-h-[88vh] overflow-y-auto">
+            <div class="mb-4 flex items-center justify-between">
+                <h3 id="global-modal-title" class="text-lg font-bold text-gray-900 dark:text-white">Modal</h3>
+                <button id="global-modal-close" type="button" class="text-gray-400 transition hover:text-gray-900 dark:hover:text-white" aria-label="Close modal">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div id="global-modal-body"></div>
+        </div>
+    </div>
+    <div id="app-toast-root" class="app-toast-container" aria-live="polite" aria-atomic="true"></div>
 
     <!-- ── Sidebar ── -->
     {% include "components/sidebar.html" %}
@@ -51,8 +53,8 @@
         {% include "components/navbar.html" %}
 
         <!-- ── Main Content ── -->
-        <main class="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 transition-all duration-300">
-            <div class="max-w-screen-2xl mx-auto animate-[fadeIn_.35s_ease_both]">
+        <main id="app-main" class="flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-3 lg:p-4 transition-all duration-300">
+            <div class="app-main-container mx-auto w-full max-w-[2048px] animate-[fadeIn_.35s_ease_both]">
                 {% block content %}{% endblock %}
             </div>
 
@@ -65,29 +67,404 @@
 
     <script src="/static/js/flowbite.min.js"></script>
     <script>
-        // Hide loader when page is fully loaded
-        window.addEventListener('load', function() {
+        (function () {
+            const UI_PREFS_VERSION = '20260406-dense-main-ui';
+            const UI_DEFAULTS = {
+                scale: 'sm',
+                density: 'compact',
+                width: 'ultra',
+            };
+
+            function ensureUiDefaults() {
+                const currentVersion = String(localStorage.getItem('ui_prefs_version') || '');
+                if (currentVersion === UI_PREFS_VERSION) {
+                    return;
+                }
+                localStorage.setItem('ui_scale', UI_DEFAULTS.scale);
+                localStorage.setItem('ui_density', UI_DEFAULTS.density);
+                localStorage.setItem('ui_width', UI_DEFAULTS.width);
+                localStorage.setItem('ui_prefs_version', UI_PREFS_VERSION);
+            }
+
+            function applyUiPreferences() {
+                const root = document.body;
+                if (!root) return;
+
+                const savedScale = String(localStorage.getItem('ui_scale') || UI_DEFAULTS.scale);
+                const savedDensity = String(localStorage.getItem('ui_density') || UI_DEFAULTS.density);
+                const savedWidth = String(localStorage.getItem('ui_width') || UI_DEFAULTS.width);
+
+                root.classList.remove('ui-scale-xs', 'ui-scale-sm', 'ui-scale-md', 'ui-scale-lg');
+                root.classList.add(`ui-scale-${savedScale}`);
+
+                root.classList.remove('ui-density-compact', 'ui-density-normal');
+                root.classList.add(savedDensity === 'normal' ? 'ui-density-normal' : 'ui-density-compact');
+
+                root.classList.remove('ui-width-normal', 'ui-width-wide', 'ui-width-ultra');
+                root.classList.add(`ui-width-${savedWidth}`);
+                root.classList.toggle('ui-wide', savedWidth !== 'normal');
+            }
+
+            window.AppUI = {
+                setScale: function (scale) {
+                    localStorage.setItem('ui_scale', String(scale || UI_DEFAULTS.scale));
+                    localStorage.setItem('ui_prefs_version', UI_PREFS_VERSION);
+                    applyUiPreferences();
+                },
+                setDensity: function (density) {
+                    localStorage.setItem('ui_density', String(density || UI_DEFAULTS.density));
+                    localStorage.setItem('ui_prefs_version', UI_PREFS_VERSION);
+                    applyUiPreferences();
+                },
+                setWidth: function (width) {
+                    localStorage.setItem('ui_width', String(width || UI_DEFAULTS.width));
+                    localStorage.setItem('ui_prefs_version', UI_PREFS_VERSION);
+                    applyUiPreferences();
+                },
+                apply: applyUiPreferences,
+            };
+
+            ensureUiDefaults();
+            applyUiPreferences();
+        })();
+
+        (function () {
+            const root = document.getElementById('global-modal');
+            const panel = document.getElementById('global-modal-panel');
+            const titleEl = document.getElementById('global-modal-title');
+            const bodyEl = document.getElementById('global-modal-body');
+            const closeBtn = document.getElementById('global-modal-close');
+            const state = {
+                onClose: null,
+                dismissible: true,
+            };
+
+            if (!root || !panel || !titleEl || !bodyEl || !closeBtn) {
+                return;
+            }
+
+            const sizeMap = {
+                sm: 'max-w-sm',
+                md: 'max-w-md',
+                lg: 'max-w-lg',
+                xl: 'max-w-xl',
+                '2xl': 'max-w-2xl',
+            };
+
+            function resetSize() {
+                panel.classList.remove('max-w-sm', 'max-w-md', 'max-w-lg', 'max-w-xl', 'max-w-2xl');
+                panel.classList.add('max-w-md');
+            }
+
+            function closeModal(reason) {
+                root.classList.add('hidden');
+                root.classList.remove('flex');
+                bodyEl.innerHTML = '';
+                titleEl.textContent = 'Modal';
+                document.body.classList.remove('overflow-hidden');
+                closeBtn.classList.remove('hidden');
+                resetSize();
+
+                const onClose = state.onClose;
+                state.onClose = null;
+                state.dismissible = true;
+                if (typeof onClose === 'function') {
+                    onClose(reason || 'dismiss');
+                }
+            }
+
+            function openModal(options) {
+                const opts = options || {};
+                titleEl.textContent = String(opts.title || 'Modal');
+                state.onClose = typeof opts.onClose === 'function' ? opts.onClose : null;
+                state.dismissible = opts.dismissible !== false;
+                resetSize();
+                const sizeClass = sizeMap[String(opts.size || 'md')] || sizeMap.md;
+                panel.classList.remove('max-w-md');
+                panel.classList.add(sizeClass);
+                closeBtn.classList.toggle('hidden', !state.dismissible);
+
+                bodyEl.innerHTML = '';
+                if (opts.bodyNode instanceof Node) {
+                    bodyEl.appendChild(opts.bodyNode);
+                } else {
+                    bodyEl.innerHTML = String(opts.bodyHtml || '');
+                }
+
+                root.classList.remove('hidden');
+                root.classList.add('flex');
+                document.body.classList.add('overflow-hidden');
+            }
+
+            closeBtn.addEventListener('click', function () {
+                closeModal('close_button');
+            });
+            root.addEventListener('click', function (e) {
+                if (state.dismissible && e.target === root) {
+                    closeModal('backdrop');
+                }
+            });
+            document.addEventListener('keydown', function (e) {
+                if (state.dismissible && e.key === 'Escape' && !root.classList.contains('hidden')) {
+                    closeModal('escape');
+                }
+            });
+
+            window.AppModal = {
+                open: openModal,
+                close: function (reason) {
+                    closeModal(reason || 'programmatic');
+                },
+                isOpen: function () {
+                    return !root.classList.contains('hidden');
+                },
+            };
+        })();
+
+        (function () {
+            function createDialogBody(options, resolve) {
+                const opts = options || {};
+                const tone = String(opts.tone || 'info');
+                const wrapper = document.createElement('div');
+                wrapper.className = `app-dialog app-dialog-${tone}`;
+
+                const message = document.createElement('div');
+                message.className = 'app-dialog-message';
+                message.textContent = String(opts.message || '');
+                wrapper.appendChild(message);
+
+                const actions = document.createElement('div');
+                actions.className = 'app-dialog-actions';
+
+                const cancelBtn = document.createElement('button');
+                cancelBtn.type = 'button';
+                cancelBtn.className = 'app-dialog-btn app-dialog-btn-secondary';
+                cancelBtn.textContent = String(opts.cancelText || 'Bekor qilish');
+
+                const confirmBtn = document.createElement('button');
+                confirmBtn.type = 'button';
+                confirmBtn.className = 'app-dialog-btn app-dialog-btn-primary';
+                if (tone === 'danger') {
+                    confirmBtn.classList.add('app-dialog-btn-danger');
+                } else if (tone === 'warning') {
+                    confirmBtn.classList.add('app-dialog-btn-warning');
+                } else if (tone === 'success') {
+                    confirmBtn.classList.add('app-dialog-btn-success');
+                }
+                confirmBtn.textContent = String(opts.confirmText || 'Tasdiqlash');
+
+                cancelBtn.addEventListener('click', function () {
+                    resolve(false);
+                });
+                confirmBtn.addEventListener('click', function () {
+                    resolve(true);
+                });
+
+                actions.appendChild(cancelBtn);
+                actions.appendChild(confirmBtn);
+                wrapper.appendChild(actions);
+                return wrapper;
+            }
+
+            window.AppDialog = {
+                alert: function (options) {
+                    return new Promise(function (resolve) {
+                        const opts = options || {};
+                        let settled = false;
+                        const body = document.createElement('div');
+                        body.className = `app-dialog app-dialog-${String(opts.tone || 'info')}`;
+
+                        const message = document.createElement('div');
+                        message.className = 'app-dialog-message';
+                        message.textContent = String(opts.message || '');
+                        body.appendChild(message);
+
+                        const actions = document.createElement('div');
+                        actions.className = 'app-dialog-actions';
+
+                        const okBtn = document.createElement('button');
+                        okBtn.type = 'button';
+                        okBtn.className = 'app-dialog-btn app-dialog-btn-primary';
+                        okBtn.textContent = String(opts.confirmText || 'Yopish');
+                        okBtn.addEventListener('click', function () {
+                            settled = true;
+                            window.AppModal.close('alert_confirm');
+                            resolve(true);
+                        });
+
+                        actions.appendChild(okBtn);
+                        body.appendChild(actions);
+
+                        window.AppModal.open({
+                            title: String(opts.title || 'Bildirishnoma'),
+                            size: String(opts.size || 'md'),
+                            bodyNode: body,
+                            onClose: function () {
+                                if (!settled) {
+                                    resolve(false);
+                                }
+                            },
+                        });
+                    });
+                },
+                confirm: function (options) {
+                    return new Promise(function (resolve) {
+                        const opts = options || {};
+                        let settled = false;
+                        const body = createDialogBody(opts, function (confirmed) {
+                            settled = true;
+                            window.AppModal.close(confirmed ? 'confirm_yes' : 'confirm_no');
+                            resolve(Boolean(confirmed));
+                        });
+
+                        window.AppModal.open({
+                            title: String(opts.title || 'Tasdiqlash'),
+                            size: String(opts.size || 'md'),
+                            bodyNode: body,
+                            onClose: function () {
+                                if (!settled) {
+                                    resolve(false);
+                                }
+                            },
+                        });
+                    });
+                },
+            };
+        })();
+
+        (function () {
+            const root = document.getElementById('app-toast-root');
+            if (!root) {
+                return;
+            }
+
+            function iconSvg(tone) {
+                const map = {
+                    success: '<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="currentColor" d="M10 18a8 8 0 100-16 8 8 0 000 16Zm3.707-9.293a1 1 0 10-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4Z"/></svg>',
+                    error: '<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="currentColor" d="M10 18a8 8 0 100-16 8 8 0 000 16Zm3.536-10.95a1 1 0 10-1.414-1.414L10 7.757 7.879 5.636a1 1 0 10-1.415 1.414L8.586 9.17l-2.122 2.122a1 1 0 001.415 1.414L10 10.586l2.121 2.12a1 1 0 001.415-1.413L11.414 9.17l2.122-2.12Z"/></svg>',
+                    warning: '<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="currentColor" d="M8.257 3.099c.765-1.36 2.72-1.36 3.486 0l6.35 11.29c.75 1.334-.214 2.99-1.742 2.99H3.65c-1.528 0-2.492-1.656-1.742-2.99l6.35-11.29ZM11 13a1 1 0 10-2 0 1 1 0 002 0Zm-1-6a1 1 0 00-1 1v3a1 1 0 102 0V8a1 1 0 00-1-1Z"/></svg>',
+                    info: '<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="currentColor" d="M18 10A8 8 0 112 10a8 8 0 0116 0Zm-7-1a1 1 0 10-2 0v4a1 1 0 102 0V9Zm-1-4a1.25 1.25 0 100 2.5A1.25 1.25 0 0010 5Z"/></svg>',
+                };
+                return map[tone] || map.info;
+            }
+
+            function dismissToast(toast) {
+                if (!toast || !toast.parentNode) {
+                    return;
+                }
+                toast.classList.add('is-leaving');
+                window.setTimeout(function () {
+                    toast.remove();
+                }, 220);
+            }
+
+            function show(message, tone, options) {
+                const opts = options || {};
+                const toast = document.createElement('div');
+                toast.className = 'app-toast';
+                toast.dataset.tone = String(tone || 'info');
+
+                const icon = document.createElement('span');
+                icon.className = 'app-toast-icon';
+                icon.innerHTML = iconSvg(toast.dataset.tone);
+
+                const text = document.createElement('div');
+                text.className = 'app-toast-text';
+                text.textContent = String(message || '');
+
+                const close = document.createElement('button');
+                close.type = 'button';
+                close.className = 'app-toast-close';
+                close.setAttribute('aria-label', 'Close notification');
+                close.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="currentColor" d="M5.22 5.22a.75.75 0 011.06 0L10 8.94l3.72-3.72a.75.75 0 011.06 1.06L11.06 10l3.72 3.72a.75.75 0 11-1.06 1.06L10 11.06l-3.72 3.72a.75.75 0 11-1.06-1.06L8.94 10 5.22 6.28a.75.75 0 010-1.06Z"/></svg>';
+                close.addEventListener('click', function () {
+                    dismissToast(toast);
+                });
+
+                toast.appendChild(icon);
+                toast.appendChild(text);
+                toast.appendChild(close);
+                root.appendChild(toast);
+
+                const duration = Number(opts.duration || 3200);
+                if (duration > 0) {
+                    window.setTimeout(function () {
+                        dismissToast(toast);
+                    }, duration);
+                }
+
+                return toast;
+            }
+
+            window.AppNotify = {
+                show: show,
+                success: function (message, options) { return show(message, 'success', options); },
+                error: function (message, options) { return show(message, 'error', options); },
+                warning: function (message, options) { return show(message, 'warning', options); },
+                info: function (message, options) { return show(message, 'info', options); },
+            };
+        })();
+
+        function hidePageLoader(immediate) {
             const loader = document.getElementById('page-loader');
+            if (!loader) {
+                return;
+            }
+            if (immediate) {
+                loader.style.opacity = '0';
+                loader.style.display = 'none';
+                return;
+            }
             loader.style.opacity = '0';
             setTimeout(() => {
                 loader.style.display = 'none';
             }, 300); // Wait for transition
+        }
+
+        function showPageLoader() {
+            const loader = document.getElementById('page-loader');
+            if (!loader) {
+                return;
+            }
+            loader.style.display = 'flex';
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    loader.style.opacity = '1';
+                });
+            });
+        }
+
+        // Hide loader when page is fully loaded
+        window.addEventListener('load', function() {
+            hidePageLoader(false);
+        });
+
+        // When browser restores from back-forward cache, never keep stale loader visible
+        window.addEventListener('pageshow', function(event) {
+            hidePageLoader(true);
+            if (event.persisted) {
+                document.body.classList.remove('overflow-hidden');
+            }
         });
 
         // Show loader before navigating away
         document.addEventListener('click', function(e) {
             const link = e.target.closest('a');
             // Only trigger on internal links that aren't # hashes or targets
-            if (link && link.href && link.href.startsWith(window.location.origin) && !link.href.includes('#') && link.target !== '_blank') {
+            if (
+                link
+                && link.href
+                && link.href.startsWith(window.location.origin)
+                && !link.href.includes('#')
+                && link.target !== '_blank'
+                && !e.defaultPrevented
+                && !e.metaKey
+                && !e.ctrlKey
+                && !e.shiftKey
+                && !e.altKey
+            ) {
                 e.preventDefault();
-                const loader = document.getElementById('page-loader');
-                loader.style.display = 'flex';
-                // Small timeout to allow display:flex to apply before animating opacity
-                requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                        loader.style.opacity = '1';
-                    });
-                });
+                showPageLoader();
                 setTimeout(() => window.location.href = link.href, 150);
             }
         });

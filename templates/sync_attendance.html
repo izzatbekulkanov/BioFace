@@ -1,0 +1,746 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Sinxron Davomat</h1>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">ISUP orqali sinxronlangan davomat hodisalari</p>
+            <p id="sync-status" class="mt-1 text-xs text-gray-500 dark:text-gray-400"></p>
+        </div>
+    </div>
+
+    <div class="space-y-4">
+        <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+            <div class="mb-3 flex items-center justify-between">
+                <div>
+                    <h2 class="text-sm font-bold text-gray-900 dark:text-white">Filtrlar</h2>
+                    <p class="text-[11px] text-gray-500 dark:text-gray-400">Tashkilot, kamera va sanani tanlang</p>
+                </div>
+                <button id="btn-clear-filters" type="button" class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
+                    Tozalash
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/60">
+                    <label for="filter-org" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Tashkilot</label>
+                    <select id="filter-org" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:focus:ring-blue-900/40">
+                        <option value="">Tashkilotni tanlang</option>
+                        <option value="all">Barcha tashkilotlar</option>
+                    </select>
+                </div>
+                <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/60">
+                    <label for="filter-camera" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Kamera</label>
+                    <select id="filter-camera" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:focus:ring-blue-900/40">
+                        <option value="">Kamerani tanlang</option>
+                        <option value="all">Barcha kameralar</option>
+                    </select>
+                </div>
+                <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/60 sm:col-span-2">
+                    <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Sana (Yil / Oy / Kun)</label>
+                    <div class="grid grid-cols-1 gap-2 lg:grid-cols-4">
+                        <label for="filter-year" class="sr-only">Yil</label>
+                        <select id="filter-year" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:focus:ring-blue-900/40">
+                            <option value="all">Barcha yillar</option>
+                        </select>
+                        <label for="filter-month" class="sr-only">Oy</label>
+                        <select id="filter-month" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:focus:ring-blue-900/40">
+                            <option value="all">Barcha oylar</option>
+                        </select>
+                        <label for="filter-day" class="sr-only">Kun</label>
+                        <select id="filter-day" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:focus:ring-blue-900/40">
+                            <option value="all">Barcha kunlar</option>
+                        </select>
+                        <button id="btn-refresh" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-70">
+                            <svg id="btn-refresh-spinner" class="hidden h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z"></path>
+                            </svg>
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356-2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0A8.003 8.003 0 015.03 15m14.389 0H15"></path>
+                            </svg>
+                            <span id="btn-refresh-text">Sinxronlash va yangilash</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+                    <div class="flex items-center justify-between">
+                        <div class="text-xs text-gray-500 dark:text-gray-400">Xodimlar</div>
+                        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div id="stat-total" class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">0</div>
+                </div>
+                <div class="rounded-2xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900/40 dark:bg-blue-900/20">
+                    <div class="flex items-center justify-between">
+                        <div class="text-xs text-blue-700 dark:text-blue-300">Yozuvlar</div>
+                        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div id="stat-events" class="mt-2 text-2xl font-bold text-blue-700 dark:text-blue-300">0</div>
+                </div>
+                <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/40 dark:bg-emerald-900/20">
+                    <div class="flex items-center justify-between">
+                        <div class="text-xs text-emerald-700 dark:text-emerald-300">Aniqlangan</div>
+                        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div id="stat-known" class="mt-2 text-2xl font-bold text-emerald-700 dark:text-emerald-300">0</div>
+                </div>
+                <div class="rounded-2xl border border-red-200 bg-red-50 p-4 dark:border-red-900/40 dark:bg-red-900/20">
+                    <div class="flex items-center justify-between">
+                        <div class="text-xs text-red-700 dark:text-red-300">Noma'lum</div>
+                        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div id="stat-unknown" class="mt-2 text-2xl font-bold text-red-700 dark:text-red-300">0</div>
+                </div>
+            </div>
+        </div>
+
+    <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500 dark:bg-gray-800 dark:text-gray-300">
+                    <tr>
+                        <th class="px-4 py-3">#</th>
+                        <th class="px-4 py-3">So'nggi vaqt</th>
+                        <th class="px-4 py-3">Xodim</th>
+                        <th class="px-4 py-3">Kamera</th>
+                        <th class="px-4 py-3">Rasm</th>
+                        <th class="px-4 py-3">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="attendance-body" class="divide-y divide-gray-100 dark:divide-gray-800">
+                    <tr><td colspan="6" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">Yuklanmoqda...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="rounded-2xl border border-gray-200 bg-white px-4 py-4 dark:border-gray-800 dark:bg-gray-900">
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                <label for="page-size" class="sr-only">Har sahifada</label>
+                <span>Har sahifada</span>
+                <select id="page-size" class="select-native rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:focus:ring-blue-900/40">
+                    <option value="10">10</option>
+                    <option value="15" selected>15</option>
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                </select>
+                <span>ta yozuv</span>
+            </div>
+            <div id="pagination-info" class="text-sm font-medium text-gray-600 dark:text-gray-300"></div>
+        </div>
+        <div class="mt-4 flex flex-wrap items-center justify-center gap-2">
+            <button id="btn-page-first" type="button" class="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">Birinchi</button>
+            <button id="btn-page-prev" type="button" class="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">Oldingi</button>
+            <div id="page-buttons" class="flex flex-wrap items-center justify-center gap-2"></div>
+            <button id="btn-page-next" type="button" class="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">Keyingi</button>
+            <button id="btn-page-last" type="button" class="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">Oxirgi</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const pageState = {
+    rawItems: [],
+    organizations: [],
+    cameras: [],
+    syncLoading: false,
+    pagination: {
+        page: 1,
+        pageSize: 15,
+        totalPages: 1,
+    },
+};
+
+function esc(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+function formatTime(value, withSeconds = true) {
+    if (!value) return "-";
+    try {
+        const dt = new Date(value);
+        const opts = withSeconds
+            ? { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }
+            : { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" };
+        return dt.toLocaleString("uz-UZ", opts).replace(",", "");
+    } catch (_) {
+        return value;
+    }
+}
+
+function statusBadge(status) {
+    if ((status || "").toLowerCase() === "aniqlandi") {
+        return '<span class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>Aniqlandi</span>';
+    }
+    return '<span class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-900/30 dark:text-red-300"><span class="h-1.5 w-1.5 rounded-full bg-red-500"></span>Noma\'lum</span>';
+}
+
+function renderEventImage(url) {
+    if (!url) {
+        return '<span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300">Rasmi yo\'q</span>';
+    }
+    const safeUrl = esc(url);
+    return `<button type="button" onclick="openAttendanceImageModal('${safeUrl}')" class="block h-12 w-12 overflow-hidden rounded-lg border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800"><img src="${safeUrl}" alt="Rasm" class="h-full w-full object-cover"></button>`;
+}
+
+function openAttendanceImageModal(url) {
+    if (!url || !(window.AppModal && typeof window.AppModal.open === "function")) {
+        return;
+    }
+    window.AppModal.open({
+        title: "Davomat rasmi",
+        size: "md",
+        bodyHtml: `
+            <section class="mx-auto w-full max-w-md rounded-2xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                <div class="mb-2 flex items-center justify-between">
+                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Rasm preview</p>
+                    <p class="text-[11px] text-gray-400 dark:text-gray-500">Auto-shrink</p>
+                </div>
+                <div class="flex max-h-[54vh] items-center justify-center overflow-auto rounded-xl border border-gray-200 bg-gray-50 p-2 dark:border-gray-700 dark:bg-gray-800/40">
+                    <img src="${url}" alt="Davomat rasmi" class="block h-auto max-h-[48vh] w-auto max-w-full rounded-lg object-contain" />
+                </div>
+            </section>
+        `,
+        dismissible: true,
+    });
+}
+
+function toDateKey(value) {
+    if (!value) return "";
+    try {
+        const dt = new Date(value);
+        const y = dt.getFullYear();
+        const m = String(dt.getMonth() + 1).padStart(2, "0");
+        const d = String(dt.getDate()).padStart(2, "0");
+        return `${y}-${m}-${d}`;
+    } catch (_) {
+        return "";
+    }
+}
+
+function setRefreshLoading(loading) {
+    const btn = document.getElementById("btn-refresh");
+    const spinner = document.getElementById("btn-refresh-spinner");
+    const text = document.getElementById("btn-refresh-text");
+    btn.disabled = Boolean(loading);
+    spinner.classList.toggle("hidden", !loading);
+    text.textContent = loading ? "Sinxron..." : "Sinxronlash va yangilash";
+}
+
+function setSyncStatus(message, isError = false) {
+    const el = document.getElementById("sync-status");
+    el.textContent = message || "";
+    if (isError) {
+        el.classList.remove("text-gray-500", "dark:text-gray-400");
+        el.classList.add("text-red-600", "dark:text-red-400");
+    } else {
+        el.classList.remove("text-red-600", "dark:text-red-400");
+        el.classList.add("text-gray-500", "dark:text-gray-400");
+    }
+}
+
+function getPageSize() {
+    const value = Number(document.getElementById("page-size").value || pageState.pagination.pageSize || 15);
+    return Number.isFinite(value) && value > 0 ? value : 15;
+}
+
+function clampPage(page, totalPages) {
+    const safeTotal = Math.max(1, Number(totalPages) || 1);
+    const safePage = Number(page) || 1;
+    return Math.min(Math.max(1, safePage), safeTotal);
+}
+
+function renderPageButtons(totalPages, currentPage) {
+    const holder = document.getElementById("page-buttons");
+    holder.innerHTML = "";
+
+    const addPageButton = (label, page, active = false) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = active
+            ? "rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm"
+            : "rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700";
+        btn.textContent = label;
+        if (!active) {
+            btn.addEventListener("click", () => goToPage(page));
+        }
+        holder.appendChild(btn);
+    };
+
+    const pages = new Set([1, totalPages, currentPage - 1, currentPage, currentPage + 1]);
+    const ordered = [...pages].filter((p) => p >= 1 && p <= totalPages).sort((a, b) => a - b);
+    let prev = 0;
+    for (const p of ordered) {
+        if (p - prev > 1) {
+            const dots = document.createElement("span");
+            dots.className = "px-2 text-gray-400";
+            dots.textContent = "…";
+            holder.appendChild(dots);
+        }
+        addPageButton(String(p), p, p === currentPage);
+        prev = p;
+    }
+}
+
+function updatePagination(totalItems) {
+    const pageSize = getPageSize();
+    const totalPages = Math.max(1, Math.ceil(Math.max(0, totalItems) / pageSize));
+    pageState.pagination.pageSize = pageSize;
+    pageState.pagination.totalPages = totalPages;
+    pageState.pagination.page = clampPage(pageState.pagination.page, totalPages);
+
+    const currentPage = pageState.pagination.page;
+    const start = totalItems === 0 ? 0 : ((currentPage - 1) * pageSize) + 1;
+    const end = Math.min(totalItems, currentPage * pageSize);
+    document.getElementById("pagination-info").textContent = totalItems === 0
+        ? "Hozircha yozuv yo'q"
+        : `${start}-${end} / ${totalItems} ta yozuv, ${currentPage} / ${totalPages} sahifa`;
+
+    document.getElementById("btn-page-first").disabled = currentPage <= 1;
+    document.getElementById("btn-page-prev").disabled = currentPage <= 1;
+    document.getElementById("btn-page-next").disabled = currentPage >= totalPages;
+    document.getElementById("btn-page-last").disabled = currentPage >= totalPages;
+    renderPageButtons(totalPages, currentPage);
+}
+
+function goToPage(page) {
+    pageState.pagination.page = clampPage(page, pageState.pagination.totalPages);
+    applyFiltersAndRender();
+}
+
+function areFiltersReady() {
+    const orgVal = document.getElementById("filter-org").value;
+    const camVal = document.getElementById("filter-camera").value;
+    return orgVal !== "" && camVal !== "";
+}
+
+function getSelectedFilters() {
+    const orgVal = document.getElementById("filter-org").value;
+    const camVal = document.getElementById("filter-camera").value;
+    return {
+        organizationId: orgVal === "all" ? null : orgVal,
+        cameraId: camVal === "all" ? null : camVal,
+    };
+}
+
+function getActiveFilterKey() {
+    const orgVal = document.getElementById("filter-org").value || "";
+    const camVal = document.getElementById("filter-camera").value || "";
+    const yearVal = document.getElementById("filter-year").value || "all";
+    const monthVal = document.getElementById("filter-month").value || "all";
+    const dayVal = document.getElementById("filter-day").value || "all";
+    return `${orgVal}|${camVal}|${yearVal}|${monthVal}|${dayVal}`;
+}
+
+function getDateFilterParts() {
+    return {
+        year: document.getElementById("filter-year").value || "all",
+        month: document.getElementById("filter-month").value || "all",
+        day: document.getElementById("filter-day").value || "all",
+    };
+}
+
+function getSelectedSyncDate() {
+    const { year, month, day } = getDateFilterParts();
+    if (year === "all" || month === "all" || day === "all") {
+        return null;
+    }
+    return `${year}-${month}-${day}`;
+}
+
+function refreshDayOptions() {
+    const yearSel = document.getElementById("filter-year");
+    const monthSel = document.getElementById("filter-month");
+    const daySel = document.getElementById("filter-day");
+    const prevDay = daySel.value || "all";
+    daySel.innerHTML = '<option value="all">Barcha kunlar</option>';
+
+    const year = yearSel.value;
+    const month = monthSel.value;
+    if (year === "all" || month === "all") {
+        return;
+    }
+
+    const yearNum = Number(year);
+    const monthNum = Number(month);
+    if (!Number.isFinite(yearNum) || !Number.isFinite(monthNum)) {
+        return;
+    }
+    const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
+    for (let day = 1; day <= daysInMonth; day += 1) {
+        const val = String(day).padStart(2, "0");
+        daySel.insertAdjacentHTML("beforeend", `<option value="${val}">${val}</option>`);
+    }
+    if ([...daySel.options].some((opt) => opt.value === prevDay)) {
+        daySel.value = prevDay;
+    }
+}
+
+function initDateSelectors() {
+    const yearSel = document.getElementById("filter-year");
+    const monthSel = document.getElementById("filter-month");
+    const daySel = document.getElementById("filter-day");
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = String(now.getMonth() + 1).padStart(2, "0");
+    const currentDay = String(now.getDate()).padStart(2, "0");
+    const years = [];
+    for (let y = currentYear + 1; y >= currentYear - 8; y -= 1) {
+        years.push(y);
+    }
+
+    yearSel.innerHTML = '<option value="all">Barcha yillar</option>';
+    monthSel.innerHTML = '<option value="all">Barcha oylar</option>';
+    for (const y of years) {
+        yearSel.insertAdjacentHTML("beforeend", `<option value="${y}">${y}</option>`);
+    }
+    const monthNames = ["Yan", "Fev", "Mar", "Apr", "May", "Iyn", "Iyl", "Avg", "Sen", "Okt", "Noy", "Dek"];
+    for (let m = 1; m <= 12; m += 1) {
+        const mm = String(m).padStart(2, "0");
+        monthSel.insertAdjacentHTML("beforeend", `<option value="${mm}">${monthNames[m - 1]}</option>`);
+    }
+    yearSel.value = String(currentYear);
+    monthSel.value = currentMonth;
+    refreshDayOptions();
+    if ([...daySel.options].some((opt) => opt.value === currentDay)) {
+        daySel.value = currentDay;
+    }
+}
+
+function setStatsZero() {
+    document.getElementById("stat-total").textContent = "0";
+    document.getElementById("stat-events").textContent = "0";
+    document.getElementById("stat-known").textContent = "0";
+    document.getElementById("stat-unknown").textContent = "0";
+}
+
+function renderWaitingState(message) {
+    const tbody = document.getElementById("attendance-body");
+    tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">${esc(message || "Filtrlarni tanlang")}</td></tr>`;
+    setStatsZero();
+    updatePagination(0);
+}
+
+function resetAttendanceState(message = "Tashkilot va kamera filtrini tanlang") {
+    pageState.rawItems = [];
+    renderWaitingState(message);
+}
+
+async function loadFilterData() {
+    const resp = await fetch("/api/attendance/filter-data");
+    const data = await resp.json().catch(() => ({}));
+    pageState.organizations = Array.isArray(data.organizations) ? data.organizations : [];
+    pageState.cameras = Array.isArray(data.cameras) ? data.cameras : [];
+
+    const orgSel = document.getElementById("filter-org");
+    orgSel.innerHTML = '<option value="">Tashkilotni tanlang</option>';
+
+    if (pageState.organizations.length > 0) {
+        orgSel.insertAdjacentHTML("beforeend", '<option value="all">Barcha tashkilotlar</option>');
+    }
+
+    for (const org of pageState.organizations) {
+        orgSel.insertAdjacentHTML("beforeend", `<option value="${esc(org.id)}">${esc(org.name)}</option>`);
+    }
+
+    if (pageState.organizations.length === 1) {
+        orgSel.value = String(pageState.organizations[0].id);
+    } else if (pageState.organizations.length > 1) {
+        orgSel.value = "all";
+    }
+
+    renderCameraOptions(orgSel.value || "", "");
+}
+
+function renderCameraOptions(orgValue = "", preferredCameraValue = "") {
+    const camSel = document.getElementById("filter-camera");
+    const orgFilter = orgValue && orgValue !== "all" ? String(orgValue) : null;
+    const filteredCameras = pageState.cameras.filter((cam) => {
+        if (!orgFilter) return true;
+        return String(cam.organization_id || "") === orgFilter;
+    });
+
+    camSel.innerHTML = '<option value="">Kamerani tanlang</option>';
+    if (filteredCameras.length > 0) {
+        camSel.insertAdjacentHTML("beforeend", '<option value="all">Barcha kameralar</option>');
+    }
+
+    for (const cam of filteredCameras) {
+        camSel.insertAdjacentHTML("beforeend", `<option value="${esc(cam.id)}">${esc(cam.name)}</option>`);
+    }
+
+    const hasPreferred = preferredCameraValue && [...camSel.options].some((opt) => opt.value === preferredCameraValue);
+    if (hasPreferred) {
+        camSel.value = preferredCameraValue;
+    } else if (filteredCameras.length === 1) {
+        camSel.value = String(filteredCameras[0].id);
+    } else if (filteredCameras.length > 1) {
+        camSel.value = "all";
+    }
+}
+
+function normalizeSyncedItems(items) {
+    const source = Array.isArray(items) ? items : [];
+    return source
+        .map((row, idx) => ({
+            id: row?.id ?? `${row?.camera_id || "cam"}-${row?.timestamp || idx}-${row?.personal_id || "unknown"}`,
+            timestamp: row?.timestamp || null,
+            employee_id: row?.employee_id ?? null,
+            employee_name: row?.employee_name || row?.person_name || "Noma'lum",
+            personal_id: row?.personal_id || null,
+            camera_id: row?.camera_id ?? null,
+            camera_name: row?.camera_name || "-",
+            camera_mac: row?.camera_mac || "-",
+            organization_id: row?.organization_id ?? null,
+            organization_name: row?.organization_name || "-",
+            snapshot_url: row?.snapshot_url || null,
+            status: row?.status || "noma'lum",
+        }))
+        .sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
+}
+
+function applyFiltersAndRender() {
+    if (!areFiltersReady()) {
+        resetAttendanceState("Tashkilot va kamera tanlang (yoki 'Barchasi').");
+        return;
+    }
+
+    const orgVal = document.getElementById("filter-org").value;
+    const camVal = document.getElementById("filter-camera").value;
+    const { year, month, day } = getDateFilterParts();
+
+    const filtered = pageState.rawItems.filter((row) => {
+        if (orgVal && orgVal !== "all" && String(row.organization_id || "") !== String(orgVal)) return false;
+        if (camVal && camVal !== "all" && String(row.camera_id || "") !== String(camVal)) return false;
+        if (year !== "all") {
+            const d = toDateKey(row.timestamp);
+            if (!d || d.slice(0, 4) !== String(year)) return false;
+        }
+        if (month !== "all") {
+            const d = toDateKey(row.timestamp);
+            if (!d || d.slice(5, 7) !== String(month)) return false;
+        }
+        if (day !== "all") {
+            const d = toDateKey(row.timestamp);
+            if (!d || d.slice(8, 10) !== String(day)) return false;
+        }
+        return true;
+    });
+
+    renderAttendanceTable(filtered);
+}
+
+function renderAttendanceTable(items) {
+    const tbody = document.getElementById("attendance-body");
+    tbody.innerHTML = "";
+    const sortedItems = [...(Array.isArray(items) ? items : [])].sort((a, b) => {
+        const ta = new Date(a?.timestamp || 0).getTime();
+        const tb = new Date(b?.timestamp || 0).getTime();
+        if (tb !== ta) return tb - ta;
+        return String(b?.id || "").localeCompare(String(a?.id || ""));
+    });
+
+    if (sortedItems.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">Hozircha sinxronlangan davomat yozuvlari yo\'q.</td></tr>';
+        setStatsZero();
+        updatePagination(0);
+        return;
+    }
+
+    const uniqueEmployees = new Set();
+    let known = 0;
+    let unknown = 0;
+    for (const item of sortedItems) {
+        if (item.employee_id || item.personal_id || item.employee_name) {
+            uniqueEmployees.add(String(item.employee_id || item.personal_id || item.employee_name));
+        }
+        if ((item.status || "").toLowerCase() === "aniqlandi") {
+            known += 1;
+        } else {
+            unknown += 1;
+        }
+    }
+
+    document.getElementById("stat-total").textContent = String(uniqueEmployees.size);
+    document.getElementById("stat-events").textContent = String(sortedItems.length);
+    document.getElementById("stat-known").textContent = String(known);
+    document.getElementById("stat-unknown").textContent = String(unknown);
+
+    updatePagination(sortedItems.length);
+    const pageSize = pageState.pagination.pageSize;
+    const currentPage = pageState.pagination.page;
+    const startIndex = (currentPage - 1) * pageSize;
+    const pageItems = sortedItems.slice(startIndex, startIndex + pageSize);
+
+    tbody.innerHTML = "";
+    pageItems.forEach((item, idx) => {
+        const employeeLink = item.employee_id ? `/employees/${encodeURIComponent(item.employee_id)}` : "";
+        const employeeHtml = item.employee_id
+            ? `<a href="${employeeLink}" class="font-medium text-blue-700 hover:underline dark:text-blue-300">${esc(item.employee_name)}</a>`
+            : `<div class="font-medium text-gray-900 dark:text-white">${esc(item.employee_name)}</div>`;
+
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-gray-50/80 dark:hover:bg-gray-800/40";
+        tr.innerHTML = `
+            <td class="px-4 py-3 text-gray-500 dark:text-gray-400">${startIndex + idx + 1}</td>
+            <td class="px-4 py-3 text-gray-700 dark:text-gray-200">${formatTime(item.timestamp)}</td>
+            <td class="px-4 py-3">
+                ${employeeHtml}
+                <div class="text-xs text-gray-500 dark:text-gray-400">ID: ${esc(item.personal_id || "-")}</div>
+            </td>
+            <td class="px-4 py-3">
+                <div class="font-medium text-gray-900 dark:text-white">${esc(item.camera_name || "-")}</div>
+                <div class="text-xs font-mono text-gray-500 dark:text-gray-400">${esc(item.camera_mac || "-")}</div>
+            </td>
+            <td class="px-4 py-3">${renderEventImage(item.snapshot_url)}</td>
+            <td class="px-4 py-3">${statusBadge(item.status)}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+async function syncAttendance(backfillHours = 168, organizationId = null, cameraId = null) {
+    if (pageState.syncLoading) {
+        return;
+    }
+    pageState.syncLoading = true;
+    setRefreshLoading(true);
+    setSyncStatus("ISUP orqali kameradan davomat yuklanmoqda...");
+    const params = new URLSearchParams();
+    params.set("backfill_hours", String(backfillHours));
+    params.set("max_events", "800");
+    const selectedSyncDate = getSelectedSyncDate();
+    if (selectedSyncDate) {
+        params.set("sync_date", selectedSyncDate);
+    }
+    if (organizationId) {
+        params.set("organization_id", String(organizationId));
+    }
+    if (cameraId) {
+        params.set("camera_id", String(cameraId));
+    }
+    try {
+        const res = await fetch(`/api/attendance/sync?${params.toString()}`, { method: "POST" });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.ok === false) {
+            throw new Error(data.detail || data.message || "Davomatni kameradan sinxronlab bo'lmadi");
+        }
+
+        pageState.rawItems = normalizeSyncedItems(data.attendance_items || data.items || data.rows || []);
+        pageState.pagination.page = 1;
+        applyFiltersAndRender();
+
+        const inserted = Number(data.inserted || 0);
+        const duplicates = Number(data.duplicates || 0);
+        const syncDateText = data.sync_date ? ` [kun: ${data.sync_date}]` : "";
+        const message = (data.message || `Sinxron yakunlandi: ${inserted} yangi, ${duplicates} dublikat.`) + syncDateText;
+        setSyncStatus(message);
+    } finally {
+        pageState.syncLoading = false;
+        setRefreshLoading(false);
+    }
+}
+
+async function handleSourceFilterChange() {
+    pageState.pagination.page = 1;
+    if (!areFiltersReady()) {
+        resetAttendanceState("Tashkilot va kamera tanlang (yoki 'Barchasi').");
+        setSyncStatus("Filtrlar tanlanmadi.");
+        return;
+    }
+    if (!pageState.rawItems.length) {
+        renderWaitingState("Sinxronlash uchun tugmani bosing.");
+        setSyncStatus("Filtrlar tayyor. Sinxronlashni boshlang.");
+        return;
+    }
+    applyFiltersAndRender();
+    setSyncStatus("Filtrlar qo'llandi.");
+}
+
+document.getElementById("filter-org").addEventListener("change", async () => {
+    const camSel = document.getElementById("filter-camera");
+    const prevCamera = camSel.value || "";
+    renderCameraOptions(document.getElementById("filter-org").value || "", prevCamera);
+    await handleSourceFilterChange();
+});
+document.getElementById("filter-camera").addEventListener("change", handleSourceFilterChange);
+document.getElementById("filter-year").addEventListener("change", () => {
+    refreshDayOptions();
+    handleSourceFilterChange();
+});
+document.getElementById("filter-month").addEventListener("change", () => {
+    refreshDayOptions();
+    handleSourceFilterChange();
+});
+document.getElementById("filter-day").addEventListener("change", handleSourceFilterChange);
+document.getElementById("page-size").addEventListener("change", () => {
+    pageState.pagination.pageSize = getPageSize();
+    pageState.pagination.page = 1;
+    applyFiltersAndRender();
+});
+document.getElementById("btn-refresh").addEventListener("click", async () => {
+    const { organizationId: selectedOrganization, cameraId: selectedCamera } = getSelectedFilters();
+    if (!areFiltersReady()) {
+        setSyncStatus("Sinxronlash uchun filtrlarni tanlang.", true);
+        return;
+    }
+    try {
+        await syncAttendance(24 * 7, selectedOrganization, selectedCamera);
+    } catch (err) {
+        setSyncStatus(err.message || "Sinxron xatoligi", true);
+    }
+});
+document.getElementById("btn-page-first").addEventListener("click", () => goToPage(1));
+document.getElementById("btn-page-prev").addEventListener("click", () => goToPage(pageState.pagination.page - 1));
+document.getElementById("btn-page-next").addEventListener("click", () => goToPage(pageState.pagination.page + 1));
+document.getElementById("btn-page-last").addEventListener("click", () => goToPage(pageState.pagination.totalPages));
+document.getElementById("btn-clear-filters").addEventListener("click", async () => {
+    document.getElementById("filter-org").value = "";
+    document.getElementById("filter-camera").value = "";
+    document.getElementById("filter-year").value = "all";
+    document.getElementById("filter-month").value = "all";
+    refreshDayOptions();
+    document.getElementById("filter-day").value = "all";
+    pageState.pagination.page = 1;
+    await handleSourceFilterChange();
+});
+
+async function initPage() {
+    await loadFilterData();
+    initDateSelectors();
+    pageState.pagination.pageSize = getPageSize();
+    resetAttendanceState("Sinxronlash uchun tugmani bosing.");
+    setSyncStatus("Filtrlarni tanlang va sinxronlashni bosing.");
+}
+
+initPage();
+</script>
+{% endblock %}

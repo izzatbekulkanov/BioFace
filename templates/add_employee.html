@@ -20,6 +20,10 @@
                 <input type="text" id="lastName" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" required>
             </div>
             <div>
+                <label for="middleName" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Otasining ismi</label>
+                <input type="text" id="middleName" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
+            </div>
+            <div>
                 <label for="department" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{{ t.department }}</label>
                 <input type="text" id="department" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
             </div>
@@ -27,7 +31,16 @@
                 <label for="position" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{{ t.position }}</label>
                 <input type="text" id="position" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
             </div>
-            
+            <div>
+                <label for="employeeType" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Xodim turi</label>
+                <select id="employeeType" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <option value="">Tanlanmagan</option>
+                    <option value="oquvchi">O'quvchi</option>
+                    <option value="oqituvchi">O'qituvchi</option>
+                    <option value="hodim">Xodim</option>
+                </select>
+            </div>
+
             <div class="col-span-1 md:col-span-2">
                 <label for="inpOrg" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{{ t.organization }}</label>
                 <select id="inpOrg" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" onchange="filterCamerasByOrg()">
@@ -372,6 +385,8 @@ async function saveNewEmployee(event) {
     const formData = new FormData();
     formData.append('first_name', document.getElementById('firstName').value.trim());
     formData.append('last_name', document.getElementById('lastName').value.trim());
+    const middleName = document.getElementById('middleName').value.trim();
+    if (middleName) formData.append('middle_name', middleName);
     formData.append('personal_id', pid);
     
     const dept = document.getElementById('department').value.trim();
@@ -379,7 +394,10 @@ async function saveNewEmployee(event) {
     
     const pos = document.getElementById('position').value.trim();
     if (pos) formData.append('position', pos);
-    
+
+    const employeeType = document.getElementById('employeeType').value;
+    if (employeeType) formData.append('employee_type', employeeType);
+
     const stime = document.getElementById('startTime').value.trim();
     if (stime) formData.append('start_time', stime);
     
@@ -395,6 +413,11 @@ async function saveNewEmployee(event) {
     // Selected cameras for ISUP face push
     const selectedCams = [...document.querySelectorAll('.cam-check:checked')].map(c => c.value);
     if (selectedCams.length > 0) {
+        if (!imageFile) {
+            errBlock.textContent = "Kameraga yuborish uchun xodim rasmi majburiy.";
+            errBlock.classList.remove('hidden');
+            return;
+        }
         formData.append('camera_ids', JSON.stringify(selectedCams.map(x => Number(x))));
     }
 

@@ -2,20 +2,46 @@
 
 {% block content %}
 <div class="space-y-6">
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Davomat</h1>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Kameradan o'tgan xodimlar hodisalari</p>
-            <p id="sync-status" class="mt-1 text-xs text-gray-500 dark:text-gray-400"></p>
+    <!-- ERROR ALERT -->
+    <div id="error-alert" class="hidden rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-900/40 dark:bg-red-900/20">
+        <div class="flex gap-3">
+            <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-red-600 dark:text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                </svg>
+            </div>
+            <div class="flex-1">
+                <h3 class="text-sm font-semibold text-red-800 dark:text-red-200">Xatolik:</h3>
+                <p id="error-message" class="mt-1 text-sm text-red-700 dark:text-red-300"></p>
+            </div>
+            <button type="button" id="error-close" class="flex-shrink-0 text-red-400 hover:text-red-500 dark:hover:text-red-300">
+                <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                </svg>
+            </button>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 gap-4 xl:grid-cols-12">
-        <div class="xl:col-span-7">
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+
+
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+         <div>
+             <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Davomat Arxivi</h1>
+             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Bazada saqlangan davomat yozuvlari va rasmlar</p>
+              <div class="mt-1 flex items-center gap-2">
+                  <span id="sync-live-badge" class="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                      <span id="sync-live-dot" class="h-1.5 w-1.5 rounded-full bg-gray-400"></span>
+                      <span id="sync-live-text">Realtime: kutish</span>
+                  </span>
+              </div>
+             <p id="sync-status" class="mt-1 text-xs text-gray-500 dark:text-gray-400"></p>
+         </div>
+     </div>
+
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
                     <div class="flex items-center justify-between">
-                        <div class="text-xs text-gray-500 dark:text-gray-400">Guruhlar</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">Jami foydalanuvchi</div>
                         <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -26,7 +52,7 @@
                 </div>
                 <div class="rounded-2xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900/40 dark:bg-blue-900/20">
                     <div class="flex items-center justify-between">
-                        <div class="text-xs text-blue-700 dark:text-blue-300">Umumiy o'tishlar</div>
+                        <div class="text-xs text-blue-700 dark:text-blue-300">Kelganlar</div>
                         <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -37,7 +63,7 @@
                 </div>
                 <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/40 dark:bg-emerald-900/20">
                     <div class="flex items-center justify-between">
-                        <div class="text-xs text-emerald-700 dark:text-emerald-300">Aniqlangan</div>
+                        <div class="text-xs text-emerald-700 dark:text-emerald-300">Kech kelganlar</div>
                         <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
@@ -48,7 +74,7 @@
                 </div>
                 <div class="rounded-2xl border border-red-200 bg-red-50 p-4 dark:border-red-900/40 dark:bg-red-900/20">
                     <div class="flex items-center justify-between">
-                        <div class="text-xs text-red-700 dark:text-red-300">Noma'lum</div>
+                        <div class="text-xs text-red-700 dark:text-red-300">Kelmaganlar</div>
                         <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -58,19 +84,38 @@
                     <div id="stat-unknown" class="mt-2 text-2xl font-bold text-red-700 dark:text-red-300">0</div>
                 </div>
             </div>
-        </div>
-        <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 xl:col-span-5">
+
+    <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
             <div class="mb-3 flex items-center justify-between">
                 <div>
                     <h2 class="text-sm font-bold text-gray-900 dark:text-white">Filtrlar</h2>
-                    <p class="text-[11px] text-gray-500 dark:text-gray-400">Tashkilot, kamera va sanani tanlang</p>
+                    <p class="text-[11px] text-gray-500 dark:text-gray-400">Bugungi holat, tashkilot, kamera va sanani tanlang</p>
                 </div>
-                <button id="btn-clear-filters" type="button" class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
-                    Tozalash
-                </button>
+                <div class="flex items-center gap-2">
+                    <button id="btn-export-excel" type="button" class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-900/50 dark:bg-emerald-900/20 dark:text-emerald-300 dark:hover:bg-emerald-900/30">
+                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 3h8l4 4v14H7V3zm8 0v4h4M9 13h8M9 17h8M9 9h2"/></svg>
+                        Excel
+                    </button>
+                    <button id="btn-export-pdf" type="button" class="inline-flex items-center gap-1.5 rounded-lg border border-red-300 bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-100 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-300 dark:hover:bg-red-900/30">
+                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 3h8l4 4v14H7V3zm8 0v4h4M9 16h6M9 12h6"/></svg>
+                        PDF
+                    </button>
+                    <button id="btn-clear-filters" type="button" class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
+                        Tozalash
+                    </button>
+                </div>
             </div>
 
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/60">
+                    <label for="filter-today-status" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Bugungi holat</label>
+                    <select id="filter-today-status" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:focus:ring-blue-900/40">
+                        <option value="came" selected>Kelganlar</option>
+                        <option value="did_not_come">Kelmaganlar</option>
+                        <option value="came_late">Kech kelganlar</option>
+                        <option value="all">Barchasi</option>
+                    </select>
+                </div>
                 <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/60">
                     <label for="filter-org" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Tashkilot</label>
                     <select id="filter-org" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:focus:ring-blue-900/40">
@@ -85,7 +130,11 @@
                         <option value="all">Barcha kameralar</option>
                     </select>
                 </div>
-                <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/60 sm:col-span-2">
+                <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/60">
+                    <label for="filter-personal-id" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Foydalanuvchi ID</label>
+                    <input id="filter-personal-id" type="search" inputmode="numeric" placeholder="Masalan: 365232" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:placeholder:text-gray-500 dark:focus:ring-blue-900/40">
+                </div>
+                <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/60 sm:col-span-2 lg:col-span-3">
                     <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Sana (Yil / Oy / Kun)</label>
                     <div class="grid grid-cols-1 gap-2 lg:grid-cols-4">
                         <select id="filter-year" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:focus:ring-blue-900/40">
@@ -105,13 +154,12 @@
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356-2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0A8.003 8.003 0 015.03 15m14.389 0H15"/>
                             </svg>
-                            <span id="btn-refresh-text">Sinxronlash va yangilash</span>
+                            <span id="btn-refresh-text">Yangilash</span>
                         </button>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
     <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
         <div class="overflow-x-auto">
@@ -119,18 +167,40 @@
                 <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500 dark:bg-gray-800 dark:text-gray-300">
                     <tr>
                         <th class="px-4 py-3">#</th>
-                        <th class="px-4 py-3">So'nggi vaqt</th>
+                        <th class="px-4 py-3">Vaqt</th>
                         <th class="px-4 py-3">Xodim</th>
-                        <th class="px-4 py-3">Tashkilot</th>
-                        <th class="px-4 py-3">Kamera</th>
-                        <th class="px-4 py-3">Soni</th>
+                        <th class="px-4 py-3">Kameralar</th>
                         <th class="px-4 py-3">Status</th>
+                        <th class="px-4 py-3">Amal</th>
                     </tr>
                 </thead>
                 <tbody id="attendance-body" class="divide-y divide-gray-100 dark:divide-gray-800">
-                    <tr><td colspan="7" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">Yuklanmoqda...</td></tr>
+                    <tr><td colspan="6" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">Yuklanmoqda...</td></tr>
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <div class="rounded-2xl border border-gray-200 bg-white px-4 py-4 dark:border-gray-800 dark:bg-gray-900">
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                <label for="page-size" class="text-sm">Har sahifada</label>
+                <select id="page-size" class="select-native rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:focus:ring-blue-900/40">
+                    <option value="10">10</option>
+                    <option value="15" selected>15</option>
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                </select>
+                <span>ta yozuv</span>
+            </div>
+            <div id="pagination-info" class="text-sm font-medium text-gray-600 dark:text-gray-300"></div>
+        </div>
+        <div class="mt-4 flex flex-wrap items-center justify-center gap-2">
+            <button id="btn-page-first" type="button" class="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">Birinchi</button>
+            <button id="btn-page-prev" type="button" class="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">Oldingi</button>
+            <div id="page-buttons" class="flex flex-wrap items-center justify-center gap-2"></div>
+            <button id="btn-page-next" type="button" class="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">Keyingi</button>
+            <button id="btn-page-last" type="button" class="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">Oxirgi</button>
         </div>
     </div>
 </div>
@@ -138,13 +208,28 @@
 <script>
 const pageState = {
     rawItems: [],
-    groupedItems: [],
     organizations: [],
     cameras: [],
-    attendanceLoading: false,
-    syncLoading: false,
-    lastAttendanceId: 0,
-    activeFilterKey: "",
+    loading: false,
+    personalIdTimer: null,
+    pendingModalShown: false,
+    pagination: {
+        page: 1,
+        pageSize: 15,
+        totalPages: 1,
+    },
+    autoRefresh: {
+        timerId: null,
+        intervalMs: 5000,
+    },
+    realtime: {
+        source: null,
+        reconnectTimer: null,
+        debounceTimer: null,
+        connected: false,
+    },
+    knownGroupIds: new Set(),
+    freshGroupIds: {},
 };
 
 function esc(value) {
@@ -157,23 +242,111 @@ function esc(value) {
 }
 
 function formatTime(value, withSeconds = true) {
-    if (!value) return "-";
-    try {
-        const dt = new Date(value);
-        const opts = withSeconds
-            ? { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }
-            : { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" };
-        return dt.toLocaleString("uz-UZ", opts).replace(",", "");
-    } catch (_) {
-        return value;
+     if (!value) return "-";
+     try {
+         const dt = new Date(value);
+         const opts = withSeconds
+             ? { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }
+             : { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" };
+         return dt.toLocaleString("uz-UZ", opts).replace(",", "");
+     } catch (_) {
+         return value;
+     }
+ }
+
+function shortText(value, maxLen = 22) {
+    const text = String(value || "").trim();
+    if (!text) return "-";
+    if (text.length <= maxLen) return text;
+    return `${text.slice(0, maxLen - 1)}…`;
+}
+
+function infoBadge(text, className = "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200", title = "") {
+    return `<span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${className}"${title ? ` title="${esc(title)}"` : ""}>${text}</span>`;
+}
+
+function showError(message) {
+    const alertBox = document.getElementById("error-alert");
+    const msgEl = document.getElementById("error-message");
+    if (alertBox && msgEl) {
+        msgEl.textContent = message;
+        alertBox.classList.remove("hidden");
+        console.error("❌ ATTENDANCE ERROR:", message);
     }
 }
 
-function statusBadge(status) {
-    if ((status || "").toLowerCase() === "aniqlandi") {
+function hideError() {
+    const alertBox = document.getElementById("error-alert");
+    if (alertBox) alertBox.classList.add("hidden");
+}
+
+function showPendingOrgModal(names) {
+    const items = Array.isArray(names) ? names.filter(Boolean) : [];
+    const orgsText = items.length ? `<p class="mt-2 text-xs text-amber-700 dark:text-amber-300">Tashkilotlar: ${esc(items.join(", "))}</p>` : "";
+    if (window.AppModal && typeof window.AppModal.open === "function") {
+        window.AppModal.open({
+            title: "Obuna faollashmagan",
+            size: "md",
+            bodyHtml: `
+                <div class="flex items-start gap-3">
+                    <div class="mt-0.5 rounded-full bg-amber-100 p-2 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z"></path></svg>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-sm text-gray-600 dark:text-gray-300">Ushbu tashkilot(lar) uchun obunangiz faollashmagan. Admin bilan bog'laning.</p>
+                        ${orgsText}
+                    </div>
+                </div>
+                <div class="mt-4 flex justify-end">
+                    <button type="button" onclick="window.AppModal.close('ok')" class="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700">Tushunarli</button>
+                </div>
+            `,
+            dismissible: true,
+        });
+        return;
+    }
+}
+
+function hidePendingOrgModal() {
+    if (window.AppModal && typeof window.AppModal.close === "function") {
+        window.AppModal.close("programmatic");
+    }
+}
+
+function formatLateDuration(totalMinutes) {
+    const safe = Math.max(0, Number(totalMinutes || 0));
+    const h = Math.floor(safe / 60);
+    const m = safe % 60;
+    if (h > 0) {
+        return `+${h} soat ${m} daqiqa`;
+    }
+    return `+${m} daqiqa`;
+}
+
+function statusBadge(status, lateMinutes = 0) {
+    const normalized = (status || "").toLowerCase();
+    if (normalized === "aniqlandi") {
         return '<span class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>Aniqlandi</span>';
     }
+    if (normalized === "kech") {
+        const lateText = Number(lateMinutes || 0) > 0 ? ` (${formatLateDuration(lateMinutes)})` : "";
+        return `<span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"><span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>Kech kelgan${lateText}</span>`;
+    }
+    if (normalized === "kelmagan") {
+        return '<span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300"><span class="h-1.5 w-1.5 rounded-full bg-slate-500"></span>Kelmagan</span>';
+    }
     return '<span class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-900/30 dark:text-red-300"><span class="h-1.5 w-1.5 rounded-full bg-red-500"></span>Noma\'lum</span>';
+}
+
+function imageBadge(snapshotUrl) {
+    if (!snapshotUrl) {
+        return '<span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300">Rasmi yo\'q</span>';
+    }
+    return `
+        <a href="${esc(snapshotUrl)}" target="_blank" rel="noopener noreferrer" class="group block h-16 w-16 overflow-hidden rounded-xl border border-gray-200 bg-gray-100 shadow-sm transition hover:scale-[1.02] dark:border-gray-700 dark:bg-gray-800">
+            <img src="${esc(snapshotUrl)}" alt="Davomat rasmi" class="h-full w-full object-cover">
+        </a>
+    `;
 }
 
 function toDateKey(value) {
@@ -195,7 +368,7 @@ function setRefreshLoading(loading) {
     const text = document.getElementById("btn-refresh-text");
     btn.disabled = Boolean(loading);
     spinner.classList.toggle("hidden", !loading);
-    text.textContent = loading ? "Sinxron..." : "Sinxronlash va yangilash";
+    text.textContent = loading ? "Yangilanmoqda..." : "Yangilash";
 }
 
 function setSyncStatus(message, isError = false) {
@@ -210,18 +383,39 @@ function setSyncStatus(message, isError = false) {
     }
 }
 
-function areFiltersReady() {
-    const orgVal = document.getElementById("filter-org").value;
-    const camVal = document.getElementById("filter-camera").value;
-    return orgVal !== "" && camVal !== "";
+function updateRealtimeIndicator(state, details = "") {
+    const badge = document.getElementById("sync-live-badge");
+    const dot = document.getElementById("sync-live-dot");
+    const text = document.getElementById("sync-live-text");
+    if (!badge || !dot || !text) return;
+
+    badge.className = "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium";
+    dot.className = "h-1.5 w-1.5 rounded-full";
+
+    if (state === "connected") {
+        badge.classList.add("bg-emerald-100", "text-emerald-700", "dark:bg-emerald-900/30", "dark:text-emerald-300");
+        dot.classList.add("bg-emerald-500");
+        text.textContent = "Realtime: ulangan";
+        return;
+    }
+    if (state === "reconnecting") {
+        badge.classList.add("bg-amber-100", "text-amber-700", "dark:bg-amber-900/30", "dark:text-amber-300");
+        dot.classList.add("bg-amber-500");
+        text.textContent = details || "Realtime: qayta ulanmoqda";
+        return;
+    }
+
+    badge.classList.add("bg-gray-100", "text-gray-600", "dark:bg-gray-800", "dark:text-gray-300");
+    dot.classList.add("bg-gray-400");
+    text.textContent = details || "Realtime: uzilgan";
 }
 
 function getSelectedFilters() {
     const orgVal = document.getElementById("filter-org").value;
     const camVal = document.getElementById("filter-camera").value;
     return {
-        organizationId: orgVal === "all" ? null : orgVal,
-        cameraId: camVal === "all" ? null : camVal,
+        organizationId: !orgVal || orgVal === "all" ? null : orgVal,
+        cameraId: !camVal || camVal === "all" ? null : camVal,
     };
 }
 
@@ -242,32 +436,17 @@ function getDateFilterParts() {
     };
 }
 
-function refreshDayOptions() {
-    const yearSel = document.getElementById("filter-year");
-    const monthSel = document.getElementById("filter-month");
+function refreshDayOptions(availableDays = []) {
     const daySel = document.getElementById("filter-day");
     const prevDay = daySel.value || "all";
     daySel.innerHTML = '<option value="all">Barcha kunlar</option>';
 
-    const year = yearSel.value;
-    const month = monthSel.value;
-    if (year === "all" || month === "all") {
-        return;
-    }
-
-    const yearNum = Number(year);
-    const monthNum = Number(month);
-    if (!Number.isFinite(yearNum) || !Number.isFinite(monthNum)) {
-        return;
-    }
-    const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
-    for (let day = 1; day <= daysInMonth; day += 1) {
+    const days = [...new Set((Array.isArray(availableDays) ? availableDays : []).map((day) => String(day || "").trim()).filter(Boolean))].sort((a, b) => Number(a) - Number(b));
+    for (const day of days) {
         const val = String(day).padStart(2, "0");
         daySel.insertAdjacentHTML("beforeend", `<option value="${val}">${val}</option>`);
     }
-    if ([...daySel.options].some((opt) => opt.value === prevDay)) {
-        daySel.value = prevDay;
-    }
+    daySel.value = [...daySel.options].some((opt) => opt.value === prevDay) ? prevDay : "all";
 }
 
 function initDateSelectors() {
@@ -290,7 +469,17 @@ function initDateSelectors() {
         const mm = String(m).padStart(2, "0");
         monthSel.insertAdjacentHTML("beforeend", `<option value="${mm}">${monthNames[m - 1]}</option>`);
     }
-    refreshDayOptions();
+
+    const today = new Date();
+    const todayYear = String(today.getFullYear());
+    const todayMonth = String(today.getMonth() + 1).padStart(2, "0");
+    const todayDay = String(today.getDate()).padStart(2, "0");
+
+    yearSel.value = todayYear;
+    monthSel.value = todayMonth;
+
+    const daySel = document.getElementById("filter-day");
+    daySel.innerHTML = `<option value="all">Barcha kunlar</option><option value="${todayDay}" selected>${todayDay}</option>`;
 }
 
 function setStatsZero() {
@@ -300,34 +489,318 @@ function setStatsZero() {
     document.getElementById("stat-unknown").textContent = "0";
 }
 
-function renderWaitingState(message) {
-    const tbody = document.getElementById("attendance-body");
-    tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">${esc(message || "Filtrlarni tanlang")}</td></tr>`;
-    setStatsZero();
+function getPageSize() {
+    const value = Number(document.getElementById("page-size").value || pageState.pagination.pageSize || 15);
+    return Number.isFinite(value) && value > 0 ? value : 15;
 }
 
-function resetAttendanceState(message = "Tashkilot va kamera filtrini tanlang") {
-    pageState.rawItems = [];
-    pageState.groupedItems = [];
-    pageState.lastAttendanceId = 0;
-    renderWaitingState(message);
+function clampPage(page, totalPages) {
+    const safeTotal = Math.max(1, Number(totalPages) || 1);
+    const safePage = Number(page) || 1;
+    return Math.min(Math.max(1, safePage), safeTotal);
+}
+
+function renderPageButtons(totalPages, currentPage) {
+    const holder = document.getElementById("page-buttons");
+    holder.innerHTML = "";
+
+    const addPageButton = (label, page, active = false, disabled = false) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.disabled = disabled;
+        btn.className = active
+            ? "rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm"
+            : "rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700";
+        btn.textContent = label;
+        if (!disabled && !active) {
+            btn.addEventListener("click", () => goToPage(page));
+        }
+        holder.appendChild(btn);
+    };
+
+    const pages = new Set([1, totalPages, currentPage - 1, currentPage, currentPage + 1]);
+    const ordered = [...pages].filter((p) => p >= 1 && p <= totalPages).sort((a, b) => a - b);
+    let prev = 0;
+    for (const p of ordered) {
+        if (p - prev > 1) {
+            const dots = document.createElement("span");
+            dots.className = "px-2 text-gray-400";
+            dots.textContent = "…";
+            holder.appendChild(dots);
+        }
+        addPageButton(String(p), p, p === currentPage);
+        prev = p;
+    }
+}
+
+function updatePagination(totalItems) {
+    const pageSize = getPageSize();
+    const totalPages = Math.max(1, Math.ceil(Math.max(0, totalItems) / pageSize));
+    pageState.pagination.pageSize = pageSize;
+    pageState.pagination.totalPages = totalPages;
+    pageState.pagination.page = clampPage(pageState.pagination.page, totalPages);
+
+    const currentPage = pageState.pagination.page;
+    const start = totalItems === 0 ? 0 : ((currentPage - 1) * pageSize) + 1;
+    const end = Math.min(totalItems, currentPage * pageSize);
+    document.getElementById("pagination-info").textContent = totalItems === 0
+        ? "Hozircha yozuv yo'q"
+        : `${start}-${end} / ${totalItems} ta yozuv, ${currentPage} / ${totalPages} sahifa`;
+
+    document.getElementById("btn-page-first").disabled = currentPage <= 1;
+    document.getElementById("btn-page-prev").disabled = currentPage <= 1;
+    document.getElementById("btn-page-next").disabled = currentPage >= totalPages;
+    document.getElementById("btn-page-last").disabled = currentPage >= totalPages;
+    renderPageButtons(totalPages, currentPage);
+}
+
+async function goToPage(page) {
+    pageState.pagination.page = clampPage(page, pageState.pagination.totalPages);
+    await applyFiltersAndRender();
+}
+function renderAvatar(url, name) {
+    if (url) {
+        return `<img src="${esc(url)}" alt="${esc(name || 'user')}" class="h-10 w-10 rounded-full border border-gray-200 object-cover dark:border-gray-700">`;
+    }
+    return `<div class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A12.002 12.002 0 0112 15c2.804 0 5.39.96 7.879 2.804M15 11a3 3 0 11-6 0 3 3 0 016 0zm6 1A9 9 0 113 12a9 9 0 0118 0z"/></svg></div>`;
+}
+
+function renderEventImage(url) {
+    if (!url) {
+        return '<span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300">Rasmi yo\'q</span>';
+    }
+    const safeUrl = esc(url);
+    return `<button type="button" onclick="openAttendanceImageModal('${safeUrl}')" class="block h-12 w-12 overflow-hidden rounded-lg border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800"><img src="${safeUrl}" alt="Rasm" class="h-full w-full object-cover"></button>`;
+}
+
+function openAttendanceImageModal(url) {
+    if (!url || !(window.AppModal && typeof window.AppModal.open === "function")) {
+        return;
+    }
+    window.AppModal.open({
+        title: "Davomat rasmi",
+        size: "md",
+        bodyHtml: `
+            <section class="mx-auto w-full max-w-md rounded-2xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                <div class="mb-2 flex items-center justify-between">
+                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Rasm preview</p>
+                    <p class="text-[11px] text-gray-400 dark:text-gray-500">Auto-shrink</p>
+                </div>
+                <div class="flex max-h-[54vh] items-center justify-center overflow-auto rounded-xl border border-gray-200 bg-gray-50 p-2 dark:border-gray-700 dark:bg-gray-800/40">
+                    <img src="${url}" alt="Davomat rasmi" class="block h-auto max-h-[48vh] w-auto max-w-full rounded-lg object-contain" />
+                </div>
+            </section>
+        `,
+        dismissible: true,
+    });
+}
+
+function isFreshGroup(groupId) {
+    const ts = pageState.freshGroupIds[String(groupId)];
+    if (!ts) return false;
+    return (Date.now() - ts) < 120000;
+}
+
+function formatPageInfo(total, page, totalPages) {
+    if (!total) return "Hozircha yozuv yo'q";
+    const start = ((page - 1) * pageState.pagination.pageSize) + 1;
+    const end = Math.min(total, page * pageState.pagination.pageSize);
+    return `${start}-${end} / ${total} ta yozuv, ${page} / ${totalPages} sahifa`;
+}
+
+function renderPaginationButtons() {
+     const holder = document.getElementById("page-buttons");
+     holder.innerHTML = "";
+     const currentPage = pageState.pagination.page || 1;
+     const totalPages = pageState.pagination.totalPages || 1;
+     const pages = new Set([1, totalPages, currentPage - 1, currentPage, currentPage + 1]);
+     const ordered = [...pages].filter((p) => p >= 1 && p <= totalPages).sort((a, b) => a - b);
+     let prev = 0;
+     for (const p of ordered) {
+         if (p - prev > 1) {
+             const dots = document.createElement("span");
+             dots.className = "px-2 text-gray-400";
+             dots.textContent = "…";
+             holder.appendChild(dots);
+         }
+         const btn = document.createElement("button");
+         btn.type = "button";
+         btn.textContent = String(p);
+         btn.className = p === currentPage
+             ? "rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm"
+             : "rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700";
+         if (p !== currentPage) btn.addEventListener("click", () => goToPage(p));
+         holder.appendChild(btn);
+         prev = p;
+     }
+}
+
+function renderPageControls() {
+     const page = pageState.pagination.page || 1;
+     const totalPages = pageState.pagination.totalPages || 1;
+     const total = pageState.pagination.total || 0;
+     document.getElementById("pagination-info").textContent = formatPageInfo(total, page, totalPages);
+     document.getElementById("btn-page-first").disabled = page <= 1;
+     document.getElementById("btn-page-prev").disabled = page <= 1;
+     document.getElementById("btn-page-next").disabled = page >= totalPages;
+     document.getElementById("btn-page-last").disabled = page >= totalPages;
+     renderPaginationButtons();
+ }
+
+function renderWaitingState(message) {
+    const tbody = document.getElementById("attendance-body");
+    tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">${esc(message || "Yozuvlar yuklanmoqda")}</td></tr>`;
+    setStatsZero();
+    pageState.pagination.total = 0;
+    pageState.pagination.totalPages = 1;
+    renderPageControls();
+}
+
+function buildDetailRow(group) {
+    const rows = (group.events || []).map((ev) => `
+        <div class="grid grid-cols-1 gap-2 rounded-xl border border-gray-200 bg-gray-50 p-2.5 dark:border-gray-700 dark:bg-gray-800/60 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center">
+            <div class="min-w-0">
+                <div class="flex flex-wrap items-center gap-1.5">
+                    ${infoBadge(esc(shortText(ev.camera_name || ev.camera_mac || 'Noma\'lum kamera', 28)), "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200", ev.camera_name || ev.camera_mac || 'Noma\'lum kamera')}
+                </div>
+                <div class="mt-1 flex flex-wrap items-center gap-1.5">
+                    ${infoBadge(`Kelgan vaqti: ${esc(formatTime(ev.timestamp, false))}`, "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300")}
+                    ${infoBadge(`Kamera ID: ${esc(ev.camera_id || '-')}`, "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300")}
+                    ${infoBadge(`MAC: ${esc(shortText(ev.camera_mac || '-', 24))}`, "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300", ev.camera_mac || '-')}
+                </div>
+            </div>
+            <div>${statusBadge(ev.status, ev.late_minutes || 0)}</div>
+            <div>${renderEventImage(ev.snapshot_url)}</div>
+        </div>
+    `).join("");
+
+    return `
+        <tr id="detail-${esc(group.group_id)}" class="hidden bg-gray-50/70 dark:bg-gray-800/30">
+            <td colspan="6" class="px-4 py-4">
+                <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+                    <div class="mb-3 flex items-center justify-between">
+                        <div>
+                            <div class="text-sm font-semibold text-gray-900 dark:text-white">Kamera bo'yicha tafsilotlar</div>
+                            <div class="mt-1 flex flex-wrap items-center gap-1.5">
+                                ${infoBadge(`Tashkilot: ${esc(group.organization_name || '-')}`)}
+                                ${infoBadge(`Xodim: ${esc(group.employee_name || 'Noma\'lum')}`)}
+                                ${infoBadge(`${esc(group.camera_count || 0)} kamera`, "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300")}
+                                ${infoBadge(`${esc(group.visit_count || 0)} o'tish`, "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300")}
+                            </div>
+                        </div>
+                        <button type="button" class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300" data-collapse="${esc(group.group_id)}">Yopish</button>
+                    </div>
+                    <div class="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">${rows || '<div class="text-sm text-gray-500 dark:text-gray-400">Tafsilot topilmadi.</div>'}</div>
+                </div>
+            </td>
+        </tr>
+    `;
+}
+
+function renderAttendanceTable(items) {
+    const tbody = document.getElementById("attendance-body");
+    tbody.innerHTML = "";
+
+    if (!items.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">Hozircha saqlangan davomat yozuvlari yo\'q.</td></tr>';
+        const empSummary = (pageState.summary || {}).employee_summary || {};
+        document.getElementById("stat-total").textContent = String(empSummary.total_employees ?? 0);
+        document.getElementById("stat-events").textContent = String(empSummary.came ?? 0);
+        document.getElementById("stat-known").textContent = String(empSummary.came_late ?? 0);
+        document.getElementById("stat-unknown").textContent = String(empSummary.did_not_come ?? 0);
+        renderPageControls();
+        return;
+    }
+
+    const summary = pageState.summary || {};
+    const empSummary = summary.employee_summary || {};
+    document.getElementById("stat-total").textContent = String(empSummary.total_employees ?? 0);
+    document.getElementById("stat-events").textContent = String(empSummary.came ?? 0);
+    document.getElementById("stat-known").textContent = String(empSummary.came_late ?? 0);
+    document.getElementById("stat-unknown").textContent = String(empSummary.did_not_come ?? 0);
+
+    for (const group of items) {
+        const isExpanded = pageState.expandedGroupId === group.group_id;
+        const avatar = renderAvatar(group.employee_image_url, group.employee_name);
+        const employeeLink = group.employee_id ? `/employees/${encodeURIComponent(group.employee_id)}` : "";
+        const employeeHtml = group.employee_id
+            ? `<a href="${employeeLink}" class="font-medium text-blue-700 hover:underline dark:text-blue-300">${esc(group.employee_name)}</a>`
+            : `<div class="font-medium text-gray-900 dark:text-white">${esc(group.employee_name)}</div>`;
+        const freshIcon = isFreshGroup(group.group_id)
+            ? '<span class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>Yangi</span>'
+            : '';
+
+        tbody.insertAdjacentHTML("beforeend", `
+            <tr class="hover:bg-gray-50/80 dark:hover:bg-gray-800/40 ${isExpanded ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}" data-group-row="${esc(group.group_id)}">
+                <td class="px-4 py-3 text-gray-500 dark:text-gray-400">${group.row_no}</td>
+                <td class="px-4 py-3 text-gray-700 dark:text-gray-200">
+                    <div class="flex flex-wrap items-center gap-1.5">
+                        ${infoBadge(`Kelgan vaqti: ${esc(formatTime(group.latest_timestamp, false))}`, "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300")}
+                        ${infoBadge(`Birinchi vaqti: ${esc(formatTime(group.first_timestamp, false))}`, "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300")}
+                        ${infoBadge(`To'liq: ${esc(formatTime(group.latest_timestamp))}`, "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300")}
+                    </div>
+                </td>
+                <td class="px-4 py-3">
+                    <div class="flex items-center gap-3">
+                        ${avatar}
+                        <div>
+                            <div class="flex items-center gap-2">${employeeHtml}${freshIcon}</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">ID: ${esc(group.personal_id || '-')}</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-4 py-3">
+                    <button type="button" class="inline-flex items-center gap-2 rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" data-toggle-group="${esc(group.group_id)}">
+                        <span>${group.camera_count} kamera</span>
+                        <span class="rounded-full bg-white px-2 py-0.5 text-[11px] font-bold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">${group.visit_count} o'tish</span>
+                    </button>
+                </td>
+                <td class="px-4 py-3">
+                    ${statusBadge(group.status, group.late_minutes || 0)}
+                </td>
+                <td class="px-4 py-3">
+                    <button type="button" class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300" data-toggle-group="${esc(group.group_id)}">${isExpanded ? 'Yopish' : 'Ochish'}</button>
+                </td>
+            </tr>
+        `);
+        tbody.insertAdjacentHTML("beforeend", buildDetailRow(group));
+        if (isExpanded) {
+            const detail = document.getElementById(`detail-${group.group_id}`);
+            if (detail) detail.classList.remove("hidden");
+        }
+    }
+
+    tbody.querySelectorAll("[data-toggle-group]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            const gid = btn.getAttribute("data-toggle-group");
+            pageState.expandedGroupId = pageState.expandedGroupId === gid ? null : gid;
+            renderAttendanceTable(pageState.items);
+        });
+    });
+
+    tbody.querySelectorAll("[data-collapse]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            const gid = btn.getAttribute("data-collapse");
+            if (pageState.expandedGroupId === gid) {
+                pageState.expandedGroupId = null;
+                renderAttendanceTable(pageState.items);
+            }
+        });
+    });
+
+    renderPageControls();
 }
 
 async function loadFilterData() {
-    const [orgResp, camResp] = await Promise.all([
-        fetch("/api/organizations"),
-        fetch("/api/cameras"),
-    ]);
-    const organizations = await orgResp.json().catch(() => []);
-    const cameras = await camResp.json().catch(() => []);
-    pageState.organizations = Array.isArray(organizations) ? organizations : [];
-    pageState.cameras = Array.isArray(cameras) ? cameras : [];
+    const resp = await fetch("/api/attendance/filter-data");
+    const data = await resp.json().catch(() => ({}));
+    pageState.organizations = Array.isArray(data.organizations) ? data.organizations : [];
+    pageState.cameras = Array.isArray(data.cameras) ? data.cameras : [];
 
     const orgSel = document.getElementById("filter-org");
     const camSel = document.getElementById("filter-camera");
     orgSel.innerHTML = '<option value="">Tashkilotni tanlang</option><option value="all">Barcha tashkilotlar</option>';
     camSel.innerHTML = '<option value="">Kamerani tanlang</option><option value="all">Barcha kameralar</option>';
-
     for (const org of pageState.organizations) {
         orgSel.insertAdjacentHTML("beforeend", `<option value="${esc(org.id)}">${esc(org.name)}</option>`);
     }
@@ -336,319 +809,268 @@ async function loadFilterData() {
     }
 }
 
-function buildGroupedItems(items) {
-    const grouped = new Map();
-    for (const row of items) {
-        const dateKey = toDateKey(row.timestamp);
-        const personKey = row.personal_id || row.employee_name || "unknown";
-        const orgKey = row.organization_id || "no-org";
-        const groupKey = `${dateKey}|${personKey}|${orgKey}`;
-        if (!grouped.has(groupKey)) {
-            grouped.set(groupKey, {
-                key: groupKey,
-                date_key: dateKey,
-                latest_timestamp: row.timestamp,
-                employee_name: row.employee_name || "Noma'lum",
-                employee_id: row.employee_id || null,
-                personal_id: row.personal_id || null,
-                organization_name: row.organization_name || "-",
-                latest_camera_name: row.camera_name || "-",
-                latest_camera_mac: row.camera_mac || "-",
-                status: row.status || "noma'lum",
-                camera_map: {},
-                events: [],
-            });
-        }
-        const bucket = grouped.get(groupKey);
-        bucket.events.push(row);
-        if (!bucket.employee_id && row.employee_id) {
-            bucket.employee_id = row.employee_id;
-        }
-        const cameraKey = String(row.camera_id || row.camera_mac || row.camera_name || "no-camera");
-        if (!bucket.camera_map[cameraKey]) {
-            bucket.camera_map[cameraKey] = {
-                camera_name: row.camera_name || "-",
-                camera_mac: row.camera_mac || "-",
-            };
-        }
-        if (new Date(row.timestamp || 0).getTime() > new Date(bucket.latest_timestamp || 0).getTime()) {
-            bucket.latest_timestamp = row.timestamp;
-            bucket.latest_camera_name = row.camera_name || bucket.latest_camera_name;
-            bucket.latest_camera_mac = row.camera_mac || bucket.latest_camera_mac;
-        }
-        if ((row.status || "").toLowerCase() === "aniqlandi") {
-            bucket.status = "aniqlandi";
-        }
-    }
-
-    const rows = Array.from(grouped.values()).map((bucket) => ({
-        ...bucket,
-        camera_count: Object.keys(bucket.camera_map || {}).length,
-    }));
-    rows.sort((a, b) => new Date(b.latest_timestamp || 0).getTime() - new Date(a.latest_timestamp || 0).getTime());
-    return rows;
-}
-
-function applyFiltersAndRender() {
-    if (!areFiltersReady()) {
-        resetAttendanceState("Tashkilot va kamera tanlang (yoki 'Barchasi').");
-        return;
-    }
-
+function buildAttendanceGroupQuery() {
+    const q = new URLSearchParams();
+    q.set("page", String(pageState.pagination.page || 1));
+    q.set("page_size", String(pageState.pagination.pageSize || 15));
     const orgVal = document.getElementById("filter-org").value;
     const camVal = document.getElementById("filter-camera").value;
-    const { year, month, day } = getDateFilterParts();
-
-    const filtered = pageState.rawItems.filter((row) => {
-        if (orgVal && orgVal !== "all" && String(row.organization_id || "") !== String(orgVal)) return false;
-        if (camVal && camVal !== "all" && String(row.camera_id || "") !== String(camVal)) return false;
-        if (year !== "all") {
-            const d = toDateKey(row.timestamp);
-            if (!d || d.slice(0, 4) !== String(year)) return false;
-        }
-        if (month !== "all") {
-            const d = toDateKey(row.timestamp);
-            if (!d || d.slice(5, 7) !== String(month)) return false;
-        }
-        if (day !== "all") {
-            const d = toDateKey(row.timestamp);
-            if (!d || d.slice(8, 10) !== String(day)) return false;
-        }
-        return true;
-    });
-
-    pageState.groupedItems = buildGroupedItems(filtered);
-    renderAttendanceTable(pageState.groupedItems);
+    const todayStatusVal = document.getElementById("filter-today-status").value;
+    const personalIdVal = document.getElementById("filter-personal-id").value.trim();
+    const yearVal = document.getElementById("filter-year").value;
+    const monthVal = document.getElementById("filter-month").value;
+    const dayVal = document.getElementById("filter-day").value;
+    if (orgVal && orgVal !== "all") q.set("organization_id", String(orgVal));
+    if (camVal && camVal !== "all") q.set("camera_id", String(camVal));
+    if (todayStatusVal && todayStatusVal !== "all") q.set("today_status", todayStatusVal);
+    if (personalIdVal) q.set("personal_id", personalIdVal);
+    if (yearVal && yearVal !== "all") q.set("year", String(yearVal));
+    if (monthVal && monthVal !== "all") q.set("month", String(monthVal));
+    if (dayVal && dayVal !== "all") q.set("day", String(dayVal));
+    return q;
 }
 
-function renderAttendanceTable(groups) {
-    const tbody = document.getElementById("attendance-body");
-    tbody.innerHTML = "";
-    if (groups.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">Hozircha davomat hodisalari yo\'q.</td></tr>';
-        document.getElementById("stat-total").textContent = "0";
-        document.getElementById("stat-events").textContent = "0";
-        document.getElementById("stat-known").textContent = "0";
-        document.getElementById("stat-unknown").textContent = "0";
-        return;
-    }
-
-    let known = 0;
-    let unknown = 0;
-    let totalEvents = 0;
-    groups.forEach((group, idx) => {
-        const count = Array.isArray(group.events) ? group.events.length : 0;
-        totalEvents += count;
-        if ((group.status || "").toLowerCase() === "aniqlandi") known += 1; else unknown += 1;
-        const employeeLink = group.employee_id ? `/employees/${encodeURIComponent(group.employee_id)}` : "";
-        const employeeHtml = group.employee_id
-            ? `<a href="${employeeLink}" class="font-medium text-blue-700 hover:underline dark:text-blue-300">${esc(group.employee_name)}</a>`
-            : `<div class="font-medium text-gray-900 dark:text-white">${esc(group.employee_name)}</div>`;
-
-        const tr = document.createElement("tr");
-        tr.className = "hover:bg-gray-50/80 dark:hover:bg-gray-800/40";
-        tr.innerHTML = `
-            <td class="px-4 py-3 text-gray-500 dark:text-gray-400">${idx + 1}</td>
-            <td class="px-4 py-3 text-gray-700 dark:text-gray-200">${formatTime(group.latest_timestamp)}</td>
-            <td class="px-4 py-3">
-                ${employeeHtml}
-                <div class="text-xs text-gray-500 dark:text-gray-400">ID: ${esc(group.personal_id || "-")}</div>
-            </td>
-            <td class="px-4 py-3 text-gray-700 dark:text-gray-200">${esc(group.organization_name || "-")}</td>
-            <td class="px-4 py-3">
-                <div class="font-medium text-gray-900 dark:text-white">${esc(group.latest_camera_name || "-")}</div>
-                <div class="text-xs font-mono text-gray-500 dark:text-gray-400">${esc(group.latest_camera_mac || "-")}</div>
-                ${group.camera_count > 1 ? `<div class="mt-1 text-[11px] text-blue-600 dark:text-blue-300">+${group.camera_count - 1} ta kamera</div>` : ""}
-            </td>
-            <td class="px-4 py-3">
-                <span class="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">${count} marta</span>
-            </td>
-            <td class="px-4 py-3">${statusBadge(group.status)}</td>
-        `;
-        tbody.appendChild(tr);
-    });
-
-    document.getElementById("stat-total").textContent = String(groups.length);
-    document.getElementById("stat-events").textContent = String(totalEvents);
-    document.getElementById("stat-known").textContent = String(known);
-    document.getElementById("stat-unknown").textContent = String(unknown);
+function buildAttendanceExportUrl(kind) {
+    const query = buildAttendanceGroupQuery();
+    query.delete("page");
+    query.delete("page_size");
+    return `/api/attendance/groups/export/${kind}?${query.toString()}`;
 }
 
-async function loadAttendance({ incremental = false, quiet = false } = {}) {
-    if (!areFiltersReady()) {
-        return;
-    }
-    if (pageState.attendanceLoading) return;
-    pageState.attendanceLoading = true;
-    const tbody = document.getElementById("attendance-body");
-    try {
-        const { organizationId, cameraId } = getSelectedFilters();
-        const query = new URLSearchParams();
-        query.set("limit", incremental ? "220" : "900");
-        if (organizationId !== null) {
-            query.set("organization_id", String(organizationId));
-        }
-        if (cameraId !== null) {
-            query.set("camera_id", String(cameraId));
-        }
-        if (incremental && pageState.lastAttendanceId > 0) {
-            query.set("after_id", String(pageState.lastAttendanceId));
-        }
-        const res = await fetch(`/api/attendance?${query.toString()}`);
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || data.ok === false) {
-            throw new Error(data.detail || data.message || "Davomatni yuklashda xatolik");
-        }
-        const items = Array.isArray(data.items) ? data.items : [];
-        const serverLastId = Number(data.last_id || 0) || 0;
-        if (serverLastId > pageState.lastAttendanceId) {
-            pageState.lastAttendanceId = serverLastId;
-        }
+function triggerExport(kind) {
+    const url = buildAttendanceExportUrl(kind);
+    const a = document.createElement("a");
+    a.href = url;
+    a.target = "_blank";
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+}
 
-        if (incremental) {
-            if (items.length > 0) {
-                pageState.rawItems.push(...items);
-                if (pageState.rawItems.length > 2600) {
-                    pageState.rawItems = pageState.rawItems.slice(pageState.rawItems.length - 2600);
-                }
-                applyFiltersAndRender();
-            }
-        } else {
-            pageState.rawItems = items;
-            const maxId = pageState.rawItems.reduce((mx, row) => {
-                const id = Number(row?.id || 0) || 0;
-                return id > mx ? id : mx;
-            }, 0);
-            if (maxId > pageState.lastAttendanceId) {
-                pageState.lastAttendanceId = maxId;
-            }
-            applyFiltersAndRender();
-        }
-    } catch (err) {
-        if (!quiet) {
-            tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-8 text-center text-red-600">Davomatni yuklashda xatolik.</td></tr>';
-        }
+async function loadAttendance(options = {}) {
+     const silent = Boolean(options.silent);
+     if (pageState.loading) return;
+     pageState.loading = true;
+     if (!silent) {
+         setRefreshLoading(true);
+         hideError();
+     }
+     const tbody = document.getElementById("attendance-body");
+     try {
+         const res = await fetch(`/api/attendance/groups?${buildAttendanceGroupQuery().toString()}`);
+         const data = await res.json().catch(() => ({}));
+         if (!res.ok || data.ok === false) {
+             const errorMsg = data.detail || data.message || `HTTP ${res.status}: Davomatni yuklashda xatolik`;
+             throw new Error(errorMsg);
+         }
+         pageState.items = Array.isArray(data.items) ? data.items.map((row, idx) => ({ ...row, row_no: ((Number(data.page || 1) - 1) * Number(data.page_size || 15)) + idx + 1 })) : [];
+         const nextGroupIds = new Set(pageState.items.map((row) => String(row.group_id || "")));
+         const nowMs = Date.now();
+         if (pageState.knownGroupIds.size > 0) {
+             for (const gid of nextGroupIds) {
+                 if (gid && !pageState.knownGroupIds.has(gid)) {
+                     pageState.freshGroupIds[gid] = nowMs;
+                 }
+             }
+         }
+         for (const gid of Object.keys(pageState.freshGroupIds)) {
+             if ((nowMs - Number(pageState.freshGroupIds[gid] || 0)) > 120000) {
+                 delete pageState.freshGroupIds[gid];
+             }
+         }
+         pageState.knownGroupIds = nextGroupIds;
+         pageState.pagination.page = Number(data.page || 1) || 1;
+         pageState.pagination.pageSize = Number(data.page_size || pageState.pagination.pageSize || 15) || 15;
+         pageState.pagination.total = Number(data.total || 0) || 0;
+         pageState.pagination.totalPages = Number(data.total_pages || 1) || 1;
+         pageState.summary = data.summary || {};
+         pageState.scope = data.scope || {};
+          if (!pageState.items.some((row) => String(row.group_id) === String(pageState.expandedGroupId))) {
+              pageState.expandedGroupId = null;
+          }
+         const yearVal = document.getElementById("filter-year").value;
+         const monthVal = document.getElementById("filter-month").value;
+         const canShowRealDays = yearVal && yearVal !== "all" && monthVal && monthVal !== "all";
+         refreshDayOptions(canShowRealDays && Array.isArray(data.available_days) ? data.available_days : []);
+         renderAttendanceTable(pageState.items);
+          if (!silent) {
+              setSyncStatus(`Yuklandi: ${pageState.pagination.total} guruh.`);
+          }
+
+         const pendingOrgNames = Array.isArray(pageState.scope.pending_org_names) ? pageState.scope.pending_org_names : [];
+         if (pendingOrgNames.length && !pageState.pendingModalShown) {
+             pageState.pendingModalShown = true;
+             showPendingOrgModal(pendingOrgNames);
+         }
+      } catch (err) {
+          if (silent) {
+              return;
+          }
+          const errorMessage = err.message || "Davomatni yuklashda noma'lum xatolik";
+          console.error("🔴 API ERROR:", errorMessage);
+          tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-8 text-center text-red-600">Davomatni yuklashda xatolik.</td></tr>';
+         setStatsZero();
+         setSyncStatus(errorMessage, true);
+         showError(errorMessage);
+         renderPageControls();
     } finally {
-        pageState.attendanceLoading = false;
+        pageState.loading = false;
+         if (!silent) {
+             setRefreshLoading(false);
+         }
     }
 }
 
-async function syncAttendance(backfillHours = 168, cameraId = null) {
-    if (!areFiltersReady()) {
-        return;
-    }
-    if (pageState.syncLoading) return;
-    pageState.syncLoading = true;
-    const params = new URLSearchParams();
-    params.set("backfill_hours", String(backfillHours));
-    params.set("max_events", "800");
-    if (cameraId) {
-        params.set("camera_id", String(cameraId));
-    }
-    const res = await fetch(`/api/attendance/sync?${params.toString()}`, {
-        method: "POST"
-    });
-    const data = await res.json().catch(() => ({}));
-    pageState.syncLoading = false;
-    if (!res.ok || data.ok === false) {
-        throw new Error(data.detail || data.message || "Davomatni kameradan sinxronlab bo'lmadi");
-    }
-    const inserted = Number(data.inserted || 0);
-    const duplicates = Number(data.duplicates || 0);
-    const message = data.message || `Sinxron yakunlandi: ${inserted} yangi, ${duplicates} dublikat.`;
-    setSyncStatus(message);
-}
-
-async function refreshAttendance(syncFirst = false) {
-    if (!areFiltersReady()) {
-        resetAttendanceState("Tashkilot va kamera tanlang (yoki 'Barchasi').");
-        setSyncStatus("Ma'lumot ko'rish uchun filtrlarni tanlang.");
-        return;
-    }
-    const { cameraId: selectedCamera } = getSelectedFilters();
-    if (syncFirst) {
-        setRefreshLoading(true);
-        try {
-            await syncAttendance(24 * 7, selectedCamera);
-        } catch (err) {
-            setSyncStatus(err.message || "Sinxron xatoligi", true);
-        } finally {
-            setRefreshLoading(false);
-        }
-    }
-    await loadAttendance({ incremental: !syncFirst, quiet: !syncFirst });
+async function applyFiltersAndRender() {
+    await loadAttendance();
 }
 
 async function handleSourceFilterChange() {
-    const key = getActiveFilterKey();
-    pageState.activeFilterKey = key;
-    pageState.lastAttendanceId = 0;
-    pageState.rawItems = [];
-    pageState.groupedItems = [];
-    if (!areFiltersReady()) {
-        resetAttendanceState("Tashkilot va kamera tanlang (yoki 'Barchasi').");
-        setSyncStatus("Filtrlar tanlanmadi.");
-        return;
-    }
-    setSyncStatus("Filtr qo'llandi, ma'lumotlar yuklanmoqda...");
-    await refreshAttendance(true);
+    setSyncStatus("Filtrlar qo'llandi, yozuvlar yangilanmoqda...");
+    pageState.pagination.page = 1;
+    await applyFiltersAndRender();
 }
 
 document.getElementById("filter-org").addEventListener("change", handleSourceFilterChange);
 document.getElementById("filter-camera").addEventListener("change", handleSourceFilterChange);
-document.getElementById("filter-year").addEventListener("change", () => {
-    refreshDayOptions();
-    applyFiltersAndRender();
-});
-document.getElementById("filter-month").addEventListener("change", () => {
-    refreshDayOptions();
-    applyFiltersAndRender();
-});
-document.getElementById("filter-day").addEventListener("change", applyFiltersAndRender);
-document.getElementById("btn-refresh").addEventListener("click", async () => {
-    await refreshAttendance(true);
-});
+document.getElementById("filter-today-status").addEventListener("change", handleSourceFilterChange);
+document.getElementById("filter-personal-id").addEventListener("input", async () => { clearTimeout(pageState.personalIdTimer); pageState.personalIdTimer = setTimeout(() => handleSourceFilterChange(), 300); });
+document.getElementById("filter-year").addEventListener("change", async () => { refreshDayOptions([]); document.getElementById("filter-day").value = "all"; await handleSourceFilterChange(); });
+document.getElementById("filter-month").addEventListener("change", async () => { refreshDayOptions([]); document.getElementById("filter-day").value = "all"; await handleSourceFilterChange(); });
+document.getElementById("filter-day").addEventListener("change", handleSourceFilterChange);
+document.getElementById("error-close").addEventListener("click", hideError);
+document.getElementById("page-size").addEventListener("change", async () => { pageState.pagination.pageSize = getPageSize(); pageState.pagination.page = 1; await loadAttendance(); });
+document.getElementById("btn-refresh").addEventListener("click", async () => { await loadAttendance(); });
+document.getElementById("btn-page-first").addEventListener("click", async () => { await goToPage(1); });
+document.getElementById("btn-page-prev").addEventListener("click", async () => { await goToPage(pageState.pagination.page - 1); });
+document.getElementById("btn-page-next").addEventListener("click", async () => { await goToPage(pageState.pagination.page + 1); });
+document.getElementById("btn-page-last").addEventListener("click", async () => { await goToPage(pageState.pagination.totalPages); });
+document.getElementById("btn-export-excel").addEventListener("click", () => triggerExport("excel"));
+document.getElementById("btn-export-pdf").addEventListener("click", () => triggerExport("pdf"));
 document.getElementById("btn-clear-filters").addEventListener("click", async () => {
+    clearTimeout(pageState.personalIdTimer);
+    const today = new Date();
+    const todayYear = String(today.getFullYear());
+    const todayMonth = String(today.getMonth() + 1).padStart(2, "0");
+    const todayDay = String(today.getDate()).padStart(2, "0");
     document.getElementById("filter-org").value = "";
     document.getElementById("filter-camera").value = "";
-    document.getElementById("filter-year").value = "all";
-    document.getElementById("filter-month").value = "all";
-    refreshDayOptions();
-    document.getElementById("filter-day").value = "all";
-    await handleSourceFilterChange();
+    document.getElementById("filter-today-status").value = "came";
+    document.getElementById("filter-personal-id").value = "";
+    document.getElementById("filter-year").value = todayYear;
+    document.getElementById("filter-month").value = todayMonth;
+    document.getElementById("filter-day").innerHTML = `<option value="all">Barcha kunlar</option><option value="${todayDay}" selected>${todayDay}</option>`;
+    pageState.pagination.page = 1;
+    await loadAttendance();
 });
 
 async function initPage() {
+    updateRealtimeIndicator("reconnecting", "Realtime: tayyorlanmoqda");
     await loadFilterData();
     initDateSelectors();
-    resetAttendanceState("Tashkilot va kamera tanlang (yoki 'Barchasi').");
-    setSyncStatus("Filtrlarni tanlang.");
-
-    // Jadvalni tez yangilash: faqat yangi yozuvlarni olib kelamiz.
-    setInterval(() => {
-        if (document.hidden) return;
-        if (!areFiltersReady()) return;
-        refreshAttendance(false);
-    }, 2000);
-
-    // Kameradagi eventlarni muntazam sinxronlash.
-    setInterval(async () => {
-        if (document.hidden) return;
-        if (!areFiltersReady()) return;
-        try {
-            const { cameraId: selectedCamera } = getSelectedFilters();
-            await syncAttendance(6, selectedCamera);
-        } catch (_) {}
-    }, 15000);
-
-    // Vaqti-vaqti bilan to'liq reload (holatni tekislash).
-    setInterval(() => {
-        if (document.hidden) return;
-        if (!areFiltersReady()) return;
-        loadAttendance({ incremental: false, quiet: true });
-    }, 60000);
+    pageState.pagination.pageSize = getPageSize();
+    renderWaitingState("Davomat yozuvlari yuklanmoqda...");
+    setSyncStatus("Bazada saqlangan yozuvlar yuklanadi.");
+    await loadAttendance();
 }
 
+function stopAutoRefresh() {
+    if (pageState.autoRefresh.timerId) {
+        clearInterval(pageState.autoRefresh.timerId);
+        pageState.autoRefresh.timerId = null;
+    }
+}
+
+function scheduleLiveReload() {
+    clearTimeout(pageState.realtime.debounceTimer);
+    pageState.realtime.debounceTimer = setTimeout(async () => {
+        if (pageState.loading || document.hidden) {
+            return;
+        }
+        await loadAttendance({ silent: true });
+    }, 350);
+}
+
+function stopAttendanceStream() {
+    if (pageState.realtime.reconnectTimer) {
+        clearTimeout(pageState.realtime.reconnectTimer);
+        pageState.realtime.reconnectTimer = null;
+    }
+    if (pageState.realtime.source) {
+        pageState.realtime.source.close();
+        pageState.realtime.source = null;
+    }
+    pageState.realtime.connected = false;
+    updateRealtimeIndicator("disconnected", "Realtime: uzilgan");
+}
+
+function startAttendanceStream() {
+    stopAttendanceStream();
+    updateRealtimeIndicator("reconnecting", "Realtime: ulanmoqda");
+    try {
+        const source = new EventSource('/api/attendance/stream');
+        pageState.realtime.source = source;
+
+        source.addEventListener('ready', () => {
+            pageState.realtime.connected = true;
+            updateRealtimeIndicator("connected");
+        });
+
+        source.addEventListener('attendance', () => {
+            scheduleLiveReload();
+        });
+
+        source.onerror = () => {
+            pageState.realtime.connected = false;
+            updateRealtimeIndicator("reconnecting", "Realtime: qayta ulanmoqda");
+            if (pageState.realtime.source) {
+                pageState.realtime.source.close();
+                pageState.realtime.source = null;
+            }
+            if (!pageState.realtime.reconnectTimer) {
+                pageState.realtime.reconnectTimer = setTimeout(() => {
+                    pageState.realtime.reconnectTimer = null;
+                    startAttendanceStream();
+                }, 3000);
+            }
+        };
+    } catch (_) {
+        pageState.realtime.connected = false;
+        updateRealtimeIndicator("disconnected", "Realtime: mavjud emas");
+    }
+}
+
+function startAutoRefresh() {
+    stopAutoRefresh();
+    pageState.autoRefresh.timerId = setInterval(async () => {
+        if (document.hidden || pageState.loading) {
+            return;
+        }
+        if (pageState.realtime.connected) {
+            return;
+        }
+        await loadAttendance({ silent: true });
+    }, pageState.autoRefresh.intervalMs);
+}
+
+document.addEventListener("visibilitychange", async () => {
+    if (!document.hidden) {
+        await loadAttendance({ silent: true });
+    }
+});
+
+window.addEventListener("focus", async () => {
+    scheduleLiveReload();
+});
+
+window.addEventListener("beforeunload", () => {
+    stopAutoRefresh();
+    stopAttendanceStream();
+});
+
 initPage();
+startAutoRefresh();
+startAttendanceStream();
 </script>
 {% endblock %}

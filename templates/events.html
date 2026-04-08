@@ -128,9 +128,10 @@ function renderPagination() {
 }
 
 async function loadFilters() {
-    const [oRes, cRes] = await Promise.all([fetch("/api/organizations"), fetch("/api/cameras")]);
-    eventsState.organizations = (await oRes.json().catch(() => [])) || [];
-    eventsState.cameras = (await cRes.json().catch(() => [])) || [];
+    const filterRes = await fetch("/api/attendance/filter-data");
+    const filterData = await filterRes.json().catch(() => ({}));
+    eventsState.organizations = (filterData.organizations || []);
+    eventsState.cameras = (filterData.cameras || []);
     if (!Array.isArray(eventsState.organizations)) eventsState.organizations = [];
     if (!Array.isArray(eventsState.cameras)) eventsState.cameras = [];
 
@@ -168,7 +169,7 @@ function buildRow(eq, rowNo, isNew) {
 
 async function loadEvents() {
     try {
-        const q = new URLSearchParams({ paginated:"true", page:String(eventsState.page), page_size:String(eventsState.pageSize) });
+        const q = new URLSearchParams({ paginated:"true", page:String(eventsState.page), page_size:String(eventsState.pageSize), today_only:"true" });
         const orgId = selectedOrgId(), camId = selectedCameraId();
         if (orgId !== null) q.set("organization_id", String(orgId));
         if (camId !== null) q.set("camera_id", String(camId));
@@ -211,9 +212,13 @@ async function loadEvents() {
 
 // ── LIVE POLLING: har 2 soniyada faqat yangi eventlar (after_id) ──
 async function livePoll() {
-    if (eventsState.page !== 1 || eventsState.lastId === 0) return;
+    if (eventsState.page !== 1) return;
+    if (eventsState.lastId === 0) {
+        await loadEvents();
+        return;
+    }
     try {
-        const q = new URLSearchParams({ after_id: String(eventsState.lastId), limit: "20" });
+        const q = new URLSearchParams({ after_id: String(eventsState.lastId), limit: "20", today_only:"true" });
         const orgId = selectedOrgId(), camId = selectedCameraId();
         if (orgId !== null) q.set("organization_id", String(orgId));
         if (camId !== null) q.set("camera_id", String(camId));
@@ -229,7 +234,8 @@ async function livePoll() {
         if (tbody.querySelector("td[colspan]")) tbody.innerHTML = "";
 
         let addK = 0, addU = 0;
-        for (const eq of [...items].reverse()) {
+        const sortedItems = [...items].sort((a, b) => (Number(a?.id || 0) - Number(b?.id || 0)));
+        for (const eq of sortedItems) {
             eq.status === "aniqlandi" ? addK++ : addU++;
             tbody.insertAdjacentHTML("afterbegin", buildRow(eq, "⚡", true));
         }

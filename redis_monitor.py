@@ -230,3 +230,59 @@ def get_redis_snapshot(pattern: str = "*", limit: int = 200) -> dict:
             service=service,
             error=str(exc),
         )
+
+
+def get_recent_camera_events(limit: int = 100, today_only: bool = True) -> list[dict[str, Any]]:
+    redis_conn = get_redis(check_connection=True)
+    if redis_conn is None:
+        return []
+
+    safe_limit = max(1, min(int(limit), 500))
+    rows: list[tuple[str, dict[str, Any]]] = []
+    list_rows: list[str] = []
+    try:
+        rows = redis_conn.xrevrange("bioface:events:stream", count=safe_limit)
+    except Exception:
+        list_rows = redis_conn.lrange("bioface:events:list", 0, safe_limit - 1)
+
+    result: list[dict[str, Any]] = []
+
+    today_prefix = datetime.now().strftime("%Y-%m-%d")
+    if list_rows:
+        normalized = [(f"list-{idx}", {"event": raw}) for idx, raw in enumerate(list_rows, start=1)]
+    else:
+        normalized = rows
+
+    for entry_id, fields in normalized:
+        raw_payload = str(fields.get("event") or "").strip()
+        payload: dict[str, Any] = {}
+        if raw_payload:
+            try:
+                parsed = json.loads(raw_payload)
+                if isinstance(parsed, dict):
+                    payload = parsed
+            except Exception:
+                payload = {"raw": _truncate_string(raw_payload)}
+
+        timestamp = str(payload.get("timestamp") or fields.get("timestamp") or "").strip()
+        if today_only and timestamp and not timestamp.startswith(today_prefix):
+            continue
+
+        result.append(
+            {
+                "id": entry_id,
+                "timestamp": timestamp,
+                "camera_id": payload.get("camera_id"),
+                "camera_name": payload.get("camera_name"),
+                "camera_mac": payload.get("camera_mac"),
+                "person_id": payload.get("person_id"),
+                "person_name": payload.get("person_name"),
+                "status": payload.get("status"),
+                "source": payload.get("source"),
+                "snapshot_url": payload.get("snapshot_url"),
+                "payload": payload,
+            }
+        )
+
+    return result
+

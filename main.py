@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.staticfiles import StaticFiles
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 import models
 from database import engine, ensure_schema
@@ -26,6 +27,7 @@ PUBLIC_PATH_PREFIXES = (
     "/static/",
     "/api/webhook",
     "/api/hik-event",
+    "/api/v1/httppost",
     "/api/auth/login",
     "/api/auth/logout",
     "/api/set_language",
@@ -74,6 +76,8 @@ app.add_middleware(
     same_site="lax",
     https_only=False,
 )
+
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 
 # --- Routerlarni ulaymiz ---
 app.include_router(auth.router, tags=["Auth"])

@@ -170,13 +170,13 @@ TRANSLATIONS = {
         "isup_ram_usage": "Xotira sarfi (RAM)",
         "isup_cpu_usage": "Protsessor yuklamasi (CPU)",
         "isup_connected_cams": "Ulangan kameralar",
-        "isup_setup_guide_title": "Ulash bo'yicha qo'llanma ⚙️",
+        "isup_setup_guide_title": "Ulash bo'yicha qo'llanma ",
         "isup_guide_step1": "Kameraning veb-interfeysi yoki Hik-Connect dasturiga kiring.",
         "isup_guide_step2": "O'ting: <b>Configuration → Network → Advanced Settings → Platform Access</b>.",
         "isup_guide_step3": "Belgilang: <b>Enable</b> (Yoqish)",
         "isup_guide_step4": "Protocol: <b>ISUP</b> qiling",
         "isup_guide_step5": "Server Address ga <b>BioFace IP</b> manzilini va Port: <b>7660</b> ni yozing",
-        "isup_guide_step6": "Device ID ga ixtiyoriy nom, ISUP Key ga esa: <b>bioface2024</b> deb yozib saqlang.",
+        "isup_guide_step6": "Device ID ga ixtiyoriy nom, ISUP Key ga esa: <b>facex2024</b> deb yozib saqlang.",
         "isup_developer_api": "Mavjud API'lar (Dasturchilar uchun)",
 
         # ── Users (Admins) ──
@@ -355,20 +355,20 @@ TRANSLATIONS = {
         "license": "Лицензия",
 
         # ── Footer ──
-        "footer_text": "Система BioFace © 2024",
+        "footer_text": "Система BioFace  2024",
 
         # ── ISUP ──
         "isup_status_title": "ISUP Сервер: Статус и Статистика",
         "isup_ram_usage": "Использование оперативной памяти (RAM)",
         "isup_cpu_usage": "Загрузка процессора (CPU)",
         "isup_connected_cams": "Подключенные камеры",
-        "isup_setup_guide_title": "Руководство по настройке ⚙️",
+        "isup_setup_guide_title": "Руководство по настройке ",
         "isup_guide_step1": "Войдите в веб-интерфейс или Hik-Connect.",
         "isup_guide_step2": "Перейдите: <b>Configuration → Network → Advanced Settings → Platform Access</b>.",
         "isup_guide_step3": "Установите галочку: <b>Enable</b>",
         "isup_guide_step4": "Протокол: <b>ISUP</b>",
         "isup_guide_step5": "Адрес сервера: <b>Ваш IP</b>, Порт: <b>7660</b>",
-        "isup_guide_step6": "ID устройства: (любое имя), ISUP Key: <b>bioface2024</b>",
+        "isup_guide_step6": "ID устройства: (любое имя), ISUP Key: <b>facex2024</b>",
         "isup_developer_api": "Доступные API (для разработчиков)",
 
         # ── Users (Admins) ──

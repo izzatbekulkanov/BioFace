@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="max-w-2xl mx-auto">
+<div class="w-full space-y-6">
 
     {# ── Header ── #}
     <div class="flex items-center gap-3 mb-6">
@@ -20,16 +20,16 @@
         {# ── Section: Asosiy ma'lumotlar ── #}
         <div>
             <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Asosiy Ma'lumotlar</h3>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
+            <div class="grid grid-cols-1 gap-4 xl:grid-cols-12">
+                <div class="xl:col-span-4">
                     <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">Kamera Nomi <span class="text-red-500">*</span></label>
                     <input id="f-name" type="text" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition">
                 </div>
-                <div>
+                <div class="xl:col-span-4">
                     <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">Joylashuv</label>
                     <input id="f-location" type="text" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition">
                 </div>
-                <div>
+                <div class="xl:col-span-4">
                     <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">Model</label>
                     <input id="f-model" list="camera-model-suggestions" type="text" placeholder="DS-K1T343, DS-K1T671TM..." class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition">
                     <datalist id="camera-model-suggestions">
@@ -48,7 +48,7 @@
                         <button type="button" onclick="setModel('DS-K1T671TM-3XF')" class="px-2.5 py-1 text-xs rounded-full border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 dark:border-blue-800 dark:text-blue-300 dark:bg-blue-900/20">DS-K1T671TM-3XF</button>
                     </div>
                 </div>
-                <div>
+                <div class="xl:col-span-4">
                     <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">Tashkilot</label>
                     <select id="f-org" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition">
                         <option value="">— Tanlanmagan —</option>
@@ -57,7 +57,7 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="sm:col-span-2">
+                <div class="xl:col-span-8">
                     <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">
                         MAC Manzil
                         <span class="text-xs text-gray-400 font-normal ml-1">yoki Seriya raqami</span>
@@ -73,8 +73,8 @@
         <div>
             <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1">ISUP Ulanish Sozlamalari</h3>
             <p class="text-xs text-gray-400 mb-4">Kamera ISUP serveriga ulanganda ishlatiladigan maxfiy sozlamalar</p>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
+            <div class="grid grid-cols-1 gap-4 xl:grid-cols-12">
+                <div class="xl:col-span-6">
                     <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">
                         ISUP Device ID
                         <span class="text-xs text-gray-400 font-normal ml-1">(masalan: CAM1111)</span>
@@ -84,14 +84,14 @@
                         placeholder="Bo'sh qoldirilsa ISUP orqali tekshirilmaydi">
                     <p class="text-xs text-gray-400 mt-1">ISUP online/offline uchun kameradagi Device ID bilan bir xil bo'lishi kerak.</p>
                 </div>
-                <div>
+                <div class="xl:col-span-6">
                     <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">
                         Encryption Key
                         <span class="text-xs text-gray-400 font-normal ml-1">(ISUP Parol)</span>
                     </label>
                     <input id="f-isup-password" type="text"
                         class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-mono rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition"
-                        placeholder="bioface2024">
+                        placeholder="facex2024">
                     <p class="text-xs text-gray-400 mt-1">Kameradagi ISUP parol bilan mos bo'lishi kerak.</p>
                 </div>
             </div>
@@ -102,16 +102,16 @@
         {# ── Section: HTTP Auth ── #}
         <div>
             <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">HTTP Autentifikatsiya</h3>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
+            <div class="grid grid-cols-1 gap-4 xl:grid-cols-12">
+                <div class="xl:col-span-4">
                     <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">Login</label>
                     <input id="f-username" type="text" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition">
                 </div>
-                <div>
+                <div class="xl:col-span-4">
                     <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">Yangi Parol <span class="text-gray-400 text-xs font-normal">(bo'sh — o'zgarmaydi)</span></label>
                     <input id="f-password" type="password" placeholder="••••••••" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition">
                 </div>
-                <div>
+                <div class="xl:col-span-4">
                     <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">Maks. xotira (yuz soni)</label>
                     <input id="f-max-memory" type="number" min="0" max="10000" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition">
                 </div>
@@ -153,7 +153,7 @@ async function loadCamera() {
         document.getElementById('f-mac').value = cam.mac_address || '';
         document.getElementById('f-isup-device-id').value = cam.isup_device_id || '';
         document.getElementById('f-username').value = cam.username || 'admin';
-        document.getElementById('f-isup-password').value = cam.isup_password || 'bioface2024';
+        document.getElementById('f-isup-password').value = cam.isup_password || 'facex2024';
         document.getElementById('f-max-memory').value = cam.max_memory || 1500;
         if (cam.organization_id) {
             document.getElementById('f-org').value = cam.organization_id;

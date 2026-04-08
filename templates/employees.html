@@ -3,17 +3,33 @@
 {% block content %}
 <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
     <div>
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t.employees_title }}</h2>
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Foydalanuvchilar</h2>
         <p id="employees-count-text" class="mt-1 text-sm text-gray-500 dark:text-gray-400">Yuklanmoqda...</p>
     </div>
-    <a href="/employees/add" class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700">
-        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-        Yangi Xodim
-    </a>
+    <div class="flex items-center gap-2">
+        <button id="btn-attendance-import" type="button" class="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-100 dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-300 dark:hover:bg-emerald-900/30">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+            Davomatdan saqlash
+        </button>
+        <a href="/employees/add" class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-700">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Yangi foydalanuvchi
+        </a>
+    </div>
 </div>
 
+<div id="employees-feedback" class="mb-4 hidden rounded-2xl border px-4 py-3 text-sm"></div>
+
 <div class="mb-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-    <div class="grid grid-cols-1 gap-3 md:grid-cols-4">
+    <div class="grid grid-cols-1 gap-3 md:grid-cols-6">
+        <div>
+            <label for="employees-firstname-filter" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Ism</label>
+            <input id="employees-firstname-filter" type="text" placeholder="Masalan: Ali" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
+        </div>
+        <div>
+            <label for="employees-lastname-filter" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Familiya</label>
+            <input id="employees-lastname-filter" type="text" placeholder="Masalan: Karimov" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
+        </div>
         <div>
             <label for="employees-org-filter" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Tashkilot</label>
             <select id="employees-org-filter" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
@@ -24,6 +40,16 @@
             <label for="employees-camera-filter" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Kamera</label>
             <select id="employees-camera-filter" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
                 <option value="all">Barcha kameralar</option>
+            </select>
+        </div>
+        <div>
+            <label for="employees-type-filter" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Xodim turi</label>
+            <select id="employees-type-filter" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
+                <option value="all">Barchasi</option>
+                <option value="oquvchi">O'quvchi</option>
+                <option value="oqituvchi">O'qituvchi</option>
+                <option value="hodim">Xodim</option>
+                <option value="none">Tanlanmagan</option>
             </select>
         </div>
         <div class="md:col-span-2 flex items-end gap-2">
@@ -39,18 +65,19 @@
             <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-600 dark:bg-gray-800 dark:text-gray-300">
                 <tr>
                     <th class="px-6 py-4 font-semibold">#</th>
-                    <th class="px-6 py-4 font-semibold">Xodim</th>
+                    <th class="px-6 py-4 font-semibold">Foydalanuvchi</th>
                     <th class="px-6 py-4 font-semibold">Tashkilot</th>
                     <th class="px-6 py-4 font-semibold">Ulangan kameralar</th>
                     <th class="px-6 py-4 font-semibold">{{ t.department }}</th>
                     <th class="px-6 py-4 font-semibold">{{ t.position }}</th>
+                    <th class="px-6 py-4 font-semibold">Xodim turi</th>
                     <th class="px-6 py-4 font-semibold">Holati</th>
                     <th class="px-6 py-4 font-semibold">Qo'shilgan</th>
                     <th class="px-6 py-4 font-semibold text-right">Harakatlar</th>
                 </tr>
             </thead>
             <tbody id="employeesTableBody" class="divide-y divide-gray-100 dark:divide-gray-800">
-                <tr><td colspan="9" class="px-6 py-10 text-center text-gray-500 dark:text-gray-400">Yuklanmoqda...</td></tr>
+                <tr><td colspan="10" class="px-6 py-10 text-center text-gray-500 dark:text-gray-400">Yuklanmoqda...</td></tr>
             </tbody>
         </table>
     </div>
@@ -71,7 +98,537 @@ const employeesState = {
     page: 1,
     pageSize: 50,
     totalPages: 1,
+    deletingEmployeeId: null,
+    deletingEmployeeName: "",
+    deletingEmployeeCameras: [],
+    importSources: [],
+    importJobId: null,
+    importPollTimer: null,
+    attendanceImportJobId: null,
+    attendanceImportPollTimer: null,
 };
+
+function setEmployeesFeedback(message, kind = "info") {
+    const box = document.getElementById("employees-feedback");
+    box.classList.remove("hidden", "border-red-200", "bg-red-50", "text-red-700", "border-emerald-200", "bg-emerald-50", "text-emerald-700", "border-blue-200", "bg-blue-50", "text-blue-700");
+    if (kind === "error") {
+        box.classList.add("border-red-200", "bg-red-50", "text-red-700");
+    } else if (kind === "success") {
+        box.classList.add("border-emerald-200", "bg-emerald-50", "text-emerald-700");
+    } else {
+        box.classList.add("border-blue-200", "bg-blue-50", "text-blue-700");
+    }
+    box.textContent = String(message || "");
+}
+
+function notifyEmployees(message, kind = "info") {
+    const tone = kind === "error" ? "error" : (kind === "success" ? "success" : (kind === "warning" ? "warning" : "info"));
+    if (window.AppNotify && typeof window.AppNotify[tone] === "function") {
+        window.AppNotify[tone](String(message || ""), { duration: 4200 });
+        return;
+    }
+    setEmployeesFeedback(message, kind);
+}
+
+function formatDeleteEmployeeMessage(data) {
+    if (!data || typeof data !== "object") {
+        return "Xodim o'chirildi";
+    }
+    const message = String(data.message || "").trim();
+    const sync = data.camera_sync || {};
+    const deleted = Number(sync.deleted || 0);
+    const failed = Number(sync.failed || 0);
+    const skipped = Number(sync.skipped || 0);
+    const hasSyncSummary = sync.enabled !== false && (Number(sync.requested || 0) > 0 || deleted > 0 || failed > 0 || skipped > 0);
+    if (message && message.includes("Kameralarda:")) {
+        return message;
+    }
+    if (hasSyncSummary) {
+        const base = message || "Xodim o'chirildi";
+        return `${base}. Kameralarda: ${deleted} o'chirildi, ${failed} xato, ${skipped} o'tkazildi.`;
+    }
+    return message || "Xodim o'chirildi";
+}
+
+async function fetchJson(url, options = {}) {
+    const res = await fetch(url, options);
+    let data = {};
+    try {
+        data = await res.json();
+    } catch (_) {
+        data = {};
+    }
+    if (!res.ok) {
+        let msg = data.detail || data.message || "So'rov xatosi";
+        if (msg && typeof msg === "object") {
+            msg = msg.message || JSON.stringify(msg);
+        }
+        throw new Error(String(msg || "So'rov xatosi"));
+    }
+    return data;
+}
+
+function normalizeEmployeeTypeLabel(value) {
+    const v = String(value || "").toLowerCase();
+    if (v === "oquvchi") return "O'quvchi";
+    if (v === "oqituvchi") return "O'qituvchi";
+    if (v === "hodim") return "Xodim";
+    return "Tanlanmagan";
+}
+
+async function openEmployeesImportModal() {
+    try {
+        const data = await fetchJson('/api/employees/import/sources');
+        const orgs = Array.isArray(data.organizations) ? data.organizations : [];
+        employeesState.importSources = orgs;
+
+        const body = document.createElement('div');
+        body.innerHTML = `
+            <div class="space-y-4">
+                <div class="rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-xs text-indigo-700 dark:border-indigo-900/40 dark:bg-indigo-900/20 dark:text-indigo-300">
+                    Kameradan foydalanuvchilar bazaga rasm siz yuklanadi. Dublikatlar (bir xil personal_id) yangilanadi.
+                </div>
+                <div>
+                    <label for="import-employee-type" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Yuklanadigan xodim turi</label>
+                    <select id="import-employee-type" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
+                        <option value="oquvchi">O'quvchi</option>
+                        <option value="oqituvchi">O'qituvchi</option>
+                        <option value="hodim" selected>Xodim</option>
+                    </select>
+                </div>
+                <div class="max-h-72 overflow-y-auto rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/60" id="import-camera-list"></div>
+                <div class="flex items-center justify-between pt-2">
+                    <button type="button" id="btn-import-refresh-sources" class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">Yangilash</button>
+                    <button type="button" id="btn-start-import" class="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700">Yuklashni boshlash</button>
+                </div>
+            </div>
+        `;
+
+        if (window.AppModal && typeof window.AppModal.open === 'function') {
+            window.AppModal.open({
+                title: 'Xodimlarni bazaga yuklash',
+                size: 'xl',
+                bodyNode: body,
+            });
+        }
+
+        function renderCameraList() {
+            const wrap = body.querySelector('#import-camera-list');
+            if (!wrap) return;
+            const html = orgs.map((org) => {
+                const cams = Array.isArray(org.cameras) ? org.cameras : [];
+                const totalUsers = cams.reduce((acc, cam) => acc + Number(cam.user_count || 0), 0);
+                const cameraRows = cams.map((cam) => {
+                    const unsupported = cam.unsupported ? '<span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">Unsupported</span>' : '';
+                    return `
+                        <label class="flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900/60">
+                            <span class="flex items-center gap-2">
+                                <input type="checkbox" class="import-camera-item h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" value="${cam.id}" ${cam.unsupported ? 'disabled' : ''}>
+                                <span>${escapeHtml(cam.name)}</span>
+                            </span>
+                            <span class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                                ${unsupported}
+                                <span>${Number(cam.user_count || 0)} foydalanuvchi</span>
+                            </span>
+                        </label>
+                    `;
+                }).join('');
+                return `
+                    <div class="mb-3 rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900/70">
+                        <div class="mb-2 flex items-center justify-between">
+                            <div class="text-sm font-semibold text-gray-900 dark:text-white">${escapeHtml(org.name)}</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">${cams.length} kamera, ${totalUsers} foydalanuvchi</div>
+                        </div>
+                        <div class="space-y-2">${cameraRows || '<div class="text-xs text-gray-500">Kamera yo\'q</div>'}</div>
+                    </div>
+                `;
+            }).join('');
+            wrap.innerHTML = html || '<div class="text-sm text-gray-500">Mavjud tashkilot/kamera topilmadi.</div>';
+        }
+
+        renderCameraList();
+
+        body.querySelector('#btn-import-refresh-sources')?.addEventListener('click', async () => {
+            window.AppModal.close('refresh');
+            await openEmployeesImportModal();
+        });
+
+        body.querySelector('#btn-start-import')?.addEventListener('click', async () => {
+            const selected = Array.from(body.querySelectorAll('.import-camera-item:checked')).map((el) => Number(el.value)).filter((v) => Number.isFinite(v) && v > 0);
+            if (!selected.length) {
+                notifyEmployees('Kamida bitta kamera tanlang', 'error');
+                return;
+            }
+            const employeeType = body.querySelector('#import-employee-type')?.value || 'hodim';
+            try {
+                const startRes = await fetchJson('/api/employees/import/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ camera_ids: selected, employee_type: employeeType }),
+                });
+                employeesState.importJobId = String(startRes.job_id || '');
+                localStorage.setItem('employees_import_job_id', employeesState.importJobId);
+                window.AppModal.close('start');
+                openImportProgressModal();
+                startImportPolling();
+            } catch (e) {
+                notifyEmployees(e.message || 'Importni boshlashda xatolik', 'error');
+            }
+        });
+    } catch (e) {
+        notifyEmployees(e.message || 'Import manbalarini yuklashda xatolik', 'error');
+    }
+}
+
+function openImportProgressModal() {
+    const body = document.createElement('div');
+    body.innerHTML = `
+        <div class="space-y-3">
+            <div class="text-sm text-gray-600 dark:text-gray-300">Jarayon davom etmoqda. Boshqa sahifaga o'tsangiz ham progress saqlanadi.</div>
+            <div class="h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                <div id="import-progress-bar" class="h-2 w-0 rounded-full bg-indigo-600 transition-all"></div>
+            </div>
+            <div id="import-progress-text" class="text-xs text-gray-500 dark:text-gray-400">0%</div>
+            <div id="import-progress-summary" class="rounded-xl border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-300"></div>
+            <div class="max-h-44 overflow-y-auto rounded-xl border border-gray-200 bg-white p-2 text-xs dark:border-gray-700 dark:bg-gray-900" id="import-progress-cameras"></div>
+        </div>
+    `;
+    if (window.AppModal && typeof window.AppModal.open === 'function') {
+        window.AppModal.open({
+            title: 'Xodimlar import progress',
+            size: 'xl',
+            bodyNode: body,
+            dismissible: true,
+        });
+    }
+}
+
+function renderImportProgress(state) {
+    const bar = document.getElementById('import-progress-bar');
+    const text = document.getElementById('import-progress-text');
+    const summaryEl = document.getElementById('import-progress-summary');
+    const camerasEl = document.getElementById('import-progress-cameras');
+    if (!bar || !text || !summaryEl || !camerasEl) return;
+
+    const pct = Number(state.progress_percent || 0);
+    bar.style.width = `${Math.max(0, Math.min(100, pct))}%`;
+    text.textContent = `${pct}% (${state.processed_cameras || 0}/${state.total_cameras || 0} kamera)`;
+
+    const s = state.summary || {};
+    summaryEl.innerHTML = `
+        <div class="grid grid-cols-2 gap-2 sm:grid-cols-5">
+            <div>Jami: <b>${Number(s.imported_users_total || 0)}</b></div>
+            <div>Yangi: <b>${Number(s.created || 0)}</b></div>
+            <div>Yangilandi: <b>${Number(s.updated || 0)}</b></div>
+            <div>Bog'landi: <b>${Number(s.linked_to_camera || 0)}</b></div>
+            <div>Skipped: <b>${Number(s.skipped || 0)}</b></div>
+        </div>
+    `;
+
+    const per = Array.isArray(state.per_camera) ? state.per_camera : [];
+    camerasEl.innerHTML = per.map((row) => `
+        <div class="mb-1 rounded-lg border border-gray-200 px-2 py-1 dark:border-gray-700">
+            <div class="font-medium text-gray-800 dark:text-gray-200">${escapeHtml(row.camera_name || `Kamera #${row.camera_id}`)}</div>
+            <div class="text-[11px] text-gray-500 dark:text-gray-400">Jami: ${Number(row.imported_users_total || 0)}, yangi: ${Number(row.created || 0)}, yangilandi: ${Number(row.updated || 0)}, bog'landi: ${Number(row.linked_to_camera || 0)}</div>
+        </div>
+    `).join('') || '<div class="text-gray-500">Hali natija yo\'q</div>';
+}
+
+async function pollImportStatusOnce() {
+    if (!employeesState.importJobId) return;
+    const state = await fetchJson(`/api/employees/import/status?job_id=${encodeURIComponent(employeesState.importJobId)}`);
+    renderImportProgress(state);
+    if (state.status === 'done') {
+        stopImportPolling();
+        notifyEmployees('Xodimlarni bazaga yuklash yakunlandi', 'success');
+        localStorage.removeItem('employees_import_job_id');
+        await loadEmployees();
+    } else if (state.status === 'error') {
+        stopImportPolling();
+        notifyEmployees(state.error || 'Importda xatolik', 'error');
+        localStorage.removeItem('employees_import_job_id');
+    }
+}
+
+function startImportPolling() {
+    stopImportPolling();
+    employeesState.importPollTimer = setInterval(() => {
+        pollImportStatusOnce().catch(() => {});
+    }, 1500);
+    pollImportStatusOnce().catch(() => {});
+}
+
+function stopImportPolling() {
+    if (employeesState.importPollTimer) {
+        clearInterval(employeesState.importPollTimer);
+        employeesState.importPollTimer = null;
+    }
+}
+
+async function importFromAttendanceToDb() {
+    try {
+        const src = await fetchJson('/api/employees/import/from-attendance/sources');
+        const organizations = Array.isArray(src.organizations) ? src.organizations : [];
+        const body = document.createElement('div');
+        body.innerHTML = `
+            <div class="space-y-4">
+                <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-300">
+                    Davomat yozuvlaridan foydalanuvchilar bazaga saqlanadi. Dublikat personal_id lar yangilanadi.
+                </div>
+                <div>
+                    <label for="attendance-import-org" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Tashkilot</label>
+                    <select id="attendance-import-org" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40"></select>
+                </div>
+                <div>
+                    <label for="attendance-import-camera" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Kamera</label>
+                    <select id="attendance-import-camera" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40"></select>
+                    <p id="attendance-import-count" class="mt-2 text-xs text-gray-500 dark:text-gray-400"></p>
+                </div>
+                <div>
+                    <label for="attendance-import-type" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Yuklanadigan foydalanuvchi turi</label>
+                    <select id="attendance-import-type" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
+                        <option value="oquvchi">O'quvchi</option>
+                        <option value="oqituvchi">O'qituvchi</option>
+                        <option value="hodim" selected>Xodim</option>
+                    </select>
+                </div>
+                <div class="flex justify-end">
+                    <button id="btn-start-attendance-import" type="button" class="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700">Yuklashni boshlash</button>
+                </div>
+            </div>
+        `;
+
+        window.AppModal.open({ title: 'Davomatdan tanlab yuklash', size: 'lg', bodyNode: body });
+
+        const orgSel = body.querySelector('#attendance-import-org');
+        const camSel = body.querySelector('#attendance-import-camera');
+        const countEl = body.querySelector('#attendance-import-count');
+
+        function renderOrgOptions() {
+            orgSel.innerHTML = '<option value="all">Barcha tashkilotlar</option>';
+            organizations.forEach((org) => {
+                orgSel.insertAdjacentHTML('beforeend', `<option value="${org.id}">${escapeHtml(org.name)} (${Number(org.users_count || 0)} foydalanuvchi)</option>`);
+            });
+        }
+
+        function renderCamOptions() {
+            const orgVal = orgSel.value;
+            camSel.innerHTML = '<option value="all">Barcha kameralar</option>';
+            let sourceCams = [];
+            if (orgVal === 'all') {
+                organizations.forEach((org) => {
+                    sourceCams.push(...(Array.isArray(org.cameras) ? org.cameras : []).map((cam) => ({ ...cam, organization_name: org.name })));
+                });
+            } else {
+                const org = organizations.find((x) => String(x.id) === String(orgVal));
+                sourceCams = Array.isArray(org?.cameras) ? org.cameras : [];
+            }
+            sourceCams.forEach((cam) => {
+                const suffix = cam.organization_name ? ` - ${cam.organization_name}` : '';
+                camSel.insertAdjacentHTML('beforeend', `<option value="${cam.id}">${escapeHtml(cam.name)}${escapeHtml(suffix)} (${Number(cam.users_count || 0)})</option>`);
+            });
+
+            const total = sourceCams.reduce((acc, cam) => acc + Number(cam.users_count || 0), 0);
+            countEl.textContent = `${sourceCams.length} kamera, taxminan ${total} foydalanuvchi`;
+        }
+
+        renderOrgOptions();
+        renderCamOptions();
+        orgSel.addEventListener('change', renderCamOptions);
+
+        body.querySelector('#btn-start-attendance-import')?.addEventListener('click', async () => {
+            const payload = {
+                limit: 50000,
+                employee_type: body.querySelector('#attendance-import-type')?.value || 'hodim',
+            };
+            if (orgSel.value && orgSel.value !== 'all') payload.organization_id = Number(orgSel.value);
+            if (camSel.value && camSel.value !== 'all') payload.camera_id = Number(camSel.value);
+
+            const start = await fetchJson('/api/employees/import/from-attendance/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            employeesState.attendanceImportJobId = String(start.job_id || '');
+            localStorage.setItem('employees_attendance_import_job_id', employeesState.attendanceImportJobId);
+            window.AppModal.close('start-attendance-import');
+            openAttendanceImportProgressModal();
+            startAttendanceImportPolling();
+        });
+    } catch (e) {
+        notifyEmployees(e.message || 'Davomatdan tanlab importda xatolik', 'error');
+    }
+}
+
+function openAttendanceImportProgressModal() {
+    const body = document.createElement('div');
+    body.innerHTML = `
+        <div class="space-y-3">
+            <div class="text-sm text-gray-600 dark:text-gray-300">Davomatdan bazaga import jarayoni ketmoqda.</div>
+            <div class="h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                <div id="attendance-import-progress-bar" class="h-2 w-0 rounded-full bg-emerald-600 transition-all"></div>
+            </div>
+            <div id="attendance-import-progress-text" class="text-xs text-gray-500 dark:text-gray-400">0%</div>
+            <div id="attendance-import-progress-summary" class="rounded-xl border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-300"></div>
+        </div>
+    `;
+    window.AppModal.open({ title: 'Davomat import progress', size: 'lg', bodyNode: body, dismissible: true });
+}
+
+function renderAttendanceImportProgress(state) {
+    const bar = document.getElementById('attendance-import-progress-bar');
+    const text = document.getElementById('attendance-import-progress-text');
+    const summary = document.getElementById('attendance-import-progress-summary');
+    if (!bar || !text || !summary) return;
+    const pct = Number(state.progress_percent || 0);
+    const done = Number(state.processed_items || 0);
+    const total = Number(state.total_items || 0);
+    bar.style.width = `${Math.max(0, Math.min(100, pct))}%`;
+    text.textContent = `${pct}% (${done}/${total || '?'})`;
+
+    const s = state.summary || {};
+    summary.innerHTML = `
+        <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div>Yangi: <b>${Number(s.created || 0)}</b></div>
+            <div>Yangilandi: <b>${Number(s.updated || 0)}</b></div>
+            <div>Bog'landi: <b>${Number(s.linked_to_camera || 0)}</b></div>
+            <div>Log bog'landi: <b>${Number(s.logs_bound || 0)}</b></div>
+        </div>
+    `;
+}
+
+async function pollAttendanceImportStatusOnce() {
+    if (!employeesState.attendanceImportJobId) return;
+    const state = await fetchJson(`/api/employees/import/status?job_id=${encodeURIComponent(employeesState.attendanceImportJobId)}`);
+    renderAttendanceImportProgress(state);
+    if (state.status === 'done') {
+        stopAttendanceImportPolling();
+        localStorage.removeItem('employees_attendance_import_job_id');
+        notifyEmployees('Davomatdan bazaga import yakunlandi', 'success');
+        await loadEmployees();
+    } else if (state.status === 'error') {
+        stopAttendanceImportPolling();
+        localStorage.removeItem('employees_attendance_import_job_id');
+        notifyEmployees(state.error || 'Davomat import xatoligi', 'error');
+    }
+}
+
+function startAttendanceImportPolling() {
+    stopAttendanceImportPolling();
+    employeesState.attendanceImportPollTimer = setInterval(() => {
+        pollAttendanceImportStatusOnce().catch(() => {});
+    }, 1500);
+    pollAttendanceImportStatusOnce().catch(() => {});
+}
+
+function stopAttendanceImportPolling() {
+    if (employeesState.attendanceImportPollTimer) {
+        clearInterval(employeesState.attendanceImportPollTimer);
+        employeesState.attendanceImportPollTimer = null;
+    }
+}
+
+function resetDeleteEmployeeState() {
+    employeesState.deletingEmployeeId = null;
+    employeesState.deletingEmployeeName = "";
+    employeesState.deletingEmployeeCameras = [];
+}
+
+function buildDeleteEmployeeModalBody() {
+    const body = document.createElement("div");
+    body.className = "space-y-4";
+    body.innerHTML = `
+        <p id="employee-delete-modal-text" class="text-sm text-gray-600 dark:text-gray-300"></p>
+        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <input id="employee-delete-from-cameras" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" checked>
+            Kameradan ham o'chirilsinmi
+        </label>
+        <div id="employee-delete-camera-picker-wrap" class="hidden rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/60">
+            <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">O'chiriladigan kameralar</p>
+            <div id="employee-delete-camera-picker" class="max-h-40 space-y-2 overflow-y-auto"></div>
+            <p id="employee-delete-camera-picker-hint" class="mt-2 text-xs text-gray-500 dark:text-gray-400"></p>
+        </div>
+        <div class="flex justify-end gap-2 pt-1">
+            <button id="employee-delete-cancel" type="button" class="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">Bekor qilish</button>
+            <button id="employee-delete-confirm" type="button" class="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">O'chirish</button>
+        </div>
+    `;
+    return body;
+}
+
+function openDeleteEmployeeModal(id, name) {
+    employeesState.deletingEmployeeId = Number(id);
+    employeesState.deletingEmployeeName = String(name || "Foydalanuvchi");
+    const employee = employeesState.all.find((row) => Number(row.id) === Number(id));
+    const cameraIds = Array.isArray(employee?.camera_ids) ? employee.camera_ids : [];
+    const cameraNames = Array.isArray(employee?.camera_names) ? employee.camera_names : [];
+    employeesState.deletingEmployeeCameras = cameraIds.map((camId, idx) => ({
+        id: Number(camId),
+        name: String(cameraNames[idx] || `Kamera #${camId}`),
+    })).filter((cam) => Number.isFinite(cam.id) && cam.id > 0);
+
+    const body = buildDeleteEmployeeModalBody();
+    const messageEl = body.querySelector("#employee-delete-modal-text");
+    if (messageEl) {
+        messageEl.textContent = `${employeesState.deletingEmployeeName} ni o'chirishni tasdiqlaysizmi?`;
+    }
+    body.querySelector("#employee-delete-cancel")?.addEventListener("click", closeDeleteEmployeeModal);
+    body.querySelector("#employee-delete-confirm")?.addEventListener("click", confirmDeleteEmployee);
+    body.querySelector("#employee-delete-from-cameras")?.addEventListener("change", renderDeleteCameraPicker);
+
+    if (window.AppModal && typeof window.AppModal.open === "function") {
+        window.AppModal.open({
+            title: "Foydalanuvchini o'chirish",
+            size: "md",
+            bodyNode: body,
+            onClose: function () {
+                resetDeleteEmployeeState();
+            },
+        });
+    }
+
+    renderDeleteCameraPicker();
+}
+
+function closeDeleteEmployeeModal() {
+    resetDeleteEmployeeState();
+    if (window.AppModal && typeof window.AppModal.close === "function" && window.AppModal.isOpen()) {
+        window.AppModal.close("employee_delete_close");
+    }
+}
+
+function renderDeleteCameraPicker() {
+    const wrap = document.getElementById("employee-delete-camera-picker-wrap");
+    const picker = document.getElementById("employee-delete-camera-picker");
+    const hint = document.getElementById("employee-delete-camera-picker-hint");
+    const checkbox = document.getElementById("employee-delete-from-cameras");
+    if (!wrap || !picker || !hint || !checkbox) {
+        return;
+    }
+    const enabled = checkbox.checked;
+    picker.innerHTML = "";
+
+    if (!enabled) {
+        wrap.classList.add("hidden");
+        return;
+    }
+
+    wrap.classList.remove("hidden");
+    const cams = employeesState.deletingEmployeeCameras;
+    if (!cams.length) {
+        hint.textContent = "Bu foydalanuvchiga bog'langan kamera yo'q. Tizim fallback bo'yicha mos kameralarni tekshiradi.";
+        picker.innerHTML = '<p class="text-xs text-gray-500 dark:text-gray-400">Bog\'langan kamera topilmadi.</p>';
+        return;
+    }
+
+    hint.textContent = "Kerakli kameralarni belgilang (default: barchasi).";
+    picker.innerHTML = cams.map((cam) => `
+        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <input type="checkbox" class="employee-delete-camera-item h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" value="${cam.id}" checked>
+            <span>${escapeHtml(cam.name)} <span class="text-xs text-gray-500">(#${cam.id})</span></span>
+        </label>
+    `).join("");
+}
 
 function escapeHtml(value) {
     return String(value ?? "")
@@ -109,20 +666,41 @@ function renderFilters() {
 
 function getActiveFilters() {
     return {
+        firstName: document.getElementById("employees-firstname-filter").value,
+        lastName: document.getElementById("employees-lastname-filter").value,
         organizationId: document.getElementById("employees-org-filter").value,
         cameraId: document.getElementById("employees-camera-filter").value,
+        employeeType: document.getElementById("employees-type-filter").value,
     };
 }
 
 function applyFilters() {
-    const { organizationId, cameraId } = getActiveFilters();
+    const { firstName, lastName, organizationId, cameraId, employeeType } = getActiveFilters();
+    const firstQ = normalizeText(firstName).toLowerCase();
+    const lastQ = normalizeText(lastName).toLowerCase();
     employeesState.filtered = employeesState.all.filter((emp) => {
+        if (firstQ) {
+            const first = String(emp.first_name || "").toLowerCase();
+            if (!first.includes(firstQ)) return false;
+        }
+        if (lastQ) {
+            const last = String(emp.last_name || "").toLowerCase();
+            if (!last.includes(lastQ)) return false;
+        }
         if (organizationId !== "all" && String(emp.organization_id || "") !== String(organizationId)) {
             return false;
         }
         if (cameraId !== "all") {
             const cameraIds = Array.isArray(emp.camera_ids) ? emp.camera_ids.map((v) => Number(v)) : [];
             if (!cameraIds.includes(Number(cameraId))) {
+                return false;
+            }
+        }
+        if (employeeType !== "all") {
+            const value = String(emp.employee_type || "").toLowerCase();
+            if (employeeType === "none") {
+                if (value) return false;
+            } else if (value !== String(employeeType).toLowerCase()) {
                 return false;
             }
         }
@@ -154,11 +732,11 @@ function renderEmployeesTable() {
     const tbody = document.getElementById("employeesTableBody");
     const totalAll = employeesState.all.length;
     const totalFiltered = employeesState.filtered.length;
-    document.getElementById("employees-count-text").textContent = `${totalFiltered} ta ko'rsatildi / ${totalAll} ta jami xodim`;
+    document.getElementById("employees-count-text").textContent = `${totalFiltered} ta ko'rsatildi / ${totalAll} ta jami foydalanuvchi`;
 
     renderPagination();
     if (totalFiltered === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">Mos xodim topilmadi.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">Mos foydalanuvchi topilmadi.</td></tr>';
         return;
     }
 
@@ -181,7 +759,7 @@ function renderEmployeesTable() {
         const moreCams = cameraNames.length > 3 ? `<div class="mt-1 text-[11px] text-gray-500">+${cameraNames.length - 3} ta</div>` : "";
 
         return `
-        <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/40">
+        <tr class="transition hover:bg-gray-50 dark:hover:bg-gray-800/50">
             <td class="px-6 py-4 font-medium text-gray-600 dark:text-gray-300">${rowNo}</td>
             <td class="px-6 py-4">
                 <div class="flex items-center gap-3">
@@ -196,6 +774,7 @@ function renderEmployeesTable() {
             <td class="px-6 py-4"><div class="flex flex-wrap gap-1.5">${cameraCell}</div>${moreCams}</td>
             <td class="px-6 py-4 text-gray-700 dark:text-gray-300">${escapeHtml(emp.department || "")}</td>
             <td class="px-6 py-4 text-gray-700 dark:text-gray-300">${escapeHtml(emp.position || "")}</td>
+            <td class="px-6 py-4 text-gray-700 dark:text-gray-300">${escapeHtml(normalizeEmployeeTypeLabel(emp.employee_type || ""))}</td>
             <td class="px-6 py-4">${statusBadge(emp.status)}</td>
             <td class="px-6 py-4 text-gray-500 dark:text-gray-400">${escapeHtml(emp.added_date || "")}</td>
             <td class="px-6 py-4">
@@ -206,13 +785,38 @@ function renderEmployeesTable() {
                     <a href="/employees/${encodeURIComponent(emp.id)}/edit" title="Tahrirlash" class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 transition hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-300 dark:hover:bg-blue-500/20">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                     </a>
-                    <button type="button" onclick="deleteEmployee(${Number(emp.id)})" title="O'chirish" class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-red-600 transition hover:bg-red-100 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20">
+                    <button
+                        type="button"
+                        title="Kameradan rasmni yangilash"
+                        data-action="import-face"
+                        data-employee-id="${Number(emp.id)}"
+                        class="employee-action-btn inline-flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
+                    ><svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M8 12l4 4m0 0l4-4m-4 4V3"/></svg></button>
+                    <button
+                        type="button"
+                        title="O'chirish"
+                        data-action="delete-employee"
+                        data-employee-id="${Number(emp.id)}"
+                        data-employee-name="${escapeHtml(fullName)}"
+                        class="employee-action-btn inline-flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-red-600 transition hover:bg-red-100 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20"
+                    >
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                     </button>
                 </div>
             </td>
         </tr>`;
     }).join("");
+}
+
+async function importEmployeeFace(id, overwrite = true) {
+    notifyEmployees(overwrite ? "Kameradan rasm yangilanmoqda..." : "Kameradan rasm import qilinmoqda...", "info");
+    try {
+        const data = await fetchJson(`/api/employees/${id}/import-face-from-camera?overwrite=${overwrite ? "true" : "false"}`, { method: "POST" });
+        notifyEmployees(data.message || "Rasm import qilindi", "success");
+        await loadEmployees();
+    } catch (e) {
+        notifyEmployees(e.message || "Rasm importda xatolik", "error");
+    }
 }
 
 async function loadEmployees() {
@@ -231,33 +835,51 @@ async function loadEmployees() {
         renderEmployeesTable();
     } catch (e) {
         console.error(e);
-        tbody.innerHTML = '<tr><td colspan="9" class="px-6 py-12 text-center text-red-600">Xodimlarni yuklashda xatolik.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="px-6 py-12 text-center text-red-600">Foydalanuvchilarni yuklashda xatolik.</td></tr>';
         document.getElementById("employees-count-text").textContent = "Yuklashda xatolik";
     }
 }
 
-async function deleteEmployee(id) {
-    const confirmDelete = confirm("Xodimni o'chirishni tasdiqlaysizmi?");
-    if (!confirmDelete) return;
-    const deleteFromCameras = confirm("Kameradan ham o'chirilsinmi?");
+async function confirmDeleteEmployee() {
+    const id = employeesState.deletingEmployeeId;
+    if (!id) return;
+    const deleteFromCameras = Boolean(document.getElementById("employee-delete-from-cameras")?.checked);
+    const selectedCameraIds = Array.from(document.querySelectorAll(".employee-delete-camera-item:checked"))
+        .map((el) => Number(el.value))
+        .filter((v) => Number.isFinite(v) && v > 0);
+    if (deleteFromCameras && employeesState.deletingEmployeeCameras.length > 0 && selectedCameraIds.length === 0) {
+        notifyEmployees("Hech bo'lmasa bitta kamerani tanlang yoki kamera o'chirishni bekor qiling.", "error");
+        return;
+    }
     try {
-        const res = await fetch(`/api/employees/${id}?delete_from_cameras=${deleteFromCameras ? "true" : "false"}`, {
+        const params = new URLSearchParams();
+        params.set("delete_from_cameras", deleteFromCameras ? "true" : "false");
+        if (deleteFromCameras && selectedCameraIds.length > 0) {
+            params.set("camera_ids", selectedCameraIds.join(","));
+        }
+
+        const res = await fetch(`/api/employees/${id}?${params.toString()}`, {
             method: "DELETE"
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || data.ok === false) {
             throw new Error(data.detail || data.message || "O'chirishda xatolik");
         }
+        closeDeleteEmployeeModal();
+        notifyEmployees(formatDeleteEmployeeMessage(data), "success");
         await loadEmployees();
     } catch (e) {
-        alert(e.message || "O'chirishda xatolik");
+        notifyEmployees(e.message || "O'chirishda xatolik", "error");
     }
 }
 
 document.getElementById("employees-apply-filter").addEventListener("click", applyFilters);
 document.getElementById("employees-reset-filter").addEventListener("click", () => {
+    document.getElementById("employees-firstname-filter").value = "";
+    document.getElementById("employees-lastname-filter").value = "";
     document.getElementById("employees-org-filter").value = "all";
     document.getElementById("employees-camera-filter").value = "all";
+    document.getElementById("employees-type-filter").value = "all";
     applyFilters();
 });
 document.getElementById("employees-prev-page").addEventListener("click", () => {
@@ -270,7 +892,34 @@ document.getElementById("employees-next-page").addEventListener("click", () => {
     employeesState.page += 1;
     renderEmployeesTable();
 });
+document.getElementById("employeesTableBody").addEventListener("click", (event) => {
+    const button = event.target.closest(".employee-action-btn");
+    if (!button) return;
 
-document.addEventListener("DOMContentLoaded", loadEmployees);
+    const employeeId = Number(button.dataset.employeeId || 0);
+    if (!Number.isFinite(employeeId) || employeeId <= 0) return;
+
+    const action = String(button.dataset.action || "");
+    if (action === "import-face") {
+        importEmployeeFace(employeeId, true);
+        return;
+    }
+    if (action === "delete-employee") {
+        openDeleteEmployeeModal(employeeId, button.dataset.employeeName || "");
+    }
+});
+document.getElementById("btn-attendance-import").addEventListener("click", () => {
+    importFromAttendanceToDb();
+});
+
+document.addEventListener("DOMContentLoaded", async () => {
+    await loadEmployees();
+    const savedAttendanceJobId = String(localStorage.getItem('employees_attendance_import_job_id') || '').trim();
+    if (savedAttendanceJobId) {
+        employeesState.attendanceImportJobId = savedAttendanceJobId;
+        openAttendanceImportProgressModal();
+        startAttendanceImportPolling();
+    }
+});
 </script>
 {% endblock %}

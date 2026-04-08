@@ -6,7 +6,7 @@ from isup_manager import (
     start_isup_server,
     stop_isup_server,
 )
-from redis_monitor import get_redis_snapshot
+from redis_monitor import get_recent_camera_events, get_redis_snapshot
 
 
 router = APIRouter()
@@ -55,3 +55,13 @@ def redis_snapshot(
 ):
     snapshot = get_redis_snapshot(pattern=pattern, limit=limit)
     return {"ok": snapshot["connected"], **snapshot}
+
+
+@router.get("/api/redis/events")
+def redis_events(
+    limit: int = Query(100, ge=1, le=500),
+    today_only: bool = Query(True),
+):
+    items = get_recent_camera_events(limit=limit, today_only=today_only)
+    return {"ok": True, "count": len(items), "items": items}
+

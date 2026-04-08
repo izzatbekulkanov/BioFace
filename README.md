@@ -47,6 +47,21 @@ Copy-Item menu.example.json menu.json
 - `ISUP_PUBLIC_HOST`
 - `PUBLIC_WEB_BASE_URL`
 
+For public deployments behind NAT / nginx, make sure these two values point to the externally reachable address:
+
+- `ISUP_PUBLIC_HOST=94.141.85.147` (or your public DNS/IP)
+- `PUBLIC_WEB_BASE_URL=https://bioface.uz` (or your nginx front-end URL)
+
+Telegram bot (optional):
+
+- set `TELEGRAM_BOT_TOKEN` in `.env`
+- optionally set `TELEGRAM_BOT_DEFAULT_LANGUAGE=uz` or `ru`
+- run the bot separately with:
+
+```powershell
+python -m bot.main
+```
+
 5. Start Redis, iSUP, and the web app:
 
 ```powershell
@@ -66,6 +81,11 @@ For local development with Tailwind watcher:
 ```powershell
 .\deploy.ps1 -Server user@example-host -Dest ~/BioFace
 ```
+
+Ubuntu deploy notes:
+
+- `setup_server.sh` now installs required system packages automatically, including `tzdata`.
+- This ensures `Asia/Tashkent` timezone handling works correctly on minimal servers.
 
 ## Hikvision SDK Note
 

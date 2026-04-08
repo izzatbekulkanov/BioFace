@@ -18,6 +18,9 @@ from system_config import REDIS_HOST, REDIS_PORT
 
 
 _redis: Optional[redis.Redis] = None
+EVENTS_CHANNEL = "bioface:events"
+EVENTS_STREAM_KEY = "bioface:events:stream"
+EVENTS_LIST_KEY = "bioface:events:list"
 
 
 def _connect_redis() -> Optional[redis.Redis]:
@@ -213,3 +216,40 @@ def get_isup_device(device_id: str) -> Optional[dict]:
         return data if data else None
     except Exception:
         return None
+
+
+def publish_camera_event(event: dict, max_stream_len: int = 5000) -> bool:
+    """Publish one camera event to Redis pub/sub and stream (best effort)."""
+    redis_conn = get_redis(check_connection=True)
+    if redis_conn is None:
+        return False
+
+    try:
+        payload = dict(event or {})
+        payload.setdefault("ts", int(time.time()))
+        payload_json = json.dumps(payload, ensure_ascii=False)
+        redis_conn.publish(EVENTS_CHANNEL, payload_json)
+
+        stream_fields = {
+            "event": payload_json,
+            "source": str(payload.get("source") or "camera"),
+            "camera_id": str(payload.get("camera_id") or ""),
+            "person_id": str(payload.get("person_id") or ""),
+            "status": str(payload.get("status") or ""),
+            "timestamp": str(payload.get("timestamp") or ""),
+        }
+        try:
+            redis_conn.xadd(
+                EVENTS_STREAM_KEY,
+                stream_fields,
+                maxlen=max(100, int(max_stream_len)),
+                approximate=True,
+            )
+        except Exception:
+            redis_conn.lpush(EVENTS_LIST_KEY, payload_json)
+            redis_conn.ltrim(EVENTS_LIST_KEY, 0, max(100, int(max_stream_len)) - 1)
+        return True
+    except Exception as exc:
+        print(f"[Redis] publish_camera_event error: {exc}")
+        return False
+

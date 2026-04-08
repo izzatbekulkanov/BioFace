@@ -196,6 +196,12 @@ def get_port_map() -> list[dict]:
 
 def _build_start_command() -> list[str]:
     def _sdk_python_executable() -> str:
+        # Prefer current virtual environment's Python
+        if hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix):
+            # We're in a virtual environment
+            return sys.executable
+        
+        # Fallback to base Python (usually not desired for SDK mode)
         if os.name == "nt":
             base_python = Path(sys.base_prefix) / "python.exe"
         else:
@@ -297,12 +303,21 @@ def start_isup_server() -> dict:
                 "Hikvision SDK runtime tayyor emas. /api/isup-sdk-status ni tekshiring."
             )
 
+    # SDK mode needs to run from project root, not from binary parent
+    working_dir = str(Path(__file__).parent) if ISUP_IMPLEMENTATION_MODE == "hikvision_sdk" else str(binary_path.parent)
+    
+    # Create log files for debugging
+    log_dir = Path(__file__).parent / ".runtime"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    stdout_log = log_dir / "isup_stdout.log"
+    stderr_log = log_dir / "isup_stderr.log"
+    
     kwargs = {
-        "cwd": str(binary_path.parent),
+        "cwd": working_dir,
         "stdin": subprocess.DEVNULL,
-        "stdout": subprocess.DEVNULL,
-        "stderr": subprocess.DEVNULL,
-        "close_fds": True,
+        "stdout": open(stdout_log, "w", encoding="utf-8"),
+        "stderr": open(stderr_log, "w", encoding="utf-8"),
+        "close_fds": False,  # Need to keep file handles open
     }
 
     if os.name == "nt":
@@ -316,7 +331,7 @@ def start_isup_server() -> dict:
 
     process = subprocess.Popen(_build_start_command(), **kwargs)
     _write_pid(process.pid)
-    time.sleep(0.7)
+    time.sleep(1.5)  # Give more time for startup
     return get_process_status()
 
 
