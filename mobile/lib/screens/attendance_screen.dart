@@ -659,7 +659,7 @@ class _EmployeeCard extends StatelessWidget {
     if (isLate) {
       final hours = lateMinutes ~/ 60;
       final mins = lateMinutes % 60;
-      final label = hours > 0 ? '${hours}s ${mins}d' : '${mins} daq.';
+      final label = hours > 0 ? '${hours}s ${mins}d' : '$mins daq.';
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(

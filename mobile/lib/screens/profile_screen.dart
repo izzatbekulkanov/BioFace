@@ -243,7 +243,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                      trailing: Switch(
                        value: _notificationsEnabled,
                        onChanged: _toggleNotifications,
-                       activeColor: Colors.white,
+                       activeThumbColor: Colors.white,
                        activeTrackColor: const Color(0xFF48CAE4),
                        inactiveThumbColor: Colors.white,
                        inactiveTrackColor: Colors.grey.shade300,
