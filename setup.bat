@@ -9,7 +9,7 @@ echo.
 echo [1/2] Superadmin yaratish...
 echo.
 
-.venv\Scripts\python.exe create_admin.py
+.venv\Scripts\python.exe setup_admin.py
 
 if %ERRORLEVEL% NEQ 0 (
     echo.

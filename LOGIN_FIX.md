@@ -11,7 +11,7 @@ Login sahifasida "Email yoki parol noto'g'ri" xatosi chiqmoqda.
 2. Quyidagini ishga tushiring:
 
 ```cmd
-fix_login.bat
+.venv\Scripts\python.exe setup_admin.py
 ```
 
 3. Keyin serverni qayta ishga tushiring:
@@ -27,7 +27,7 @@ fix_login.bat
 2. Admin yaratish scriptini ishga tushiring:
 
 ```cmd
-.venv\Scripts\python.exe check_and_create_admin.py
+.venv\Scripts\python.exe setup_admin.py
 ```
 
 3. Natijani tekshiring - "Parol tekshiruvi: MUVAFFAQIYATLI ✅" ko'rinishi kerak
