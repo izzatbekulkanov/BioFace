@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="{{ lang | default('uz') }}" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ app_name | default('BioFace') }}{% if lang == 'ru' %} - Ожидание{% else %} - Kutilmoqda{% endif %}</title>
+    {% if favicon_url %}
+    <link rel="icon" href="{{ favicon_url }}" />
+    {% endif %}
+    <link href="/static/css/output.css?v=20260317c" rel="stylesheet">
+    <style>
+        :root {
+            --brand-1: #0f4c81;
+            --brand-2: #1f6bb3;
+            --brand-3: #3a9bdc;
+            --surface: #f3f6fa;
+            --ink: #0f172a;
+            --muted: #64748b;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100%;
+            font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+            background:
+                radial-gradient(85rem 40rem at -10% -20%, #dbeafe 0%, transparent 45%),
+                radial-gradient(70rem 40rem at 120% 120%, #d1fae5 0%, transparent 42%),
+                var(--surface);
+            color: var(--ink);
+        }
+
+        .app-wrap {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .site-header {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            backdrop-filter: blur(8px);
+            background: rgba(243, 246, 250, 0.86);
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .site-inner {
+            width: 100%;
+            max-width: 1140px;
+            margin: 0 auto;
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .brand-top {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .brand-top-logo {
+            width: 56px;
+            height: 56px;
+            overflow: hidden;
+            background: transparent;
+            border: 0;
+            display: grid;
+            place-items: center;
+            flex-shrink: 0;
+        }
+
+        .brand-top-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .brand-top-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .page {
+            flex: 1;
+            display: grid;
+            place-items: center;
+            padding: 18px 16px;
+        }
+
+        .pending-card {
+            width: 100%;
+            max-width: 480px;
+            border-radius: 20px;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 22px 38px rgba(15, 23, 42, 0.10);
+            padding: 40px 30px;
+            text-align: center;
+        }
+
+        .icon-wrap {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: #eff6ff;
+            color: #3b82f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+        }
+
+        .icon-wrap svg {
+            width: 40px;
+            height: 40px;
+        }
+
+        .title {
+            margin: 0 0 16px;
+            font-size: 24px;
+            line-height: 1.2;
+            color: #0f172a;
+            font-weight: 700;
+        }
+
+        .desc {
+            margin: 0 0 30px;
+            color: var(--muted);
+            font-size: 15px;
+            line-height: 1.5;
+        }
+
+        .btn-back {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 24px;
+            border-radius: 11px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #334155;
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .btn-back:hover {
+            background: #f1f5f9;
+            color: #0f172a;
+            border-color: #94a3b8;
+        }
+
+        @media (max-width: 540px) {
+            .pending-card {
+                padding: 30px 20px;
+            }
+            .title { font-size: 20px; }
+            .desc { font-size: 14px; }
+        }
+    </style>
+</head>
+<body class="h-full">
+    {% set app_title = app_name | default("BioFace") %}
+    {% if lang == "ru" %}
+        {% set msg_title = "Ожидание подтверждения" %}
+        {% set msg_desc = "Ваш запрос на вход в систему был отправлен администратору. Пожалуйста, дождитесь подтверждения для получения доступа." %}
+        {% set btn_text = "Вернуться на страницу входа" %}
+    {% else %}
+        {% set msg_title = "Ruxsat kutilmoqda" %}
+        {% set msg_desc = "Sizning tizimga kirish bo'yicha so'rovingiz administratorga yuborildi. Iltimos, administrator ruxsat berishini kuting." %}
+        {% set btn_text = "Kirish sahifasiga qaytish" %}
+    {% endif %}
+
+    <div class="app-wrap">
+        <header class="site-header">
+            <div class="site-inner">
+                <div class="brand-top">
+                    <div class="brand-top-logo">
+                        {% if logo_url %}
+                        <img src="{{ logo_url }}" alt="{{ app_title }} logo">
+                        {% else %}
+                        <svg class="w-8 h-8 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        </svg>
+                        {% endif %}
+                    </div>
+                    <div class="brand-top-title">{{ app_title }}</div>
+                </div>
+            </div>
+        </header>
+
+        <main class="page">
+            <div class="pending-card">
+                <div class="icon-wrap">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <h1 class="title">{{ msg_title }}</h1>
+                <p class="desc">{{ msg_desc }}</p>
+                <a href="/login" class="btn-back">{{ btn_text }}</a>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

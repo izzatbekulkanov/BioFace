@@ -89,6 +89,46 @@ def _build_disconnected_snapshot(pattern: str, limit: int, service: dict, error:
     }
 
 
+def get_redis_status_summary() -> dict:
+    service = _get_redis_service_status()
+    redis_conn = get_redis(check_connection=True)
+
+    if redis_conn is None:
+        return {
+            "connected": False,
+            "host": REDIS_HOST,
+            "port": REDIS_PORT,
+            "checked_at": _utc_now(),
+            "ping_ms": None,
+            "service": service,
+            "error": None,
+        }
+
+    try:
+        ping_started = time.perf_counter()
+        redis_conn.ping()
+        ping_ms = round((time.perf_counter() - ping_started) * 1000, 2)
+        return {
+            "connected": True,
+            "host": REDIS_HOST,
+            "port": REDIS_PORT,
+            "checked_at": _utc_now(),
+            "ping_ms": ping_ms,
+            "service": service,
+            "error": None,
+        }
+    except Exception as exc:
+        return {
+            "connected": False,
+            "host": REDIS_HOST,
+            "port": REDIS_PORT,
+            "checked_at": _utc_now(),
+            "ping_ms": None,
+            "service": service,
+            "error": str(exc),
+        }
+
+
 def read_redis_key(key: str, redis_conn=None) -> dict:
     redis_conn = redis_conn or get_redis(check_connection=True)
     if redis_conn is None:
@@ -285,4 +325,3 @@ def get_recent_camera_events(limit: int = 100, today_only: bool = True) -> list[
         )
 
     return result
-

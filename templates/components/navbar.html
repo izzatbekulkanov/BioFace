@@ -1,23 +1,24 @@
 <script>
-    (function() {
-        const saved = localStorage.getItem('theme');
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        if (saved === 'dark' || (!saved && prefersDark)) {
-            document.documentElement.classList.add('dark');
-        }
-    })();
+    function syncThemeIcons() {
+        const isDark = document.documentElement.classList.contains('dark');
+        const sunIcon = document.getElementById('icon-sun');
+        const moonIcon = document.getElementById('icon-moon');
+        if (sunIcon) sunIcon.classList.toggle('hidden', !isDark);
+        if (moonIcon) moonIcon.classList.toggle('hidden', isDark);
+    }
 
     function toggleDarkMode() {
-        const isDark = document.documentElement.classList.toggle('dark');
-        localStorage.setItem('theme', isDark ? 'dark' : 'light');
-        document.getElementById('icon-sun').classList.toggle('hidden', !isDark);
-        document.getElementById('icon-moon').classList.toggle('hidden', isDark);
+        if (window.AppTheme && typeof window.AppTheme.toggle === 'function') {
+            window.AppTheme.toggle();
+        } else {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        }
+        syncThemeIcons();
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        const isDark = document.documentElement.classList.contains('dark');
-        document.getElementById('icon-sun').classList.toggle('hidden', !isDark);
-        document.getElementById('icon-moon').classList.toggle('hidden', isDark);
+        syncThemeIcons();
     });
 </script>
 
@@ -35,122 +36,405 @@
     'KorxonaAdmin': (t.get('korxona_admin') if t else 'Korxona Admini')
 } %}
 {% set nav_user_role = nav_role_map.get(nav_user_role_raw, nav_user_role_raw or (t.get('role') if t else 'Administrator')) %}
+{% set nav_is_super_admin = nav_user_role_raw in ['SuperAdmin', 'superadmin', 'super_admin'] %}
 {% set nav_user_avatar = (auth_user.get('image_url') if auth_user else '') %}
 {% set nav_user_initial = (nav_user_name[:1] | upper) if nav_user_name else 'A' %}
 
-<header class="h-14 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 sm:px-6 z-30 relative shrink-0">
-    <div class="flex items-center gap-3">
-        <button data-drawer-target="sidebar" data-drawer-toggle="sidebar" aria-controls="sidebar" type="button"
-            class="p-2 text-gray-500 rounded-lg sm:hidden hover:bg-gray-100 dark:hover:bg-gray-800">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
-        </button>
-        <h1 class="text-base font-semibold text-gray-900 dark:text-white hidden sm:block">{{ page_title }}</h1>
-    </div>
-
-    <div class="flex items-center gap-1.5">
-        <div class="relative">
-            <button id="lang-btn" data-dropdown-toggle="lang-drop"
-                class="flex items-center gap-1 px-2.5 py-1.5 text-sm text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-700 transition">
-                <span>{% if lang == 'ru' %}RU{% else %}UZ{% endif %}</span>
-                <span class="hidden sm:inline text-xs font-medium">{% if lang == 'ru' %}Russkiy{% else %}O'zbekcha{% endif %}</span>
-                <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+<header class="relative shrink-0 border-b border-gray-200 bg-white px-4 dark:border-gray-800 dark:bg-gray-900 sm:px-6">
+    <div class="flex min-h-14 items-center justify-between gap-4 py-2">
+        <div class="flex min-w-0 flex-1 items-center gap-3">
+            <button
+                data-drawer-target="sidebar"
+                data-drawer-toggle="sidebar"
+                aria-controls="sidebar"
+                type="button"
+                class="rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 sm:hidden"
+            >
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
             </button>
-            <div id="lang-drop" class="z-50 hidden absolute right-0 mt-1 w-36 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg py-1">
-                <a href="javascript:void(0)" onclick="setLang('uz')" class="flex items-center gap-2 px-4 py-2 text-sm {% if lang == 'uz' %}text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 font-semibold{% else %}text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700{% endif %}">UZ O'zbekcha</a>
-                <a href="javascript:void(0)" onclick="setLang('ru')" class="flex items-center gap-2 px-4 py-2 text-sm {% if lang == 'ru' %}text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 font-semibold{% else %}text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700{% endif %}">RU Russkiy</a>
-            </div>
+            <h1 class="hidden truncate text-base font-semibold text-gray-900 dark:text-white sm:block">{{ page_title }}</h1>
         </div>
 
-        <script>
-            async function setLang(langCode) {
-                await fetch(`/api/set_language?lang=${langCode}`);
-                window.location.reload();
-            }
-        </script>
-
-        <button onclick="toggleDarkMode()" title="Kun/Tun rejimi"
-            class="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition">
-            <svg id="icon-sun" class="w-5 h-5 text-yellow-400 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z"/>
-            </svg>
-            <svg id="icon-moon" class="w-5 h-5 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
-            </svg>
-        </button>
-
-        <button type="button" data-dropdown-toggle="notif-drop"
-            class="relative p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
-            {% if notifs and notifs.total > 0 %}
-            <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-gray-900"></span>
-            {% endif %}
-        </button>
-
-        <div id="notif-drop" class="z-50 hidden absolute right-4 top-14 w-72 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl overflow-hidden">
-            <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-                <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ t.notifications }}</p>
+        <div class="ml-auto flex shrink-0 items-center justify-end gap-1.5">
+            <div id="service-status-bar" class="flex max-w-full items-center gap-1 rounded-2xl border border-gray-200 bg-gray-50 p-1 shadow-sm dark:border-gray-800 dark:bg-gray-900 sm:gap-1.5">
+                <span data-service-root="telegram" class="relative inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" title="Telegram">
+                    <svg data-service-icon class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 4L3 11.5l7 2.2M21 4l-4.8 16-6.2-6.3M21 4L10 13.7"/>
+                    </svg>
+                    <span data-service-dot class="absolute right-1 top-1 h-2 w-2 rounded-full bg-slate-400"></span>
+                    <span data-service-text class="sr-only">{% if lang == 'ru' %}Проверка{% else %}Tekshiruv{% endif %}</span>
+                </span>
+                <span data-service-root="isup" class="relative inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" title="ISUP">
+                    <svg data-service-icon class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 7h12a2 2 0 012 2v7a2 2 0 01-2 2H6a2 2 0 01-2-2V9a2 2 0 012-2z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V5h8v2M8 12h.01M12 12h.01M16 12h.01"/>
+                    </svg>
+                    <span data-service-dot class="absolute right-1 top-1 h-2 w-2 rounded-full bg-slate-400"></span>
+                    <span data-service-text class="sr-only">{% if lang == 'ru' %}Проверка{% else %}Tekshiruv{% endif %}</span>
+                </span>
+                <span data-service-root="redis" class="relative inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" title="Redis">
+                    <svg data-service-icon class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 7c0 1.7 3.1 3 7 3s7-1.3 7-3-3.1-3-7-3-7 1.3-7 3z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 7v5c0 1.7 3.1 3 7 3s7-1.3 7-3V7M5 12v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5"/>
+                    </svg>
+                    <span data-service-dot class="absolute right-1 top-1 h-2 w-2 rounded-full bg-slate-400"></span>
+                    <span data-service-text class="sr-only">{% if lang == 'ru' %}Проверка{% else %}Tekshiruv{% endif %}</span>
+                </span>
             </div>
-            {% if notifs and notifs.total > 0 %}
-            <div class="px-4 py-3 flex flex-col gap-3">
-                {% if notifs.late > 0 %}
-                <div class="flex items-start gap-3">
-                    <div class="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center text-amber-500 shrink-0">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+
+            <div class="relative shrink-0">
+                <button
+                    id="lang-btn"
+                    data-dropdown-toggle="lang-drop"
+                    class="flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm text-gray-600 transition hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+                >
+                    <span>{% if lang == 'ru' %}RU{% else %}UZ{% endif %}</span>
+                    <span class="hidden text-xs font-medium sm:inline">{% if lang == 'ru' %}Russkiy{% else %}O'zbekcha{% endif %}</span>
+                    <svg class="h-3 w-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div id="lang-drop" class="absolute right-0 z-50 mt-2 hidden w-36 rounded-xl border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                    <a href="javascript:void(0)" onclick="setLang('uz')" class="flex items-center gap-2 px-4 py-2 text-sm {% if lang == 'uz' %}bg-blue-50 font-semibold text-blue-600 dark:bg-blue-900/30 dark:text-blue-400{% else %}text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700{% endif %}">UZ O'zbekcha</a>
+                    <a href="javascript:void(0)" onclick="setLang('ru')" class="flex items-center gap-2 px-4 py-2 text-sm {% if lang == 'ru' %}bg-blue-50 font-semibold text-blue-600 dark:bg-blue-900/30 dark:text-blue-400{% else %}text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700{% endif %}">RU Russkiy</a>
+                </div>
+            </div>
+
+            <button
+                onclick="toggleDarkMode()"
+                title="Kun/Tun rejimi"
+                class="rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+            >
+                <svg id="icon-sun" class="hidden h-5 w-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z"/>
+                </svg>
+                <svg id="icon-moon" class="h-5 w-5 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+                </svg>
+            </button>
+
+            <div class="relative shrink-0">
+                <button
+                    type="button"
+                    data-dropdown-toggle="notif-drop"
+                    class="relative rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+                >
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                    {% if notifs and notifs.total > 0 %}
+                    <span class="absolute right-1.5 top-1.5 h-2 w-2 rounded-full border-2 border-white bg-red-500 dark:border-gray-900"></span>
+                    {% endif %}
+                </button>
+                <div id="notif-drop" class="absolute right-0 top-full z-50 mt-2 hidden w-72 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800">
+                    <div class="border-b border-gray-100 px-4 py-3 dark:border-gray-700">
+                        <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ t.notifications }}</p>
                     </div>
-                    <div>
-                        <p class="text-sm text-gray-800 dark:text-gray-200">{% if lang == 'ru' %}Segodnya opozdali <strong class="text-amber-600 dark:text-amber-400">{{ notifs.late }} sotrudnikov</strong>.{% else %}Bugun <strong class="text-amber-600 dark:text-amber-400">{{ notifs.late }} ta xodim</strong> kech keldi.{% endif %}</p>
+                    {% if notifs and notifs.total > 0 %}
+                    <div class="flex flex-col gap-3 px-4 py-3">
+                        {% if notifs.late > 0 %}
+                        <div class="flex items-start gap-3">
+                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-500 dark:bg-amber-900/40">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-800 dark:text-gray-200">{% if lang == 'ru' %}Segodnya opozdali <strong class="text-amber-600 dark:text-amber-400">{{ notifs.late }} sotrudnikov</strong>.{% else %}Bugun <strong class="text-amber-600 dark:text-amber-400">{{ notifs.late }} ta xodim</strong> kech keldi.{% endif %}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if notifs.absent > 0 %}
+                        <div class="flex items-start gap-3">
+                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-500 dark:bg-red-900/40">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-800 dark:text-gray-200">{% if lang == 'ru' %}<strong class="text-red-600 dark:text-red-400">{{ notifs.absent }} sotrudnikov</strong> eshche ne pribili.{% else %}<strong class="text-red-600 dark:text-red-400">{{ notifs.absent }} ta xodim</strong> vaqtigacha kelmadi.{% endif %}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <div class="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+                        {% if lang == 'ru' %}Yangi uvedomleniy net{% else %}Yangi bildirishnomalar yo'q{% endif %}
+                    </div>
+                    {% endif %}
+                    <div class="border-t border-gray-100 bg-gray-50 px-4 py-2 dark:border-gray-700 dark:bg-gray-700/50">
+                        <a href="/reports" class="text-xs font-medium text-blue-600 hover:underline dark:text-blue-400">{{ t.view_report }}</a>
                     </div>
                 </div>
-                {% endif %}
-                {% if notifs.absent > 0 %}
-                <div class="flex items-start gap-3">
-                    <div class="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center text-red-500 shrink-0">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            </div>
+
+            {% if nav_is_super_admin %}
+            <div class="relative shrink-0">
+                <button
+                    id="camera-alert-btn"
+                    type="button"
+                    data-dropdown-toggle="camera-alert-drop"
+                    class="hidden relative rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+                    title="Kamera ogohlantirishlari"
+                >
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                    <span id="camera-alert-badge" class="absolute right-1 top-1 hidden min-w-4 rounded-full border-2 border-white bg-red-500 px-1 text-[10px] font-bold leading-3 text-white dark:border-gray-900">0</span>
+                </button>
+                <div id="camera-alert-drop" class="absolute right-0 top-full z-50 mt-2 hidden w-80 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800">
+                    <div class="border-b border-gray-100 px-4 py-3 dark:border-gray-700">
+                        <p class="text-sm font-semibold text-gray-900 dark:text-white">Kamera ogohlantirishlari</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Super admin uchun offline kameralar ro'yxati</p>
                     </div>
-                    <div>
-                        <p class="text-sm text-gray-800 dark:text-gray-200">{% if lang == 'ru' %}<strong class="text-red-600 dark:text-red-400">{{ notifs.absent }} sotrudnikov</strong> eshche ne pribili.{% else %}<strong class="text-red-600 dark:text-red-400">{{ notifs.absent }} ta xodim</strong> vaqtigacha kelmadi.{% endif %}</p>
+                    <div id="camera-alert-list" class="flex max-h-80 flex-col gap-2 overflow-y-auto px-4 py-3">
+                        <div id="camera-alert-empty" class="rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-500 dark:bg-gray-800 dark:text-gray-400">Hozircha kamera ogohlantirishlari yo'q.</div>
+                    </div>
+                    <div class="border-t border-gray-100 bg-gray-50 px-4 py-2 dark:border-gray-700 dark:bg-gray-700/50">
+                        <a href="/devices" class="text-xs font-medium text-blue-600 hover:underline dark:text-blue-400">Kameralar ro'yxati</a>
                     </div>
                 </div>
-                {% endif %}
-            </div>
-            {% else %}
-            <div class="px-4 py-6 text-center text-gray-500 dark:text-gray-400 text-sm">
-                {% if lang == 'ru' %}Yangi uvedomleniy net{% else %}Yangi bildirishnomalar yo'q{% endif %}
             </div>
             {% endif %}
-            <div class="px-4 py-2 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-100 dark:border-gray-700">
-                <a href="/reports" class="text-xs text-blue-600 dark:text-blue-400 font-medium hover:underline">{{ t.view_report }}</a>
-            </div>
-        </div>
 
-        <button type="button" data-dropdown-toggle="user-drop"
-            class="flex items-center gap-1.5 ml-1 pl-2 pr-2.5 py-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition">
-            {% if nav_user_avatar %}
-            <img src="{{ nav_user_avatar }}" alt="user" class="w-7 h-7 rounded-full object-cover border border-gray-200 dark:border-gray-700">
-            {% else %}
-            <div class="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shadow-sm">{{ nav_user_initial }}</div>
-            {% endif %}
-            <span class="text-sm font-medium text-gray-800 dark:text-gray-200 hidden md:block">{{ nav_user_name }}</span>
-            <svg class="w-3 h-3 text-gray-400 hidden md:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-        </button>
-
-        <div id="user-drop" class="z-50 hidden absolute right-4 top-14 w-52 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg overflow-hidden">
-            <div class="px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600">
-                <p class="text-sm font-semibold text-white">{{ nav_user_name }}</p>
-                <p class="text-xs text-blue-200">{{ nav_user_email }}</p>
-                <p class="text-[11px] text-blue-100 mt-1">{{ nav_user_role }}</p>
-            </div>
-            <div class="py-1">
-                <a href="/settings" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    {{ t.settings_menu }}
-                </a>
-                <div class="border-t border-gray-100 dark:border-gray-700 my-1"></div>
-                <a href="/logout" class="flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-                    {{ t.logout }}
-                </a>
+            <div class="relative shrink-0">
+                <button
+                    type="button"
+                    data-dropdown-toggle="user-drop"
+                    class="flex items-center gap-1.5 rounded-xl py-1.5 pl-2 pr-2.5 transition hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                    {% if nav_user_avatar %}
+                    <img src="{{ nav_user_avatar }}" alt="user" class="h-7 w-7 rounded-full border border-gray-200 object-cover dark:border-gray-700">
+                    {% else %}
+                    <div class="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-xs font-bold text-white shadow-sm">{{ nav_user_initial }}</div>
+                    {% endif %}
+                    <span class="hidden text-sm font-medium text-gray-800 dark:text-gray-200 md:block">{{ nav_user_name }}</span>
+                    <svg class="hidden h-3 w-3 text-gray-400 md:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div id="user-drop" class="absolute right-0 top-full z-50 mt-2 hidden w-52 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                    <div class="bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3">
+                        <p class="text-sm font-semibold text-white">{{ nav_user_name }}</p>
+                        <p class="text-xs text-blue-200">{{ nav_user_email }}</p>
+                        <p class="mt-1 text-[11px] text-blue-100">{{ nav_user_role }}</p>
+                    </div>
+                    <div class="py-1">
+                        {% if nav_is_super_admin %}
+                        <a href="/settings" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700">
+                            <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            {{ t.settings_menu }}
+                        </a>
+                        <div class="my-1 border-t border-gray-100 dark:border-gray-700"></div>
+                        {% endif %}
+                        <a href="/logout" class="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                            {{ t.logout }}
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
+
 </header>
+
+<script>
+    async function setLang(langCode) {
+        await fetch(`/api/set_language?lang=${langCode}`);
+        window.location.reload();
+    }
+
+    (function() {
+        if (window.__navbarServiceStatusBooted) {
+            return;
+        }
+        window.__navbarServiceStatusBooted = true;
+
+        function escapeHtml(unsafe) {
+            if (unsafe == null) return "";
+            return String(unsafe)
+                 .replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+        }
+
+        const POLL_INTERVAL_MS = 15000;
+        const statusLabels = {
+            loading: "{% if lang == 'ru' %}Проверка{% else %}Tekshirilmoqda{% endif %}",
+            online: "{% if lang == 'ru' %}Online{% else %}Online{% endif %}",
+            offline: "{% if lang == 'ru' %}Offline{% else %}Offline{% endif %}",
+            error: "{% if lang == 'ru' %}Ошибка{% else %}Xato{% endif %}",
+        };
+
+        const serviceLabels = {
+            telegram: "Telegram",
+            isup: "ISUP",
+            redis: "Redis",
+        };
+
+        const cameraAlertButton = document.getElementById("camera-alert-btn");
+        const cameraAlertBadge = document.getElementById("camera-alert-badge");
+        const cameraAlertList = document.getElementById("camera-alert-list");
+        const cameraAlertEmpty = document.getElementById("camera-alert-empty");
+
+        const rootClassMap = {
+            loading: "relative inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300",
+            online: "relative inline-flex h-9 w-9 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 transition dark:border-emerald-900/70 dark:bg-emerald-900/20 dark:text-emerald-300",
+            offline: "relative inline-flex h-9 w-9 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-700 transition dark:border-rose-900/70 dark:bg-rose-900/20 dark:text-rose-300",
+            error: "relative inline-flex h-9 w-9 items-center justify-center rounded-xl border border-amber-200 bg-amber-50 text-amber-700 transition dark:border-amber-900/70 dark:bg-amber-900/20 dark:text-amber-300",
+        };
+
+        const dotClassMap = {
+            loading: "absolute right-1 top-1 h-2 w-2 rounded-full bg-slate-400 animate-pulse",
+            online: "absolute right-1 top-1 h-2 w-2 rounded-full bg-emerald-500 animate-pulse",
+            offline: "absolute right-1 top-1 h-2 w-2 rounded-full bg-rose-500",
+            error: "absolute right-1 top-1 h-2 w-2 rounded-full bg-amber-500 animate-pulse",
+        };
+
+        function getIndicator(key) {
+            const root = document.querySelector(`[data-service-root="${key}"]`);
+            if (!root) {
+                return null;
+            }
+            return {
+                root,
+                dot: root.querySelector("[data-service-dot]"),
+                text: root.querySelector("[data-service-text]"),
+            };
+        }
+
+        function applyIndicator(key, state, detail) {
+            const indicator = getIndicator(key);
+            if (!indicator) {
+                return;
+            }
+
+            const safeState = rootClassMap[state] ? state : "loading";
+            indicator.root.className = rootClassMap[safeState];
+            if (indicator.dot) {
+                indicator.dot.className = dotClassMap[safeState];
+            }
+            if (indicator.text) {
+                indicator.text.textContent = statusLabels[safeState];
+            }
+            indicator.root.title = detail || `${serviceLabels[key] || key} ${statusLabels[safeState]}`;
+        }
+
+        function buildTelegramDetail(status) {
+            if (status && status.online) {
+                const pid = status.pid ? `PID: ${status.pid}` : "PID: -";
+                return `Telegram Online | ${pid}`;
+            }
+            return "Telegram Offline";
+        }
+
+        function buildIsupDetail(status) {
+            if (status && status.online) {
+                const pid = status.pid ? `PID: ${status.pid}` : "PID: -";
+                return `ISUP Online | ${pid}`;
+            }
+            return "ISUP Offline";
+        }
+
+        function buildRedisDetail(status) {
+            if (status && status.online) {
+                const target = `${status.host || "127.0.0.1"}:${status.port || 6379}`;
+                const ping = typeof status.ping_ms === "number" ? ` | Ping: ${status.ping_ms} ms` : "";
+                return `Redis Online | ${target}${ping}`;
+            }
+            if (status && status.error) {
+                return `Redis Offline | ${status.error}`;
+            }
+            return "Redis Offline";
+        }
+
+        function formatCameraAlertTime(value) {
+            if (!value) return "So'nggi ko'rinishi noma'lum";
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return String(value);
+            return date.toLocaleString();
+        }
+
+        function renderCameraAlerts(alerts) {
+            if (!cameraAlertButton || !cameraAlertBadge || !cameraAlertList) {
+                return;
+            }
+
+            const items = Array.isArray(alerts && alerts.items) ? alerts.items : [];
+            const count = Number(alerts && alerts.count ? alerts.count : items.length || 0);
+
+            if (count <= 0) {
+                cameraAlertButton.className = "hidden relative rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800";
+                cameraAlertBadge.className = "absolute right-1 top-1 hidden min-w-4 rounded-full border-2 border-white bg-red-500 px-1 text-[10px] font-bold leading-3 text-white dark:border-gray-900";
+                if (cameraAlertEmpty) {
+                    cameraAlertEmpty.classList.remove("hidden");
+                }
+                cameraAlertList.innerHTML = cameraAlertEmpty ? cameraAlertEmpty.outerHTML : '<div class="rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-500 dark:bg-gray-800 dark:text-gray-400">Hozircha kamera ogohlantirishlari yo\'q.</div>';
+                cameraAlertButton.title = "Kamera ogohlantirishlari";
+                return;
+            }
+
+            cameraAlertButton.className = "relative rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800";
+            cameraAlertBadge.className = "absolute right-1 top-1 min-w-4 rounded-full border-2 border-white bg-red-500 px-1 text-[10px] font-bold leading-3 text-white dark:border-gray-900";
+            cameraAlertBadge.textContent = count > 99 ? "99+" : String(count);
+            cameraAlertButton.title = `${count} ta kamera offline`;
+
+            cameraAlertList.innerHTML = items.map((item) => {
+                const orgLabel = item.organization_name ? `<div class="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">${escapeHtml(item.organization_name)}</div>` : "";
+                return `
+                    <a href="/camera-info?id=${encodeURIComponent(item.id)}" class="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5 transition hover:bg-amber-100 dark:border-amber-900/40 dark:bg-amber-900/20 dark:hover:bg-amber-900/30">
+                        <span class="mt-1 h-2 w-2 shrink-0 rounded-full bg-red-500"></span>
+                        <span class="min-w-0 flex-1 leading-tight">
+                            <span class="block truncate text-xs font-semibold text-gray-900 dark:text-white">${escapeHtml(item.name || "Kamera")}</span>
+                            ${orgLabel}
+                            <span class="mt-0.5 block text-[10px] text-gray-500 dark:text-gray-400">Oxirgi ko‘rinishi: ${escapeHtml(formatCameraAlertTime(item.last_seen_at))}</span>
+                        </span>
+                    </a>
+                `;
+            }).join("");
+
+            if (!items.length && cameraAlertEmpty) {
+                cameraAlertList.innerHTML = cameraAlertEmpty.outerHTML;
+            }
+        }
+
+        async function refreshNavbarServiceStatus() {
+            try {
+                const response = await fetch("/api/system-monitor/navbar-status", {
+                    headers: { Accept: "application/json" },
+                    cache: "no-store",
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const payload = await response.json();
+                applyIndicator("telegram", payload.telegram && payload.telegram.online ? "online" : "offline", buildTelegramDetail(payload.telegram || {}));
+                applyIndicator("isup", payload.isup && payload.isup.online ? "online" : "offline", buildIsupDetail(payload.isup || {}));
+                applyIndicator("redis", payload.redis && payload.redis.online ? "online" : "offline", buildRedisDetail(payload.redis || {}));
+                renderCameraAlerts(payload.camera_alerts || {});
+            } catch (error) {
+                const message = error && error.message ? error.message : "Status olinmadi";
+                applyIndicator("telegram", "error", `Telegram ${message}`);
+                applyIndicator("isup", "error", `ISUP ${message}`);
+                applyIndicator("redis", "error", `Redis ${message}`);
+                renderCameraAlerts({ count: 0, items: [] });
+            }
+        }
+
+        function bootNavbarServiceStatus() {
+            applyIndicator("telegram", "loading");
+            applyIndicator("isup", "loading");
+            applyIndicator("redis", "loading");
+            renderCameraAlerts({ count: 0, items: [] });
+
+            refreshNavbarServiceStatus();
+            window.setInterval(refreshNavbarServiceStatus, POLL_INTERVAL_MS);
+
+            document.addEventListener("visibilitychange", function() {
+                if (!document.hidden) {
+                    refreshNavbarServiceStatus();
+                }
+            });
+        }
+
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", bootNavbarServiceStatus, { once: true });
+        } else {
+            bootNavbarServiceStatus();
+        }
+    })();
+</script>

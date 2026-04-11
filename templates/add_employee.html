@@ -11,45 +11,60 @@
 <div class="bg-white border border-gray-200 rounded-xl shadow-sm dark:bg-gray-800 dark:border-gray-700 p-6 md:p-8">
     <form id="addEmployeeForm" onsubmit="saveNewEmployee(event)">
         <div class="grid gap-6 mb-6 grid-cols-1 md:grid-cols-2">
-            <div>
-                <label for="firstName" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{{ t.first_name }} <span class="text-red-500">*</span></label>
-                <input type="text" id="firstName" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" required>
+            <div class="col-span-1 md:col-span-2 grid gap-6 grid-cols-1 md:grid-cols-3">
+                <div>
+                    <label for="firstName" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{{ t.first_name }} <span class="text-red-500">*</span></label>
+                    <input type="text" id="firstName" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" required>
+                </div>
+                <div>
+                    <label for="lastName" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{{ t.last_name }} <span class="text-red-500">*</span></label>
+                    <input type="text" id="lastName" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" required>
+                </div>
+                <div>
+                    <label for="middleName" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Otasining ismi</label>
+                    <input type="text" id="middleName" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
+                </div>
             </div>
-            <div>
-                <label for="lastName" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{{ t.last_name }} <span class="text-red-500">*</span></label>
-                <input type="text" id="lastName" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" required>
+            <div class="col-span-1 md:col-span-2 grid gap-4 grid-cols-1 md:grid-cols-2">
+                <div>
+                    <label for="employeeType" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Xodim turi</label>
+                    <select id="employeeType" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 pr-10 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <option value="">Tanlanmagan</option>
+                        <option value="oquvchi">O'quvchi</option>
+                        <option value="oqituvchi">O'qituvchi</option>
+                        <option value="hodim">Xodim</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="personalId" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Shaxsiy tabel / ID</label>
+                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <input type="text" id="personalId" maxlength="7" inputmode="numeric" autocomplete="off" readonly
+                               placeholder="7 xonali ID"
+                               class="bg-gray-50 font-mono border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white">
+                        <button type="button" id="btnGeneratePersonalId" onclick="generatePersonalId()"
+                                class="shrink-0 px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition">
+                            Generatsiya
+                        </button>
+                    </div>
+                    <label class="mt-2 inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                        <input type="checkbox" id="manualPersonalId" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" onchange="toggleManualPersonalId()">
+                        Qo'lda kiritish
+                    </label>
+                    <p id="personalIdHint" class="text-xs text-gray-500 mt-1">ID 7 ta raqam bo'ladi, 0 bilan boshlanmaydi va bazada takrorlanmaydi.</p>
+                </div>
             </div>
-            <div>
-                <label for="middleName" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Otasining ismi</label>
-                <input type="text" id="middleName" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
-            </div>
-            <div>
-                <label for="department" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{{ t.department }}</label>
-                <input type="text" id="department" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
-            </div>
-            <div>
-                <label for="position" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{{ t.position }}</label>
-                <input type="text" id="position" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
-            </div>
-            <div>
-                <label for="employeeType" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Xodim turi</label>
-                <select id="employeeType" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                    <option value="">Tanlanmagan</option>
-                    <option value="oquvchi">O'quvchi</option>
-                    <option value="oqituvchi">O'qituvchi</option>
-                    <option value="hodim">Xodim</option>
-                </select>
-            </div>
-
-            <div class="col-span-1 md:col-span-2">
-                <label for="inpOrg" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{{ t.organization }}</label>
-                <select id="inpOrg" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" onchange="filterCamerasByOrg()">
-                    <option value="">-- Tashkilot tanlanmagan --</option>
-                    {% for org in organizations %}
-                    <option value="{{ org.id }}">{{ org.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
+            {% set org_assignment_title = "Tashkiliy birikma" %}
+            {% set org_assignment_description = "Tashkilot tanlang, keyin bo'lim va shu bo'limga tegishli lavozimni belgilang." %}
+            {% set org_assignment_badge = "Tashkilot avtomatik tanlandi" %}
+            {% set org_assignment_selected_org_id = default_organization_id %}
+            {% set org_assignment_org_help = "Siz faqat shu tashkilotga biriktirilgansiz." if single_organization_mode else "Faqat sizga biriktirilgan tashkilotlar ko'rsatiladi." %}
+            {% set org_assignment_department_id = "" %}
+            {% set org_assignment_department_name = "" %}
+            {% set org_assignment_department_help = "Avval tashkilotni tanlang." %}
+            {% set org_assignment_position_id = "" %}
+            {% set org_assignment_position_name = "" %}
+            {% set org_assignment_position_help = "Avval bo'limni tanlang." %}
+            {% include "employees/partials/org_assignment_fields.html" %}
 
             <div class="col-span-1 md:col-span-2">
                 <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Kameralarni Tanlash (ISUP orqali yuzni yuborish)</label>
@@ -59,24 +74,7 @@
                 <input type="hidden" id="selectedCameras" value="[]">
             </div>
 
-            <div class="col-span-1 md:col-span-2">
-                <label for="personalId" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Shaxsiy Tabel Yoki Kamera ID (Ixtiyoriy)</label>
-                <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <input type="text" id="personalId" maxlength="7" inputmode="numeric" autocomplete="off" readonly
-                           placeholder="7 xonali ID"
-                           class="bg-gray-50 font-mono border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white">
-                    <button type="button" id="btnGeneratePersonalId" onclick="generatePersonalId()"
-                            class="shrink-0 px-4 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition">
-                        Generatsiya
-                    </button>
-                    <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                        <input type="checkbox" id="manualPersonalId" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" onchange="toggleManualPersonalId()">
-                        Qo'lda kiritish
-                    </label>
-                </div>
-                <p id="personalIdHint" class="text-xs text-gray-500 mt-1">ID 7 ta raqam bo'ladi, 0 bilan boshlanmaydi va bazada takrorlanmaydi.</p>
-            </div>
-            
+
             <div class="col-span-1 md:col-span-2">
                 <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{% if lang == 'ru' %}Фотография (Необязательно){% else %}Yuz rasmi yuklash (Ixtiyoriy){% endif %}</label>
                 <input class="hidden" id="image" type="file" accept="image/*">
@@ -144,6 +142,7 @@
     </form>
 </div>
 
+<script src="/static/js/employees/org-assignment.js?v=20260409a"></script>
 <script>
 let allCameras = [];
 let personalIdCheckTimer = null;
@@ -159,6 +158,20 @@ const empUploadFileSize = document.getElementById('emp-upload-file-size');
 const empBtnOpenFile = document.getElementById('emp-btn-open-file');
 const empBtnChangeFile = document.getElementById('emp-btn-change-file');
 const empBtnRemoveFile = document.getElementById('emp-btn-remove-file');
+const formErrorBlock = document.getElementById('formError');
+
+function setFormError(message) {
+    if (!message) {
+        formErrorBlock.classList.add('hidden');
+        formErrorBlock.textContent = '';
+        return;
+    }
+    formErrorBlock.textContent = message;
+    formErrorBlock.classList.remove('hidden');
+}
+const employeeOrgAssignment = window.EmployeeOrgAssignment.create({ setFormError });
+const departmentSelector = employeeOrgAssignment.departmentSelector;
+const positionSelector = employeeOrgAssignment.positionSelector;
 
 function empHumanFileSize(bytes) {
     if (!bytes) return '0 KB';
@@ -341,6 +354,7 @@ async function ensurePersonalIdReady() {
 async function filterCamerasByOrg() {
     const orgId = document.getElementById('inpOrg').value;
     const camList = document.getElementById('cam-list');
+    await employeeOrgAssignment.loadCatalogs(orgId ? Number(orgId) : null);
     if (!orgId) {
         camList.innerHTML = 'Avval tashkilotni tanlang...';
         allCameras = [];
@@ -369,14 +383,22 @@ async function filterCamerasByOrg() {
 async function saveNewEmployee(event) {
     event.preventDefault();
     const btnSpinner = document.getElementById('saveSpinner');
-    const errBlock = document.getElementById('formError');
-    
-    errBlock.classList.add('hidden');
+    setFormError('');
+
+    const departmentResolution = departmentSelector.ensureResolved();
+    if (!departmentResolution.ok) {
+        setFormError(departmentResolution.message);
+        return;
+    }
+    const positionResolution = positionSelector.ensureResolved();
+    if (!positionResolution.ok) {
+        setFormError(positionResolution.message);
+        return;
+    }
 
     const pid = await ensurePersonalIdReady();
     if (!pid) {
-        errBlock.textContent = "Shaxsiy ID noto'g'ri yoki band. Iltimos, qayta tekshiring.";
-        errBlock.classList.remove('hidden');
+        setFormError("Shaxsiy ID noto'g'ri yoki band. Iltimos, qayta tekshiring.");
         return;
     }
 
@@ -388,12 +410,11 @@ async function saveNewEmployee(event) {
     const middleName = document.getElementById('middleName').value.trim();
     if (middleName) formData.append('middle_name', middleName);
     formData.append('personal_id', pid);
-    
-    const dept = document.getElementById('department').value.trim();
-    if (dept) formData.append('department', dept);
-    
-    const pos = document.getElementById('position').value.trim();
-    if (pos) formData.append('position', pos);
+
+    formData.append('department_id', departmentResolution.id ? String(departmentResolution.id) : '');
+    formData.append('department', departmentResolution.name || '');
+    formData.append('position_id', positionResolution.id ? String(positionResolution.id) : '');
+    formData.append('position', positionResolution.name || '');
 
     const employeeType = document.getElementById('employeeType').value;
     if (employeeType) formData.append('employee_type', employeeType);
@@ -414,8 +435,8 @@ async function saveNewEmployee(event) {
     const selectedCams = [...document.querySelectorAll('.cam-check:checked')].map(c => c.value);
     if (selectedCams.length > 0) {
         if (!imageFile) {
-            errBlock.textContent = "Kameraga yuborish uchun xodim rasmi majburiy.";
-            errBlock.classList.remove('hidden');
+            setFormError("Kameraga yuborish uchun xodim rasmi majburiy.");
+            btnSpinner.classList.add('hidden');
             return;
         }
         formData.append('camera_ids', JSON.stringify(selectedCams.map(x => Number(x))));
@@ -482,8 +503,7 @@ async function saveNewEmployee(event) {
 
         window.location.href = '/employees';
     } catch(e) {
-        errBlock.textContent = e.message;
-        errBlock.classList.remove('hidden');
+        setFormError(e.message);
     } finally {
         btnSpinner.classList.add('hidden');
     }
@@ -532,5 +552,6 @@ function initPersonalIdControls() {
 
 initPersonalIdControls();
 showEmployeeUploadEmpty();
+void filterCamerasByOrg();
 </script>
 {% endblock %}

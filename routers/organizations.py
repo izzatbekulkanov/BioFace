@@ -1,11 +1,12 @@
 from typing import Optional
+from collections import defaultdict
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import Organization
+from models import Organization, User, UserOrganizationLink
 from organization_types import (
     get_organization_type_choices,
     get_organization_type_label,
@@ -13,6 +14,40 @@ from organization_types import (
 )
 
 router = APIRouter()
+
+
+def _get_organization_user_counts(db: Session, org_ids: list[int]) -> dict[int, int]:
+    if not org_ids:
+        return {}
+
+    user_ids_by_org: dict[int, set[int]] = defaultdict(set)
+    linked_user_ids: set[int] = set()
+
+    for row in (
+        db.query(UserOrganizationLink.user_id, UserOrganizationLink.organization_id)
+        .filter(UserOrganizationLink.organization_id.in_(org_ids))
+        .all()
+    ):
+        if row.organization_id is None or row.user_id is None:
+            continue
+        org_id = int(row.organization_id)
+        user_id = int(row.user_id)
+        user_ids_by_org[org_id].add(user_id)
+        linked_user_ids.add(user_id)
+
+    for user_id, org_id in (
+        db.query(User.id, User.organization_id)
+        .filter(User.organization_id.in_(org_ids))
+        .all()
+    ):
+        if user_id is None or org_id is None:
+            continue
+        safe_user_id = int(user_id)
+        if safe_user_id in linked_user_ids:
+            continue
+        user_ids_by_org[int(org_id)].add(safe_user_id)
+
+    return {org_id: len(user_ids) for org_id, user_ids in user_ids_by_org.items()}
 
 
 class OrganizationCreate(BaseModel):
@@ -41,6 +76,8 @@ def list_organizations(
     db: Session = Depends(get_db),
 ):
     orgs = db.query(Organization).order_by(Organization.id).all()
+    org_ids = [int(o.id) for o in orgs]
+    users_count_by_org = _get_organization_user_counts(db, org_ids)
     return [
         {
             "id": o.id,
@@ -55,7 +92,7 @@ def list_organizations(
             "subscription_end_date": o.subscription_end_date.isoformat() if o.subscription_end_date else None,
             "default_start_time": o.default_start_time,
             "default_end_time": o.default_end_time,
-            "users_count": len(o.users),
+            "users_count": int(users_count_by_org.get(int(o.id), 0)),
             "employees_count": len(o.employees),
             "devices_count": len(o.devices),
         }

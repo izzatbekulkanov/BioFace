@@ -3,6 +3,7 @@ import os
 import time
 from PIL import Image
 import io
+from urllib.parse import urlsplit
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional, Dict, List, Union
@@ -18,9 +19,11 @@ from isup_manager import restart_isup_server
 from models import Organization, TelegramUserBinding
 from menu_utils import get_menu_data, save_menu_data
 from system_config import (
+    get_camera_event_push_base_url,
     get_detected_lan_ipv4,
     get_public_web_base_url,
     get_isup_public_host,
+    normalize_camera_event_push_base_url,
     normalize_public_web_base_url,
     normalize_isup_public_host,
 )
@@ -36,9 +39,14 @@ class SettingsUpdate(BaseModel):
     default_end_time: Optional[str] = None
     isup_public_host: Optional[str] = None
     public_web_base_url: Optional[str] = None
+    camera_event_push_base_url: Optional[str] = None
     telegram_enabled: Optional[bool] = None
     telegram_admin_chat_id: Optional[str] = None
     telegram_bot_token: Optional[str] = None
+    google_oauth_enabled: Optional[bool] = None
+    google_client_id: Optional[str] = None
+    google_client_secret: Optional[str] = None
+    google_redirect_uri: Optional[str] = None
 
 
 def _mask_secret(value: str | None) -> str:
@@ -48,6 +56,16 @@ def _mask_secret(value: str | None) -> str:
     if len(text) <= 8:
         return "*" * len(text)
     return f"{text[:4]}{'*' * (len(text) - 8)}{text[-4:]}"
+
+
+def _normalize_google_redirect_uri(value: str | None) -> str:
+    text = (value or "").strip()
+    if not text:
+        return ""
+    parsed = urlsplit(text)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc or parsed.fragment:
+        return ""
+    return text
 
 
 def _get_primary_org(db: Session) -> Organization:
@@ -65,6 +83,7 @@ def get_settings(db: Session = Depends(get_db)):
     saved_data = get_menu_data()
     saved_isup_host = normalize_isup_public_host(saved_data.get("isup_public_host"))
     saved_public_web_base_url = normalize_public_web_base_url(saved_data.get("public_web_base_url"))
+    saved_camera_event_push_base_url = normalize_camera_event_push_base_url(saved_data.get("camera_event_push_base_url"))
     telegram_user_count = db.query(TelegramUserBinding).count() or 0
     return {
         "ok": True,
@@ -75,12 +94,18 @@ def get_settings(db: Session = Depends(get_db)):
         "default_end_time": org.default_end_time,
         "isup_public_host": saved_isup_host or get_isup_public_host(),
         "public_web_base_url": saved_public_web_base_url or get_public_web_base_url(),
+        "camera_event_push_base_url": saved_camera_event_push_base_url or get_camera_event_push_base_url(),
         "detected_lan_ip": get_detected_lan_ipv4(),
         "telegram_enabled": bool(org.telegram_enabled),
         "telegram_admin_chat_id": str(org.telegram_admin_chat_id or ""),
         "telegram_token_configured": bool(str(org.telegram_bot_token or "").strip()),
         "telegram_bot_token_masked": _mask_secret(org.telegram_bot_token),
         "telegram_users_count": telegram_user_count,
+        "google_oauth_enabled": bool(org.google_oauth_enabled),
+        "google_client_id": org.google_client_id or "",
+        "google_client_secret_configured": bool((org.google_client_secret or "").strip()),
+        "google_client_secret_masked": _mask_secret(org.google_client_secret),
+        "google_redirect_uri": org.google_redirect_uri or "",
     }
 
 @router.put("/api/settings")
@@ -88,6 +113,9 @@ def update_settings(data: SettingsUpdate, db: Session = Depends(get_db)):
     previous_isup_host = normalize_isup_public_host(get_menu_data().get("isup_public_host"))
     if previous_isup_host == "":
         previous_isup_host = get_isup_public_host()
+    previous_camera_event_push_base_url = normalize_camera_event_push_base_url(get_menu_data().get("camera_event_push_base_url"))
+    if previous_camera_event_push_base_url == "":
+        previous_camera_event_push_base_url = get_camera_event_push_base_url()
 
     normalized_host: Optional[str] = None
     if data.isup_public_host is not None:
@@ -109,6 +137,26 @@ def update_settings(data: SettingsUpdate, db: Session = Depends(get_db)):
                 detail="Public web URL noto'g'ri. Faqat http/https URL kiriting (masalan: https://example.com).",
             )
 
+    normalized_camera_event_push_base_url: Optional[str] = None
+    if data.camera_event_push_base_url is not None:
+        raw_camera_event_push_base_url = data.camera_event_push_base_url.strip()
+        normalized_camera_event_push_base_url = normalize_camera_event_push_base_url(raw_camera_event_push_base_url)
+        if raw_camera_event_push_base_url and not normalized_camera_event_push_base_url:
+            raise HTTPException(
+                status_code=422,
+                detail="Camera event push URL noto'g'ri. Faqat http/https URL kiriting (masalan: http://94.141.85.147:8000).",
+            )
+
+    normalized_google_redirect_uri: Optional[str] = None
+    if data.google_redirect_uri is not None:
+        raw_google_redirect_uri = data.google_redirect_uri.strip()
+        normalized_google_redirect_uri = _normalize_google_redirect_uri(raw_google_redirect_uri)
+        if raw_google_redirect_uri and not normalized_google_redirect_uri:
+            raise HTTPException(
+                status_code=422,
+                detail="Google Redirect URI noto'g'ri. To'liq http/https URL kiriting (masalan: https://bioface.uz/auth/callback).",
+            )
+
     org = _get_primary_org(db)
     previous_telegram_enabled = bool(org.telegram_enabled)
     previous_token = str(org.telegram_bot_token or "").strip()
@@ -120,7 +168,14 @@ def update_settings(data: SettingsUpdate, db: Session = Depends(get_db)):
         
     db.commit()
     
-    if data.app_name is not None or data.logo_url is not None or data.favicon_url is not None or data.isup_public_host is not None or data.public_web_base_url is not None:
+    if (
+        data.app_name is not None
+        or data.logo_url is not None
+        or data.favicon_url is not None
+        or data.isup_public_host is not None
+        or data.public_web_base_url is not None
+        or data.camera_event_push_base_url is not None
+    ):
         import json
         from menu_utils import MENU_FILE
         menu_data = get_menu_data()
@@ -135,6 +190,8 @@ def update_settings(data: SettingsUpdate, db: Session = Depends(get_db)):
             menu_data["isup_public_host"] = normalized_host
         if data.public_web_base_url is not None and normalized_public_web_base_url is not None:
             menu_data["public_web_base_url"] = normalized_public_web_base_url
+        if data.camera_event_push_base_url is not None and normalized_camera_event_push_base_url is not None:
+            menu_data["camera_event_push_base_url"] = normalized_camera_event_push_base_url
 
         try:
             with open(MENU_FILE, "w", encoding="utf-8") as f:
@@ -150,6 +207,29 @@ def update_settings(data: SettingsUpdate, db: Session = Depends(get_db)):
         incoming_token = data.telegram_bot_token.strip()
         if incoming_token:
             org.telegram_bot_token = incoming_token
+
+    if data.google_oauth_enabled is not None:
+        org.google_oauth_enabled = bool(data.google_oauth_enabled)
+    if data.google_client_id is not None:
+        org.google_client_id = data.google_client_id.strip()
+    if data.google_client_secret is not None:
+        incoming_secret = data.google_client_secret.strip()
+        if incoming_secret:
+            org.google_client_secret = incoming_secret
+    if data.google_redirect_uri is not None:
+        org.google_redirect_uri = normalized_google_redirect_uri or None
+
+    next_google_enabled = bool(org.google_oauth_enabled)
+    if next_google_enabled and not (
+        (org.google_client_id or "").strip()
+        and (org.google_client_secret or "").strip()
+        and (org.google_redirect_uri or "").strip()
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail="Google OAuth yoqilishi uchun Client ID, Client Secret va Redirect URI to'liq kiritilishi kerak.",
+        )
+
     db.commit()
 
     bot_runtime = None
@@ -179,22 +259,39 @@ def update_settings(data: SettingsUpdate, db: Session = Depends(get_db)):
         }
 
     isup_restart = None
-    if data.isup_public_host is not None and normalized_host is not None:
-        if normalized_host != (previous_isup_host or ""):
-            try:
-                status = restart_isup_server()
-                isup_restart = {
-                    "ok": True,
-                    "running": bool(status.get("running")),
-                    "pid": status.get("pid"),
-                    "public_host": normalized_host,
-                }
-            except Exception as exc:
-                isup_restart = {
-                    "ok": False,
-                    "public_host": normalized_host,
-                    "error": str(exc),
-                }
+    isup_host_changed = (
+        data.isup_public_host is not None
+        and normalized_host is not None
+        and normalized_host != (previous_isup_host or "")
+    )
+    camera_event_push_changed = (
+        data.camera_event_push_base_url is not None
+        and normalized_camera_event_push_base_url is not None
+        and normalized_camera_event_push_base_url != (previous_camera_event_push_base_url or "")
+    )
+    if isup_host_changed or camera_event_push_changed:
+        effective_isup_host = normalized_host if data.isup_public_host is not None else previous_isup_host
+        effective_camera_event_push_base_url = (
+            normalized_camera_event_push_base_url
+            if data.camera_event_push_base_url is not None
+            else previous_camera_event_push_base_url
+        )
+        try:
+            status = restart_isup_server()
+            isup_restart = {
+                "ok": True,
+                "running": bool(status.get("running")),
+                "pid": status.get("pid"),
+                "public_host": effective_isup_host,
+                "camera_event_push_base_url": effective_camera_event_push_base_url or None,
+            }
+        except Exception as exc:
+            isup_restart = {
+                "ok": False,
+                "public_host": effective_isup_host,
+                "camera_event_push_base_url": effective_camera_event_push_base_url or None,
+                "error": str(exc),
+            }
 
     return {
         "ok": True,
@@ -202,6 +299,7 @@ def update_settings(data: SettingsUpdate, db: Session = Depends(get_db)):
         "isup_restart": isup_restart,
         "bot_runtime": bot_runtime,
         "public_web_base_url": normalized_public_web_base_url,
+        "camera_event_push_base_url": normalized_camera_event_push_base_url,
     }
 
 

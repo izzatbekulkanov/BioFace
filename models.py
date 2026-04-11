@@ -1,6 +1,6 @@
 import enum
 from datetime import datetime, timezone
-from sqlalchemy import CheckConstraint, Column, Integer, String, Boolean, DateTime, ForeignKey, Enum as SQLEnum
+from sqlalchemy import CheckConstraint, Column, Integer, String, Boolean, DateTime, ForeignKey, Float, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 
 from database import Base
@@ -36,10 +36,16 @@ class Organization(Base):
     telegram_enabled = Column(Boolean, default=False)
     telegram_admin_chat_id = Column(String, nullable=True)
     telegram_bot_token = Column(String, nullable=True)
+    google_oauth_enabled = Column(Boolean, default=False)
+    google_client_id = Column(String, nullable=True)
+    google_client_secret = Column(String, nullable=True)
+    google_redirect_uri = Column(String, nullable=True)
     users = relationship("User", back_populates="organization", cascade="all, delete")
     user_links = relationship("UserOrganizationLink", back_populates="organization", cascade="all, delete")
     devices = relationship("Device", back_populates="organization", cascade="all, delete")
     employees = relationship("Employee", back_populates="organization", cascade="all, delete")
+    departments = relationship("Department", back_populates="organization", cascade="all, delete")
+    positions = relationship("Position", back_populates="organization", cascade="all, delete")
 
 
 class User(Base):
@@ -54,6 +60,11 @@ class User(Base):
     image_url = Column(String, nullable=True)
     hashed_password = Column(String, nullable=False)
     role = Column(SQLEnum(UserRole), default=UserRole.tashkilot_admin)
+    status = Column(String, default="active")
+    menu_permissions = Column(String, nullable=True)
+    google_oauth_enabled = Column(Boolean, default=False)
+    google_sub = Column(String, unique=True, index=True, nullable=True)
+    last_login_provider = Column(String, nullable=True, default="password")
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
     organization = relationship("Organization", back_populates="users")
     organization_links = relationship("UserOrganizationLink", back_populates="user", cascade="all, delete")
@@ -102,6 +113,8 @@ class Employee(Base):
     personal_id = Column(String, unique=True, index=True, nullable=True)  # 7 xonali kamera ID
     department = Column(String, nullable=True)
     position = Column(String, nullable=True)
+    department_id = Column(Integer, ForeignKey("departments.id"), nullable=True, index=True)
+    position_id = Column(Integer, ForeignKey("positions.id"), nullable=True, index=True)
     employee_type = Column(String, nullable=True)  # oquvchi, oqituvchi, hodim
     image_url = Column(String, nullable=True)
     has_access = Column(Boolean, default=True)
@@ -110,10 +123,37 @@ class Employee(Base):
     created_at = Column(DateTime, default=utc_now)
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
     organization = relationship("Organization", back_populates="employees")
+    department_ref = relationship("Department", back_populates="employees")
+    position_ref = relationship("Position", back_populates="employees")
     attendance_logs = relationship("AttendanceLog", back_populates="employee", cascade="all, delete")
     camera_links = relationship("EmployeeCameraLink", back_populates="employee", cascade="all, delete")
     wellbeing_notes = relationship("EmployeeWellbeingNote", back_populates="employee", cascade="all, delete")
     psychological_states = relationship("EmployeePsychologicalState", back_populates="employee", cascade="all, delete")
+
+
+class Department(Base):
+    __tablename__ = "departments"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False, index=True)
+    created_at = Column(DateTime, default=utc_now)
+
+    organization = relationship("Organization", back_populates="departments")
+    employees = relationship("Employee", back_populates="department_ref")
+    positions = relationship("Position", back_populates="department")
+
+
+class Position(Base):
+    __tablename__ = "positions"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False, index=True)
+    department_id = Column(Integer, ForeignKey("departments.id"), nullable=True, index=True)
+    created_at = Column(DateTime, default=utc_now)
+
+    organization = relationship("Organization", back_populates="positions")
+    department = relationship("Department", back_populates="positions")
+    employees = relationship("Employee", back_populates="position_ref")
 
 
 class TelegramUserBinding(Base):
@@ -138,6 +178,9 @@ class AttendanceLog(Base):
     person_id = Column(String, nullable=True)         # kamera ichidagi ID
     person_name = Column(String, nullable=True)       # kamera tanigan ism
     snapshot_url = Column(String, nullable=True)
+    psychological_state_key = Column(String, nullable=True)
+    psychological_state_confidence = Column(Float, nullable=True)
+    emotion_scores_json = Column(String, nullable=True)
     wellbeing_note_uz = Column(String, nullable=True)
     wellbeing_note_ru = Column(String, nullable=True)
     wellbeing_note_source = Column(String, nullable=True)
@@ -182,8 +225,11 @@ class EmployeePsychologicalState(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False, index=True)
+    state_key = Column(String, nullable=True)
     state_uz = Column(String, nullable=False)
     state_ru = Column(String, nullable=False)
+    confidence = Column(Float, nullable=True)
+    emotion_scores_json = Column(String, nullable=True)
     state_date = Column(String, nullable=False, index=True)
     source = Column(String, nullable=False, default="manual")
     note = Column(String, nullable=True)
@@ -194,3 +240,17 @@ class EmployeePsychologicalState(Base):
     employee = relationship("Employee", back_populates="psychological_states")
 
 
+
+
+class RequestLog(Base):
+    __tablename__ = 'request_logs'
+    id = Column(Integer, primary_key=True, index=True)
+    method = Column(String, index=True)
+    url = Column(String, index=True)
+    client_ip = Column(String, index=True)
+    content_type = Column(String, nullable=True)
+    user_agent = Column(String, nullable=True)
+    status_code = Column(Integer, index=True)
+    response_time_ms = Column(Integer)
+    created_at = Column(DateTime, default=utc_now, index=True)
+    details = Column(String, nullable=True)

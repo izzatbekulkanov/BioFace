@@ -1,5 +1,38 @@
 {% extends "base.html" %}
 {% block content %}
+<style>
+@keyframes employee-calendar-pop {
+    0% {
+        opacity: 0;
+        transform: translateY(10px) scale(0.96);
+    }
+    60% {
+        opacity: 1;
+        transform: translateY(-2px) scale(1.01);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes employee-calendar-glow {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.08);
+    }
+    50% {
+        box-shadow: 0 0 0 7px rgba(59, 130, 246, 0.18);
+    }
+}
+
+.employee-calendar-popover-enter {
+    animation: employee-calendar-pop 0.22s ease-out both;
+}
+
+.employee-calendar-day-active {
+    animation: employee-calendar-glow 1.3s ease-in-out 2;
+}
+</style>
 <div class="space-y-6">
     <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div class="flex items-center gap-4">
@@ -25,7 +58,8 @@
                 {{ t.edit }}
             </a>
             <a href="/employees" class="inline-flex items-center rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800">
-                <- {{ t.employees_title }}
+                <svg class="mr-1.5 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                {{ t.employees_title }}
             </a>
         </div>
     </div>
@@ -116,11 +150,11 @@
                 <div>Shan</div>
                 <div>Yak</div>
             </div>
-            <div id="attendance-calendar" class="mt-2" style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.5rem;"></div>
-
-            <div id="day-detail" class="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm dark:border-gray-700 dark:bg-gray-800/60">
-                Kunni tanlang.
+            <div id="attendance-calendar-wrap" class="relative mt-2">
+                <div id="attendance-calendar" style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.5rem;"></div>
+                <div id="calendar-day-popover" class="pointer-events-none absolute z-30 hidden w-[min(20rem,calc(100vw-2.5rem))] rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl shadow-slate-900/18 ring-1 ring-white/80 dark:border-slate-700 dark:bg-slate-950 dark:ring-slate-800 dark:shadow-black/40"></div>
             </div>
+            <p id="calendar-detail-hint" class="mt-3 text-xs text-gray-500 dark:text-gray-400">Kun ustiga bossangiz, ma'lumot shu katak ustida chiqadi.</p>
         </section>
     </div>
 
@@ -141,6 +175,75 @@
             {% else %}
                 <span class="text-sm text-gray-500 dark:text-gray-400">Kamera biriktirilmagan.</span>
             {% endif %}
+        </div>
+    </section>
+
+    <section class="grid grid-cols-1 gap-6 xl:grid-cols-12">
+        <article class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900 xl:col-span-6">
+            <div class="mb-4 flex items-center justify-between gap-3">
+                <h2 class="text-base font-bold text-gray-900 dark:text-white">Kamera bo'yicha xodim holati</h2>
+                <span id="camera-insights-count" class="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">0 ta</span>
+            </div>
+            <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500 dark:bg-gray-800 dark:text-gray-300">
+                        <tr>
+                            <th class="px-3 py-2">Kamera</th>
+                            <th class="px-3 py-2">Xodim ma'lumoti</th>
+                            <th class="px-3 py-2">Ruxsat va jadval</th>
+                            <th class="px-3 py-2">Event</th>
+                            <th class="px-3 py-2">So'nggi kelgan vaqt</th>
+                        </tr>
+                    </thead>
+                    <tbody id="camera-insights-body" class="divide-y divide-gray-100 dark:divide-gray-800">
+                        <tr><td colspan="5" class="px-3 py-6 text-center text-gray-500 dark:text-gray-400">Yuklanmoqda...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </article>
+
+        <article class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900 xl:col-span-6">
+            <div class="mb-4 flex items-center justify-between gap-3">
+                <h2 class="text-base font-bold text-gray-900 dark:text-white">Kech qolish statistikasi</h2>
+                <span class="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">Kelish vaqti bo'yicha</span>
+            </div>
+            <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500 dark:bg-gray-800 dark:text-gray-300">
+                        <tr>
+                            <th class="px-3 py-2">Davr</th>
+                            <th class="px-3 py-2">Kech qolgan kun</th>
+                            <th class="px-3 py-2">Jami kechikish</th>
+                            <th class="px-3 py-2">Soat</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lateness-insights-body" class="divide-y divide-gray-100 dark:divide-gray-800">
+                        <tr><td colspan="4" class="px-3 py-6 text-center text-gray-500 dark:text-gray-400">Yuklanmoqda...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </article>
+    </section>
+
+    <section class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <h2 class="text-base font-bold text-gray-900 dark:text-white">Har kungi psixologik holat foizlari</h2>
+            <span id="psychology-days-count" class="rounded-full bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">0 kun</span>
+        </div>
+        <div id="psychology-average-wrap" class="mb-4 flex flex-wrap gap-2"></div>
+        <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
+            <table class="min-w-full text-sm">
+                <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500 dark:bg-gray-800 dark:text-gray-300">
+                    <tr>
+                        <th class="px-3 py-2">Sana</th>
+                        <th class="px-3 py-2">Dominant holat</th>
+                        <th class="px-3 py-2">Emotsiya foizlari</th>
+                    </tr>
+                </thead>
+                <tbody id="psychology-daily-body" class="divide-y divide-gray-100 dark:divide-gray-800">
+                    <tr><td colspan="3" class="px-3 py-6 text-center text-gray-500 dark:text-gray-400">Yuklanmoqda...</td></tr>
+                </tbody>
+            </table>
         </div>
     </section>
 
@@ -195,6 +298,8 @@ let logsState = {
     total: 0,
     loading: false,
 };
+let activeCalendarButton = null;
+let activeCalendarDayKey = "";
 
 function esc(value) {
     return String(value ?? "")
@@ -232,6 +337,14 @@ function formatDate(value) {
     }
 }
 
+function periodLabel(key) {
+    if (key === "this_month") return "Joriy oy";
+    if (key === "prev_month") return "O'tgan oy";
+    if (key === "prev_prev_month") return "Undan oldingi oy";
+    if (key === "this_year") return "Joriy yil";
+    return key;
+}
+
 function setSummary(summary) {
     document.getElementById("stat-present-days").textContent = String(summary.present_days || 0);
     document.getElementById("stat-absent-days").textContent = String(summary.absent_days || 0);
@@ -240,73 +353,190 @@ function setSummary(summary) {
     document.getElementById("stat-total-events").textContent = String(summary.total_events || 0);
 }
 
-function renderDayDetail(day) {
-    const target = document.getElementById("day-detail");
+function calendarStatusLabel(day) {
+    if (!day) return "Kunni tanlang";
+    if (day.status === "absent") return "Kelmagan";
+    if (day.status === "late") return "Kech qolgan";
+    return "Kelgan";
+}
+
+function calendarStatusTone(day) {
+    if (!day) return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
+    if (day.status === "absent") return "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300";
+    if (day.status === "late") return "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300";
+    return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300";
+}
+
+function setCalendarHint(message, tone = "neutral") {
+    const target = document.getElementById("calendar-detail-hint");
+    if (!target) return;
+    target.textContent = message;
+    target.className = tone === "error"
+        ? "mt-3 text-xs text-red-600 dark:text-red-400"
+        : "mt-3 text-xs text-gray-500 dark:text-gray-400";
+}
+
+function hideCalendarPopover() {
+    const popover = document.getElementById("calendar-day-popover");
+    if (popover) {
+        popover.classList.add("hidden");
+        popover.classList.remove("employee-calendar-popover-enter");
+        popover.classList.add("pointer-events-none");
+        popover.innerHTML = "";
+        popover.style.left = "";
+        popover.style.top = "";
+    }
+    if (activeCalendarButton) {
+        activeCalendarButton.classList.remove("employee-calendar-day-active", "ring-2", "ring-blue-500/70", "dark:ring-blue-400/70");
+    }
+    activeCalendarButton = null;
+    activeCalendarDayKey = "";
+}
+
+function positionCalendarPopover(anchorEl) {
+    const popover = document.getElementById("calendar-day-popover");
+    const wrap = document.getElementById("attendance-calendar-wrap");
+    if (!popover || !wrap || !anchorEl || popover.classList.contains("hidden")) return;
+
+    const wrapRect = wrap.getBoundingClientRect();
+    const anchorRect = anchorEl.getBoundingClientRect();
+    const margin = 10;
+    const popoverWidth = popover.offsetWidth || Math.min(320, wrap.clientWidth - 16);
+    let left = (anchorRect.left - wrapRect.left) + (anchorRect.width / 2) - (popoverWidth / 2);
+    left = Math.max(8, Math.min(left, Math.max(8, wrap.clientWidth - popoverWidth - 8)));
+
+    let top = (anchorRect.top - wrapRect.top) - popover.offsetHeight - margin;
+    if (top < 8) {
+        top = (anchorRect.bottom - wrapRect.top) + margin;
+    }
+
+    popover.style.left = `${left}px`;
+    popover.style.top = `${top}px`;
+}
+
+function buildDayPopoverHtml(day) {
     if (!day) {
-        target.textContent = "Kunni tanlang.";
-        return;
+        return `
+            <div class="text-sm text-slate-600 dark:text-slate-300">Kunni tanlang.</div>
+        `;
     }
     const expectedStart = formatClock(day.expected_time);
     const expectedEnd = formatClock(day.expected_end_time);
     const passCount = Number(day.event_count || 0);
     const passText = `${passCount} marta kameradan o'tdi`;
+    const titleTone = calendarStatusTone(day);
     if (day.status === "absent") {
-        target.innerHTML = `
-            <div class="font-semibold text-red-700 dark:text-red-300">${esc(day.date)} - Kelmagan</div>
-            <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">Bu kunda davomat logi topilmadi.</div>
-            <div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <div class="rounded-lg bg-white px-3 py-2 text-xs dark:bg-gray-900/70">
-                    <div class="text-gray-500 dark:text-gray-400">Aslida kelishi kerak</div>
-                    <div class="font-semibold text-gray-900 dark:text-gray-100">${esc(expectedStart)}</div>
+        return `
+            <div class="space-y-3">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <div class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">${esc(day.date)}</div>
+                        <div class="mt-1 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${titleTone}">${esc(calendarStatusLabel(day))}</div>
+                    </div>
+                    <button type="button" class="calendar-popover-close inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="m6 6 12 12M18 6 6 18"/></svg>
+                    </button>
                 </div>
-                <div class="rounded-lg bg-white px-3 py-2 text-xs dark:bg-gray-900/70">
-                    <div class="text-gray-500 dark:text-gray-400">Aslida ketishi kerak</div>
-                    <div class="font-semibold text-gray-900 dark:text-gray-100">${esc(expectedEnd)}</div>
+                <p class="text-xs leading-5 text-slate-500 dark:text-slate-400">Bu kunda davomat logi topilmadi.</p>
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-800/80">
+                        <div class="text-[11px] text-slate-500 dark:text-slate-400">Kelishi kerak</div>
+                        <div class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">${esc(expectedStart)}</div>
+                    </div>
+                    <div class="rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-800/80">
+                        <div class="text-[11px] text-slate-500 dark:text-slate-400">Ketishi kerak</div>
+                        <div class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">${esc(expectedEnd)}</div>
+                    </div>
                 </div>
             </div>
         `;
-        return;
     }
     const cameras = Array.isArray(day.camera_names) && day.camera_names.length > 0
         ? day.camera_names.map((name) => `<span class="inline-flex items-center rounded-lg bg-blue-100 px-2 py-0.5 text-[11px] text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">${esc(name)}</span>`).join(" ")
         : '<span class="text-xs text-gray-500 dark:text-gray-400">Kamera ma\'lum emas</span>';
     const lateText = day.late_human_full || day.late_human || "0 daqiqa";
     const workedText = day.worked_human || "0 daqiqa";
-
-    target.innerHTML = `
-        <div class="font-semibold text-gray-900 dark:text-gray-100">${esc(day.date)}</div>
-        <div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <div class="rounded-lg bg-white px-3 py-2 text-xs dark:bg-gray-900/70">
-                <div class="text-gray-500 dark:text-gray-400">Aslida kelishi kerak</div>
-                <div class="font-semibold text-gray-900 dark:text-gray-100">${esc(expectedStart)}</div>
+    return `
+        <div class="space-y-3">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <div class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">${esc(day.date)}</div>
+                    <div class="mt-1 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${titleTone}">${esc(calendarStatusLabel(day))}</div>
+                </div>
+                <button type="button" class="calendar-popover-close inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="m6 6 12 12M18 6 6 18"/></svg>
+                </button>
             </div>
-            <div class="rounded-lg bg-white px-3 py-2 text-xs dark:bg-gray-900/70">
-                <div class="text-gray-500 dark:text-gray-400">Aslida ketishi kerak</div>
-                <div class="font-semibold text-gray-900 dark:text-gray-100">${esc(expectedEnd)}</div>
+            <div class="grid grid-cols-2 gap-2">
+                <div class="rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-800/80">
+                    <div class="text-[11px] text-slate-500 dark:text-slate-400">Kelishi kerak</div>
+                    <div class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">${esc(expectedStart)}</div>
+                </div>
+                <div class="rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-800/80">
+                    <div class="text-[11px] text-slate-500 dark:text-slate-400">Ketishi kerak</div>
+                    <div class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">${esc(expectedEnd)}</div>
+                </div>
+                <div class="rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-800/80">
+                    <div class="text-[11px] text-slate-500 dark:text-slate-400">Haqiqiy kelgan</div>
+                    <div class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">${esc(formatTime(day.first_seen))}</div>
+                </div>
+                <div class="rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-800/80">
+                    <div class="text-[11px] text-slate-500 dark:text-slate-400">Haqiqiy ketgan</div>
+                    <div class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">${esc(formatTime(day.last_seen))}</div>
+                </div>
+                <div class="rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-800/80">
+                    <div class="text-[11px] text-slate-500 dark:text-slate-400">Kechikish</div>
+                    <div class="mt-1 text-sm font-semibold ${day.late_minutes > 0 ? "text-amber-700 dark:text-amber-300" : "text-emerald-700 dark:text-emerald-300"}">${esc(lateText)}</div>
+                </div>
+                <div class="rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-800/80">
+                    <div class="text-[11px] text-slate-500 dark:text-slate-400">Ish vaqti</div>
+                    <div class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">${esc(workedText)}</div>
+                </div>
             </div>
-            <div class="rounded-lg bg-white px-3 py-2 text-xs dark:bg-gray-900/70">
-                <div class="text-gray-500 dark:text-gray-400">Haqiqiy kelgan vaqt</div>
-                <div class="font-semibold text-gray-900 dark:text-gray-100">${esc(formatTime(day.first_seen))}</div>
+            <div class="rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-800/80">
+                <div class="text-[11px] text-slate-500 dark:text-slate-400">Kameradan o'tishlar</div>
+                <div class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">${esc(passText)}</div>
             </div>
-            <div class="rounded-lg bg-white px-3 py-2 text-xs dark:bg-gray-900/70">
-                <div class="text-gray-500 dark:text-gray-400">Haqiqiy ketgan vaqt</div>
-                <div class="font-semibold text-gray-900 dark:text-gray-100">${esc(formatTime(day.last_seen))}</div>
-            </div>
-            <div class="rounded-lg bg-white px-3 py-2 text-xs dark:bg-gray-900/70">
-                <div class="text-gray-500 dark:text-gray-400">Kechikish</div>
-                <div class="font-semibold ${day.late_minutes > 0 ? "text-amber-700 dark:text-amber-300" : "text-emerald-700 dark:text-emerald-300"}">${esc(lateText)}</div>
-            </div>
-            <div class="rounded-lg bg-white px-3 py-2 text-xs dark:bg-gray-900/70">
-                <div class="text-gray-500 dark:text-gray-400">Ishda bo'lgan vaqt</div>
-                <div class="font-semibold text-gray-900 dark:text-gray-100">${esc(workedText)}</div>
-            </div>
-            <div class="rounded-lg bg-white px-3 py-2 text-xs dark:bg-gray-900/70 sm:col-span-2">
-                <div class="text-gray-500 dark:text-gray-400">Kameradan o'tishlar</div>
-                <div class="font-semibold text-gray-900 dark:text-gray-100">${esc(passText)}</div>
-            </div>
+            <div class="flex flex-wrap gap-1">${cameras}</div>
         </div>
-        <div class="mt-2 flex flex-wrap gap-1">${cameras}</div>
     `;
+}
+
+function renderDayDetail(day, anchorEl = null) {
+    const popover = document.getElementById("calendar-day-popover");
+    if (!popover) return;
+    if (!day || !anchorEl) {
+        hideCalendarPopover();
+        setCalendarHint("Kun ustiga bossangiz, ma'lumot shu katak ustida chiqadi.");
+        return;
+    }
+
+    if (activeCalendarDayKey === day.date && activeCalendarButton === anchorEl && !popover.classList.contains("hidden")) {
+        hideCalendarPopover();
+        setCalendarHint("Kun ustiga bossangiz, ma'lumot shu katak ustida chiqadi.");
+        return;
+    }
+
+    if (activeCalendarButton) {
+        activeCalendarButton.classList.remove("employee-calendar-day-active", "ring-2", "ring-blue-500/70", "dark:ring-blue-400/70");
+    }
+
+    activeCalendarButton = anchorEl;
+    activeCalendarDayKey = String(day.date || "");
+    activeCalendarButton.classList.add("employee-calendar-day-active", "ring-2", "ring-blue-500/70", "dark:ring-blue-400/70");
+
+    popover.innerHTML = buildDayPopoverHtml(day);
+    popover.classList.remove("hidden", "pointer-events-none");
+    popover.classList.remove("employee-calendar-popover-enter");
+    void popover.offsetWidth;
+    popover.classList.add("employee-calendar-popover-enter");
+    positionCalendarPopover(anchorEl);
+    const closeBtn = popover.querySelector(".calendar-popover-close");
+    closeBtn?.addEventListener("click", () => {
+        hideCalendarPopover();
+        setCalendarHint("Kun ustiga bossangiz, ma'lumot shu katak ustida chiqadi.");
+    });
+    setCalendarHint(`${day.date} kuni uchun ma'lumot ochildi.`);
 }
 
 function renderCalendar() {
@@ -323,21 +553,30 @@ function renderCalendar() {
         wrap.appendChild(empty);
     }
 
+    const now = new Date();
+    const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
     for (const day of calendarState.days || []) {
         const btn = document.createElement("button");
         btn.type = "button";
         let style = "border-gray-200 bg-white text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200";
+        let badgeStyle = "bg-slate-100 text-slate-700 dark:bg-slate-700/70 dark:text-slate-200";
         if (day.status === "late") {
             style = "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-200";
+            badgeStyle = "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-200";
         } else if (day.status === "present") {
             style = "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-200";
+            badgeStyle = "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-200";
         } else if (day.status === "absent") {
             style = "border-red-200 bg-red-50 text-red-800 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-200";
+            badgeStyle = "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-200";
         }
-        btn.className = `h-24 w-full rounded-xl border px-2 py-1 text-left transition hover:-translate-y-0.5 hover:shadow-sm ${style}`;
+        const isToday = day.date === todayKey;
+        btn.dataset.calendarDay = day.date;
+        btn.className = `h-24 w-full rounded-xl border px-2.5 py-1.5 text-left transition hover:-translate-y-0.5 hover:shadow-sm ${style} ${isToday ? "ring-2 ring-blue-400/70 dark:ring-blue-400/60" : ""}`;
         const lateText = day.late_human_full || day.late_human || "0 daqiqa";
         const passCount = Number(day.event_count || 0);
-        const passLine = `<div class="mt-0.5 text-[10px]">${esc(`${passCount} marta kameradan o'tdi`)}</div>`;
+        const passLine = `<div class="mt-0.5 text-[10px]">${esc(`${passCount} marta`)}</div>`;
         const tooltip = day.status === "absent"
             ? `${day.date}\nKelmagan\nAslida kelishi kerak: ${formatClock(day.expected_time)}\nAslida ketishi kerak: ${formatClock(day.expected_end_time)}`
             : `${day.date}\nAslida kelishi kerak: ${formatClock(day.expected_time)}\nAslida ketishi kerak: ${formatClock(day.expected_end_time)}\nHaqiqiy kelgan: ${formatTime(day.first_seen)}\nHaqiqiy ketgan: ${formatTime(day.last_seen)}\nKechikish: ${lateText}\n${passCount} marta kameradan o'tdi`;
@@ -348,16 +587,17 @@ function renderCalendar() {
         btn.innerHTML = `
             <div class="flex items-center justify-between text-xs">
                 <b>${esc(String(day.day))}</b>
-                <span>${esc(String(passCount))}</span>
+                <span class="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${badgeStyle}">${esc(String(passCount))}</span>
             </div>
             ${extra}
         `;
-        btn.addEventListener("click", () => renderDayDetail(day));
+        btn.addEventListener("click", () => renderDayDetail(day, btn));
         wrap.appendChild(btn);
     }
 }
 
 async function loadCalendar(year, month) {
+    hideCalendarPopover();
     const res = await fetch(`/api/employees/${EMP_ID}/attendance-calendar?year=${year}&month=${month}`);
     const data = await res.json().catch(() => ({}));
     if (!res.ok || data.ok === false) {
@@ -371,10 +611,7 @@ async function loadCalendar(year, month) {
     };
     setSummary(calendarState.summary);
     renderCalendar();
-    const today = new Date();
-    const todayKey = `${calendarState.year}-${String(calendarState.month).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-    const picked = calendarState.days.find((d) => d.date === todayKey) || calendarState.days.find((d) => d.status === "late") || calendarState.days[0];
-    renderDayDetail(picked || null);
+    setCalendarHint("Kun ustiga bossangiz, ma'lumot shu katak ustida chiqadi.");
 }
 
 function renderLogStatus(status) {
@@ -413,6 +650,128 @@ function renderLogsPagination() {
     totalEl.textContent = `${logsState.total} ta`;
     prevBtn.disabled = logsState.loading || logsState.page <= 1;
     nextBtn.disabled = logsState.loading || logsState.page >= logsState.totalPages;
+}
+
+function renderCameraInsights(camera) {
+    const tbody = document.getElementById("camera-insights-body");
+    const countEl = document.getElementById("camera-insights-count");
+    const items = Array.isArray(camera?.items) ? camera.items : [];
+    countEl.textContent = `${items.length} ta`;
+    if (items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="px-3 py-6 text-center text-gray-500 dark:text-gray-400">Kamera ma\'lumotlari topilmadi.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = "";
+    for (const item of items) {
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-gray-50/70 dark:hover:bg-gray-800/50";
+        tr.innerHTML = `
+            <td class="px-3 py-2">
+                <div class="font-semibold text-gray-900 dark:text-gray-100">${esc(item.camera_name || "-")}</div>
+                <div class="text-[11px] text-gray-500 dark:text-gray-400">${esc(item.model || "-")}</div>
+                <div class="text-[11px] text-gray-500 dark:text-gray-400">${esc(item.mac_address || item.isup_device_id || "-")}</div>
+            </td>
+            <td class="px-3 py-2">
+                <div class="font-semibold text-gray-900 dark:text-gray-100">${esc(`${item.employee_first_name || ""} ${item.employee_last_name || ""} ${item.employee_middle_name || ""}`.trim() || "-")}</div>
+                <div class="text-[11px] text-gray-500 dark:text-gray-400">ID: ${esc(String(item.employee_id || "-"))} | Shaxsiy ID: ${esc(item.employee_personal_id || "-")}</div>
+                <div class="text-[11px] text-gray-500 dark:text-gray-400">${esc(item.employee_department || "-")} | ${esc(item.employee_position || "-")}</div>
+            </td>
+            <td class="px-3 py-2">
+                <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${item.employee_has_access ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" : "bg-slate-100 text-slate-700 dark:bg-slate-700/60 dark:text-slate-200"}">${item.employee_has_access ? "Ruxsat bor" : "Ruxsat yo'q"}</span>
+                <div class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">${esc(item.employee_start_time || "09:00")} - ${esc(item.employee_end_time || "18:00")}</div>
+            </td>
+            <td class="px-3 py-2">${esc(String(item.attendance_events || 0))}</td>
+            <td class="px-3 py-2">
+                <div>${esc(formatDate(item.last_seen_at))} ${esc(formatTime(item.last_seen_at))}</div>
+                <div class="text-[11px] text-gray-500 dark:text-gray-400">${esc(item.last_person_name || "-")}</div>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    }
+}
+
+function renderLatenessInsights(lateness) {
+    const tbody = document.getElementById("lateness-insights-body");
+    const order = ["this_month", "prev_month", "prev_prev_month", "this_year"];
+    tbody.innerHTML = "";
+    for (const key of order) {
+        const item = lateness?.[key] || {};
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-gray-50/70 dark:hover:bg-gray-800/50";
+        tr.innerHTML = `
+            <td class="px-3 py-2">
+                <div class="font-semibold text-gray-900 dark:text-gray-100">${esc(periodLabel(key))}</div>
+                <div class="text-[11px] text-gray-500 dark:text-gray-400">${esc(item.from || "-")} - ${esc(item.to || "-")}</div>
+            </td>
+            <td class="px-3 py-2">${esc(String(item.late_days || 0))}</td>
+            <td class="px-3 py-2">${esc(item.late_human || "0 daqiqa")}</td>
+            <td class="px-3 py-2">${esc(String(item.late_hours || 0))}</td>
+        `;
+        tbody.appendChild(tr);
+    }
+}
+
+function renderPsychologyInsights(psychology) {
+    const daysEl = document.getElementById("psychology-days-count");
+    const avgWrap = document.getElementById("psychology-average-wrap");
+    const tbody = document.getElementById("psychology-daily-body");
+    const average = psychology?.average_percent || {};
+    const daily = Array.isArray(psychology?.daily) ? psychology.daily : [];
+
+    daysEl.textContent = `${daily.length} kun`;
+    avgWrap.innerHTML = "";
+    const avgItems = Object.entries(average).sort((a, b) => Number(b[1] || 0) - Number(a[1] || 0));
+    for (const [key, value] of avgItems) {
+        if (Number(value || 0) <= 0) continue;
+        avgWrap.insertAdjacentHTML(
+            "beforeend",
+            `<span class="inline-flex items-center rounded-full bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">${esc(key)}: ${esc(String(value))}%</span>`,
+        );
+    }
+
+    if (daily.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="px-3 py-6 text-center text-gray-500 dark:text-gray-400">Psixologik yozuvlar topilmadi.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = "";
+    for (const row of daily) {
+        const scores = row.emotion_percent || {};
+        const scoreText = Object.entries(scores)
+            .filter(([, value]) => Number(value || 0) > 0)
+            .sort((a, b) => Number(b[1] || 0) - Number(a[1] || 0))
+            .map(([key, value]) => `${key}: ${value}%`)
+            .join(" | ");
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-gray-50/70 dark:hover:bg-gray-800/50";
+        tr.innerHTML = `
+            <td class="px-3 py-2">${esc(row.state_date || "-")}</td>
+            <td class="px-3 py-2">
+                <div class="font-semibold text-gray-900 dark:text-gray-100">${esc(row.state_uz || "-")}</div>
+                <div class="text-[11px] text-gray-500 dark:text-gray-400">${esc(row.state_ru || "-")}</div>
+            </td>
+            <td class="px-3 py-2 text-xs text-gray-700 dark:text-gray-300">${esc(scoreText || "-")}</td>
+        `;
+        tbody.appendChild(tr);
+    }
+}
+
+async function loadInsights() {
+    try {
+        const res = await fetch(`/api/employees/${EMP_ID}/insights?psy_days=120`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.ok === false) {
+            throw new Error(data.detail || data.message || "Statistikani yuklab bo'lmadi");
+        }
+        renderCameraInsights(data.camera || {});
+        renderLatenessInsights(data.lateness || {});
+        renderPsychologyInsights(data.psychology || {});
+    } catch (err) {
+        const message = esc(err.message || "Statistikani yuklab bo'lmadi");
+        document.getElementById("camera-insights-body").innerHTML = `<tr><td colspan="5" class="px-3 py-6 text-center text-red-600">${message}</td></tr>`;
+        document.getElementById("lateness-insights-body").innerHTML = `<tr><td colspan="4" class="px-3 py-6 text-center text-red-600">${message}</td></tr>`;
+        document.getElementById("psychology-daily-body").innerHTML = `<tr><td colspan="3" class="px-3 py-6 text-center text-red-600">${message}</td></tr>`;
+    }
 }
 
 async function loadLogs(page = 1) {
@@ -461,7 +820,8 @@ function initControls() {
         try {
             await loadCalendar(Number(yearSel.value), Number(monthSel.value));
         } catch (err) {
-            document.getElementById("day-detail").textContent = err.message || "Kalendarni yuklashda xatolik.";
+            hideCalendarPopover();
+            setCalendarHint(err.message || "Kalendarni yuklashda xatolik.", "error");
         }
     };
     yearSel.addEventListener("change", onChange);
@@ -479,6 +839,22 @@ function initControls() {
         }
     });
     loadLogs(1);
+    loadInsights();
+
+    document.addEventListener("click", (event) => {
+        const popover = document.getElementById("calendar-day-popover");
+        if (!popover || popover.classList.contains("hidden")) return;
+        if (popover.contains(event.target)) return;
+        if (event.target.closest("[data-calendar-day]")) return;
+        hideCalendarPopover();
+        setCalendarHint("Kun ustiga bossangiz, ma'lumot shu katak ustida chiqadi.");
+    });
+
+    window.addEventListener("resize", () => {
+        if (activeCalendarButton) {
+            positionCalendarPopover(activeCalendarButton);
+        }
+    });
 }
 
 initControls();

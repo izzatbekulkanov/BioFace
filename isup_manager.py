@@ -22,6 +22,7 @@ from system_config import (
     ISUP_SDK_SERVER_SCRIPT,
     REDIS_HOST,
     REDIS_PORT,
+    get_camera_event_push_base_url,
     get_isup_public_host,
 )
 
@@ -212,7 +213,7 @@ def _build_start_command() -> list[str]:
 
     if ISUP_IMPLEMENTATION_MODE == "hikvision_sdk":
         public_host = get_isup_public_host()
-        return [
+        command = [
             _sdk_python_executable(),
             str(ISUP_SDK_SERVER_SCRIPT),
             ISUP_KEY,
@@ -225,6 +226,15 @@ def _build_start_command() -> list[str]:
             "--public-host",
             public_host,
         ]
+        camera_event_push_base_url = get_camera_event_push_base_url()
+        if camera_event_push_base_url:
+            command.extend(
+                [
+                    "--camera-event-push-base-url",
+                    camera_event_push_base_url,
+                ]
+            )
+        return command
 
     return [
         str(get_binary_path()),

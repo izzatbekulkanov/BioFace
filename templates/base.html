@@ -4,6 +4,31 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ page_title }} — {{ menus.app_name|default('BioFace') }}</title>
+    <script>
+        (function () {
+            try {
+                var savedTheme = localStorage.getItem('theme');
+                var useDark = savedTheme === 'dark';
+                document.documentElement.classList.toggle('dark', useDark);
+                window.AppTheme = {
+                    get: function () {
+                        return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+                    },
+                    set: function (theme) {
+                        var next = String(theme || 'light') === 'dark' ? 'dark' : 'light';
+                        document.documentElement.classList.toggle('dark', next === 'dark');
+                        localStorage.setItem('theme', next);
+                        return next;
+                    },
+                    toggle: function () {
+                        return this.set(this.get() === 'dark' ? 'light' : 'dark');
+                    },
+                };
+            } catch (_) {
+                document.documentElement.classList.remove('dark');
+            }
+        })();
+    </script>
     {% if menus.favicon_url %}
     <link rel="icon" href="{{ menus.favicon_url }}" />
     {% endif %}

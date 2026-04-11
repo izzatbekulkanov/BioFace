@@ -12,6 +12,7 @@ from database import get_db
 from redis_client import publish_camera_event
 from time_utils import normalize_timestamp_tashkent, now_tashkent
 from routers.cameras_parts.psychology_utils import (
+    detect_psychological_profile,
     detect_psychological_state,
     resolve_snapshot_path,
     state_labels,
@@ -100,8 +101,14 @@ async def camera_event_ingest(
 
     event_ts = _resolve_event_timestamp(data.get("timestamp"))
     status = "aniqlandi" if employee is not None else "noma'lum"
-    psychological_state_key = detect_psychological_state(photo_path)
-    psychological_state_uz, psychological_state_ru = state_labels(psychological_state_key)
+    psychological_profile = detect_psychological_profile(photo_path)
+    psychological_state_key = str(psychological_profile.get("state_key") or "")
+    psychological_state_uz = str(psychological_profile.get("state_uz") or "")
+    psychological_state_ru = str(psychological_profile.get("state_ru") or "")
+    psychological_state_confidence = psychological_profile.get("confidence")
+    emotion_scores = dict(psychological_profile.get("emotion_scores") or {})
+    psychological_profile_uz = str(psychological_profile.get("profile_text_uz") or "")
+    psychological_profile_ru = str(psychological_profile.get("profile_text_ru") or "")
 
     new_log = models.AttendanceLog(
         employee_id=int(employee.id) if employee is not None else None,
@@ -111,6 +118,9 @@ async def camera_event_ingest(
         person_name=person_name,
         timestamp=event_ts,
         snapshot_url=snapshot_url,
+        psychological_state_key=psychological_state_key or None,
+        psychological_state_confidence=psychological_state_confidence,
+        emotion_scores_json=psychological_profile.get("emotion_scores_json") or None,
         status=status,
     )
 
@@ -119,6 +129,8 @@ async def camera_event_ingest(
             db,
             employee_id=int(employee.id),
             state_key=psychological_state_key,
+            confidence=psychological_state_confidence,
+            emotion_scores=emotion_scores,
             timestamp=event_ts,
             note=f"multipart_webhook:{new_log.camera_mac or serial_no}",
             source="external_system",
@@ -146,8 +158,12 @@ async def camera_event_ingest(
             "status": status,
             "snapshot_url": str(snapshot_url or ""),
             "psychological_state_key": psychological_state_key,
+            "psychological_state_confidence": psychological_state_confidence,
+            "emotion_scores": emotion_scores,
             "psychological_state_uz": psychological_state_uz,
             "psychological_state_ru": psychological_state_ru,
+            "psychological_profile_uz": psychological_profile_uz,
+            "psychological_profile_ru": psychological_profile_ru,
             "psychological_state_source": "external_system" if employee is not None else "",
         }
     )
@@ -159,7 +175,11 @@ async def camera_event_ingest(
         "employee_found": employee is not None,
         "published": bool(published),
         "psychological_state_key": psychological_state_key,
+        "psychological_state_confidence": psychological_state_confidence,
+        "emotion_scores": emotion_scores,
         "psychological_state_uz": psychological_state_uz,
         "psychological_state_ru": psychological_state_ru,
+        "psychological_profile_uz": psychological_profile_uz,
+        "psychological_profile_ru": psychological_profile_ru,
     }
 

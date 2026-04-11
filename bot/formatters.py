@@ -142,6 +142,7 @@ def format_camera_event_message(
     language: str = "uz",
     wellbeing_note: str | None = None,
     psychological_state: str | None = None,
+    psychological_profile: str | None = None,
 ) -> str:
     if language == "ru":
         lines = [
@@ -163,6 +164,11 @@ def format_camera_event_message(
                 "",
                 f"🧠 Психологическое состояние: {psych_text}",
             ])
+        profile_text = str(psychological_profile or "").strip()
+        if profile_text:
+            lines.extend([
+                f"📊 Профиль эмоций: {profile_text}",
+            ])
         return "\n".join(lines)
 
     lines = [
@@ -183,6 +189,11 @@ def format_camera_event_message(
         lines.extend([
             "",
             f"🧠 Psixologik holat: {psych_text}",
+        ])
+    profile_text = str(psychological_profile or "").strip()
+    if profile_text:
+        lines.extend([
+            f"📊 Emotsiya profili: {profile_text}",
         ])
     return "\n".join(lines)
 

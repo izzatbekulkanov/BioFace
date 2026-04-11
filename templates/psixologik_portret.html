@@ -1,110 +1,113 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="space-y-6">
-    <section class="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-        <div class="grid gap-6 lg:grid-cols-12 lg:items-center">
-            <div class="lg:col-span-8">
-                <div class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-blue-700 ring-1 ring-blue-100 dark:bg-white/10 dark:text-white/90 dark:ring-white/15">
-                    {{ 'Xodimlarning ruhiy holati' if lang == 'uz' else 'Психологическое состояние сотрудников' }}
-                </div>
-                <h1 class="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">
-                    {{ page_title }}
-                </h1>
-                <p class="mt-3 max-w-3xl text-sm leading-6 text-gray-600 sm:text-base dark:text-gray-300">
-                    {{ 'Bu sahifada tizim xodimlarning holatini sodda tilda ko‘rsatadi. Masalan: xotirjam, quvnoq, xavotirli yoki jahli chiqqan. Jadvalda kim, qachon va qaysi manbadan qayd qilinganini ko‘rasiz.' if lang == 'uz' else 'На этой странице система показывает состояние сотрудников простыми словами: спокойный, радостный, тревожный, раздражённый. В таблице видно, кто, когда и из какого источника был записан.' }}
-                </p>
-            </div>
-            <div class="lg:col-span-4">
-                <div class="rounded-3xl border border-gray-200 bg-gray-50 p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800/60">
-                    <div class="text-sm text-gray-500 dark:text-gray-400">{{ 'Bugun yozilganlar ulushi' if lang == 'uz' else 'Доля записей за сегодня' }}</div>
-                    <div class="mt-2 text-5xl font-black text-gray-900 dark:text-white">{{ summary.portrait_score }}%</div>
-                    <div class="mt-3 inline-flex items-center rounded-full bg-blue-600 px-3 py-1 text-xs font-bold text-white shadow-sm dark:bg-blue-500">
-                        {{ summary.portrait_level }}
-                    </div>
-                    <p class="mt-3 text-sm text-gray-600 dark:text-gray-300">{{ 'Bu raqam bugun nechta xodim qayd qilinganini va so‘nggi 30 kun ichidagi faollikni birlashtirib ko‘rsatadi.' if lang == 'uz' else 'Это число показывает, сколько сотрудников отмечено сегодня и насколько активны записи за последние 30 дней.' }}</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="grid gap-4 lg:grid-cols-3">
-        <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900 lg:col-span-2">
-            <h2 class="text-lg font-bold text-gray-900 dark:text-white">{{ 'Bu sahifa nimani ko‘rsatadi?' if lang == 'uz' else 'Что показывает эта страница?' }}</h2>
-            <div class="mt-4 grid gap-3 sm:grid-cols-3">
-                <div class="rounded-xl bg-gray-50 p-4 dark:bg-gray-800/60">
-                    <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ '1. Holatni ko‘rsatadi' if lang == 'uz' else '1. Показывает состояние' }}</div>
-                    <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">{{ 'Tizim xodimning holatini oddiy so‘z bilan chiqaradi: xotirjam, xavotirli, quvnoq va hokazo.' if lang == 'uz' else 'Система выводит состояние сотрудника простыми словами: спокойный, тревожный, радостный и т. д.' }}</p>
-                </div>
-                <div class="rounded-xl bg-gray-50 p-4 dark:bg-gray-800/60">
-                    <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ '2. Qachonligini ko‘rsatadi' if lang == 'uz' else '2. Показывает время' }}</div>
-                    <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">{{ 'Jadvaldan holat qachon yozilgani, bugungi yoki oldingi kundagi yozuv ekanini bilasiz.' if lang == 'uz' else 'Из таблицы видно, когда был сделан записанный статус и за какой это день.' }}</p>
-                </div>
-                <div class="rounded-xl bg-gray-50 p-4 dark:bg-gray-800/60">
-                    <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ '3. Qayerdan kelganini ko‘rsatadi' if lang == 'uz' else '3. Показывает источник' }}</div>
-                    <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">{{ 'Yozuv kamera, qo‘lda kiritish yoki boshqa manbadan kelgan bo‘lishi mumkin.' if lang == 'uz' else 'Запись может прийти с камеры, быть внесена вручную или из другого источника.' }}</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-            <h2 class="text-lg font-bold text-gray-900 dark:text-white">{{ 'Muhim eslatma' if lang == 'uz' else 'Важное замечание' }}</h2>
-            <p class="mt-3 text-sm leading-6 text-gray-600 dark:text-gray-300">
-                {{ 'Bu maʼlumot tibbiy tashxis emas. U faqat kuzatuv, tushunish va hisobot uchun ishlatiladi.' if lang == 'uz' else 'Эта информация не является медицинским диагнозом. Она используется только для наблюдения, понимания и отчётов.' }}
-            </p>
-        </div>
-    </section>
-
-    <section class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {% for stat in portrait_stats %}
-        <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-            <div class="flex items-start justify-between gap-3">
-                <div>
-                    <div class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ stat.label }}</div>
-                    <div class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{{ stat.value }}</div>
-                    <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ stat.hint }}</div>
-                </div>
-                <div class="rounded-xl px-3 py-1 text-[11px] font-semibold uppercase tracking-wide {% if stat.tone == 'blue' %}bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300{% elif stat.tone == 'emerald' %}bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300{% elif stat.tone == 'violet' %}bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300{% elif stat.tone == 'red' %}bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300{% elif stat.tone == 'amber' %}bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300{% else %}bg-slate-50 text-slate-700 dark:bg-slate-800 dark:text-slate-300{% endif %}">
-                    {{ 'Ko‘rsatkich' if lang == 'uz' else 'Показатель' }}
-                </div>
-            </div>
-        </div>
-        {% endfor %}
-    </section>
-
+<div class="space-y-4">
     <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-        <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-                <h2 class="text-lg font-bold text-gray-900 dark:text-white">
-                    {{ 'AI ajratadigan psixologik holatlar' if lang == 'uz' else 'Психологические состояния, которые выделяет AI' }}
-                </h2>
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    {{ 'Tizim xodim holatini quyidagi oddiy so‘zlar bilan ko‘rsatadi.' if lang == 'uz' else 'Система показывает состояние сотрудника простыми словами.' }}
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div class="min-w-0">
+                <div class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                    {{ 'Psixologik monitoring' if lang == 'uz' else 'Психологический мониторинг' }}
+                </div>
+                <h1 class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{{ page_title }}</h1>
+                <p class="mt-2 max-w-3xl text-sm text-gray-600 dark:text-gray-300">
+                    {{ 'BioFace inson yuzidagi mimika va rasm signalini sunʼiy intellekt asosida tahlil qilib, ehtimoliy psixologik holatni foizli emotsiya profili sifatida ko‘rsatadi. Bu sahifa xodimlar kayfiyati bo‘yicha kuzatuv va tahlil uchun mo‘ljallangan.' if lang == 'uz' else 'BioFace анализирует мимику и визуальные признаки лица с помощью ИИ и показывает вероятное психологическое состояние как процентный профиль эмоций. Страница предназначена для наблюдения и аналитики состояния сотрудников.' }}
                 </p>
             </div>
-            <span class="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                {{ 'Masalan' if lang == 'uz' else 'Например' }}
-            </span>
+            <div class="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/70">
+                <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ 'Davr' if lang == 'uz' else 'Период' }}</p>
+                <p class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">{{ summary.selected_period_label }}</p>
+                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ 'Oxirgi yozuv' if lang == 'uz' else 'Последняя запись' }}: {{ summary.latest_activity or '-' }}</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <article class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+            <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ 'Qamrov darajasi' if lang == 'uz' else 'Уровень покрытия' }}</p>
+            <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ summary.portrait_score }}%</p>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ summary.portrait_level }}</p>
+        </article>
+        <article class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+            <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ 'Qayd qilingan xodimlar' if lang == 'uz' else 'Отмеченные сотрудники' }}</p>
+            <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ summary.selected_employees }} <span class="text-sm font-medium text-gray-500 dark:text-gray-400">/ {{ portrait_stats[0].value if portrait_stats else 0 }}</span></p>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ 'Tanlangan davr bo‘yicha' if lang == 'uz' else 'За выбранный период' }}</p>
+        </article>
+        <article class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+            <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ 'Jami yozuvlar' if lang == 'uz' else 'Всего записей' }}</p>
+            <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ summary.selected_total }}</p>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ summary.selected_period_label }}</p>
+        </article>
+        <article class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+            <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ 'O‘rtacha profil' if lang == 'uz' else 'Средний профиль' }}</p>
+            <p class="mt-1 line-clamp-2 text-sm font-semibold text-gray-900 dark:text-white">{{ summary.average_profile_text or ('Aniqlanmadi' if lang == 'uz' else 'Не определено') }}</p>
+            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ 'Top emotsiyalar asosida' if lang == 'uz' else 'На основе топ эмоций' }}</p>
+        </article>
+    </section>
+
+    <section class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+                <h2 class="text-base font-bold text-gray-900 dark:text-white">{{ 'Filtr va tez talqin' if lang == 'uz' else 'Фильтр и быстрая интерпретация' }}</h2>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ 'Yil/oy/kun tanlang. Natijalar pastdagi grafiklar va jadvalda darhol ko‘rinadi.' if lang == 'uz' else 'Выберите год/месяц/день. Результаты сразу отразятся в графиках и таблице ниже.' }}</p>
+            </div>
+            <div class="text-xs text-amber-600 dark:text-amber-300">{{ 'Eslatma: bu tibbiy tashxis emas.' if lang == 'uz' else 'Важно: это не медицинский диагноз.' }}</div>
         </div>
 
-        <div class="mt-4 flex flex-wrap gap-2">
-            {% for state in portrait_state_categories %}
-            <span class="inline-flex items-center rounded-full bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 ring-1 ring-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700">
-                {{ state.uz if lang == 'uz' else state.ru }}
-            </span>
+        <form method="get" action="/psixologik-portret" class="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-6">
+            <label for="portraitSearch" class="sr-only">{{ 'Qidirish' if lang == 'uz' else 'Поиск' }}</label>
+            <input id="portraitSearch" name="q" value="{{ table_search }}" type="search" placeholder="{{ 'Ism, familiya yoki personal ID' if lang == 'uz' else 'Имя, фамилия или ID' }}" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:placeholder:text-gray-500 dark:focus:ring-blue-900/40 xl:col-span-2">
+            <label for="portraitDepartment" class="sr-only">{{ 'Bo‘lim' if lang == 'uz' else 'Отдел' }}</label>
+            <select id="portraitDepartment" name="department_id" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:focus:ring-blue-900/40">
+                <option value="all" {% if selected_department_id == 'all' %}selected{% endif %}>{{ 'Barcha bo‘limlar' if lang == 'uz' else 'Все отделы' }}</option>
+                {% for dep in department_choices %}
+                <option value="{{ dep.id }}" {% if selected_department_id|string == dep.id|string %}selected{% endif %}>{{ dep.name }}</option>
+                {% endfor %}
+            </select>
+            <label for="portraitPosition" class="sr-only">{{ 'Lavozim' if lang == 'uz' else 'Должность' }}</label>
+            <select id="portraitPosition" name="position_id" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:focus:ring-blue-900/40">
+                <option value="all" {% if selected_position_id == 'all' %}selected{% endif %}>{{ 'Barcha lavozimlar' if lang == 'uz' else 'Все должности' }}</option>
+                {% for pos in position_choices %}
+                <option value="{{ pos.id }}" {% if selected_position_id|string == pos.id|string %}selected{% endif %}>{{ pos.name }}</option>
+                {% endfor %}
+            </select>
+            <label for="portraitYear" class="sr-only">{{ 'Yil' if lang == 'uz' else 'Год' }}</label>
+            <select id="portraitYear" name="year" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:focus:ring-blue-900/40">
+                <option value="all" {% if selected_year == 'all' %}selected{% endif %}>{{ 'Barcha yillar' if lang == 'uz' else 'Все годы' }}</option>
+                {% for y in available_years %}<option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>{% endfor %}
+            </select>
+            <label for="portraitMonth" class="sr-only">{{ 'Oy' if lang == 'uz' else 'Месяц' }}</label>
+            <select id="portraitMonth" name="month" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:focus:ring-blue-900/40">
+                <option value="all" {% if selected_month == 'all' %}selected{% endif %}>{{ 'Barcha oylar' if lang == 'uz' else 'Все месяцы' }}</option>
+                {% for m in available_months %}<option value="{{ m }}" {% if selected_month == m %}selected{% endif %}>{{ m }}</option>{% endfor %}
+            </select>
+            <label for="portraitDay" class="sr-only">{{ 'Kun' if lang == 'uz' else 'День' }}</label>
+            <select id="portraitDay" name="day" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:focus:ring-blue-900/40">
+                <option value="all" {% if selected_day == 'all' %}selected{% endif %}>{{ 'Barcha kunlar' if lang == 'uz' else 'Все дни' }}</option>
+                {% for d in available_days %}<option value="{{ d }}" {% if selected_day == d %}selected{% endif %}>{{ d }}</option>{% endfor %}
+            </select>
+            <button type="submit" class="w-full rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">{{ 'Qo‘llash' if lang == 'uz' else 'Применить' }}</button>
+            <a href="/psixologik-portret" class="inline-flex w-full items-center justify-center rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">{{ 'Tozalash' if lang == 'uz' else 'Сброс' }}</a>
+        </form>
+
+        <div class="mt-3 flex flex-wrap gap-2">
+            {% for item in portrait_state_categories %}
+            <span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-200">{{ item.uz if lang == 'uz' else item.ru }}</span>
             {% endfor %}
         </div>
     </section>
 
-    <section class="grid gap-4 lg:grid-cols-2">
+    <section class="grid gap-4 xl:grid-cols-2">
         <article class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-            <div class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ 'Holatlar bo‘yicha taqsimot (so‘nggi 30 kun)' if lang == 'uz' else 'Распределение состояний (последние 30 дней)' }}</div>
+            <div class="flex items-center justify-between gap-3">
+                <h3 class="text-sm font-bold text-gray-900 dark:text-white">{{ 'Holatlar ulushi' if lang == 'uz' else 'Доля состояний' }}</h3>
+                <span class="text-xs text-gray-500 dark:text-gray-400">{{ summary.selected_period_label }}</span>
+            </div>
             <div class="mt-4 space-y-3">
                 {% for item in state_breakdown %}
                 <div>
                     <div class="mb-1 flex items-center justify-between text-sm">
                         <span class="font-medium text-gray-700 dark:text-gray-200">{{ item.label }}</span>
-                        <span class="text-gray-500 dark:text-gray-400">{{ item.count }} ({{ item.percent }}%)</span>
+                        <span class="text-xs text-gray-500 dark:text-gray-400">{{ item.percent }}% ({{ item.count }})</span>
                     </div>
                     <div class="h-2 rounded-full bg-gray-100 dark:bg-gray-800">
                         <div class="h-2 rounded-full bg-indigo-500" style="width: {{ item.percent }}%"></div>
@@ -117,107 +120,101 @@
         </article>
 
         <article class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-            <div class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ 'Qayerdan kirdi? (so‘nggi 30 kun)' if lang == 'uz' else 'Откуда пришли записи? (последние 30 дней)' }}</div>
-            <div class="mt-4 space-y-3">
-                {% for item in source_breakdown %}
-                <div>
-                    <div class="mb-1 flex items-center justify-between text-sm">
-                        <span class="font-medium text-gray-700 dark:text-gray-200">{{ item.label }}</span>
-                        <span class="text-gray-500 dark:text-gray-400">{{ item.count }} ({{ item.percent }}%)</span>
-                    </div>
-                    <div class="h-2 rounded-full bg-gray-100 dark:bg-gray-800">
-                        <div class="h-2 rounded-full bg-cyan-500" style="width: {{ item.percent }}%"></div>
-                    </div>
-                </div>
+            <div class="flex items-center justify-between gap-3">
+                <h3 class="text-sm font-bold text-gray-900 dark:text-white">{{ 'AI asosidagi yozma izoh' if lang == 'uz' else 'Пояснение ИИ' }}</h3>
+                <span class="text-xs text-gray-500 dark:text-gray-400">{{ 'kuzatuv' if lang == 'uz' else 'наблюдение' }}</span>
+            </div>
+            <div class="mt-4 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-blue-900 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-100">
+                {% if lang == 'uz' %}
+                    Ushbu dastur inson yuzidan olingan rasmni sunʼiy intellekt yordamida tahlil qiladi. Tizim yuz mimikasi va emotsional belgilar asosida xodimning ehtimoliy psixologik holatini foizlarda hisoblab, dominant holat va emotsiya profilini saqlaydi. Natija tibbiy tashxis emas, balki rahbar va mutaxassislar uchun monitoring ko‘rsatkichi hisoblanadi.
                 {% else %}
-                <p class="text-sm text-gray-500 dark:text-gray-400">{{ 'Maʼlumot yo‘q' if lang == 'uz' else 'Нет данных' }}</p>
-                {% endfor %}
+                    Система анализирует изображение лица с помощью искусственного интеллекта. По мимике и эмоциональным признакам рассчитывается вероятное психологическое состояние сотрудника в процентах, сохраняется доминирующее состояние и профиль эмоций. Результат не является медицинским диагнозом и используется только как мониторинговый показатель.
+                {% endif %}
             </div>
         </article>
-    </section>
-
-    <section class="grid gap-4 xl:grid-cols-3">
-        {% for signal in portrait_signals %}
-        <article class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-            <div class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ signal.title }}</div>
-            <div class="mt-3 text-3xl font-extrabold text-gray-900 dark:text-white">
-                {{ signal.value }}{% if signal.title in ['Kunlik qamrov indeksi', 'Индекс дневного покрытия'] %}%{% endif %}
-            </div>
-            <p class="mt-3 text-sm leading-6 text-gray-600 dark:text-gray-300">{{ signal.description }}</p>
-        </article>
-        {% endfor %}
     </section>
 
     <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-        <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
                 <h2 class="text-lg font-bold text-gray-900 dark:text-white">{{ 'Xodimlar holatlari jadvali' if lang == 'uz' else 'Таблица состояний сотрудников' }}</h2>
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ 'Filtr tanlang: jadval va foizlar shu davr bo‘yicha yangilanadi.' if lang == 'uz' else 'Выберите фильтр: таблица и проценты обновятся за этот период.' }}</p>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ 'Yaqin yozuvlar: xulosa rasmi, xodim maʼlumoti, holat va profil bitta qatorda.' if lang == 'uz' else 'Последние записи: снимок, данные сотрудника, состояние и профиль в одной строке.' }}</p>
             </div>
-            <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">{{ recent_states|length }} {{ 'qayd' if lang == 'uz' else 'записей' }}</span>
-        </div>
-
-        <form method="get" action="/psixologik-portret" class="mt-4 grid grid-cols-1 gap-2 md:grid-cols-5">
-            <select name="year" class="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:focus:ring-blue-900/40">
-                <option value="all" {% if selected_year == 'all' %}selected{% endif %}>{{ 'Barcha yillar' if lang == 'uz' else 'Все годы' }}</option>
-                {% for y in available_years %}<option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>{% endfor %}
-            </select>
-            <select name="month" class="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:focus:ring-blue-900/40">
-                <option value="all" {% if selected_month == 'all' %}selected{% endif %}>{{ 'Barcha oylar' if lang == 'uz' else 'Все месяцы' }}</option>
-                {% for m in available_months %}<option value="{{ m }}" {% if selected_month == m %}selected{% endif %}>{{ m }}</option>{% endfor %}
-            </select>
-            <select name="day" class="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:focus:ring-blue-900/40">
-                <option value="all" {% if selected_day == 'all' %}selected{% endif %}>{{ 'Barcha kunlar' if lang == 'uz' else 'Все дни' }}</option>
-                {% for d in available_days %}<option value="{{ d }}" {% if selected_day == d %}selected{% endif %}>{{ d }}</option>{% endfor %}
-            </select>
-            <button type="submit" class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">{{ 'Qo‘llash' if lang == 'uz' else 'Применить' }}</button>
-            <a href="/psixologik-portret" class="inline-flex items-center justify-center rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">{{ 'Tozalash' if lang == 'uz' else 'Сброс' }}</a>
-        </form>
-
-        <div class="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/50">
-            <div class="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ 'Holatlar foizi (tanlangan davr)' if lang == 'uz' else 'Процент состояний (выбранный период)' }}</div>
-            <div class="flex flex-wrap gap-2">
-                {% for item in state_breakdown %}
-                <span class="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-semibold text-gray-700 ring-1 ring-gray-200 dark:bg-gray-900 dark:text-gray-200 dark:ring-gray-700">{{ item.label }}: {{ item.percent }}% ({{ item.count }})</span>
-                {% endfor %}
-            </div>
+            <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">{{ summary.average_profile_text or ('Aniqlanmadi' if lang == 'uz' else 'Не определено') }}</span>
         </div>
 
         <div class="mt-4 overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
-            <div class="max-h-[30rem] overflow-auto">
+            <div class="max-h-[32rem] overflow-auto">
                 <table class="min-w-full divide-y divide-gray-200 text-left text-sm dark:divide-gray-800">
                     <thead class="sticky top-0 bg-gray-50 text-xs uppercase tracking-wider text-gray-500 dark:bg-gray-800 dark:text-gray-400">
                         <tr>
-                            <th class="px-4 py-3">{{ 'Xodim' if lang == 'uz' else 'Сотрудник' }}</th>
+                            <th class="px-4 py-3">#</th>
+                            <th class="px-4 py-3">{{ 'Xulosa rasmi' if lang == 'uz' else 'Снимок' }}</th>
+                            <th class="px-4 py-3">{{ 'Ism familiya' if lang == 'uz' else 'ФИО' }}</th>
+                            <th class="px-4 py-3">Personal ID</th>
+                            <th class="px-4 py-3">{{ 'Bo‘lim' if lang == 'uz' else 'Отдел' }}</th>
+                            <th class="px-4 py-3">{{ 'Lavozim' if lang == 'uz' else 'Должность' }}</th>
                             <th class="px-4 py-3">{{ 'Holat' if lang == 'uz' else 'Состояние' }}</th>
-                            <th class="px-4 py-3">{{ 'Qachon' if lang == 'uz' else 'Когда' }}</th>
-                            <th class="px-4 py-3">{{ 'Qayerdan' if lang == 'uz' else 'Откуда' }}</th>
-                            <th class="px-4 py-3">{{ 'Izoh' if lang == 'uz' else 'Заметка' }}</th>
+                            <th class="px-4 py-3">{{ 'Profil' if lang == 'uz' else 'Профиль' }}</th>
+                            <th class="px-4 py-3">{{ 'Sana' if lang == 'uz' else 'Дата' }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 bg-white dark:divide-gray-800 dark:bg-gray-900">
                         {% for row in recent_states %}
                         <tr class="align-top hover:bg-gray-50/70 dark:hover:bg-gray-800/60">
+                            <td class="px-4 py-3 text-gray-500 dark:text-gray-400">{{ row.row_no }}</td>
                             <td class="px-4 py-3">
-                                {% if row.employee_id %}
-                                <a href="/employees/{{ row.employee_id }}" class="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 ring-1 ring-blue-100 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:ring-blue-800/60 dark:hover:bg-blue-900/40">{{ row.employee_name }}</a>
+                                {% set image_url = row.source_image_url or row.fallback_image_url %}
+                                {% if image_url %}
+                                <a href="{{ image_url }}" target="_blank" rel="noopener" class="block h-14 w-14 overflow-hidden rounded-xl border border-gray-200 bg-gray-100 shadow-sm transition hover:scale-[1.02] dark:border-gray-700 dark:bg-gray-800">
+                                    <img src="{{ image_url }}" alt="{{ row.employee_name }}" class="h-full w-full object-cover">
+                                </a>
                                 {% else %}
-                                <span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700 ring-1 ring-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700">{{ row.employee_name }}</span>
+                                <span class="inline-flex h-14 w-14 items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50 text-[10px] font-semibold text-gray-400 dark:border-gray-700 dark:bg-gray-800">{{ 'Yo‘q' if lang == 'uz' else 'Нет' }}</span>
                                 {% endif %}
                             </td>
-                            <td class="px-4 py-3"><span class="inline-flex items-center rounded-full bg-violet-100 px-2.5 py-1 text-xs font-semibold text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">{{ row.state }}</span></td>
-                            <td class="px-4 py-3"><span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-1 text-[11px] font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-200">{{ row.state_date }}</span></td>
-                            <td class="px-4 py-3"><span class="inline-flex items-center rounded-full bg-cyan-100 px-2.5 py-1 text-xs font-semibold text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300">{{ row.source }}</span></td>
-                            <td class="px-4 py-3"><span class="block max-w-[24rem] truncate rounded-full bg-gray-50 px-2.5 py-1 text-xs text-gray-600 ring-1 ring-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700" title="{{ row.note }}">{{ row.note or '-' }}</span></td>
+                            <td class="px-4 py-3">
+                                {% if row.employee_id %}
+                                <a href="/employees/{{ row.employee_id }}" class="font-semibold text-blue-700 hover:underline dark:text-blue-300">{{ row.employee_name }}</a>
+                                {% else %}
+                                <span class="font-semibold text-gray-900 dark:text-white">{{ row.employee_name }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3 font-mono text-xs text-gray-700 dark:text-gray-200">{{ row.personal_id or '-' }}</td>
+                            <td class="px-4 py-3 text-gray-700 dark:text-gray-200">{{ row.department or '-' }}</td>
+                            <td class="px-4 py-3 text-gray-700 dark:text-gray-200">{{ row.position or '-' }}</td>
+                            <td class="px-4 py-3">
+                                <span class="inline-flex items-center rounded-full bg-violet-100 px-2.5 py-1 text-xs font-semibold text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">{{ row.state }}</span>
+                                {% if row.confidence_percent %}
+                                <div class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">{{ 'Aniqlik' if lang == 'uz' else 'Уверенность' }}: {{ row.confidence_percent }}%</div>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3">
+                                <div class="max-w-[28rem] text-xs leading-5 text-gray-600 dark:text-gray-300">{{ row.profile_text or '-' }}</div>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-1 text-[11px] font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-200">{{ row.state_date or '-' }}</span>
+                            </td>
                         </tr>
                         {% else %}
-                        <tr><td colspan="5" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">{{ 'Hozircha holat yozuvlari yo‘q' if lang == 'uz' else 'Пока нет записей состояний' }}</td></tr>
+                        <tr>
+                            <td colspan="9" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">{{ 'Hozircha holat yozuvlari yo‘q' if lang == 'uz' else 'Пока нет записей состояний' }}</td>
+                        </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
         </div>
+
+        <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+                {{ pagination.total }} {{ 'ta yozuv' if lang == 'uz' else 'записей' }} · {{ pagination.page }} / {{ pagination.total_pages }}
+            </p>
+            <div class="flex flex-wrap items-center gap-2">
+                <a href="/psixologik-portret?q={{ table_search|urlencode }}&department_id={{ selected_department_id }}&position_id={{ selected_position_id }}&year={{ selected_year }}&month={{ selected_month }}&day={{ selected_day }}&page={{ pagination.prev_page }}" class="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 {% if not pagination.has_prev %}pointer-events-none opacity-50{% endif %} dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">{{ 'Oldingi' if lang == 'uz' else 'Назад' }}</a>
+                <a href="/psixologik-portret?q={{ table_search|urlencode }}&department_id={{ selected_department_id }}&position_id={{ selected_position_id }}&year={{ selected_year }}&month={{ selected_month }}&day={{ selected_day }}&page={{ pagination.next_page }}" class="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 {% if not pagination.has_next %}pointer-events-none opacity-50{% endif %} dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">{{ 'Keyingi' if lang == 'uz' else 'Далее' }}</a>
+            </div>
+        </div>
     </section>
 </div>
 {% endblock %}
-

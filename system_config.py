@@ -103,6 +103,13 @@ def _guess_public_web_base_url_from_host(host: str | None) -> str:
     return f"{scheme}://{candidate}"
 
 
+def _guess_camera_event_push_base_url_from_host(host: str | None) -> str:
+    candidate = normalize_isup_public_host(host)
+    if not candidate:
+        return ""
+    return f"http://{candidate}:{BIOFACE_PORT}"
+
+
 def normalize_isup_public_host(value: str | None) -> str:
     candidate = (value or "").strip()
     if not candidate:
@@ -195,6 +202,10 @@ def normalize_public_web_base_url(value: str | None) -> str:
     return f"{scheme}://{netloc.rstrip('/')}"
 
 
+def normalize_camera_event_push_base_url(value: str | None) -> str:
+    return normalize_public_web_base_url(value)
+
+
 def get_public_web_base_url() -> str:
     try:
         from menu_utils import get_menu_data
@@ -221,6 +232,38 @@ def get_public_web_base_url() -> str:
 
     env_host = normalize_isup_public_host(os.getenv("ISUP_PUBLIC_HOST"))
     guessed = _guess_public_web_base_url_from_host(env_host)
+    if guessed:
+        return guessed
+
+    return ""
+
+
+def get_camera_event_push_base_url() -> str:
+    try:
+        from menu_utils import get_menu_data
+
+        saved = normalize_camera_event_push_base_url(get_menu_data().get("camera_event_push_base_url"))
+        if saved:
+            return saved
+    except Exception:
+        pass
+
+    configured = normalize_camera_event_push_base_url(os.getenv("CAMERA_EVENT_PUSH_BASE_URL"))
+    if configured:
+        return configured
+
+    try:
+        from menu_utils import get_menu_data
+
+        saved_host = normalize_isup_public_host(get_menu_data().get("isup_public_host"))
+        guessed = _guess_camera_event_push_base_url_from_host(saved_host)
+        if guessed:
+            return guessed
+    except Exception:
+        pass
+
+    env_host = normalize_isup_public_host(os.getenv("ISUP_PUBLIC_HOST"))
+    guessed = _guess_camera_event_push_base_url_from_host(env_host)
     if guessed:
         return guessed
 

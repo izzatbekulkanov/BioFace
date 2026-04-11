@@ -6,7 +6,6 @@ POST /api/cameras/{id}/command — kameraga buyruq
 """
 import asyncio
 import base64
-import csv
 from datetime import datetime, timedelta
 import io
 import json
@@ -15,12 +14,14 @@ import random
 import re
 import time
 import uuid
+import zipfile
+from xml.sax.saxutils import escape as xml_escape
 from fastapi import APIRouter, Request, Depends, HTTPException, File, UploadFile, Form, BackgroundTasks
 from fastapi.responses import Response, StreamingResponse
 from sqlalchemy import or_, case, cast, func, String, literal
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 import httpx
 from PIL import Image
 from io import BytesIO
@@ -33,6 +34,7 @@ from time_utils import now_tashkent, normalize_timestamp_tashkent, today_tashken
 from system_config import (
     ISUP_API_URL,
     ISUP_KEY,
+    get_isup_public_host,
     get_public_web_base_url,
     normalize_public_web_base_url,
 )
@@ -46,16 +48,20 @@ from routers.cameras_parts import (
     _normalize_mac_address,
     _pick_first_nonempty,
     _prefer_persistent_model,
+    _resolve_camera_event_push_base_url,
     _resolve_public_web_base_url,
     _strip_or_none,
 )
 from routers.cameras_parts.routes_event_ingest import router as event_ingest_router
 from routers.cameras_parts.psychology_utils import (
+    detect_psychological_profile,
     detect_psychological_state,
     resolve_snapshot_path,
     state_labels,
     upsert_daily_psychological_state,
 )
+from access_control import normalize_role_value
+from models import UserRole
 
 # ISUP server manzili (default localhost:7670) — health/info uchun ichki URL
 
@@ -274,8 +280,12 @@ def _publish_attendance_event_redis(
     status: str,
     snapshot_url: Optional[str],
     psychological_state_key: Optional[str] = None,
+    psychological_state_confidence: Optional[float] = None,
+    emotion_scores: Optional[dict[str, float]] = None,
     psychological_state_uz: Optional[str] = None,
     psychological_state_ru: Optional[str] = None,
+    psychological_profile_uz: Optional[str] = None,
+    psychological_profile_ru: Optional[str] = None,
     psychological_state_source: Optional[str] = None,
     wellbeing_note_uz: Optional[str] = None,
     wellbeing_note_ru: Optional[str] = None,
@@ -295,8 +305,12 @@ def _publish_attendance_event_redis(
         "status": str(status or ""),
         "snapshot_url": str(snapshot_url or ""),
         "psychological_state_key": str(psychological_state_key or ""),
+        "psychological_state_confidence": float(psychological_state_confidence) if psychological_state_confidence is not None else None,
+        "emotion_scores": dict(emotion_scores or {}),
         "psychological_state_uz": str(psychological_state_uz or ""),
         "psychological_state_ru": str(psychological_state_ru or ""),
+        "psychological_profile_uz": str(psychological_profile_uz or ""),
+        "psychological_profile_ru": str(psychological_profile_ru or ""),
         "psychological_state_source": str(psychological_state_source or ""),
         "wellbeing_note_uz": str(wellbeing_note_uz or ""),
         "wellbeing_note_ru": str(wellbeing_note_ru or ""),
@@ -559,6 +573,94 @@ def _extract_face_presence_map(payload: dict) -> dict[str, bool]:
     return result
 
 
+def _extract_face_record_details(rows: list[dict[str, Any]]) -> tuple[list[dict[str, str]], int, int]:
+    details: list[dict[str, str]] = []
+    seen: set[str] = set()
+    face_records_with_url = 0
+    face_records_with_model_data = 0
+
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        raw_face = row.get("raw") if isinstance(row.get("raw"), dict) else {}
+        sources: list[dict[str, Any]] = [row]
+        if raw_face:
+            sources.append(raw_face)
+            for nested_key in ("EmployeeInfo", "UserInfo", "UserInfoDetail", "AcsEventInfo", "FaceInfo"):
+                nested = raw_face.get(nested_key)
+                if isinstance(nested, dict):
+                    sources.append(nested)
+
+        def _pick(*keys: str) -> str:
+            for src in sources:
+                for key in keys:
+                    if key not in src:
+                        continue
+                    val = src.get(key)
+                    if isinstance(val, dict):
+                        for dict_key in ("value", "employeeNo", "employeeNoString", "name", "id", "userID"):
+                            nested_val = val.get(dict_key)
+                            text = str(nested_val or "").strip()
+                            if text:
+                                return text
+                        continue
+                    text = str(val or "").strip()
+                    if text:
+                        return text
+            return ""
+
+        fpid = _pick("fpid", "FPID", "employeeNo", "employeeNoString", "personID", "personId", "userID", "userId")
+        if not fpid or fpid in seen:
+            continue
+        seen.add(fpid)
+
+        face_url = str(row.get("face_url") or "").strip()
+        if not face_url:
+            face_url = _pick(
+                "faceURL",
+                "faceUrl",
+                "pictureURL",
+                "pictureUrl",
+                "picUrl",
+                "picURL",
+                "imageURL",
+                "imageUrl",
+                "url",
+            )
+
+        model_data = _pick(
+            "modelData",
+            "model_data",
+            "faceModelData",
+            "face_model_data",
+            "pictureData",
+            "picture_data",
+            "imageData",
+            "image_data",
+            "faceData",
+            "face_data",
+            "photoData",
+            "photo_data",
+            "photo",
+        )
+
+        if face_url:
+            face_records_with_url += 1
+        if model_data:
+            face_records_with_model_data += 1
+
+        details.append(
+            {
+                "employeeNo": fpid,
+                "name": _pick("name", "employeeName", "personName", "userName"),
+                "face_url": face_url,
+                "model_data": model_data,
+            }
+        )
+
+    return details, face_records_with_url, face_records_with_model_data
+
+
 def _download_face_to_local(face_url: str, username: str, password: str) -> Optional[str]:
     url = str(face_url or "").strip()
     if not url:
@@ -808,8 +910,17 @@ def _extract_camera_payload_timestamp(payload: WebhookPayload) -> datetime:
 # ── GET /api/cameras — barcha kameralar ───────────────
 @router.get("/api/cameras")
 def list_cameras(request: Request, db: Session = Depends(get_db)):
-    cams = db.query(Device).order_by(Device.id).all()
-    base_url = _resolve_public_web_base_url(request)
+    scope = _resolve_camera_org_scope(request, db)
+    cams_query = db.query(Device)
+    if not bool(scope.get("is_super_admin")):
+        allowed_org_ids = list(scope.get("allowed_org_ids") or [])
+        cams_query = (
+            cams_query.filter(Device.organization_id.in_(allowed_org_ids))
+            if allowed_org_ids
+            else cams_query.filter(Device.id == -1)
+        )
+    cams = cams_query.order_by(Device.id).all()
+    event_base_url = _resolve_camera_event_push_base_url(request)
     now = now_tashkent()
     day_start, day_end = _today_local_range()
     isup_map, source = _get_live_isup_map()
@@ -866,7 +977,7 @@ def list_cameras(request: Request, db: Session = Depends(get_db)):
             "is_online": dynamic_online,
             "last_seen_at": c.last_seen_at.isoformat() if c.last_seen_at else None,
             "created_at": c.created_at.isoformat() if c.created_at else None,
-            "webhook_url": f"{base_url}/api/v1/httppost/",
+            "webhook_url": f"{event_base_url}/api/v1/httppost/" if event_base_url else "",
             "events_today": today_count,
             "today_attendance_count": today_count,
         })
@@ -877,6 +988,7 @@ def list_cameras(request: Request, db: Session = Depends(get_db)):
 # ── POST /api/cameras — yangi kamera qo'shish ─────────
 @router.post("/api/cameras")
 def add_camera(request: Request, data: CameraCreate, db: Session = Depends(get_db)):
+    _assert_camera_manage_access(request)
     name = (data.name or "").strip()
     if not name:
         raise HTTPException(status_code=400, detail="Kamera nomi majburiy")
@@ -954,21 +1066,26 @@ def add_camera(request: Request, data: CameraCreate, db: Session = Depends(get_d
     db.commit()
     db.refresh(cam)
     
-    # Siz ko'rsatgan tizim webhook manzili:
-    base_url = _resolve_public_web_base_url(request)
-    webhook_url = f"{base_url}/api/v1/httppost/"
-    
+    # Kamera event push URL alohida sozlama orqali beriladi.
+    event_base_url = _resolve_camera_event_push_base_url(request)
+    webhook_url = f"{event_base_url}/api/v1/httppost/" if event_base_url else ""
+
     return {
         "ok": True, 
         "id": cam.id, 
         "webhook_url": webhook_url,
-        "message": f"Kamera saqlandi. Sozlamalarga quyidagi URL ni yozing: {webhook_url}"
+        "message": (
+            f"Kamera saqlandi. Sozlamalarga quyidagi URL ni yozing: {webhook_url}"
+            if webhook_url
+            else "Kamera saqlandi. Avval Sozlamalar sahifasida Camera Event Push Base URL ni belgilang."
+        )
     }
 
 
 # ── DELETE /api/cameras/{id} ───────────────────────────
 @router.delete("/api/cameras/{cam_id}")
-def delete_camera(cam_id: int, db: Session = Depends(get_db)):
+def delete_camera(request: Request, cam_id: int, db: Session = Depends(get_db)):
+    _assert_camera_manage_access(request)
     cam = db.query(Device).filter(Device.id == cam_id).first()
     if not cam:
         raise HTTPException(status_code=404, detail="Kamera topilmadi")
@@ -978,7 +1095,8 @@ def delete_camera(cam_id: int, db: Session = Depends(get_db)):
 
 # ── PUT /api/cameras/{id} ─────────────────────────────
 @router.put("/api/cameras/{cam_id}")
-def update_camera(cam_id: int, data: CameraUpdate, db: Session = Depends(get_db)):
+def update_camera(request: Request, cam_id: int, data: CameraUpdate, db: Session = Depends(get_db)):
+    _assert_camera_manage_access(request)
     cam = db.query(Device).filter(Device.id == cam_id).first()
     if not cam:
         raise HTTPException(status_code=404, detail="Kamera topilmadi")
@@ -1053,14 +1171,22 @@ def camera_webhook(payload: WebhookPayload, db: Session = Depends(get_db)):
         source=payload.wellbeing_note_source,
     )
     photo_path = resolve_snapshot_path(payload.snapshot_url or "")
-    psychological_state_key = detect_psychological_state(photo_path)
-    psychological_state_uz, psychological_state_ru = state_labels(psychological_state_key)
+    psychological_profile = detect_psychological_profile(photo_path)
+    psychological_state_key = str(psychological_profile.get("state_key") or "")
+    psychological_state_uz = str(psychological_profile.get("state_uz") or "")
+    psychological_state_ru = str(psychological_profile.get("state_ru") or "")
+    psychological_state_confidence = psychological_profile.get("confidence")
+    emotion_scores = dict(psychological_profile.get("emotion_scores") or {})
+    psychological_profile_uz = str(psychological_profile.get("profile_text_uz") or "")
+    psychological_profile_ru = str(psychological_profile.get("profile_text_ru") or "")
 
     if employee is not None:
         upsert_daily_psychological_state(
             db,
             employee_id=int(employee.id),
             state_key=psychological_state_key,
+            confidence=psychological_state_confidence,
+            emotion_scores=emotion_scores,
             timestamp=ts,
             note=f"webhook:{device.mac_address or payload.camera_mac}",
             source="external_system",
@@ -1073,6 +1199,9 @@ def camera_webhook(payload: WebhookPayload, db: Session = Depends(get_db)):
         person_id=person_id or None,
         person_name=person_name,
         snapshot_url=(payload.snapshot_url or "").strip() or None,
+        psychological_state_key=psychological_state_key or None,
+        psychological_state_confidence=psychological_state_confidence,
+        emotion_scores_json=psychological_profile.get("emotion_scores_json") or None,
         wellbeing_note_uz=note_uz or None,
         wellbeing_note_ru=note_ru or None,
         wellbeing_note_source=note_source or None,
@@ -1096,8 +1225,12 @@ def camera_webhook(payload: WebhookPayload, db: Session = Depends(get_db)):
         status=log.status,
         snapshot_url=log.snapshot_url,
         psychological_state_key=psychological_state_key,
+        psychological_state_confidence=psychological_state_confidence,
+        emotion_scores=emotion_scores,
         psychological_state_uz=psychological_state_uz,
         psychological_state_ru=psychological_state_ru,
+        psychological_profile_uz=psychological_profile_uz,
+        psychological_profile_ru=psychological_profile_ru,
         psychological_state_source="external_system" if employee else "",
         wellbeing_note_uz=note_uz,
         wellbeing_note_ru=note_ru,
@@ -1110,15 +1243,20 @@ def camera_webhook(payload: WebhookPayload, db: Session = Depends(get_db)):
         "employee_found": employee is not None,
         "log_id": log.id,
         "psychological_state_key": psychological_state_key,
+        "psychological_state_confidence": psychological_state_confidence,
+        "emotion_scores": emotion_scores,
         "psychological_state_uz": psychological_state_uz,
         "psychological_state_ru": psychological_state_ru,
+        "psychological_profile_uz": psychological_profile_uz,
+        "psychological_profile_ru": psychological_profile_ru,
         "message": "Ma'lumot qabul qilindi",
     }
 
 
 # ── DELETE /api/cameras/{id} ───────────────────────────
 @router.delete("/api/cameras/{cam_id}")
-def delete_camera(cam_id: int, db: Session = Depends(get_db)):
+def delete_camera(request: Request, cam_id: int, db: Session = Depends(get_db)):
+    _assert_camera_manage_access(request)
     cam = db.query(Device).filter(Device.id == cam_id).first()
     if not cam:
         raise HTTPException(status_code=404, detail="Kamera topilmadi")
@@ -1128,7 +1266,8 @@ def delete_camera(cam_id: int, db: Session = Depends(get_db)):
 
 # ── PUT /api/cameras/{id} ─────────────────────────────
 @router.put("/api/cameras/{cam_id}")
-def update_camera(cam_id: int, data: CameraUpdate, db: Session = Depends(get_db)):
+def update_camera(request: Request, cam_id: int, data: CameraUpdate, db: Session = Depends(get_db)):
+    _assert_camera_manage_access(request)
     cam = db.query(Device).filter(Device.id == cam_id).first()
     if not cam:
         raise HTTPException(status_code=404, detail="Kamera topilmadi")
@@ -1203,14 +1342,22 @@ def camera_webhook(payload: WebhookPayload, db: Session = Depends(get_db)):
         source=payload.wellbeing_note_source,
     )
     photo_path = resolve_snapshot_path(payload.snapshot_url or "")
-    psychological_state_key = detect_psychological_state(photo_path)
-    psychological_state_uz, psychological_state_ru = state_labels(psychological_state_key)
+    psychological_profile = detect_psychological_profile(photo_path)
+    psychological_state_key = str(psychological_profile.get("state_key") or "")
+    psychological_state_uz = str(psychological_profile.get("state_uz") or "")
+    psychological_state_ru = str(psychological_profile.get("state_ru") or "")
+    psychological_state_confidence = psychological_profile.get("confidence")
+    emotion_scores = dict(psychological_profile.get("emotion_scores") or {})
+    psychological_profile_uz = str(psychological_profile.get("profile_text_uz") or "")
+    psychological_profile_ru = str(psychological_profile.get("profile_text_ru") or "")
 
     if employee is not None:
         upsert_daily_psychological_state(
             db,
             employee_id=int(employee.id),
             state_key=psychological_state_key,
+            confidence=psychological_state_confidence,
+            emotion_scores=emotion_scores,
             timestamp=ts,
             note=f"webhook:{device.mac_address or payload.camera_mac}",
             source="external_system",
@@ -1223,6 +1370,9 @@ def camera_webhook(payload: WebhookPayload, db: Session = Depends(get_db)):
         person_id=person_id or None,
         person_name=person_name,
         snapshot_url=(payload.snapshot_url or "").strip() or None,
+        psychological_state_key=psychological_state_key or None,
+        psychological_state_confidence=psychological_state_confidence,
+        emotion_scores_json=psychological_profile.get("emotion_scores_json") or None,
         wellbeing_note_uz=note_uz or None,
         wellbeing_note_ru=note_ru or None,
         wellbeing_note_source=note_source or None,
@@ -1246,8 +1396,12 @@ def camera_webhook(payload: WebhookPayload, db: Session = Depends(get_db)):
         status=log.status,
         snapshot_url=log.snapshot_url,
         psychological_state_key=psychological_state_key,
+        psychological_state_confidence=psychological_state_confidence,
+        emotion_scores=emotion_scores,
         psychological_state_uz=psychological_state_uz,
         psychological_state_ru=psychological_state_ru,
+        psychological_profile_uz=psychological_profile_uz,
+        psychological_profile_ru=psychological_profile_ru,
         psychological_state_source="external_system" if employee else "",
         wellbeing_note_uz=note_uz,
         wellbeing_note_ru=note_ru,
@@ -1260,8 +1414,12 @@ def camera_webhook(payload: WebhookPayload, db: Session = Depends(get_db)):
         "employee_found": employee is not None,
         "log_id": log.id,
         "psychological_state_key": psychological_state_key,
+        "psychological_state_confidence": psychological_state_confidence,
+        "emotion_scores": emotion_scores,
         "psychological_state_uz": psychological_state_uz,
         "psychological_state_ru": psychological_state_ru,
+        "psychological_profile_uz": psychological_profile_uz,
+        "psychological_profile_ru": psychological_profile_ru,
         "message": "Ma'lumot qabul qilindi"
     }
 
@@ -1332,7 +1490,8 @@ def _is_not_supported_error(detail: Any) -> bool:
     return any(marker in text for marker in markers)
 
 @router.post("/api/cameras/{cam_id}/command")
-def send_command(cam_id: int, payload: CommandPayload, db: Session = Depends(get_db)):
+def send_command(request: Request, cam_id: int, payload: CommandPayload, db: Session = Depends(get_db)):
+    _assert_camera_manage_access(request)
     if payload.command not in ALLOWED_COMMANDS:
         raise HTTPException(status_code=400, detail="Noto'g'ri buyruq")
     cam = db.query(Device).filter(Device.id == cam_id).first()
@@ -1386,12 +1545,19 @@ def send_command(cam_id: int, payload: CommandPayload, db: Session = Depends(get
             "message": f"ISUP orqali bugungi attendance soni: {today_attendance['count']} ta.",
         }
 
+    params = dict(payload.params or {})
+    if payload.command == "set_alarm_server":
+        params.setdefault("host", get_isup_public_host())
+        event_base_url = _resolve_camera_event_push_base_url(request)
+        if event_base_url and not params.get("camera_event_push_base_url") and not params.get("public_web_base_url"):
+            params["camera_event_push_base_url"] = event_base_url
+
     target_id, _, source = _resolve_online_command_target(cam)
 
     response = _send_isup_command_or_raise(
         target_id,
         payload.command,
-        payload.params or {},
+        params,
         timeout=10.0,
     )
 
@@ -1439,10 +1605,8 @@ def _collect_camera_users(target_id: str, *, limit: int = 500) -> list[dict]:
 
 
 @router.get("/api/cameras/{cam_id}/snapshot")
-def get_camera_snapshot(cam_id: int, db: Session = Depends(get_db)):
-    cam = db.query(Device).filter(Device.id == cam_id).first()
-    if not cam:
-        raise HTTPException(status_code=404, detail="Kamera topilmadi")
+def get_camera_snapshot(request: Request, cam_id: int, db: Session = Depends(get_db)):
+    cam, _ = _get_camera_for_request(request, db, cam_id)
 
     target_id, live_info, source = _resolve_online_command_target(cam)
     warnings: list[str] = []
@@ -1528,10 +1692,9 @@ def get_camera_snapshot(cam_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/api/cameras/{cam_id}/sync-metadata")
-def sync_camera_metadata(cam_id: int, db: Session = Depends(get_db)):
-    cam = db.query(Device).filter(Device.id == cam_id).first()
-    if not cam:
-        raise HTTPException(status_code=404, detail="Kamera topilmadi")
+def sync_camera_metadata(request: Request, cam_id: int, db: Session = Depends(get_db)):
+    _assert_camera_manage_access(request)
+    cam, _ = _get_camera_for_request(request, db, cam_id)
 
     target_id, _, source = _resolve_online_command_target(cam)
     info_response = _send_isup_command_or_raise(
@@ -1601,10 +1764,8 @@ def sync_camera_metadata(cam_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/api/cameras/{cam_id}/camera-users")
-def get_camera_users(cam_id: int, limit: int = 300, db: Session = Depends(get_db)):
-    cam = db.query(Device).filter(Device.id == cam_id).first()
-    if not cam:
-        raise HTTPException(status_code=404, detail="Kamera topilmadi")
+def get_camera_users(request: Request, cam_id: int, limit: int = 300, db: Session = Depends(get_db)):
+    cam, _ = _get_camera_for_request(request, db, cam_id)
     target_id, _, source = _resolve_online_command_target(cam)
     try:
         users = _collect_camera_users(target_id, limit=limit)
@@ -1673,6 +1834,9 @@ def import_camera_users_to_db(
     allow_camera_http_download: bool = True,
     face_import_mode: str = "if_missing",
     employee_type: Optional[str] = None,
+    only_with_face: bool = False,
+    prefer_face_records_only: bool = False,
+    progress_cb: Optional[Callable[[int, int, Optional[str], dict[str, Any]], None]] = None,
     db: Session = Depends(get_db),
 ):
     cam = db.query(Device).filter(Device.id == cam_id).first()
@@ -1680,10 +1844,116 @@ def import_camera_users_to_db(
         raise HTTPException(status_code=404, detail="Kamera topilmadi")
     target_id, _, source = _resolve_online_command_target(cam)
 
-    try:
-        users = _collect_camera_users(target_id, limit=limit)
-    except HTTPException as exc:
-        if _is_not_supported_error(exc.detail):
+    mode = str(face_import_mode or "if_missing").strip().lower()
+    if mode not in {"off", "if_missing", "overwrite"}:
+        raise HTTPException(status_code=422, detail="face_import_mode noto'g'ri (off/if_missing/overwrite)")
+    emp_type = str(employee_type or "").strip().lower() or None
+    if emp_type is not None and emp_type not in {"oquvchi", "oqituvchi", "hodim"}:
+        raise HTTPException(status_code=422, detail="employee_type noto'g'ri")
+
+    expected_face_count = 0
+    if only_with_face or prefer_face_records_only:
+        try:
+            count_resp = _send_isup_command_or_raise(
+                target_id,
+                "get_face_count",
+                {},
+                timeout=15.0,
+            )
+            expected_face_count = int(
+                count_resp.get("face_count")
+                or count_resp.get("bind_face_user_count")
+                or count_resp.get("fd_record_total")
+                or 0
+            )
+        except HTTPException:
+            expected_face_count = 0
+
+    if progress_cb is not None and (only_with_face or prefer_face_records_only):
+        try:
+            progress_cb(
+                0,
+                int(expected_face_count or 0),
+                None,
+                {
+                    "camera_id": int(cam.id),
+                    "camera_name": str(cam.name or f"Kamera #{cam.id}"),
+                    "created": 0,
+                    "updated": 0,
+                    "linked_to_camera": 0,
+                    "skipped": 0,
+                    "imported_users_total": int(expected_face_count or 0),
+                    "progress_note": "ISUP orqali face ro'yxati olinmoqda...",
+                },
+            )
+        except Exception:
+            pass
+
+    special_incremental_face_only = bool(prefer_face_records_only and mode == "off")
+    face_records_error: Optional[str] = None
+    face_records: list[dict[str, Any]] = []
+    face_record_details: list[dict[str, str]] = []
+    face_records_with_url = 0
+    face_records_with_model_data = 0
+    face_record_map: dict[str, dict[str, str]] = {}
+    if not special_incremental_face_only:
+        try:
+            face_records_timeout = 20.0
+            if only_with_face or prefer_face_records_only:
+                face_records_timeout = max(60.0, min(420.0, 30.0 + (expected_face_count / 12.0)))
+            face_records_resp = _send_isup_command_or_raise(
+                target_id,
+                "get_face_records",
+                {
+                    "all": True,
+                    "limit": limit,
+                    "include_media": mode != "off",
+                    "include_raw": mode != "off",
+                },
+                timeout=face_records_timeout,
+            )
+            face_records = face_records_resp.get("records", []) if isinstance(face_records_resp, dict) else []
+        except HTTPException as exc:
+            face_records = []
+            face_records_error = str(exc.detail)
+        if not isinstance(face_records, list):
+            face_records = []
+        face_record_details, face_records_with_url, face_records_with_model_data = _extract_face_record_details(face_records)
+        face_record_map = {
+            str(row.get("employeeNo") or "").strip(): row
+            for row in face_record_details
+            if str(row.get("employeeNo") or "").strip()
+        }
+
+    users: list[dict[str, Any]] = []
+    users_error: Optional[str] = None
+    if not prefer_face_records_only:
+        try:
+            users = _collect_camera_users(target_id, limit=limit)
+        except HTTPException as exc:
+            users_error = str(exc.detail)
+            if _is_not_supported_error(exc.detail) and not face_record_map:
+                return {
+                    "ok": True,
+                    "camera_id": cam.id,
+                    "camera_name": cam.name,
+                    "target_device_id": target_id,
+                    "isup_source": source,
+                    "unsupported": True,
+                    "imported_users_total": 0,
+                    "created": 0,
+                    "updated": 0,
+                    "skipped": 0,
+                    "faces_downloaded": 0,
+                    "allow_camera_http_download": allow_camera_http_download,
+                    "face_records_error": str(exc.detail),
+                    "message": "Bu kamera modeli import funksiyasini qo'llamaydi (notsupport).",
+                }
+            if not only_with_face:
+                raise
+
+    if (only_with_face or prefer_face_records_only) and not face_record_map:
+        if face_records_error and _is_not_supported_error(face_records_error):
             return {
                 "ok": True,
                 "camera_id": cam.id,
@@ -1697,96 +1967,22 @@ def import_camera_users_to_db(
                 "skipped": 0,
                 "faces_downloaded": 0,
                 "allow_camera_http_download": allow_camera_http_download,
-                "face_records_error": str(exc.detail),
-                "message": "Bu kamera modeli import funksiyasini qo'llamaydi (notsupport).",
+                "face_records_error": face_records_error,
+                "message": "Bu kamera modeli face record import funksiyasini qo'llamaydi.",
             }
-        raise
-    face_records_error: Optional[str] = None
-    try:
-        face_records_resp = _send_isup_command_or_raise(
-            target_id,
-            "get_face_records",
-            {"all": True, "limit": limit},
-            timeout=20.0,
-        )
-        face_records = face_records_resp.get("records", []) if isinstance(face_records_resp, dict) else []
-    except HTTPException as exc:
-        face_records = []
-        face_records_error = str(exc.detail)
-    face_record_map: dict[str, dict[str, str]] = {}
-    face_records_with_url = 0
-    face_records_with_model_data = 0
-    for row in face_records:
-        if not isinstance(row, dict):
-            continue
-        fpid = str(row.get("fpid") or "").strip()
-        if not fpid or fpid in face_record_map:
-            continue
-        raw_face = row.get("raw") if isinstance(row.get("raw"), dict) else {}
-
-        face_url = str(row.get("face_url") or "").strip()
-        if not face_url and isinstance(raw_face, dict):
-            face_url = _pick_first_nonempty(
-                raw_face,
-                (
-                    "faceURL",
-                    "faceUrl",
-                    "pictureURL",
-                    "pictureUrl",
-                    "picUrl",
-                    "picURL",
-                    "imageURL",
-                    "imageUrl",
-                    "url",
-                ),
-            ) or ""
-
-        model_data = ""
-        if isinstance(raw_face, dict):
-            model_data = _pick_first_nonempty(
-                raw_face,
-                (
-                    "modelData",
-                    "model_data",
-                    "faceModelData",
-                    "face_model_data",
-                    "pictureData",
-                    "picture_data",
-                    "imageData",
-                    "image_data",
-                    "faceData",
-                    "face_data",
-                    "photoData",
-                    "photo_data",
-                    "photo",
-                ),
-            ) or ""
-
-        if face_url:
-            face_records_with_url += 1
-        if model_data:
-            face_records_with_model_data += 1
-
-        face_record_map[fpid] = {
-            "face_url": face_url,
-            "model_data": model_data,
-        }
+        if face_records_error:
+            raise HTTPException(status_code=502, detail=f"Face recordlarni olishda xatolik: {face_records_error}")
 
     face_caps = _read_face_capabilities(target_id)
     supports_fdsearch_data_package = bool(face_caps.get("isSupportFDSearchDataPackage") is True)
 
-    mode = str(face_import_mode or "if_missing").strip().lower()
-    if mode not in {"off", "if_missing", "overwrite"}:
-        raise HTTPException(status_code=422, detail="face_import_mode noto'g'ri (off/if_missing/overwrite)")
-    emp_type = str(employee_type or "").strip().lower() or None
-    if emp_type is not None and emp_type not in {"oquvchi", "oqituvchi", "hodim"}:
-        raise HTTPException(status_code=422, detail="employee_type noto'g'ri")
-
     created = 0
     updated = 0
     skipped = 0
+    existing = 0
     downloaded_faces = 0
     linked_to_camera = 0
+    already_linked = 0
     faces_camera_download_failed = 0
     faces_model_data_not_image = 0
     faces_model_data_save_failed = 0
@@ -1798,16 +1994,56 @@ def import_camera_users_to_db(
         .filter(EmployeeCameraLink.camera_id == cam.id)
         .all()
     }
+    total_users = max(0, min(int(limit), int(expected_face_count or 0)))
 
-    for row in users:
+    def _emit_progress(done: int, current_personal_id: Optional[str] = None) -> None:
+        if progress_cb is None:
+            return
+        try:
+            progress_cb(
+                int(done),
+                int(total_users),
+                current_personal_id,
+                {
+                    "camera_id": int(cam.id),
+                    "camera_name": str(cam.name or f"Kamera #{cam.id}"),
+                    "created": int(created),
+                    "updated": int(updated),
+                    "existing": int(existing),
+                    "linked_to_camera": int(linked_to_camera),
+                    "already_linked": int(already_linked),
+                    "skipped": int(skipped),
+                    "imported_users_total": int(total_users),
+                    "progress_note": "",
+                },
+            )
+        except Exception:
+            return
+
+    def _process_candidate_row(row: dict[str, Any]) -> Optional[str]:
+        nonlocal created, updated, skipped, existing, downloaded_faces, linked_to_camera, already_linked
+        nonlocal faces_camera_download_failed, faces_model_data_not_image
+        nonlocal faces_model_data_save_failed, faces_isup_direct_downloaded
+
         employee_no = str(row.get("employeeNo") or "").strip()
         full_name = str(row.get("name") or "").strip()
         if not employee_no:
             skipped += 1
-            continue
+            return None
+
+        has_face = bool(row.get("_has_face"))
+        if only_with_face and not has_face:
+            skipped += 1
+            return employee_no
 
         first_name, last_name = _split_full_name(full_name)
         emp = db.query(Employee).filter(Employee.personal_id == employee_no).first()
+        if emp is not None and not full_name:
+            full_name = f"{str(emp.first_name or '').strip()} {str(emp.last_name or '').strip()}".strip()
+            first_name, last_name = _split_full_name(full_name)
+        if not first_name and not last_name:
+            first_name = employee_no
+            last_name = ""
         if emp is None:
             emp = Employee(
                 first_name=first_name,
@@ -1818,10 +2054,10 @@ def import_camera_users_to_db(
                 employee_type=emp_type,
             )
             db.add(emp)
-            # Ensure PK is available before creating camera link for imported user.
             db.flush()
             created += 1
         else:
+            existing += 1
             changed = False
             if first_name and emp.first_name != first_name:
                 emp.first_name = first_name
@@ -1839,10 +2075,11 @@ def import_camera_users_to_db(
             db.add(EmployeeCameraLink(employee_id=int(emp.id), camera_id=int(cam.id)))
             existing_links.add(int(emp.id))
             linked_to_camera += 1
+        else:
+            already_linked += 1
 
-        face_row = face_record_map.get(employee_no) or {}
-        face_url = str(face_row.get("face_url") or "")
-        model_data = str(face_row.get("model_data") or "")
+        face_url = str(row.get("face_url") or "")
+        model_data = str(row.get("model_data") or "")
         should_import_face = mode != "off" and (mode == "overwrite" or not emp.image_url)
         image_url = None
         if should_import_face:
@@ -1886,6 +2123,92 @@ def import_camera_users_to_db(
                 emp.image_url = image_url
                 downloaded_faces += 1
 
+        return employee_no
+
+    _emit_progress(0)
+    processed_count = 0
+    face_records_total = 0
+
+    if special_incremental_face_only:
+        total_users = max(0, min(int(limit), int(expected_face_count or limit)))
+        offset = 0
+        while processed_count < int(limit):
+            remaining = max(1, min(int(limit) - processed_count, 200))
+            try:
+                page_resp = _send_isup_command_or_raise(
+                    target_id,
+                    "get_face_records",
+                    {
+                        "all": False,
+                        "limit": remaining,
+                        "max_results": 30,
+                        "searchResultPosition": offset,
+                        "include_media": False,
+                        "include_raw": False,
+                    },
+                    timeout=45.0,
+                )
+            except HTTPException as exc:
+                face_records_error = str(exc.detail)
+                raise HTTPException(status_code=502, detail=f"Face recordlarni olishda xatolik: {face_records_error}")
+
+            page_rows = page_resp.get("records", []) if isinstance(page_resp, dict) else []
+            if not isinstance(page_rows, list) or not page_rows:
+                break
+            total_matches = int(page_resp.get("total_matches") or total_users or 0)
+            if total_matches > 0:
+                total_users = min(int(limit), total_matches)
+
+            page_details, page_url_count, page_model_count = _extract_face_record_details(page_rows)
+            face_records_with_url += page_url_count
+            face_records_with_model_data += page_model_count
+            if not page_details:
+                break
+
+            for row in page_details:
+                row["_has_face"] = True
+                current_personal_id = _process_candidate_row(row)
+                processed_count += 1
+                face_records_total += 1
+                _emit_progress(processed_count, current_personal_id)
+                if processed_count >= int(limit):
+                    break
+
+            offset += len(page_rows)
+            if total_users > 0 and offset >= total_users:
+                break
+    else:
+        candidate_rows: list[dict[str, Any]] = []
+        if prefer_face_records_only:
+            candidate_rows = [{**row, "_has_face": True} for row in face_record_details]
+        else:
+            for row in users:
+                if not isinstance(row, dict):
+                    continue
+                employee_no = str(row.get("employeeNo") or "").strip()
+                if not employee_no:
+                    continue
+                if only_with_face and employee_no not in face_record_map:
+                    continue
+                merged = dict(row)
+                face_meta = face_record_map.get(employee_no) or {}
+                if face_meta:
+                    merged.setdefault("face_url", face_meta.get("face_url") or "")
+                    merged.setdefault("model_data", face_meta.get("model_data") or "")
+                    if not str(merged.get("name") or "").strip():
+                        merged["name"] = str(face_meta.get("name") or "").strip()
+                    merged["_has_face"] = True
+                else:
+                    merged["_has_face"] = False
+                candidate_rows.append(merged)
+
+        total_users = len(candidate_rows)
+        for idx, row in enumerate(candidate_rows, start=1):
+            current_personal_id = _process_candidate_row(row)
+            processed_count = idx
+            _emit_progress(idx, current_personal_id)
+        face_records_total = len(face_records)
+
     try:
         db.commit()
     except Exception as exc:
@@ -1915,13 +2238,15 @@ def import_camera_users_to_db(
         "camera_name": cam.name,
         "target_device_id": target_id,
         "isup_source": source,
-        "imported_users_total": len(users),
+        "imported_users_total": total_users,
         "created": created,
         "updated": updated,
+        "existing": existing,
         "skipped": skipped,
         "linked_to_camera": linked_to_camera,
+        "already_linked": already_linked,
         "faces_downloaded": downloaded_faces,
-        "face_records_total": len(face_records),
+        "face_records_total": face_records_total,
         "face_records_with_url": face_records_with_url,
         "face_records_with_model_data": face_records_with_model_data,
         "supports_fdsearch_data_package": supports_fdsearch_data_package,
@@ -1931,11 +2256,16 @@ def import_camera_users_to_db(
         "faces_isup_direct_downloaded": faces_isup_direct_downloaded,
         "allow_camera_http_download": allow_camera_http_download,
         "face_import_mode": mode,
+        "only_with_face": bool(only_with_face),
+        "prefer_face_records_only": bool(prefer_face_records_only),
         "face_records_error": face_records_error,
+        "users_error": users_error,
+        "expected_face_count": expected_face_count,
         "diagnostics": diagnostics,
         "message": (
             f"Kameradan bazaga import yakunlandi: {created} yangi, {updated} yangilandi, "
             f"{linked_to_camera} kamera-bog'lanish yaratildi, {downloaded_faces} rasm olindi."
+            + (" Faqat face biriktirilgan foydalanuvchilar import qilindi." if only_with_face or prefer_face_records_only else "")
         ),
     }
 
@@ -1985,6 +2315,52 @@ async def add_user_to_camera(
         "response": response,
         "message": f"{data.first_name} {data.last_name} (ID: {pid}) — '{cam.name}' kamerasiga yuborildi!",
     }
+
+
+@router.post("/api/cameras/{cam_id}/sync-employee")
+async def sync_employee_to_camera(
+    request: Request,
+    cam_id: int,
+    employee_id: int = Form(...),
+    db: Session = Depends(get_db),
+):
+    with open(r"C:\Users\Izzatbek\Documents\FaceX\TRACER_SYNC.txt", "a") as f:
+        f.write(f"Direct sync hit for cam_id={cam_id}, emp_id={employee_id}\n")
+    cam = db.query(Device).filter(Device.id == cam_id).first()
+    if not cam:
+        raise HTTPException(status_code=404, detail="Kamera topilmadi")
+
+    employee = db.query(Employee).filter(Employee.id == employee_id).first()
+    if not employee:
+        raise HTTPException(status_code=404, detail="Xodim topilmadi")
+
+    target_id, _, _ = _resolve_online_command_target(cam)
+    
+    # Add link if not exists
+    if not db.query(EmployeeCameraLink).filter(
+        EmployeeCameraLink.camera_id == cam.id,
+        EmployeeCameraLink.employee_id == employee.id
+    ).first():
+        db.add(EmployeeCameraLink(camera_id=cam.id, employee_id=employee.id))
+        db.commit()
+
+    # Push to camera
+    public_base = _resolve_public_web_base_url(request)
+    face_url = f"{public_base}{employee.image_url}" if employee.image_url else None
+    
+    response = await asyncio.to_thread(
+        _push_camera_user_and_face_sync,
+        target_id=target_id,
+        first_name=employee.first_name,
+        last_name=employee.last_name,
+        personal_id=employee.personal_id,
+        face_b64=None,
+        face_mime=None,
+        face_url=face_url,
+        camera_label=str(cam.name or ""),
+    )
+    
+    return {"ok": True, "message": "Sinxronizatsiya boshlandi"}
 
 
 # ── GET /api/cameras/by-org/{org_id} ─────────────────────────────
@@ -2242,8 +2618,14 @@ async def add_user_to_camera_with_image(
 
 
 @router.get("/api/cameras/by-org/{org_id}")
-def cameras_by_org(org_id: int, db: Session = Depends(get_db)):
+def cameras_by_org(request: Request, org_id: int, db: Session = Depends(get_db)):
     """Return cameras belonging to a specific organization."""
+    scope = _resolve_camera_org_scope(request, db)
+    if not bool(scope.get("is_super_admin")):
+        allowed_org_ids = list(scope.get("allowed_org_ids") or [])
+        if org_id not in allowed_org_ids:
+            return []
+
     now = now_tashkent()
     isup_map, source = _get_live_isup_map()
     isup_available = source != "unavailable"
@@ -2526,6 +2908,54 @@ def _resolve_attendance_org_scope(request: Request, db: Session) -> dict[str, An
         "allowed_org_ids": allowed_org_ids,
         "pending_org_names": pending_org_names,
     }
+
+
+def _request_is_super_admin(request: Request) -> bool:
+    auth_user = request.session.get("auth_user") or {}
+    return normalize_role_value(auth_user.get("role")) == UserRole.super_admin.value
+
+
+def _resolve_camera_org_scope(request: Request, db: Session) -> dict[str, Any]:
+    if _request_is_super_admin(request):
+        allowed_org_ids = [
+            int(row.id)
+            for row in db.query(Organization.id).all()
+            if getattr(row, "id", None) is not None
+        ]
+        return {
+            "is_super_admin": True,
+            "allowed_org_ids": allowed_org_ids,
+        }
+
+    scope = _resolve_attendance_org_scope(request, db)
+    return {
+        "is_super_admin": False,
+        "allowed_org_ids": list(scope.get("allowed_org_ids") or []),
+        "pending_org_names": list(scope.get("pending_org_names") or []),
+    }
+
+
+def _assert_camera_manage_access(request: Request) -> None:
+    if not _request_is_super_admin(request):
+        raise HTTPException(
+            status_code=403,
+            detail="Kamera boshqaruvi faqat asosiy administrator uchun ruxsat etilgan",
+        )
+
+
+def _get_camera_for_request(request: Request, db: Session, cam_id: int) -> tuple[Device, dict[str, Any]]:
+    scope = _resolve_camera_org_scope(request, db)
+    query = db.query(Device).filter(Device.id == cam_id)
+    if not bool(scope.get("is_super_admin")):
+        allowed_org_ids = list(scope.get("allowed_org_ids") or [])
+        if not allowed_org_ids:
+            raise HTTPException(status_code=404, detail="Kamera topilmadi")
+        query = query.filter(Device.organization_id.in_(allowed_org_ids))
+
+    cam = query.first()
+    if not cam:
+        raise HTTPException(status_code=404, detail="Kamera topilmadi")
+    return cam, scope
 
 
 @router.get("/api/attendance/filter-data")
@@ -3252,6 +3682,112 @@ def _format_export_dt(value: Optional[str]) -> str:
         return str(value)
 
 
+def _format_export_time(value: Optional[str]) -> str:
+    if not value:
+        return ""
+    try:
+        return datetime.fromisoformat(str(value)).strftime("%H:%M:%S")
+    except Exception:
+        return str(value)
+
+
+def _xlsx_column_name(index: int) -> str:
+    name = ""
+    while index > 0:
+        index, remainder = divmod(index - 1, 26)
+        name = chr(65 + remainder) + name
+    return name or "A"
+
+
+def _xlsx_text(value: Any) -> str:
+    text = "" if value is None else str(value)
+    text = re.sub(r"[\x00-\x08\x0B\x0C\x0E-\x1F]", "", text)
+    return xml_escape(text)
+
+
+def _build_simple_xlsx(
+    headers: list[str],
+    rows: list[list[Any]],
+    sheet_name: str = "Davomat",
+) -> bytes:
+    table_rows = [headers, *rows]
+    sheet_rows = []
+    for row_index, row in enumerate(table_rows, start=1):
+        cells = []
+        for column_index, value in enumerate(row, start=1):
+            cell_ref = f"{_xlsx_column_name(column_index)}{row_index}"
+            cells.append(
+                f'<c r="{cell_ref}" t="inlineStr"><is><t>{_xlsx_text(value)}</t></is></c>'
+            )
+        sheet_rows.append(f'<row r="{row_index}">{"".join(cells)}</row>')
+
+    sheet_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+        f'<sheetData>{"".join(sheet_rows)}</sheetData>'
+        '</worksheet>'
+    )
+    workbook_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+        'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+        f'<sheets><sheet name="{_xlsx_text(sheet_name)[:31]}" sheetId="1" r:id="rId1"/></sheets>'
+        '</workbook>'
+    )
+    workbook_rels = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        '<Relationship Id="rId1" '
+        'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" '
+        'Target="worksheets/sheet1.xml"/>'
+        '<Relationship Id="rId2" '
+        'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" '
+        'Target="styles.xml"/>'
+        '</Relationships>'
+    )
+    package_rels = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        '<Relationship Id="rId1" '
+        'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" '
+        'Target="xl/workbook.xml"/>'
+        '</Relationships>'
+    )
+    content_types = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+        '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+        '<Default Extension="xml" ContentType="application/xml"/>'
+        '<Override PartName="/xl/workbook.xml" '
+        'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+        '<Override PartName="/xl/worksheets/sheet1.xml" '
+        'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+        '<Override PartName="/xl/styles.xml" '
+        'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
+        '</Types>'
+    )
+    styles_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+        '<fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts>'
+        '<fills count="1"><fill><patternFill patternType="none"/></fill></fills>'
+        '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'
+        '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
+        '<cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs>'
+        '</styleSheet>'
+    )
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("[Content_Types].xml", content_types)
+        archive.writestr("_rels/.rels", package_rels)
+        archive.writestr("xl/workbook.xml", workbook_xml)
+        archive.writestr("xl/_rels/workbook.xml.rels", workbook_rels)
+        archive.writestr("xl/worksheets/sheet1.xml", sheet_xml)
+        archive.writestr("xl/styles.xml", styles_xml)
+    return buffer.getvalue()
+
+
 @router.get("/api/attendance/groups/export/excel")
 def export_attendance_groups_excel(
     request: Request,
@@ -3276,39 +3812,35 @@ def export_attendance_groups_excel(
         day=day,
     )
 
-    buffer = io.StringIO()
-    writer = csv.writer(buffer)
-    writer.writerow([
+    headers = [
         "#",
-        "Sana",
-        "Birinchi vaqt",
-        "Oxirgi vaqt",
         "Xodim",
         "Shaxsiy ID",
+        "Kelgan vaqti",
+        "Birinchi vaqti",
         "Tashkilot",
         "Kameralar soni",
         "O'tish soni",
         "Status",
-    ])
+    ]
+    export_rows = []
     for idx, row in enumerate(items, start=1):
-        writer.writerow([
+        export_rows.append([
             idx,
-            row.get("event_date") or "",
-            _format_export_dt(row.get("first_timestamp")),
-            _format_export_dt(row.get("latest_timestamp")),
             row.get("employee_name") or "",
             row.get("personal_id") or "",
+            _format_export_time(row.get("latest_timestamp")),
+            _format_export_time(row.get("first_timestamp")),
             row.get("organization_name") or "",
             row.get("camera_count") or 0,
             row.get("visit_count") or 0,
             row.get("status") or "",
         ])
 
-    filename = f"attendance_{now_tashkent().strftime('%Y%m%d_%H%M%S')}.csv"
-    csv_content = "\ufeff" + buffer.getvalue()
+    filename = f"attendance_{now_tashkent().strftime('%Y%m%d_%H%M%S')}.xlsx"
     return Response(
-        content=csv_content,
-        media_type="text/csv; charset=utf-8",
+        content=_build_simple_xlsx(headers, export_rows),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
@@ -3972,6 +4504,27 @@ async def hik_event_webhook(request: Request, db: Session = Depends(get_db)):
       yoki Event → Basic Event → Alarm Linkage → HTTP Push
     URL: https://example.com/api/v1/httppost/
     """
+    # ── RAW LOGGER: Kamera yuborayotgan haqiqiy so'rovni qayd qilamiz ──
+    try:
+        import datetime as _dt
+        _raw_body = await request.body()
+        _log_path = "C:/Users/Izzatbek/Documents/FaceX/CAMERA_RAW_LOG.txt"
+        with open(_log_path, "a", encoding="utf-8", errors="replace") as _lf:
+            _lf.write(f"\n{'='*70}\n")
+            _lf.write(f"[{_dt.datetime.now().isoformat()}] HIK-EVENT REQUEST\n")
+            _lf.write(f"Method : {request.method}\n")
+            _lf.write(f"URL    : {request.url}\n")
+            _lf.write(f"Client : {request.client}\n")
+            for _hk, _hv in request.headers.items():
+                _lf.write(f"Header : {_hk}: {_hv}\n")
+            _lf.write(f"Body({len(_raw_body)} bytes):\n")
+            # Rasm bo'lmagan qismini text sifatida yozamiz (max 4KB)
+            _body_preview = _raw_body[:4096]
+            _lf.write(_body_preview.decode("utf-8", errors="replace"))
+            _lf.write("\n")
+    except Exception as _log_exc:
+        print(f"[HIK-EVENT] log xatosi: {_log_exc}")
+
     content_type = (request.headers.get("content-type", "") or "").lower()
     xml_text = ""
     json_payload: Any = None
@@ -3998,7 +4551,7 @@ async def hik_event_webhook(request: Request, db: Session = Depends(get_db)):
         "picdata",
     }
 
-    body = await request.body()
+    body = _raw_body  # Already read in logger above
 
     if "multipart" in content_type:
         boundary = b""
@@ -4244,8 +4797,14 @@ async def hik_event_webhook(request: Request, db: Session = Depends(get_db)):
         device.last_seen_at = now_tashkent()
 
     if not is_dup:
-        psychological_state_key = detect_psychological_state(resolve_snapshot_path(snap_url))
-        psychological_state_uz, psychological_state_ru = state_labels(psychological_state_key)
+        psychological_profile = detect_psychological_profile(resolve_snapshot_path(snap_url))
+        psychological_state_key = str(psychological_profile.get("state_key") or "")
+        psychological_state_uz = str(psychological_profile.get("state_uz") or "")
+        psychological_state_ru = str(psychological_profile.get("state_ru") or "")
+        psychological_state_confidence = psychological_profile.get("confidence")
+        emotion_scores = dict(psychological_profile.get("emotion_scores") or {})
+        psychological_profile_uz = str(psychological_profile.get("profile_text_uz") or "")
+        psychological_profile_ru = str(psychological_profile.get("profile_text_ru") or "")
         new_log = AttendanceLog(
             employee_id=emp.id if emp else None,
             device_id=device.id if device else None,
@@ -4253,6 +4812,9 @@ async def hik_event_webhook(request: Request, db: Session = Depends(get_db)):
             person_id=person_id_val,
             person_name=person_name_val,
             snapshot_url=snap_url,
+            psychological_state_key=psychological_state_key or None,
+            psychological_state_confidence=psychological_state_confidence,
+            emotion_scores_json=psychological_profile.get("emotion_scores_json") or None,
             wellbeing_note_uz=note_uz or None,
             wellbeing_note_ru=note_ru or None,
             wellbeing_note_source=note_source or None,
@@ -4265,6 +4827,8 @@ async def hik_event_webhook(request: Request, db: Session = Depends(get_db)):
                 db,
                 employee_id=int(emp.id),
                 state_key=psychological_state_key,
+                confidence=psychological_state_confidence,
+                emotion_scores=emotion_scores,
                 timestamp=ts_event,
                 note=f"hik_event:{device.mac_address if device else (camera_mac or camera_serial)}",
                 source="external_system",
@@ -4283,8 +4847,12 @@ async def hik_event_webhook(request: Request, db: Session = Depends(get_db)):
             status=new_log.status,
             snapshot_url=snap_url,
             psychological_state_key=psychological_state_key,
+            psychological_state_confidence=psychological_state_confidence,
+            emotion_scores=emotion_scores,
             psychological_state_uz=psychological_state_uz,
             psychological_state_ru=psychological_state_ru,
+            psychological_profile_uz=psychological_profile_uz,
+            psychological_profile_ru=psychological_profile_ru,
             psychological_state_source="external_system" if emp else "",
             wellbeing_note_uz=note_uz,
             wellbeing_note_ru=note_ru,

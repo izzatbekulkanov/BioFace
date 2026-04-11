@@ -1,5 +1,6 @@
 (function () {
     const organizationNames = window.__DEVICE_ORGS__ || {};
+    const permissions = window.__DEVICE_PERMISSIONS__ || {};
     const state = { cameras: [], filtered: [], page: 1, pageSize: 50 };
 
     function $(id) { return document.getElementById(id); }
@@ -118,124 +119,194 @@
             button.textContent = String(item);
             button.addEventListener("click", () => {
                 state.page = Number(item);
-                renderTable();
+                renderCards();
             });
             numbers.appendChild(button);
         });
     }
 
     function attachDeleteHandlers() {
-        $("cam-table-body").querySelectorAll("[data-delete-id]").forEach((button) => {
+        const cards = $("cam-cards");
+        if (!cards) return;
+        cards.querySelectorAll("[data-delete-id]").forEach((button) => {
             button.addEventListener("click", () => deleteCamera(button.dataset.deleteId, button.dataset.deleteName));
         });
     }
 
-    function renderEmptyTable() {
-        $("cam-table-body").innerHTML = `
-            <tr>
-                <td colspan="10" class="px-4 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
-                    <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500">
-                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-                        </svg>
-                    </div>
-                    Qidiruvga mos kamera topilmadi.
-                </td>
-            </tr>
+    function renderEmptyCards() {
+        $("cam-cards").innerHTML = `
+            <div class="rounded-[24px] border border-dashed border-gray-300 bg-gray-50 px-6 py-12 text-center text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-400 sm:col-span-2 xl:col-span-3 2xl:col-span-4">
+                <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-gray-400 shadow-sm dark:bg-gray-800 dark:text-gray-500">
+                    <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                    </svg>
+                </div>
+                Qidiruvga mos kamera topilmadi.
+            </div>
         `;
         renderPagination();
     }
 
-    function cameraRow(camera, absoluteIndex) {
-        const percent = usedPercent(camera);
-        const tone = usageTone(percent);
-        const orgName = organizationNames[String(camera.organization_id)] || "Biriktirilmagan";
-        const statusClass = camera.is_online
-            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
-            : "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300";
-        const barClass = tone === "rose" ? "bg-rose-500" : (tone === "amber" ? "bg-amber-500" : "bg-blue-500");
-
+    function actionButton({ href, title, tone, icon, dataDeleteId, dataDeleteName }) {
+        const toneClasses = {
+            blue: "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-300",
+            emerald: "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-300",
+            amber: "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-300",
+            rose: "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:border-rose-900/40 dark:bg-rose-900/20 dark:text-rose-300",
+        };
+        const sharedClass = `inline-flex h-10 w-10 items-center justify-center rounded-xl border transition ${toneClasses[tone] || toneClasses.blue}`;
+        if (href) {
+            return `
+                <a href="${href}" class="${sharedClass}" title="${title}">
+                    ${icon}
+                </a>
+            `;
+        }
         return `
-            <tr class="align-top hover:bg-gray-50/80 dark:hover:bg-gray-800/40">
-                <td class="px-4 py-3 text-center text-sm font-semibold text-gray-500 dark:text-gray-400">${absoluteIndex}</td>
-                <td class="px-4 py-3">
-                    <div class="min-w-[13rem]">
-                        <div class="font-semibold text-gray-900 dark:text-white">${escapeHtml(camera.name || "-")}</div>
-                        <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">${escapeHtml(camera.location || "Lokatsiya ko'rsatilmagan")}</div>
-                    </div>
-                </td>
-                <td class="px-4 py-3">
-                    <span class="inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-200">${escapeHtml(orgName)}</span>
-                </td>
-                <td class="px-4 py-3">
-                    <div class="min-w-[12rem] space-y-1">
-                        <div class="rounded-lg bg-gray-50 px-2 py-1 font-mono text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-200">${escapeHtml(camera.isup_device_id || "Device ID yo'q")}</div>
-                        <div class="font-mono text-xs text-gray-500 dark:text-gray-400">${escapeHtml(camera.mac_address || "-")}</div>
-                    </div>
-                </td>
-                <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-200">${escapeHtml(camera.model || "-")}</td>
-                <td class="px-4 py-3">
-                    <span class="inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass}">
-                        <span class="h-2 w-2 rounded-full ${camera.is_online ? "bg-emerald-500" : "bg-rose-500"}"></span>
-                        ${camera.is_online ? "Faol" : "Offline"}
-                    </span>
-                </td>
-                <td class="px-4 py-3">
-                    <div class="min-w-[11rem]">
-                        <div class="mb-1 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                            <span>${Number(camera.used_faces || 0)} / ${Number(camera.max_memory || 0)}</span>
-                            <span>${percent}%</span>
-                        </div>
-                        <div class="h-2 rounded-full bg-gray-100 dark:bg-gray-800">
-                            <div class="h-2 rounded-full ${barClass}" style="width:${percent}%"></div>
-                        </div>
-                    </div>
-                </td>
-                <td class="px-4 py-3">
-                    <div class="text-sm font-semibold text-gray-900 dark:text-white">${Number(camera.events_today || 0)}</div>
-                    <div class="text-xs text-gray-500 dark:text-gray-400">bugungi hodisa</div>
-                </td>
-                <td class="px-4 py-3">
-                    <div class="min-w-[10rem] text-sm text-gray-700 dark:text-gray-200">${escapeHtml(formatDate(camera.last_seen_at))}</div>
-                    <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">Qo'shilgan: ${escapeHtml(formatDate(camera.created_at))}</div>
-                </td>
-                <td class="px-4 py-3">
-                    <div class="flex justify-end gap-2">
-                        <a href="/camera-info?id=${camera.id}" class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-700 transition hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-300" title="Batafsil">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                        </a>
-                        <a href="/commands?cam=${camera.id}" class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-300" title="Buyruqlar">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                            </svg>
-                        </a>
-                        <a href="/devices/edit?id=${camera.id}" class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-amber-200 bg-amber-50 text-amber-700 transition hover:bg-amber-100 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-300" title="Tahrirlash">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-                            </svg>
-                        </a>
-                        <button type="button" data-delete-id="${camera.id}" data-delete-name="${escapeHtml(camera.name || "Kamera")}" class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100 dark:border-rose-900/40 dark:bg-rose-900/20 dark:text-rose-300" title="O'chirish">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                            </svg>
-                        </button>
-                    </div>
-                </td>
-            </tr>
+            <button
+                type="button"
+                data-delete-id="${dataDeleteId}"
+                data-delete-name="${dataDeleteName}"
+                class="${sharedClass}"
+                title="${title}"
+            >
+                ${icon}
+            </button>
         `;
     }
 
-    function renderTable() {
+    function cameraCard(camera, absoluteIndex) {
+        const percent = usedPercent(camera);
+        const tone = usageTone(percent);
+        const orgName = organizationNames[String(camera.organization_id)] || "Biriktirilmagan";
+        const online = Boolean(camera.is_online);
+        const statusClass = online
+            ? "bg-emerald-100 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:ring-emerald-900/40"
+            : "bg-rose-100 text-rose-700 ring-rose-200 dark:bg-rose-900/30 dark:text-rose-300 dark:ring-rose-900/40";
+        const progressClass = tone === "rose" ? "bg-rose-500" : (tone === "amber" ? "bg-amber-500" : "bg-blue-500");
+        const topGlow = online
+            ? "from-emerald-500 via-cyan-500 to-blue-500"
+            : "from-rose-500 via-orange-500 to-amber-500";
+        const manageAllowed = Boolean(permissions.canManage);
+        const detailButton = actionButton({
+            href: `/camera-info?id=${camera.id}`,
+            title: "Batafsil",
+            tone: "blue",
+            icon: `
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            `,
+        });
+        const commandButton = manageAllowed ? actionButton({
+            href: `/commands?cam=${camera.id}`,
+            title: "Buyruqlar",
+            tone: "emerald",
+            icon: `
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+            `,
+        }) : "";
+        const editButton = manageAllowed ? actionButton({
+            href: `/devices/edit?id=${camera.id}`,
+            title: "Tahrirlash",
+            tone: "amber",
+            icon: `
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                </svg>
+            `,
+        }) : "";
+        const deleteButton = manageAllowed ? actionButton({
+            title: "O'chirish",
+            tone: "rose",
+            dataDeleteId: camera.id,
+            dataDeleteName: escapeHtml(camera.name || "Kamera"),
+            icon: `
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+            `,
+        }) : "";
+
+        return `
+            <article class="group relative overflow-hidden rounded-[24px] border border-gray-200 bg-white/95 p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-xl dark:border-gray-800 dark:bg-gray-900/95">
+                <div class="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r ${topGlow}"></div>
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-600 dark:bg-gray-800 dark:text-gray-300">#${absoluteIndex}</span>
+                            <span class="inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">${escapeHtml(orgName)}</span>
+                        </div>
+                        <h3 class="mt-2.5 truncate text-base font-bold text-gray-900 dark:text-white" title="${escapeHtml(camera.name || "-")}">${escapeHtml(camera.name || "-")}</h3>
+                        <p class="mt-1 truncate text-xs text-gray-500 dark:text-gray-400">${escapeHtml(camera.location || "Lokatsiya ko'rsatilmagan")}</p>
+                    </div>
+                    <span class="inline-flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ${statusClass}">
+                        <span class="h-2 w-2 rounded-full ${online ? "bg-emerald-500" : "bg-rose-500"}"></span>
+                        ${online ? "Online" : "Offline"}
+                    </span>
+                </div>
+
+                <div class="mt-4 grid grid-cols-2 gap-2.5">
+                    <div class="rounded-xl bg-gray-50 px-3 py-2.5 dark:bg-gray-800/80">
+                        <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Device ID</div>
+                        <div class="mt-1 truncate font-mono text-sm text-gray-800 dark:text-gray-100" title="${escapeHtml(camera.isup_device_id || "—")}">${escapeHtml(camera.isup_device_id || "—")}</div>
+                    </div>
+                    <div class="rounded-xl bg-gray-50 px-3 py-2.5 dark:bg-gray-800/80">
+                        <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">MAC</div>
+                        <div class="mt-1 truncate font-mono text-sm text-gray-800 dark:text-gray-100" title="${escapeHtml(camera.mac_address || "—")}">${escapeHtml(camera.mac_address || "—")}</div>
+                    </div>
+                    <div class="rounded-xl bg-gray-50 px-3 py-2.5 dark:bg-gray-800/80">
+                        <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Model</div>
+                        <div class="mt-1 truncate text-sm font-medium text-gray-800 dark:text-gray-100">${escapeHtml(camera.model || "Noma'lum")}</div>
+                    </div>
+                    <div class="rounded-xl bg-gray-50 px-3 py-2.5 dark:bg-gray-800/80">
+                        <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Bugungi hodisa</div>
+                        <div class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">${Number(camera.events_today || 0)} ta</div>
+                    </div>
+                </div>
+
+                <div class="mt-4 rounded-[20px] border border-gray-100 bg-gray-50/80 px-4 py-3.5 dark:border-gray-800 dark:bg-gray-950/50">
+                    <div class="flex items-center justify-between gap-3 text-sm">
+                        <span class="font-semibold text-gray-700 dark:text-gray-200">Yuz bazasi</span>
+                        <span class="text-xs font-semibold text-gray-500 dark:text-gray-400">${Number(camera.used_faces || 0)}/${Number(camera.max_memory || 0)} · ${percent}%</span>
+                    </div>
+                    <div class="mt-3 h-2 rounded-full bg-white dark:bg-gray-800">
+                        <div class="h-2 rounded-full ${progressClass}" style="width:${percent}%"></div>
+                    </div>
+                    <div class="mt-3 flex items-center justify-between gap-3 text-xs text-gray-500 dark:text-gray-400">
+                        <span>${tone === "rose" ? "Xotira yuqori band" : (tone === "amber" ? "Bandlik nazoratda" : "Bandlik me'yorida")}</span>
+                        <span>${escapeHtml(formatDate(camera.last_seen_at))}</span>
+                    </div>
+                </div>
+
+                <div class="mt-4 flex items-center justify-between gap-3">
+                    <div class="flex flex-wrap items-center gap-2">
+                        ${detailButton}
+                        ${commandButton}
+                        ${editButton}
+                        ${deleteButton}
+                    </div>
+                    ${manageAllowed ? "" : `
+                        <span class="inline-flex rounded-full bg-gray-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:bg-gray-800 dark:text-gray-300">
+                            Read only
+                        </span>
+                    `}
+                </div>
+            </article>
+        `;
+    }
+
+    function renderCards() {
         clampPage();
         const startIndex = (state.page - 1) * state.pageSize;
-        const rows = sortCameras(state.filtered).slice(startIndex, state.page * state.pageSize);
-        if (rows.length === 0) {
-            renderEmptyTable();
+        const cards = sortCameras(state.filtered).slice(startIndex, state.page * state.pageSize);
+        if (cards.length === 0) {
+            renderEmptyCards();
             return;
         }
-        $("cam-table-body").innerHTML = rows.map((camera, index) => cameraRow(camera, startIndex + index + 1)).join("");
+        $("cam-cards").innerHTML = cards.map((camera, index) => cameraCard(camera, startIndex + index + 1)).join("");
         attachDeleteHandlers();
         renderPagination();
     }
@@ -269,10 +340,12 @@
         });
         renderStats(state.cameras, state.filtered);
         renderCountLine(state.cameras, state.filtered);
-        renderTable();
+        renderCards();
     }
 
     async function deleteCamera(id, name) {
+        if (!permissions.canManage) return;
+
         let confirmed = false;
         if (window.AppDialog && typeof window.AppDialog.confirm === "function") {
             confirmed = await window.AppDialog.confirm({
@@ -309,15 +382,14 @@
             state.cameras = Array.isArray(payload) ? payload : [];
             applyFilters();
         } catch (error) {
-            $("cam-table-body").innerHTML = `
-                <tr>
-                    <td colspan="10" class="px-4 py-12 text-center text-sm text-rose-600 dark:text-rose-300">
-                        Kameralarni yuklashda xatolik: ${escapeHtml(error.message || "noma'lum xato")}
-                    </td>
-                </tr>
+            $("cam-cards").innerHTML = `
+                <div class="rounded-[24px] border border-rose-200 bg-rose-50 px-6 py-12 text-center text-sm text-rose-700 dark:border-rose-900/40 dark:bg-rose-900/20 dark:text-rose-300 sm:col-span-2 xl:col-span-3 2xl:col-span-4">
+                    Kameralarni yuklashda xatolik: ${escapeHtml(error.message || "noma'lum xato")}
+                </div>
             `;
             $("cam-count").textContent = "Kameralar yuklanmadi";
             renderStats([], []);
+            renderPagination();
             notify("error", error.message || "Kameralarni yuklashda xatolik yuz berdi.");
         }
     }
@@ -350,13 +422,13 @@
         $("page-prev").addEventListener("click", () => {
             if (state.page > 1) {
                 state.page -= 1;
-                renderTable();
+                renderCards();
             }
         });
         $("page-next").addEventListener("click", () => {
             if (state.page < pageCount()) {
                 state.page += 1;
-                renderTable();
+                renderCards();
             }
         });
         state.pageSize = Number($("filter-page-size").value || 50);

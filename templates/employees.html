@@ -7,11 +7,19 @@
         <p id="employees-count-text" class="mt-1 text-sm text-gray-500 dark:text-gray-400">Yuklanmoqda...</p>
     </div>
     <div class="flex items-center gap-2">
-        <button id="btn-attendance-import" type="button" class="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-100 dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-300 dark:hover:bg-emerald-900/30">
+        <a href="/employees/catalogs" class="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M5 7v12a2 2 0 002 2h10a2 2 0 002-2V7M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+            Bo'lim va lavozimlar
+        </a>
+        <button id="btn-camera-import" type="button" class="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-indigo-300 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-indigo-100 dark:border-indigo-900/40 dark:bg-indigo-900/20 dark:text-indigo-300 dark:hover:bg-indigo-900/30">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m14.836 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-14.835-2m14.835 2H15"></path></svg>
+            Kameradan yuklash
+        </button>
+        <button id="btn-attendance-import" type="button" class="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-100 dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-300 dark:hover:bg-emerald-900/30">
             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
             Davomatdan saqlash
         </button>
-        <a href="/employees/add" class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-700">
+        <a href="/employees/add" class="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-700">
             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
             Yangi foydalanuvchi
         </a>
@@ -20,41 +28,95 @@
 
 <div id="employees-feedback" class="mb-4 hidden rounded-2xl border px-4 py-3 text-sm"></div>
 
-<div class="mb-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-    <div class="grid grid-cols-1 gap-3 md:grid-cols-6">
-        <div>
-            <label for="employees-firstname-filter" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Ism</label>
-            <input id="employees-firstname-filter" type="text" placeholder="Masalan: Ali" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
+<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+    <div class="card-hover flex items-center gap-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400">
+            <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
         </div>
         <div>
-            <label for="employees-lastname-filter" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Familiya</label>
-            <input id="employees-lastname-filter" type="text" placeholder="Masalan: Karimov" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
+            <p class="text-xs font-medium uppercase tracking-widest text-gray-500 dark:text-gray-400">Jami foydalanuvchi</p>
+            <p id="employees-stat-total" class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">0</p>
+        </div>
+    </div>
+    <div class="card-hover flex items-center gap-4 rounded-2xl border border-indigo-200 bg-indigo-50 p-5 shadow-sm dark:border-indigo-900/30 dark:bg-indigo-900/20">
+        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400">
+            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m-1 4h1m4-8h1m-1 4h1m-1 4h1"/></svg>
         </div>
         <div>
-            <label for="employees-org-filter" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Tashkilot</label>
-            <select id="employees-org-filter" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
-                <option value="all">Barcha tashkilotlar</option>
+            <p class="text-xs font-medium uppercase tracking-widest text-indigo-700 dark:text-indigo-300">Tashkilot</p>
+            <p id="employees-stat-organizations" class="mt-1 text-2xl font-bold text-indigo-700 dark:text-indigo-300">0</p>
+        </div>
+    </div>
+    <div class="card-hover flex items-center gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm dark:border-emerald-900/30 dark:bg-emerald-900/20">
+        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400">
+            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M5 7v12a2 2 0 002 2h10a2 2 0 002-2V7M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+        </div>
+        <div>
+            <p class="text-xs font-medium uppercase tracking-widest text-emerald-700 dark:text-emerald-300">Bo'lim</p>
+            <p id="employees-stat-departments" class="mt-1 text-2xl font-bold text-emerald-700 dark:text-emerald-300">0</p>
+        </div>
+    </div>
+    <div class="card-hover flex items-center gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm dark:border-amber-900/30 dark:bg-amber-900/20">
+        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400">
+            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M8 6h8m-9 14h10a2 2 0 002-2V8.5L14.5 4H7a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        </div>
+        <div>
+            <p class="text-xs font-medium uppercase tracking-widest text-amber-700 dark:text-amber-300">Lavozim</p>
+            <p id="employees-stat-positions" class="mt-1 text-2xl font-bold text-amber-700 dark:text-amber-300">0</p>
+        </div>
+    </div>
+    <div class="card-hover flex items-center gap-4 rounded-2xl border border-sky-200 bg-sky-50 p-5 shadow-sm dark:border-sky-900/30 dark:bg-sky-900/20">
+        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-600 dark:bg-sky-900/40 dark:text-sky-400">
+            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+        </div>
+        <div>
+            <p class="text-xs font-medium uppercase tracking-widest text-sky-700 dark:text-sky-300">Kamera</p>
+            <p id="employees-stat-cameras" class="mt-1 text-2xl font-bold text-sky-700 dark:text-sky-300">0</p>
+        </div>
+    </div>
+</div>
+
+<div class="mb-4 rounded-2xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="overflow-x-auto">
+        <div class="flex min-w-max items-center gap-2">
+            <label for="employees-query-filter" class="sr-only">Qidiruv</label>
+            <input id="employees-query-filter" type="text" placeholder="Qidiruv: F.I.Sh. yoki ID" class="w-72 rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
+
+            <label for="employees-org-filter" class="sr-only">Tashkilot</label>
+            <select id="employees-org-filter" class="w-44 appearance-none cursor-pointer rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 pr-10 text-sm text-gray-900 outline-none transition hover:border-gray-400 hover:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:hover:border-gray-500 dark:hover:bg-gray-700 dark:focus:ring-blue-900/40" style="background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M6 9l6 6 6-6'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;">
+                <option value="all">Tashkilot: barchasi</option>
             </select>
-        </div>
-        <div>
-            <label for="employees-camera-filter" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Kamera</label>
-            <select id="employees-camera-filter" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
-                <option value="all">Barcha kameralar</option>
+
+            <label for="employees-dept-filter" class="sr-only">Bo'lim</label>
+            <select id="employees-dept-filter" class="w-40 appearance-none cursor-pointer rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 pr-10 text-sm text-gray-900 outline-none transition hover:border-gray-400 hover:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:hover:border-gray-500 dark:hover:bg-gray-700 dark:focus:ring-blue-900/40" style="background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M6 9l6 6 6-6'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;">
+                <option value="all">Bo'lim: barchasi</option>
             </select>
-        </div>
-        <div>
-            <label for="employees-type-filter" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Xodim turi</label>
-            <select id="employees-type-filter" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
-                <option value="all">Barchasi</option>
+
+            <label for="employees-pos-filter" class="sr-only">Lavozim</label>
+            <select id="employees-pos-filter" class="w-40 appearance-none cursor-pointer rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 pr-10 text-sm text-gray-900 outline-none transition hover:border-gray-400 hover:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:hover:border-gray-500 dark:hover:bg-gray-700 dark:focus:ring-blue-900/40" style="background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M6 9l6 6 6-6'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;">
+                <option value="all">Lavozim: barchasi</option>
+            </select>
+
+            <label for="employees-camera-filter" class="sr-only">Kamera</label>
+            <select id="employees-camera-filter" class="w-40 appearance-none cursor-pointer rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 pr-10 text-sm text-gray-900 outline-none transition hover:border-gray-400 hover:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:hover:border-gray-500 dark:hover:bg-gray-700 dark:focus:ring-blue-900/40" style="background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M6 9l6 6 6-6'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;">
+                <option value="all">Kamera: barchasi</option>
+            </select>
+
+            <label for="employees-type-filter" class="sr-only">Xodim turi</label>
+            <select id="employees-type-filter" class="w-40 appearance-none cursor-pointer rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 pr-10 text-sm text-gray-900 outline-none transition hover:border-gray-400 hover:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:hover:border-gray-500 dark:hover:bg-gray-700 dark:focus:ring-blue-900/40" style="background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M6 9l6 6 6-6'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;">
+                <option value="all">Tur: barchasi</option>
                 <option value="oquvchi">O'quvchi</option>
                 <option value="oqituvchi">O'qituvchi</option>
                 <option value="hodim">Xodim</option>
                 <option value="none">Tanlanmagan</option>
             </select>
-        </div>
-        <div class="md:col-span-2 flex items-end gap-2">
-            <button id="employees-apply-filter" class="inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700">Filtrni qo'llash</button>
-            <button id="employees-reset-filter" class="inline-flex w-full items-center justify-center rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">Tozalash</button>
+
+            <button id="employees-apply-filter" title="Filter qo'llash" aria-label="Filter qo'llash" class="inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-blue-600 text-white transition hover:bg-blue-700">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 01.8 1.6L14 13v5a1 1 0 01-1.447.894l-2-1A1 1 0 0110 17v-4L3.2 4.6A1 1 0 013 4z"></path></svg>
+            </button>
+            <button id="employees-reset-filter" title="Filterlarni tozalash" aria-label="Filterlarni tozalash" class="inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-gray-300 bg-white text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
         </div>
     </div>
 </div>
@@ -91,16 +153,37 @@
 </div>
 
 <script>
+const EMPLOYEES_IMPORT_JOB_STORAGE_KEY = 'employees_import_job_id';
+const EMPLOYEES_IMPORT_JOB_VERSION_KEY = 'employees_import_job_version';
+const EMPLOYEES_IMPORT_JOB_VERSION = 'face-only-v2';
+const EMPLOYEES_FILTER_STATE_STORAGE_KEY = 'employees_filter_state_v1';
+
 const employeesState = {
-    all: [],
-    filtered: [],
-    cameras: [],
+    items: [],
+    filterMeta: {
+        organizations: [],
+        departments: [],
+        positions: [],
+        cameras: [],
+    },
     page: 1,
     pageSize: 50,
+    total: 0,
     totalPages: 1,
+    stats: {
+        total_employees: 0,
+        organization_count: 0,
+        department_count: 0,
+        position_count: 0,
+        camera_count: 0,
+    },
     deletingEmployeeId: null,
     deletingEmployeeName: "",
     deletingEmployeeCameras: [],
+    deleteActionInFlight: false,
+    listAbortController: null,
+    listRequestSeq: 0,
+    searchDebounceTimer: null,
     importSources: [],
     importJobId: null,
     importPollTimer: null,
@@ -168,6 +251,26 @@ async function fetchJson(url, options = {}) {
     return data;
 }
 
+function formatEmployeesStat(value) {
+    const numberValue = Number(value || 0);
+    if (!Number.isFinite(numberValue)) return "0";
+    return numberValue.toLocaleString("uz-UZ");
+}
+
+function setStatText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = formatEmployeesStat(value);
+}
+
+function renderEmployeesStats(stats = null) {
+    const source = stats || employeesState.stats || {};
+    setStatText("employees-stat-total", source.total_employees ?? employeesState.total);
+    setStatText("employees-stat-organizations", source.organization_count);
+    setStatText("employees-stat-departments", source.department_count);
+    setStatText("employees-stat-positions", source.position_count);
+    setStatText("employees-stat-cameras", source.camera_count);
+}
+
 function normalizeEmployeeTypeLabel(value) {
     const v = String(value || "").toLowerCase();
     if (v === "oquvchi") return "O'quvchi";
@@ -176,7 +279,147 @@ function normalizeEmployeeTypeLabel(value) {
     return "Tanlanmagan";
 }
 
-async function openEmployeesImportModal() {
+function clearSavedEmployeesImportJob() {
+    localStorage.removeItem(EMPLOYEES_IMPORT_JOB_STORAGE_KEY);
+    localStorage.removeItem(EMPLOYEES_IMPORT_JOB_VERSION_KEY);
+}
+
+function setEmployeesLoading(isLoading, message = "Yuklanmoqda...") {
+    const tbody = document.getElementById("employeesTableBody");
+    if (tbody && isLoading) {
+        tbody.innerHTML = `<tr><td colspan="10" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">${message}</td></tr>`;
+    }
+    const prevBtn = document.getElementById("employees-prev-page");
+    const nextBtn = document.getElementById("employees-next-page");
+    if (prevBtn) prevBtn.disabled = isLoading;
+    if (nextBtn) nextBtn.disabled = isLoading;
+}
+
+function getEmployeesFilterState() {
+    return {
+        query: document.getElementById("employees-query-filter")?.value || "",
+        organizationId: document.getElementById("employees-org-filter")?.value || "all",
+        department: document.getElementById("employees-dept-filter")?.value || "all",
+        position: document.getElementById("employees-pos-filter")?.value || "all",
+        cameraId: document.getElementById("employees-camera-filter")?.value || "all",
+        employeeType: document.getElementById("employees-type-filter")?.value || "all",
+        page: employeesState.page || 1,
+    };
+}
+
+function saveEmployeesFilterState() {
+    try {
+        sessionStorage.setItem(EMPLOYEES_FILTER_STATE_STORAGE_KEY, JSON.stringify(getEmployeesFilterState()));
+    } catch (_) {
+        // sessionStorage may be unavailable; ignore.
+    }
+}
+
+function readEmployeesFilterState() {
+    try {
+        const raw = sessionStorage.getItem(EMPLOYEES_FILTER_STATE_STORAGE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === "object" ? parsed : null;
+    } catch (_) {
+        return null;
+    }
+}
+
+function setSelectValueIfAvailable(selectEl, value, fallback = "all") {
+    if (!selectEl) return;
+    const nextValue = String(value || "").trim();
+    const hasOption = Array.from(selectEl.options || []).some((option) => option.value === nextValue);
+    selectEl.value = hasOption ? nextValue : fallback;
+}
+
+function restoreEmployeesFilterState() {
+    const state = readEmployeesFilterState();
+    if (!state) return false;
+
+    const queryInput = document.getElementById("employees-query-filter");
+    const orgSel = document.getElementById("employees-org-filter");
+    const deptSel = document.getElementById("employees-dept-filter");
+    const posSel = document.getElementById("employees-pos-filter");
+    const camSel = document.getElementById("employees-camera-filter");
+    const typeSel = document.getElementById("employees-type-filter");
+
+    if (queryInput) queryInput.value = String(state.query || "");
+    setSelectValueIfAvailable(orgSel, state.organizationId, "all");
+    refreshDeptPosFilters();
+    refreshCameraFilter();
+    setSelectValueIfAvailable(deptSel, state.department, "all");
+    refreshPosFilter();
+    setSelectValueIfAvailable(posSel, state.position, "all");
+    setSelectValueIfAvailable(camSel, state.cameraId, "all");
+    setSelectValueIfAvailable(typeSel, state.employeeType, "all");
+    employeesState.page = Math.max(1, Number(state.page || 1));
+    return true;
+}
+
+function buildEmployeesSearchParams(page = 1) {
+    const filters = getActiveFilters();
+    const params = new URLSearchParams();
+    params.set("page", String(page || 1));
+    params.set("page_size", String(employeesState.pageSize));
+    if (String(filters.query || "").trim()) params.set("query", String(filters.query || "").trim());
+    if (String(filters.organizationId || "").trim() && String(filters.organizationId) !== "all") params.set("organization_id", String(filters.organizationId));
+    if (String(filters.department || "").trim() && String(filters.department) !== "all") params.set("department", String(filters.department));
+    if (String(filters.position || "").trim() && String(filters.position) !== "all") params.set("position", String(filters.position));
+    if (String(filters.cameraId || "").trim() && String(filters.cameraId) !== "all") params.set("camera_id", String(filters.cameraId));
+    if (String(filters.employeeType || "").trim() && String(filters.employeeType) !== "all") params.set("employee_type", String(filters.employeeType));
+    return params;
+}
+
+function setFilterOptions(selectEl, placeholder, options, selectedValue = "all", getValue = (item) => item.value, getLabel = (item) => item.label) {
+    if (!selectEl) return;
+    const currentValue = String(selectedValue || "all");
+    selectEl.innerHTML = `<option value="all">${placeholder}</option>`;
+    const seen = new Set();
+    for (const item of Array.isArray(options) ? options : []) {
+        const value = String(getValue(item) ?? "").trim();
+        const label = String(getLabel(item) ?? value).trim();
+        if (!value) continue;
+        const key = value.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        selectEl.insertAdjacentHTML("beforeend", `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`);
+    }
+    selectEl.value = Array.from(selectEl.options).some((option) => option.value === currentValue) ? currentValue : "all";
+}
+
+function openEmployeesImportLoadingModal() {
+    const body = document.createElement('div');
+    body.innerHTML = `
+        <div class="flex flex-col items-center justify-center gap-4 py-8 text-center">
+            <div class="flex h-14 w-14 items-center justify-center rounded-full bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-300">
+                <svg class="h-7 w-7 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+            </div>
+            <div class="space-y-1">
+                <div class="text-sm font-semibold text-gray-900 dark:text-white">ISUP orqali foydalanuvchilar soni hisoblanmoqda...</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400">Kameralardan face biriktirilgan foydalanuvchilar soni olinmoqda. Iltimos kuting.</div>
+            </div>
+        </div>
+    `;
+    if (window.AppModal && typeof window.AppModal.open === 'function') {
+        window.AppModal.open({
+            title: 'Yuklanmoqda',
+            size: 'md',
+            bodyNode: body,
+            dismissible: false,
+        });
+    }
+}
+
+async function openEmployeesImportModal(triggerBtn = null) {
+    if (triggerBtn) {
+        triggerBtn.disabled = true;
+        triggerBtn.classList.add('opacity-70', 'cursor-wait');
+    }
+    openEmployeesImportLoadingModal();
     try {
         const data = await fetchJson('/api/employees/import/sources');
         const orgs = Array.isArray(data.organizations) ? data.organizations : [];
@@ -186,7 +429,16 @@ async function openEmployeesImportModal() {
         body.innerHTML = `
             <div class="space-y-4">
                 <div class="rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-xs text-indigo-700 dark:border-indigo-900/40 dark:bg-indigo-900/20 dark:text-indigo-300">
-                    Kameradan foydalanuvchilar bazaga rasm siz yuklanadi. Dublikatlar (bir xil personal_id) yangilanadi.
+                    Tanlangan kameradagi faqat face biriktirilgan foydalanuvchilar bazaga yuklanadi. Dublikatlar bir xil <code>personal_id</code> bo'yicha yangilanadi.
+                </div>
+                <div>
+                    <label for="camera-import-org" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Tashkilot</label>
+                    <select id="camera-import-org" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-indigo-900/40"></select>
+                </div>
+                <div>
+                    <label for="camera-import-camera" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Kamera</label>
+                    <select id="camera-import-camera" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-indigo-900/40"></select>
+                    <p id="camera-import-count" class="mt-2 text-xs text-gray-500 dark:text-gray-400"></p>
                 </div>
                 <div>
                     <label for="import-employee-type" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Yuklanadigan xodim turi</label>
@@ -196,10 +448,8 @@ async function openEmployeesImportModal() {
                         <option value="hodim" selected>Xodim</option>
                     </select>
                 </div>
-                <div class="max-h-72 overflow-y-auto rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/60" id="import-camera-list"></div>
-                <div class="flex items-center justify-between pt-2">
-                    <button type="button" id="btn-import-refresh-sources" class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">Yangilash</button>
-                    <button type="button" id="btn-start-import" class="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700">Yuklashni boshlash</button>
+                <div class="flex justify-end pt-2">
+                    <button type="button" id="btn-start-import" class="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700">Yuklab olish</button>
                 </div>
             </div>
         `;
@@ -212,51 +462,72 @@ async function openEmployeesImportModal() {
             });
         }
 
-        function renderCameraList() {
-            const wrap = body.querySelector('#import-camera-list');
-            if (!wrap) return;
-            const html = orgs.map((org) => {
+        const orgSel = body.querySelector('#camera-import-org');
+        const camSel = body.querySelector('#camera-import-camera');
+        const countEl = body.querySelector('#camera-import-count');
+
+        function renderOrgOptions() {
+            orgSel.innerHTML = '<option value="">Tashkilotni tanlang</option>';
+            orgs.forEach((org) => {
                 const cams = Array.isArray(org.cameras) ? org.cameras : [];
                 const totalUsers = cams.reduce((acc, cam) => acc + Number(cam.user_count || 0), 0);
-                const cameraRows = cams.map((cam) => {
-                    const unsupported = cam.unsupported ? '<span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">Unsupported</span>' : '';
-                    return `
-                        <label class="flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900/60">
-                            <span class="flex items-center gap-2">
-                                <input type="checkbox" class="import-camera-item h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" value="${cam.id}" ${cam.unsupported ? 'disabled' : ''}>
-                                <span>${escapeHtml(cam.name)}</span>
-                            </span>
-                            <span class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                                ${unsupported}
-                                <span>${Number(cam.user_count || 0)} foydalanuvchi</span>
-                            </span>
-                        </label>
-                    `;
-                }).join('');
-                return `
-                    <div class="mb-3 rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900/70">
-                        <div class="mb-2 flex items-center justify-between">
-                            <div class="text-sm font-semibold text-gray-900 dark:text-white">${escapeHtml(org.name)}</div>
-                            <div class="text-xs text-gray-500 dark:text-gray-400">${cams.length} kamera, ${totalUsers} foydalanuvchi</div>
-                        </div>
-                        <div class="space-y-2">${cameraRows || '<div class="text-xs text-gray-500">Kamera yo\'q</div>'}</div>
-                    </div>
-                `;
-            }).join('');
-            wrap.innerHTML = html || '<div class="text-sm text-gray-500">Mavjud tashkilot/kamera topilmadi.</div>';
+                orgSel.insertAdjacentHTML(
+                    'beforeend',
+                    `<option value="${org.id}">${escapeHtml(org.name)} (${cams.length} kamera, ${totalUsers} taxminiy face record)</option>`
+                );
+            });
         }
 
-        renderCameraList();
+        function renderCameraOptions() {
+            const orgVal = String(orgSel.value || '').trim();
+            const org = orgs.find((row) => String(row.id) === orgVal);
+            const cameras = Array.isArray(org?.cameras) ? org.cameras : [];
+            camSel.innerHTML = '<option value="">Kamerani tanlang</option>';
 
-        body.querySelector('#btn-import-refresh-sources')?.addEventListener('click', async () => {
-            window.AppModal.close('refresh');
-            await openEmployeesImportModal();
+            cameras.forEach((cam) => {
+                const unsupported = Boolean(cam.unsupported);
+                const suffix = unsupported ? " - qo'llanmaydi" : '';
+                camSel.insertAdjacentHTML(
+                    'beforeend',
+                    `<option value="${cam.id}" ${unsupported ? 'disabled' : ''}>${escapeHtml(cam.name)} (${Number(cam.user_count || 0)} taxminiy face record${escapeHtml(suffix)})</option>`
+                );
+            });
+
+            if (!cameras.length) {
+                countEl.textContent = "Bu tashkilotda import uchun kamera topilmadi.";
+                return;
+            }
+            const totalUsers = cameras.reduce((acc, cam) => acc + Number(cam.user_count || 0), 0);
+            countEl.textContent = `${cameras.length} kamera, taxminan ${totalUsers} face record`;
+        }
+
+        function updateSelectedCameraInfo() {
+            const orgVal = String(orgSel.value || '').trim();
+            const camVal = String(camSel.value || '').trim();
+            const org = orgs.find((row) => String(row.id) === orgVal);
+            const cameras = Array.isArray(org?.cameras) ? org.cameras : [];
+            const cam = cameras.find((row) => String(row.id) === camVal);
+            if (!cam) {
+                return;
+            }
+            if (cam.unsupported) {
+                countEl.textContent = `${cam.name} bu modelda user import qo'llanmaydi.`;
+                return;
+            }
+            countEl.textContent = `${cam.name}: ${Number(cam.user_count || 0)} taxminiy face record topildi, importda unique FPID lar olinadi`;
+        }
+
+        renderOrgOptions();
+        renderCameraOptions();
+        orgSel.addEventListener('change', () => {
+            renderCameraOptions();
         });
+        camSel.addEventListener('change', updateSelectedCameraInfo);
 
         body.querySelector('#btn-start-import')?.addEventListener('click', async () => {
-            const selected = Array.from(body.querySelectorAll('.import-camera-item:checked')).map((el) => Number(el.value)).filter((v) => Number.isFinite(v) && v > 0);
-            if (!selected.length) {
-                notifyEmployees('Kamida bitta kamera tanlang', 'error');
+            const cameraId = Number(camSel.value || 0);
+            if (!Number.isFinite(cameraId) || cameraId <= 0) {
+                notifyEmployees('Kamerani tanlang', 'error');
                 return;
             }
             const employeeType = body.querySelector('#import-employee-type')?.value || 'hodim';
@@ -264,10 +535,11 @@ async function openEmployeesImportModal() {
                 const startRes = await fetchJson('/api/employees/import/start', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ camera_ids: selected, employee_type: employeeType }),
+                    body: JSON.stringify({ camera_ids: [cameraId], employee_type: employeeType }),
                 });
                 employeesState.importJobId = String(startRes.job_id || '');
-                localStorage.setItem('employees_import_job_id', employeesState.importJobId);
+                localStorage.setItem(EMPLOYEES_IMPORT_JOB_STORAGE_KEY, employeesState.importJobId);
+                localStorage.setItem(EMPLOYEES_IMPORT_JOB_VERSION_KEY, EMPLOYEES_IMPORT_JOB_VERSION);
                 window.AppModal.close('start');
                 openImportProgressModal();
                 startImportPolling();
@@ -276,7 +548,15 @@ async function openEmployeesImportModal() {
             }
         });
     } catch (e) {
+        if (window.AppModal && typeof window.AppModal.close === 'function' && window.AppModal.isOpen()) {
+            window.AppModal.close('employees_import_sources_error');
+        }
         notifyEmployees(e.message || 'Import manbalarini yuklashda xatolik', 'error');
+    } finally {
+        if (triggerBtn) {
+            triggerBtn.disabled = false;
+            triggerBtn.classList.remove('opacity-70', 'cursor-wait');
+        }
     }
 }
 
@@ -312,24 +592,49 @@ function renderImportProgress(state) {
 
     const pct = Number(state.progress_percent || 0);
     bar.style.width = `${Math.max(0, Math.min(100, pct))}%`;
-    text.textContent = `${pct}% (${state.processed_cameras || 0}/${state.total_cameras || 0} kamera)`;
+    const processedItems = Number(state.processed_items || 0);
+    const totalItems = Number(state.total_items || 0);
+    const processedCameras = Number(state.processed_cameras || 0);
+    const totalCameras = Number(state.total_cameras || 0);
+    const per = Array.isArray(state.per_camera) ? state.per_camera : [];
+    if (totalItems > 0) {
+        text.textContent = `${pct}% (${processedItems}/${totalItems} foydalanuvchi)`;
+    } else {
+        text.textContent = `${pct}% (${processedCameras}/${totalCameras} kamera)`;
+    }
 
     const s = state.summary || {};
+    const currentCamera = String(state.current_camera_name || per[per.length - 1]?.camera_name || '').trim();
+    const currentPersonalId = String(state.current_personal_id || '').trim();
+    const progressNote = String(state.progress_note || '').trim();
+    const importedUsersTotal = Number(s.imported_users_total || 0) || processedItems || Number(per.reduce((acc, row) => acc + Number(row.imported_users_total || 0), 0));
+    const createdTotal = Number(s.created || 0) || Number(per.reduce((acc, row) => acc + Number(row.created || 0), 0));
+    const updatedTotal = Number(s.updated || 0) || Number(per.reduce((acc, row) => acc + Number(row.updated || 0), 0));
+    const existingTotal = Number(s.existing || 0) || Number(per.reduce((acc, row) => acc + Number(row.existing || 0), 0));
+    const linkedTotal = Number(s.linked_to_camera || 0) || Number(per.reduce((acc, row) => acc + Number(row.linked_to_camera || 0), 0));
+    const alreadyLinkedTotal = Number(s.already_linked || 0) || Number(per.reduce((acc, row) => acc + Number(row.already_linked || 0), 0));
+    const skippedTotal = Number(s.skipped || 0) || Number(per.reduce((acc, row) => acc + Number(row.skipped || 0), 0));
     summaryEl.innerHTML = `
-        <div class="grid grid-cols-2 gap-2 sm:grid-cols-5">
-            <div>Jami: <b>${Number(s.imported_users_total || 0)}</b></div>
-            <div>Yangi: <b>${Number(s.created || 0)}</b></div>
-            <div>Yangilandi: <b>${Number(s.updated || 0)}</b></div>
-            <div>Bog'landi: <b>${Number(s.linked_to_camera || 0)}</b></div>
-            <div>Skipped: <b>${Number(s.skipped || 0)}</b></div>
+        <div class="mb-2 text-[11px] text-gray-500 dark:text-gray-400">
+            ${currentCamera ? `Joriy kamera: <b>${escapeHtml(currentCamera)}</b>` : 'Joriy kamera kutilmoqda...'}
+            ${currentPersonalId ? `<span class="ml-2">ID: <b>${escapeHtml(currentPersonalId)}</b></span>` : ''}
         </div>
+        ${progressNote ? `<div class="mb-2 text-[11px] text-indigo-600 dark:text-indigo-300">${escapeHtml(progressNote)}</div>` : ''}
+        <div class="grid grid-cols-2 gap-2 sm:grid-cols-6">
+            <div>Jami: <b>${importedUsersTotal}</b></div>
+            <div>Yangi: <b>${createdTotal}</b></div>
+            <div>Yangilandi: <b>${updatedTotal}</b></div>
+            <div>Mavjud: <b>${existingTotal}</b></div>
+            <div>Bog'landi: <b>${linkedTotal}</b></div>
+            <div>Skipped: <b>${skippedTotal}</b></div>
+        </div>
+        <div class="mt-2 text-[11px] text-gray-500 dark:text-gray-400">Oldin bog'langan: <b>${alreadyLinkedTotal}</b></div>
     `;
 
-    const per = Array.isArray(state.per_camera) ? state.per_camera : [];
     camerasEl.innerHTML = per.map((row) => `
         <div class="mb-1 rounded-lg border border-gray-200 px-2 py-1 dark:border-gray-700">
             <div class="font-medium text-gray-800 dark:text-gray-200">${escapeHtml(row.camera_name || `Kamera #${row.camera_id}`)}</div>
-            <div class="text-[11px] text-gray-500 dark:text-gray-400">Jami: ${Number(row.imported_users_total || 0)}, yangi: ${Number(row.created || 0)}, yangilandi: ${Number(row.updated || 0)}, bog'landi: ${Number(row.linked_to_camera || 0)}</div>
+            <div class="text-[11px] text-gray-500 dark:text-gray-400">Jami: ${Number(row.imported_users_total || 0)}, yangi: ${Number(row.created || 0)}, yangilandi: ${Number(row.updated || 0)}, mavjud: ${Number(row.existing || 0)}, bog'landi: ${Number(row.linked_to_camera || 0)}, oldin bog'langan: ${Number(row.already_linked || 0)}</div>
         </div>
     `).join('') || '<div class="text-gray-500">Hali natija yo\'q</div>';
 }
@@ -341,12 +646,12 @@ async function pollImportStatusOnce() {
     if (state.status === 'done') {
         stopImportPolling();
         notifyEmployees('Xodimlarni bazaga yuklash yakunlandi', 'success');
-        localStorage.removeItem('employees_import_job_id');
+        clearSavedEmployeesImportJob();
         await loadEmployees();
     } else if (state.status === 'error') {
         stopImportPolling();
         notifyEmployees(state.error || 'Importda xatolik', 'error');
-        localStorage.removeItem('employees_import_job_id');
+        clearSavedEmployeesImportJob();
     }
 }
 
@@ -532,6 +837,7 @@ function resetDeleteEmployeeState() {
     employeesState.deletingEmployeeId = null;
     employeesState.deletingEmployeeName = "";
     employeesState.deletingEmployeeCameras = [];
+    employeesState.deleteActionInFlight = false;
 }
 
 function buildDeleteEmployeeModalBody() {
@@ -548,9 +854,10 @@ function buildDeleteEmployeeModalBody() {
             <div id="employee-delete-camera-picker" class="max-h-40 space-y-2 overflow-y-auto"></div>
             <p id="employee-delete-camera-picker-hint" class="mt-2 text-xs text-gray-500 dark:text-gray-400"></p>
         </div>
+        <div id="employee-delete-loading" class="hidden rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-300"></div>
         <div class="flex justify-end gap-2 pt-1">
-            <button id="employee-delete-cancel" type="button" class="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">Bekor qilish</button>
-            <button id="employee-delete-confirm" type="button" class="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">O'chirish</button>
+            <button id="employee-delete-cancel" type="button" class="cursor-pointer rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">Bekor qilish</button>
+            <button id="employee-delete-confirm" type="button" class="cursor-pointer rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70">O'chirish</button>
         </div>
     `;
     return body;
@@ -559,7 +866,7 @@ function buildDeleteEmployeeModalBody() {
 function openDeleteEmployeeModal(id, name) {
     employeesState.deletingEmployeeId = Number(id);
     employeesState.deletingEmployeeName = String(name || "Foydalanuvchi");
-    const employee = employeesState.all.find((row) => Number(row.id) === Number(id));
+    const employee = employeesState.items.find((row) => Number(row.id) === Number(id));
     const cameraIds = Array.isArray(employee?.camera_ids) ? employee.camera_ids : [];
     const cameraNames = Array.isArray(employee?.camera_names) ? employee.camera_names : [];
     employeesState.deletingEmployeeCameras = cameraIds.map((camId, idx) => ({
@@ -588,6 +895,55 @@ function openDeleteEmployeeModal(id, name) {
     }
 
     renderDeleteCameraPicker();
+}
+
+function setDeleteTriggerLoading(button, isLoading) {
+    if (!button) return;
+    if (isLoading) {
+        if (!button.dataset.originalContent) {
+            button.dataset.originalContent = button.innerHTML;
+        }
+        button.disabled = true;
+        button.setAttribute("aria-busy", "true");
+        button.classList.add("opacity-70", "cursor-wait");
+        button.innerHTML = '<svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>';
+        return;
+    }
+    button.disabled = false;
+    button.removeAttribute("aria-busy");
+    button.classList.remove("opacity-70", "cursor-wait");
+    if (button.dataset.originalContent) {
+        button.innerHTML = button.dataset.originalContent;
+        delete button.dataset.originalContent;
+    }
+}
+
+function setDeleteModalLoading(isLoading) {
+    const loading = document.getElementById("employee-delete-loading");
+    const confirmBtn = document.getElementById("employee-delete-confirm");
+    const cancelBtn = document.getElementById("employee-delete-cancel");
+    const fromCamerasCheckbox = document.getElementById("employee-delete-from-cameras");
+    const cameraInputs = document.querySelectorAll(".employee-delete-camera-item");
+
+    if (loading) {
+        loading.textContent = isLoading ? "O'chirilmoqda, iltimos kuting..." : "";
+        loading.classList.toggle("hidden", !isLoading);
+    }
+    if (confirmBtn) {
+        if (isLoading && !confirmBtn.dataset.originalContent) {
+            confirmBtn.dataset.originalContent = confirmBtn.innerHTML;
+        }
+        confirmBtn.disabled = isLoading;
+        confirmBtn.setAttribute("aria-busy", isLoading ? "true" : "false");
+        confirmBtn.innerHTML = isLoading
+            ? '<span class="inline-flex items-center gap-2"><svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>O\'chirilmoqda...</span>'
+            : (confirmBtn.dataset.originalContent || "O'chirish");
+    }
+    if (cancelBtn) cancelBtn.disabled = isLoading;
+    if (fromCamerasCheckbox) fromCamerasCheckbox.disabled = isLoading;
+    cameraInputs.forEach((input) => {
+        input.disabled = isLoading;
+    });
 }
 
 function closeDeleteEmployeeModal() {
@@ -643,71 +999,129 @@ function normalizeText(value) {
     return String(value ?? "").trim();
 }
 
+function isUnknownNameToken(value) {
+    const token = String(value || "").trim().toLowerCase();
+    return token === "nomalum" || token === "noma'lum" || token === "неизвестно" || token === "unknown";
+}
+
+function getEmployeeDisplayName(emp) {
+    const fullRaw = normalizeText(emp?.full_name || "");
+    if (fullRaw && !isUnknownNameToken(fullRaw)) {
+        const pieces = fullRaw.split(/\s+/).map((x) => normalizeText(x)).filter((x) => x && !isUnknownNameToken(x));
+        const uniquePieces = [];
+        for (const p of pieces) {
+            const key = p.toLowerCase();
+            if (!uniquePieces.some((u) => u.toLowerCase() === key)) uniquePieces.push(p);
+        }
+        if (uniquePieces.length) return uniquePieces.join(" ");
+    }
+
+    const first = normalizeText(emp?.first_name || "");
+    const last = normalizeText(emp?.last_name || "");
+    const middle = normalizeText(emp?.middle_name || "");
+    const parts = [first, last, middle].filter((x) => x && !isUnknownNameToken(x));
+    const uniqueParts = [];
+    for (const p of parts) {
+        const key = p.toLowerCase();
+        if (!uniqueParts.some((u) => u.toLowerCase() === key)) uniqueParts.push(p);
+    }
+    if (uniqueParts.length) return uniqueParts.join(" ");
+
+    const pid = normalizeText(emp?.personal_id || "");
+    if (pid) return `ID ${pid}`;
+    return "Noma'lum";
+}
+
+function sortEmployeesByName(items) {
+    const arr = Array.isArray(items) ? [...items] : [];
+    arr.sort((a, b) => {
+        const nameA = getEmployeeDisplayName(a).trim();
+        const nameB = getEmployeeDisplayName(b).trim();
+        const firstA = nameA.charAt(0);
+        const firstB = nameB.charAt(0);
+        const isLetterA = /^[A-Za-zА-Яа-яЁёЎўҚқҒғҲҳ]/.test(firstA);
+        const isLetterB = /^[A-Za-zА-Яа-яЁёЎўҚқҒғҲҳ]/.test(firstB);
+        if (isLetterA !== isLetterB) {
+            return isLetterA ? -1 : 1;
+        }
+
+        const lowA = nameA.toLocaleLowerCase("uz");
+        const lowB = nameB.toLocaleLowerCase("uz");
+        const cmp = lowA.localeCompare(lowB, "uz", { sensitivity: "base", numeric: true });
+        if (cmp !== 0) return cmp;
+        return Number(a?.id || 0) - Number(b?.id || 0);
+    });
+    return arr;
+}
+
 function renderFilters() {
     const orgSel = document.getElementById("employees-org-filter");
+    const deptSel = document.getElementById("employees-dept-filter");
+    const posSel = document.getElementById("employees-pos-filter");
     const camSel = document.getElementById("employees-camera-filter");
 
-    const orgMap = new Map();
-    for (const emp of employeesState.all) {
-        if (emp.organization_id && emp.organization_name) {
-            orgMap.set(String(emp.organization_id), emp.organization_name);
-        }
-    }
-    orgSel.innerHTML = '<option value="all">Barcha tashkilotlar</option>';
-    Array.from(orgMap.entries()).sort((a, b) => String(a[1]).localeCompare(String(b[1]))).forEach(([id, name]) => {
-        orgSel.insertAdjacentHTML("beforeend", `<option value="${escapeHtml(id)}">${escapeHtml(name)}</option>`);
-    });
+    setFilterOptions(orgSel, "Barcha tashkilotlar", employeesState.filterMeta.organizations, orgSel?.value || "all", (item) => item.id, (item) => item.name);
+    refreshDeptPosFilters();
+    refreshCameraFilter();
 
-    camSel.innerHTML = '<option value="all">Barcha kameralar</option>';
-    for (const cam of employeesState.cameras) {
-        camSel.insertAdjacentHTML("beforeend", `<option value="${escapeHtml(cam.id)}">${escapeHtml(cam.name)}</option>`);
-    }
+    orgSel.onchange = () => {
+        refreshDeptPosFilters();
+        refreshCameraFilter();
+        applyFilters();
+    };
+    deptSel.onchange = () => {
+        refreshPosFilter();
+        applyFilters();
+    };
+    posSel.onchange = () => applyFilters();
+    camSel.onchange = () => applyFilters();
+}
+
+function refreshCameraFilter() {
+    const orgId = document.getElementById("employees-org-filter").value;
+    const camSel = document.getElementById("employees-camera-filter");
+    const cameraOptions = employeesState.filterMeta.cameras.filter((item) => {
+        if (orgId === "all") return true;
+        return String(item.organization_id || "") === String(orgId);
+    });
+    setFilterOptions(camSel, "Barcha kameralar", cameraOptions, camSel?.value || "all", (item) => item.id, (item) => item.name);
+}
+
+function refreshDeptPosFilters() {
+    const orgId = document.getElementById("employees-org-filter").value;
+    const deptSel = document.getElementById("employees-dept-filter");
+    const deptOptions = employeesState.filterMeta.departments.filter((item) => orgId === "all" || String(item.organization_id) === String(orgId));
+    setFilterOptions(deptSel, "Barcha bo'limlar", deptOptions, deptSel?.value || "all", (item) => item.name, (item) => item.name);
+    refreshPosFilter();
+}
+
+function refreshPosFilter() {
+    const orgId = document.getElementById("employees-org-filter").value;
+    const deptId = document.getElementById("employees-dept-filter").value;
+    const posSel = document.getElementById("employees-pos-filter");
+    const posOptions = employeesState.filterMeta.positions.filter((item) => {
+        if (orgId !== "all" && String(item.organization_id) !== String(orgId)) return false;
+        if (deptId !== "all" && String(item.department || "").trim() !== String(deptId)) return false;
+        return true;
+    });
+    setFilterOptions(posSel, "Barcha lavozimlar", posOptions, posSel?.value || "all", (item) => item.name, (item) => item.name);
 }
 
 function getActiveFilters() {
     return {
-        firstName: document.getElementById("employees-firstname-filter").value,
-        lastName: document.getElementById("employees-lastname-filter").value,
+        query: document.getElementById("employees-query-filter").value,
         organizationId: document.getElementById("employees-org-filter").value,
+        department: document.getElementById("employees-dept-filter").value,
+        position: document.getElementById("employees-pos-filter").value,
         cameraId: document.getElementById("employees-camera-filter").value,
         employeeType: document.getElementById("employees-type-filter").value,
     };
 }
 
 function applyFilters() {
-    const { firstName, lastName, organizationId, cameraId, employeeType } = getActiveFilters();
-    const firstQ = normalizeText(firstName).toLowerCase();
-    const lastQ = normalizeText(lastName).toLowerCase();
-    employeesState.filtered = employeesState.all.filter((emp) => {
-        if (firstQ) {
-            const first = String(emp.first_name || "").toLowerCase();
-            if (!first.includes(firstQ)) return false;
-        }
-        if (lastQ) {
-            const last = String(emp.last_name || "").toLowerCase();
-            if (!last.includes(lastQ)) return false;
-        }
-        if (organizationId !== "all" && String(emp.organization_id || "") !== String(organizationId)) {
-            return false;
-        }
-        if (cameraId !== "all") {
-            const cameraIds = Array.isArray(emp.camera_ids) ? emp.camera_ids.map((v) => Number(v)) : [];
-            if (!cameraIds.includes(Number(cameraId))) {
-                return false;
-            }
-        }
-        if (employeeType !== "all") {
-            const value = String(emp.employee_type || "").toLowerCase();
-            if (employeeType === "none") {
-                if (value) return false;
-            } else if (value !== String(employeeType).toLowerCase()) {
-                return false;
-            }
-        }
-        return true;
-    });
     employeesState.page = 1;
-    renderEmployeesTable();
+    saveEmployeesFilterState();
+    loadEmployeesPage(1);
 }
 
 function statusBadge(status) {
@@ -717,22 +1131,26 @@ function statusBadge(status) {
     return `<span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">${escapeHtml(status || "Noma'lum")}</span>`;
 }
 
+function noDataBadge(label = "Ma'lumot yo'q") {
+    return `<span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">${escapeHtml(label)}</span>`;
+}
+
 function renderPagination() {
-    const total = employeesState.filtered.length;
-    employeesState.totalPages = Math.max(1, Math.ceil(total / employeesState.pageSize));
     if (employeesState.page > employeesState.totalPages) {
         employeesState.page = employeesState.totalPages;
     }
-    document.getElementById("employees-page-info").textContent = `${employeesState.page} / ${employeesState.totalPages} (jami: ${total})`;
+    document.getElementById("employees-page-info").textContent = `${employeesState.page} / ${employeesState.totalPages} (jami: ${employeesState.total})`;
     document.getElementById("employees-prev-page").disabled = employeesState.page <= 1;
     document.getElementById("employees-next-page").disabled = employeesState.page >= employeesState.totalPages;
 }
 
 function renderEmployeesTable() {
     const tbody = document.getElementById("employeesTableBody");
-    const totalAll = employeesState.all.length;
-    const totalFiltered = employeesState.filtered.length;
-    document.getElementById("employees-count-text").textContent = `${totalFiltered} ta ko'rsatildi / ${totalAll} ta jami foydalanuvchi`;
+    const totalAll = employeesState.total;
+    const totalFiltered = employeesState.items.length;
+    const start = totalAll === 0 ? 0 : ((employeesState.page - 1) * employeesState.pageSize) + 1;
+    const end = totalAll === 0 ? 0 : Math.min(employeesState.page * employeesState.pageSize, totalAll);
+    document.getElementById("employees-count-text").textContent = totalAll === 0 ? "Mos foydalanuvchi topilmadi." : `${start}-${end} / ${totalAll} ta foydalanuvchi`;
 
     renderPagination();
     if (totalFiltered === 0) {
@@ -740,23 +1158,41 @@ function renderEmployeesTable() {
         return;
     }
 
-    const start = (employeesState.page - 1) * employeesState.pageSize;
-    const pageItems = employeesState.filtered.slice(start, start + employeesState.pageSize);
+    const pageItems = employeesState.items;
 
     tbody.innerHTML = pageItems.map((emp, index) => {
         const rowNo = start + index + 1;
-        const fullName = normalizeText(emp.full_name || `${normalizeText(emp.first_name)} ${normalizeText(emp.last_name)}`) || "-";
+        const fullName = getEmployeeDisplayName(emp);
+        const personalIdText = normalizeText(emp.personal_id) || "-";
+        const personalIdBadge = `
+            <span class="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">
+                <span>ID: ${escapeHtml(personalIdText)}</span>
+                <button
+                    type="button"
+                    class="personal-id-copy-btn inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded-md bg-white/70 text-blue-700 transition hover:scale-105 hover:bg-white dark:bg-slate-800/70 dark:text-blue-300"
+                    title="ID nusxalash"
+                    aria-label="ID nusxalash"
+                    data-personal-id="${escapeHtml(personalIdText)}"
+                    ${personalIdText === "-" ? "disabled" : ""}
+                >
+                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2M10 18h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                </button>
+            </span>
+        `;
         const avatar = emp.avatar
             ? `<img class="h-10 w-10 rounded-full border border-gray-200 object-cover dark:border-gray-700" src="${escapeHtml(emp.avatar)}" alt="${escapeHtml(fullName)}">`
             : `<div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">${escapeHtml(fullName[0] || "?")}</div>`;
         const orgCell = emp.organization_name
             ? `<span class="inline-flex items-center rounded-lg bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-300">${escapeHtml(emp.organization_name)}</span>`
-            : '<span class="text-xs text-gray-400">-</span>';
+            : noDataBadge();
         const cameraNames = Array.isArray(emp.camera_names) ? emp.camera_names : [];
         const cameraCell = cameraNames.length
             ? cameraNames.slice(0, 3).map((name) => `<span class="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] text-blue-700 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-300">${escapeHtml(name)}</span>`).join("")
-            : '<span class="text-xs text-gray-400">Ulanmagan</span>';
+            : noDataBadge("Ulanmagan");
         const moreCams = cameraNames.length > 3 ? `<div class="mt-1 text-[11px] text-gray-500">+${cameraNames.length - 3} ta</div>` : "";
+        const departmentCell = normalizeText(emp.department) ? escapeHtml(emp.department) : noDataBadge();
+        const positionCell = normalizeText(emp.position) ? escapeHtml(emp.position) : noDataBadge();
+        const addedDateCell = normalizeText(emp.added_date) ? escapeHtml(emp.added_date) : noDataBadge();
 
         return `
         <tr class="transition hover:bg-gray-50 dark:hover:bg-gray-800/50">
@@ -766,17 +1202,17 @@ function renderEmployeesTable() {
                     ${avatar}
                     <div>
                         <div class="text-sm font-semibold text-gray-900 dark:text-white">${escapeHtml(fullName)}</div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400">DB #${escapeHtml(emp.id)}</div>
+                        <div class="mt-0.5">${personalIdBadge}</div>
                     </div>
                 </div>
             </td>
             <td class="px-6 py-4">${orgCell}</td>
             <td class="px-6 py-4"><div class="flex flex-wrap gap-1.5">${cameraCell}</div>${moreCams}</td>
-            <td class="px-6 py-4 text-gray-700 dark:text-gray-300">${escapeHtml(emp.department || "")}</td>
-            <td class="px-6 py-4 text-gray-700 dark:text-gray-300">${escapeHtml(emp.position || "")}</td>
+            <td class="px-6 py-4 text-gray-700 dark:text-gray-300">${departmentCell}</td>
+            <td class="px-6 py-4 text-gray-700 dark:text-gray-300">${positionCell}</td>
             <td class="px-6 py-4 text-gray-700 dark:text-gray-300">${escapeHtml(normalizeEmployeeTypeLabel(emp.employee_type || ""))}</td>
             <td class="px-6 py-4">${statusBadge(emp.status)}</td>
-            <td class="px-6 py-4 text-gray-500 dark:text-gray-400">${escapeHtml(emp.added_date || "")}</td>
+            <td class="px-6 py-4 text-gray-500 dark:text-gray-400">${addedDateCell}</td>
             <td class="px-6 py-4">
                 <div class="flex items-center justify-end gap-2">
                     <a href="/employees/${encodeURIComponent(emp.id)}" title="Profil" class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-600 transition hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
@@ -785,20 +1221,14 @@ function renderEmployeesTable() {
                     <a href="/employees/${encodeURIComponent(emp.id)}/edit" title="Tahrirlash" class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 transition hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-300 dark:hover:bg-blue-500/20">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                     </a>
-                    <button
-                        type="button"
-                        title="Kameradan rasmni yangilash"
-                        data-action="import-face"
-                        data-employee-id="${Number(emp.id)}"
-                        class="employee-action-btn inline-flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
-                    ><svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M8 12l4 4m0 0l4-4m-4 4V3"/></svg></button>
+
                     <button
                         type="button"
                         title="O'chirish"
                         data-action="delete-employee"
                         data-employee-id="${Number(emp.id)}"
                         data-employee-name="${escapeHtml(fullName)}"
-                        class="employee-action-btn inline-flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-red-600 transition hover:bg-red-100 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20"
+                        class="employee-action-btn inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-red-50 text-red-600 transition hover:bg-red-100 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20"
                     >
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                     </button>
@@ -807,42 +1237,68 @@ function renderEmployeesTable() {
         </tr>`;
     }).join("");
 }
-
-async function importEmployeeFace(id, overwrite = true) {
-    notifyEmployees(overwrite ? "Kameradan rasm yangilanmoqda..." : "Kameradan rasm import qilinmoqda...", "info");
+async function loadEmployeesPage(page = 1) {
+    const tbody = document.getElementById("employeesTableBody");
+    const params = buildEmployeesSearchParams(page);
+    if (employeesState.listAbortController) {
+        employeesState.listAbortController.abort();
+    }
+    const controller = new AbortController();
+    employeesState.listAbortController = controller;
+    const requestSeq = ++employeesState.listRequestSeq;
+    setEmployeesLoading(true);
     try {
-        const data = await fetchJson(`/api/employees/${id}/import-face-from-camera?overwrite=${overwrite ? "true" : "false"}`, { method: "POST" });
-        notifyEmployees(data.message || "Rasm import qilindi", "success");
-        await loadEmployees();
+        const data = await fetchJson(`/api/employees/search?${params.toString()}`, { signal: controller.signal });
+        if (requestSeq !== employeesState.listRequestSeq) return;
+        employeesState.items = Array.isArray(data.items) ? data.items : [];
+        employeesState.total = Number(data.total || 0);
+        employeesState.totalPages = Math.max(1, Number(data.total_pages || 1));
+        employeesState.page = Number(data.page || page || 1);
+        employeesState.stats = data.stats && typeof data.stats === "object"
+            ? data.stats
+            : { ...employeesState.stats, total_employees: employeesState.total };
+        saveEmployeesFilterState();
+        renderEmployeesStats();
+        renderEmployeesTable();
     } catch (e) {
-        notifyEmployees(e.message || "Rasm importda xatolik", "error");
+        if (e && e.name === "AbortError") return;
+        console.error(e);
+        tbody.innerHTML = '<tr><td colspan="10" class="px-6 py-12 text-center text-red-600">Foydalanuvchilarni yuklashda xatolik.</td></tr>';
+        document.getElementById("employees-count-text").textContent = "Yuklashda xatolik";
+    } finally {
+        if (employeesState.listAbortController === controller) {
+            employeesState.listAbortController = null;
+        }
+        setEmployeesLoading(false);
     }
 }
 
 async function loadEmployees() {
-    const tbody = document.getElementById("employeesTableBody");
     try {
-        const [employeesRes, camerasRes] = await Promise.all([
-            fetch("/api/employees"),
-            fetch("/api/cameras"),
-        ]);
-        const employeesData = await employeesRes.json().catch(() => []);
-        const camerasData = await camerasRes.json().catch(() => []);
-        employeesState.all = Array.isArray(employeesData) ? employeesData : [];
-        employeesState.cameras = Array.isArray(camerasData) ? camerasData : [];
+        setEmployeesLoading(true);
+        const metaRes = await fetchJson('/api/employees/filter-options');
+        employeesState.filterMeta = {
+            organizations: Array.isArray(metaRes.organizations) ? metaRes.organizations : [],
+            departments: Array.isArray(metaRes.departments) ? metaRes.departments : [],
+            positions: Array.isArray(metaRes.positions) ? metaRes.positions : [],
+            cameras: Array.isArray(metaRes.cameras) ? metaRes.cameras : [],
+        };
         renderFilters();
-        employeesState.filtered = [...employeesState.all];
-        renderEmployeesTable();
+        restoreEmployeesFilterState();
+        await loadEmployeesPage(employeesState.page || 1);
     } catch (e) {
         console.error(e);
-        tbody.innerHTML = '<tr><td colspan="10" class="px-6 py-12 text-center text-red-600">Foydalanuvchilarni yuklashda xatolik.</td></tr>';
+        document.getElementById("employeesTableBody").innerHTML = '<tr><td colspan="10" class="px-6 py-12 text-center text-red-600">Foydalanuvchilarni yuklashda xatolik.</td></tr>';
         document.getElementById("employees-count-text").textContent = "Yuklashda xatolik";
+    } finally {
+        setEmployeesLoading(false);
     }
 }
 
 async function confirmDeleteEmployee() {
     const id = employeesState.deletingEmployeeId;
     if (!id) return;
+    if (employeesState.deleteActionInFlight) return;
     const deleteFromCameras = Boolean(document.getElementById("employee-delete-from-cameras")?.checked);
     const selectedCameraIds = Array.from(document.querySelectorAll(".employee-delete-camera-item:checked"))
         .map((el) => Number(el.value))
@@ -851,6 +1307,8 @@ async function confirmDeleteEmployee() {
         notifyEmployees("Hech bo'lmasa bitta kamerani tanlang yoki kamera o'chirishni bekor qiling.", "error");
         return;
     }
+    employeesState.deleteActionInFlight = true;
+    setDeleteModalLoading(true);
     try {
         const params = new URLSearchParams();
         params.set("delete_from_cameras", deleteFromCameras ? "true" : "false");
@@ -870,29 +1328,72 @@ async function confirmDeleteEmployee() {
         await loadEmployees();
     } catch (e) {
         notifyEmployees(e.message || "O'chirishda xatolik", "error");
+    } finally {
+        employeesState.deleteActionInFlight = false;
+        setDeleteModalLoading(false);
     }
 }
 
 document.getElementById("employees-apply-filter").addEventListener("click", applyFilters);
+document.getElementById("employees-query-filter").addEventListener("input", () => {
+    clearTimeout(employeesState.searchDebounceTimer);
+    employeesState.searchDebounceTimer = setTimeout(() => applyFilters(), 280);
+});
+document.getElementById("employees-query-filter").addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    clearTimeout(employeesState.searchDebounceTimer);
+    applyFilters();
+});
 document.getElementById("employees-reset-filter").addEventListener("click", () => {
-    document.getElementById("employees-firstname-filter").value = "";
-    document.getElementById("employees-lastname-filter").value = "";
+    document.getElementById("employees-query-filter").value = "";
     document.getElementById("employees-org-filter").value = "all";
+    document.getElementById("employees-dept-filter").value = "all";
+    document.getElementById("employees-pos-filter").value = "all";
     document.getElementById("employees-camera-filter").value = "all";
     document.getElementById("employees-type-filter").value = "all";
+    refreshDeptPosFilters();
+    refreshCameraFilter();
     applyFilters();
 });
 document.getElementById("employees-prev-page").addEventListener("click", () => {
     if (employeesState.page <= 1) return;
     employeesState.page -= 1;
-    renderEmployeesTable();
+    saveEmployeesFilterState();
+    loadEmployeesPage(employeesState.page);
 });
 document.getElementById("employees-next-page").addEventListener("click", () => {
     if (employeesState.page >= employeesState.totalPages) return;
     employeesState.page += 1;
-    renderEmployeesTable();
+    saveEmployeesFilterState();
+    loadEmployeesPage(employeesState.page);
 });
 document.getElementById("employeesTableBody").addEventListener("click", (event) => {
+    const copyBtn = event.target.closest(".personal-id-copy-btn");
+    if (copyBtn) {
+        const personalId = String(copyBtn.dataset.personalId || "").trim();
+        if (!personalId || personalId === "-") return;
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+            navigator.clipboard.writeText(personalId)
+                .then(() => notifyEmployees(`Nusxalandi: ${personalId}`, "success"))
+                .catch(() => notifyEmployees("Nusxalashda xatolik", "error"));
+        } else {
+            const tmp = document.createElement("input");
+            tmp.value = personalId;
+            document.body.appendChild(tmp);
+            tmp.select();
+            try {
+                document.execCommand("copy");
+                notifyEmployees(`Nusxalandi: ${personalId}`, "success");
+            } catch (_) {
+                notifyEmployees("Nusxalashda xatolik", "error");
+            } finally {
+                document.body.removeChild(tmp);
+            }
+        }
+        return;
+    }
+
     const button = event.target.closest(".employee-action-btn");
     if (!button) return;
 
@@ -900,20 +1401,35 @@ document.getElementById("employeesTableBody").addEventListener("click", (event) 
     if (!Number.isFinite(employeeId) || employeeId <= 0) return;
 
     const action = String(button.dataset.action || "");
-    if (action === "import-face") {
-        importEmployeeFace(employeeId, true);
-        return;
-    }
     if (action === "delete-employee") {
-        openDeleteEmployeeModal(employeeId, button.dataset.employeeName || "");
+        if (employeesState.deleteActionInFlight) return;
+        setDeleteTriggerLoading(button, true);
+        requestAnimationFrame(() => {
+            openDeleteEmployeeModal(employeeId, button.dataset.employeeName || "");
+            setDeleteTriggerLoading(button, false);
+        });
     }
 });
 document.getElementById("btn-attendance-import").addEventListener("click", () => {
     importFromAttendanceToDb();
 });
+document.getElementById("btn-camera-import").addEventListener("click", () => {
+    openEmployeesImportModal(document.getElementById("btn-camera-import"));
+});
 
 document.addEventListener("DOMContentLoaded", async () => {
     await loadEmployees();
+    const savedImportJobVersion = String(localStorage.getItem(EMPLOYEES_IMPORT_JOB_VERSION_KEY) || '').trim();
+    const savedImportJobId = String(localStorage.getItem(EMPLOYEES_IMPORT_JOB_STORAGE_KEY) || '').trim();
+    if (savedImportJobId && savedImportJobVersion !== EMPLOYEES_IMPORT_JOB_VERSION) {
+        clearSavedEmployeesImportJob();
+    }
+    const resumableImportJobId = savedImportJobVersion === EMPLOYEES_IMPORT_JOB_VERSION ? savedImportJobId : "";
+    if (resumableImportJobId) {
+        employeesState.importJobId = resumableImportJobId;
+        openImportProgressModal();
+        startImportPolling();
+    }
     const savedAttendanceJobId = String(localStorage.getItem('employees_attendance_import_job_id') || '').trim();
     if (savedAttendanceJobId) {
         employeesState.attendanceImportJobId = savedAttendanceJobId;

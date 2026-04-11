@@ -1,12 +1,38 @@
 from collections import defaultdict
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Request, Depends
+from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
+from access_control import (
+    build_permission_groups,
+    filter_menu_structure_by_permissions,
+    get_role_default_menu_permissions,
+    normalize_role_value,
+    resolve_user_menu_permissions,
+)
 from database import get_db
-from models import Device, Employee, AttendanceLog, EmployeePsychologicalState, Organization, EmployeeCameraLink, User, UserOrganizationLink
+from models import (
+    AttendanceLog,
+    Department,
+    Device,
+    Employee,
+    EmployeeCameraLink,
+    EmployeePsychologicalState,
+    Organization,
+    Position,
+    User,
+    UserOrganizationLink,
+    UserRole,
+)
 from organization_types import get_organization_type_choices, get_organization_type_label
+from routers.cameras_parts.psychology_utils import (
+    aggregate_emotion_scores,
+    build_psychological_profile,
+    deserialize_emotion_scores,
+    state_labels,
+)
 from time_utils import now_tashkent, today_tashkent_range
 from system_config import (
     ISUP_ALARM_PORT,
@@ -41,10 +67,12 @@ MENU_TITLES = {
         "group_employees": "Xodimlar",
         "group_management": "Tashkilotlar",
         "users": "Tizim Foydalanuvchilari",
+        "user_approvals": "Tasdiqlash Navbati",
         "organizations": "Tashkilotlar",
         "isup_server": "ISUP Server",
         "api_helper": "API Helper",
         "redis_monitor": "REDIS",
+        "middleware_logs": "Tizim Loglari",
     },
     "ru": {
         "dashboard": "Управление",
@@ -60,6 +88,7 @@ MENU_TITLES = {
         "group_employees": "Персонал",
         "group_management": "Организации",
         "users": "Системные пользователи",
+        "user_approvals": "Очередь подтверждения",
         "organizations": "Организации",
         "isup_server": "ISUP Сервер",
         "api_helper": "API Helper",
@@ -84,9 +113,11 @@ DEFAULT_MENU_STRUCTURE = [
     {"type": "group", "key": "group_management"},
     {"type": "link", "key": "organizations", "href": "/organizations", "icon": '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1v2H9V7zm0 4h1v2H9v-2zm0 4h1v2H9v-2zm3-8h1v2h-1V7zm0 4h1v2h-1v-2zm0 4h1v2h-1v-2zm3-8h1v2h-1V7zm0 4h1v2h-1v-2zm0 4h1v2h-1v-2z"/>'},
     {"type": "link", "key": "users", "href": "/users", "icon": '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>'},
+    {"type": "link", "key": "user_approvals", "href": "/user-approvals", "icon": '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>'},
     {"type": "link", "key": "settings", "href": "/settings", "icon": '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>'},
     {"type": "link", "key": "isup_server", "href": "/isup-server", "icon": '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/>'},
     {"type": "link", "key": "redis_monitor", "href": "/redis", "icon": '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7c0-1.657 3.582-3 8-3s8 1.343 8 3-3.582 3-8 3-8-1.343-8-3zm0 5c0 1.657 3.582 3 8 3s8-1.343 8-3m-16 0v5c0 1.657 3.582 3 8 3s8-1.343 8-3v-5"/>'},
+    {"type": "link", "key": "middleware_logs", "href": "/middleware-logs", "icon": '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>'},
     {"type": "link", "key": "api_helper", "href": "/api-helper", "icon": '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>'},
     {"type": "link", "key": "about", "href": "/about", "icon": '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>'}
 ]
@@ -114,6 +145,40 @@ def _format_delay_human(total_minutes: int, lang: str = "uz") -> str:
     if hours > 0:
         return f"{hours} soat {minutes} daqiqa"
     return f"{minutes} daqiqa"
+
+
+def _get_organization_user_counts(db: Session, org_ids: list[int]) -> dict[int, int]:
+    if not org_ids:
+        return {}
+
+    user_ids_by_org: dict[int, set[int]] = defaultdict(set)
+    linked_user_ids: set[int] = set()
+
+    for row in (
+        db.query(UserOrganizationLink.user_id, UserOrganizationLink.organization_id)
+        .filter(UserOrganizationLink.organization_id.in_(org_ids))
+        .all()
+    ):
+        if row.organization_id is None or row.user_id is None:
+            continue
+        org_id = int(row.organization_id)
+        user_id = int(row.user_id)
+        user_ids_by_org[org_id].add(user_id)
+        linked_user_ids.add(user_id)
+
+    for user_id, org_id in (
+        db.query(User.id, User.organization_id)
+        .filter(User.organization_id.in_(org_ids))
+        .all()
+    ):
+        if user_id is None or org_id is None:
+            continue
+        safe_user_id = int(user_id)
+        if safe_user_id in linked_user_ids:
+            continue
+        user_ids_by_org[int(org_id)].add(safe_user_id)
+
+    return {org_id: len(user_ids) for org_id, user_ids in user_ids_by_org.items()}
 
 
 def _resolve_reports_org_scope(request: Request, db: Session) -> dict:
@@ -357,7 +422,8 @@ def get_menus_dict(request: Request) -> dict:
         "group_employees": "Xodimlar" if lang == "uz" else "Персонал",
         "group_management": "Tashkilotlar" if lang == "uz" else "Организации",
         "users": "Tizim Foydalanuvchilari" if lang == "uz" else "Системные пользователи",
-        "isup_server": "ISUP Server" if lang == "uz" else "ISUP Сервер"
+        "isup_server": "ISUP Server" if lang == "uz" else "ISUP Сервер",
+        "middleware_logs": "Tizim Loglari" if lang == "uz" else "Системные Логи"
     }
 
     res = dict(defaults)
@@ -372,8 +438,42 @@ def get_menus_dict(request: Request) -> dict:
         key = item["key"]
         
         # Determine title
-        fallback_uz = "Boshqaruv Paneli" if key == "dashboard" else ("Kameralar Ro'yxati" if key == "devices" else ("Kamera Hodisalari" if key == "events" else ("Kameraga Buyruqlar" if key == "commands" else ("Xodimlar Ro'yxati" if key == "employees" else ("Sinxron Davomat" if key == "sync_attendance" else ("Kechikish Hisoboti" if key == "reports" else ("Sozlamalar" if key == "settings" else ("Tizim Haqida" if key == "about" else ("ISUP Server" if key == "isup_server" else ("Kameralar" if key == "group_cameras" else ("Xodimlar" if key == "group_employees" else ("Tizim Foydalanuvchilari" if key == "users" else "Tashkilotlar"))))))))))))
-        fallback_ru = "Управление" if key == "dashboard" else ("Список камер" if key == "devices" else ("События" if key == "events" else ("Команды" if key == "commands" else ("Сотрудники" if key == "employees" else ("Синхронная посещаемость" if key == "sync_attendance" else ("Опоздания" if key == "reports" else ("Настройки" if key == "settings" else ("О системе" if key == "about" else ("ISUP Сервер" if key == "isup_server" else ("Камеры" if key == "group_cameras" else ("Персонал" if key == "group_employees" else ("Системные пользователи" if key == "users" else "Организации"))))))))))))
+        fallback_uz_map = {
+            "dashboard": "Boshqaruv Paneli",
+            "devices": "Kameralar Ro'yxati",
+            "events": "Kamera Hodisalari",
+            "commands": "Kameraga Buyruqlar",
+            "employees": "Xodimlar Ro'yxati",
+            "sync_attendance": "Sinxron Davomat",
+            "reports": "Kechikish Hisoboti",
+            "user_approvals": "Tasdiqlash Navbati",
+            "settings": "Sozlamalar",
+            "about": "Tizim Haqida",
+            "isup_server": "ISUP Server",
+            "middleware_logs": "Tizim Loglari",
+            "group_cameras": "Kameralar",
+            "group_employees": "Xodimlar",
+            "users": "Tizim Foydalanuvchilari",
+        }
+        fallback_ru_map = {
+            "dashboard": "Управление",
+            "devices": "Список камер",
+            "events": "События",
+            "commands": "Команды",
+            "employees": "Сотрудники",
+            "sync_attendance": "Синхронная посещаемость",
+            "reports": "Опоздания",
+            "user_approvals": "Очередь подтверждения",
+            "settings": "Настройки",
+            "about": "О системе",
+            "isup_server": "ISUP Сервер",
+            "middleware_logs": "Системные Логи",
+            "group_cameras": "Камеры",
+            "group_employees": "Персонал",
+            "users": "Системные пользователи",
+        }
+        fallback_uz = fallback_uz_map.get(key, "Tashkilotlar")
+        fallback_ru = fallback_ru_map.get(key, "Организации")
 
         fallback_uz = MENU_TITLES["uz"].get(key, fallback_uz)
         fallback_ru = MENU_TITLES["ru"].get(key, fallback_ru)
@@ -403,6 +503,14 @@ def get_menus_dict(request: Request) -> dict:
             item["order_index"] = 9999 + idx # Put un-sorted items at the end
             
     menu_list.sort(key=lambda x: x["order_index"])
+    auth_user = request.session.get("auth_user") or {}
+    if auth_user:
+        menu_permissions = resolve_user_menu_permissions(
+            role=auth_user.get("role"),
+            stored_permissions=auth_user.get("menu_permissions"),
+        )
+        menu_list = filter_menu_structure_by_permissions(menu_list, menu_permissions)
+        res["__permissions__"] = menu_permissions
     res["__list__"] = menu_list
     res["app_name"] = saved_data.get("app_name", "BioFace")
     res["logo_url"] = saved_data.get("logo_url", "")
@@ -444,6 +552,40 @@ def _resolve_allowed_org_ids(request: Request, db: Session) -> list[int]:
         allowed_org_ids.append(int(org_id))
 
     return sorted(allowed_org_ids)
+
+
+def _request_is_super_admin(request: Request) -> bool:
+    auth_user = request.session.get("auth_user") or {}
+    return normalize_role_value(auth_user.get("role")) == UserRole.super_admin.value
+
+
+def _resolve_camera_page_scope(request: Request, db: Session) -> dict[str, object]:
+    is_super_admin = _request_is_super_admin(request)
+    organizations_query = db.query(Organization).order_by(Organization.name)
+    if is_super_admin:
+        organizations = organizations_query.all()
+        allowed_org_ids = [
+            int(org.id)
+            for org in organizations
+            if getattr(org, "id", None) is not None
+        ]
+        return {
+            "is_super_admin": True,
+            "allowed_org_ids": allowed_org_ids,
+            "organizations": organizations,
+        }
+
+    allowed_org_ids = _resolve_allowed_org_ids(request, db)
+    organizations = (
+        organizations_query.filter(Organization.id.in_(allowed_org_ids)).all()
+        if allowed_org_ids
+        else []
+    )
+    return {
+        "is_super_admin": False,
+        "allowed_org_ids": allowed_org_ids,
+        "organizations": organizations,
+    }
 
 
 def _parse_hhmm_or_default(value, default_h: int = 9, default_m: int = 0) -> tuple[int, int]:
@@ -804,6 +946,7 @@ def devices_page(request: Request, db: Session = Depends(get_db)):
     menus = get_menus_dict(request)
     lang = request.cookies.get("lang", "uz")
     t = get_translations(lang)
+    scope = _resolve_camera_page_scope(request, db)
     return templates.TemplateResponse(request=request, name="devices.html", context={
         "request": request,
         "page_title": menus.get("devices"),
@@ -811,11 +954,16 @@ def devices_page(request: Request, db: Session = Depends(get_db)):
         "t": t,
         "lang": lang,
         "notifs": get_notifications(request, db),
-        "organizations": db.query(Organization).order_by(Organization.name).all(),
+        "organizations": scope.get("organizations") or [],
+        "camera_manage_allowed": bool(scope.get("is_super_admin")),
+        "camera_scope_limited": not bool(scope.get("is_super_admin")),
     })
 
 @router.get("/devices/add")
 def add_device_page(request: Request, db: Session = Depends(get_db)):
+    scope = _resolve_camera_page_scope(request, db)
+    if not bool(scope.get("is_super_admin")):
+        return RedirectResponse(url="/devices", status_code=303)
     menus = get_menus_dict(request)
     lang = request.cookies.get("lang", "uz")
     t = get_translations(lang)
@@ -826,7 +974,7 @@ def add_device_page(request: Request, db: Session = Depends(get_db)):
         "menus": menus,
         "t": t,
         "lang": lang,
-        "organizations": db.query(Organization).order_by(Organization.name).all(),
+        "organizations": scope.get("organizations") or [],
         "notifs": get_notifications(request, db),
     })
 
@@ -846,6 +994,31 @@ def users_page(request: Request, db: Session = Depends(get_db)):
         "notifs": get_notifications(request, db),
     })
 
+@router.get("/user-approvals")
+def user_approvals_page(request: Request, db: Session = Depends(get_db)):
+    menus = get_menus_dict(request)
+    lang = request.cookies.get("lang", "uz")
+    t = get_translations(lang)
+    page_title = "Очередь подтверждения" if lang == "ru" else "Tasdiqlash navbati"
+    return templates.TemplateResponse(request=request, name="user_approvals.html", context={
+        "request": request,
+        "page_title": page_title,
+        "menus": menus,
+        "t": t,
+        "lang": lang,
+        "menu_permission_groups": build_permission_groups(lang),
+        "role_permission_defaults": {
+            "SuperAdmin": get_role_default_menu_permissions("SuperAdmin"),
+            "MahallaAdmin": get_role_default_menu_permissions("MahallaAdmin"),
+            "MaktabAdmin": get_role_default_menu_permissions("MaktabAdmin"),
+            "KollejAdmin": get_role_default_menu_permissions("KollejAdmin"),
+            "TashkilotAdmin": get_role_default_menu_permissions("TashkilotAdmin"),
+            "KorxonaAdmin": get_role_default_menu_permissions("KorxonaAdmin"),
+        },
+        "organizations": db.query(Organization).order_by(Organization.name).all(),
+        "notifs": get_notifications(request, db),
+    })
+
 @router.get("/users/add")
 def add_user_page(request: Request, db: Session = Depends(get_db)):
     menus = get_menus_dict(request)
@@ -858,6 +1031,15 @@ def add_user_page(request: Request, db: Session = Depends(get_db)):
         "menus": menus,
         "t": t,
         "lang": lang,
+        "menu_permission_groups": build_permission_groups(lang),
+        "role_permission_defaults": {
+            "SuperAdmin": get_role_default_menu_permissions("SuperAdmin"),
+            "MahallaAdmin": get_role_default_menu_permissions("MahallaAdmin"),
+            "MaktabAdmin": get_role_default_menu_permissions("MaktabAdmin"),
+            "KollejAdmin": get_role_default_menu_permissions("KollejAdmin"),
+            "TashkilotAdmin": get_role_default_menu_permissions("TashkilotAdmin"),
+            "KorxonaAdmin": get_role_default_menu_permissions("KorxonaAdmin"),
+        },
         "organizations": db.query(Organization).order_by(Organization.name).all(),
         "notifs": get_notifications(request, db),
     })
@@ -889,6 +1071,16 @@ def edit_user_page(request: Request, user_id: int, db: Session = Depends(get_db)
         "lang": lang,
         "user": user,
         "user_org_ids": user_org_ids,
+        "user_menu_permissions": resolve_user_menu_permissions(role=user.role, stored_permissions=user.menu_permissions),
+        "menu_permission_groups": build_permission_groups(lang),
+        "role_permission_defaults": {
+            "SuperAdmin": get_role_default_menu_permissions("SuperAdmin"),
+            "MahallaAdmin": get_role_default_menu_permissions("MahallaAdmin"),
+            "MaktabAdmin": get_role_default_menu_permissions("MaktabAdmin"),
+            "KollejAdmin": get_role_default_menu_permissions("KollejAdmin"),
+            "TashkilotAdmin": get_role_default_menu_permissions("TashkilotAdmin"),
+            "KorxonaAdmin": get_role_default_menu_permissions("KorxonaAdmin"),
+        },
         "organizations": db.query(Organization).order_by(Organization.name).all(),
         "notifs": get_notifications(request, db),
     })
@@ -911,6 +1103,9 @@ def organization_info_page(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/devices/edit")
 def edit_camera_page(request: Request, db: Session = Depends(get_db)):
+    scope = _resolve_camera_page_scope(request, db)
+    if not bool(scope.get("is_super_admin")):
+        return RedirectResponse(url="/devices", status_code=303)
     menus = get_menus_dict(request)
     lang = request.cookies.get("lang", "uz")
     t = get_translations(lang)
@@ -921,7 +1116,7 @@ def edit_camera_page(request: Request, db: Session = Depends(get_db)):
         "menus": menus,
         "t": t,
         "lang": lang,
-        "organizations": db.query(Organization).order_by(Organization.name).all(),
+        "organizations": scope.get("organizations") or [],
         "notifs": get_notifications(request, db),
     })
 
@@ -1009,10 +1204,27 @@ def api_helper_page(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/camera-info")
 def camera_info_page(request: Request, db: Session = Depends(get_db)):
+    scope = _resolve_camera_page_scope(request, db)
+    cam_id_raw = str(request.query_params.get("id") or "").strip()
+    try:
+        cam_id = int(cam_id_raw)
+    except ValueError:
+        return RedirectResponse(url="/devices", status_code=303)
+
+    camera_query = db.query(Device).filter(Device.id == cam_id)
+    if not bool(scope.get("is_super_admin")):
+        allowed_org_ids = list(scope.get("allowed_org_ids") or [])
+        if not allowed_org_ids:
+            return RedirectResponse(url="/devices", status_code=303)
+        camera_query = camera_query.filter(Device.organization_id.in_(allowed_org_ids))
+
+    cam = camera_query.first()
+    if cam is None:
+        return RedirectResponse(url="/devices", status_code=303)
+
     menus = get_menus_dict(request)
     lang = request.cookies.get("lang", "uz")
     t = get_translations(lang)
-    cam = db.query(Device).first()
     return templates.TemplateResponse(request=request, name="camera_info.html", context={
         "request": request,
         "page_title": "Kamera Ma'lumoti" if lang == "uz" else "Информация о камере",
@@ -1021,6 +1233,7 @@ def camera_info_page(request: Request, db: Session = Depends(get_db)):
         "lang": lang,
         "camera": cam or {},
         "cameras": [],
+        "camera_manage_allowed": bool(scope.get("is_super_admin")),
         "notifs": get_notifications(request, db),
     })
 
@@ -1055,7 +1268,6 @@ def sync_attendance_page(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/employees")
 def employees_page(request: Request, db: Session = Depends(get_db)):
-    emps = db.query(Employee).all()
     menus = get_menus_dict(request)
     lang = request.cookies.get("lang", "uz")
     t = get_translations(lang)
@@ -1065,9 +1277,24 @@ def employees_page(request: Request, db: Session = Depends(get_db)):
         "menus": menus,
         "t": t,
         "lang": lang,
-        "employees": emps,
         "notifs": get_notifications(request, db),
     })
+
+
+@router.get("/employees/catalogs")
+def employee_catalogs_page(request: Request, db: Session = Depends(get_db)):
+    menus = get_menus_dict(request)
+    lang = request.cookies.get("lang", "uz")
+    t = get_translations(lang)
+    return templates.TemplateResponse(request=request, name="employee_catalogs.html", context={
+        "request": request,
+        "page_title": "Bo'lim va lavozimlar" if lang == "uz" else "Отделы и должности",
+        "menus": menus,
+        "t": t,
+        "lang": lang,
+        "notifs": get_notifications(request, db),
+    })
+
 
 @router.get("/employees/add")
 def add_employee_page(request: Request, db: Session = Depends(get_db)):
@@ -1075,13 +1302,22 @@ def add_employee_page(request: Request, db: Session = Depends(get_db)):
     lang = request.cookies.get("lang", "uz")
     t = get_translations(lang)
     page_title = "Добавить сотрудника" if lang == "ru" else "Xodim qo'shish"
+    allowed_org_ids = _resolve_allowed_org_ids(request, db)
+    organizations = (
+        db.query(Organization).filter(Organization.id.in_(allowed_org_ids)).order_by(Organization.name).all()
+        if allowed_org_ids
+        else []
+    )
+    default_organization_id = int(organizations[0].id) if len(organizations) == 1 else None
     return templates.TemplateResponse(request=request, name="add_employee.html", context={
         "request": request,
         "page_title": page_title,
         "menus": menus,
         "t": t,
         "lang": lang,
-        "organizations": db.query(Organization).order_by(Organization.name).all(),
+        "organizations": organizations,
+        "default_organization_id": default_organization_id,
+        "single_organization_mode": len(organizations) == 1,
         "cameras": db.query(Device).order_by(Device.name).all(),
         "notifs": get_notifications(request, db),
     })
@@ -1135,6 +1371,13 @@ def edit_employee_page(request: Request, emp_id: int, db: Session = Depends(get_
     lang = request.cookies.get("lang", "uz")
     t = get_translations(lang)
     page_title = "Редактировать сотрудника" if lang == "ru" else "Xodimni Tahrirlash"
+    allowed_org_ids = _resolve_allowed_org_ids(request, db)
+    organizations = (
+        db.query(Organization).filter(Organization.id.in_(allowed_org_ids)).order_by(Organization.name).all()
+        if allowed_org_ids
+        else []
+    )
+    default_organization_id = int(organizations[0].id) if len(organizations) == 1 else None
     linked_camera_ids = [
         int(row.camera_id)
         for row in db.query(EmployeeCameraLink.camera_id)
@@ -1149,7 +1392,9 @@ def edit_employee_page(request: Request, emp_id: int, db: Session = Depends(get_
         "lang": lang,
         "emp": emp,
         "linked_camera_ids": linked_camera_ids,
-        "organizations": db.query(Organization).order_by(Organization.name).all(),
+        "organizations": organizations,
+        "default_organization_id": default_organization_id,
+        "single_organization_mode": len(organizations) == 1,
         "cameras": db.query(Device).order_by(Device.name).all(),
         "notifs": get_notifications(request, db),
     })
@@ -1159,15 +1404,24 @@ def commands_page(request: Request, db: Session = Depends(get_db)):
     menus = get_menus_dict(request)
     lang = request.cookies.get("lang", "uz")
     t = get_translations(lang)
-    organizations = db.query(Organization).order_by(Organization.name).all()
+    scope = _resolve_camera_page_scope(request, db)
+    organizations = scope.get("organizations") or []
+    allowed_org_ids = list(scope.get("allowed_org_ids") or [])
+    cameras_query = db.query(Device)
+    if not bool(scope.get("is_super_admin")):
+        cameras_query = cameras_query.filter(Device.organization_id.in_(allowed_org_ids)) if allowed_org_ids else cameras_query.filter(Device.id == -1)
     return templates.TemplateResponse(request=request, name="commands.html", context={
         "request": request,
         "page_title": menus.get("commands"),
         "menus": menus,
         "t": t,
         "lang": lang,
-        "cameras": [{"id": c.id, "name": c.name, "organization_id": c.organization_id} for c in db.query(Device).all()],
+        "cameras": [
+            {"id": c.id, "name": c.name, "organization_id": c.organization_id}
+            for c in cameras_query.order_by(Device.name).all()
+        ],
         "organizations": organizations,
+        "camera_command_allowed": bool(scope.get("is_super_admin")),
         "notifs": get_notifications(request, db),
     })
 
@@ -1210,23 +1464,6 @@ def reports_page(request: Request, db: Session = Depends(get_db)):
     })
 
 
-@router.get("/employees")
-def employees_page_alt(request: Request, db: Session = Depends(get_db)):
-    # This duplicate is kept here for compatibility with older routes order
-    emps = db.query(Employee).all()
-    menus = get_menus_dict(request)
-    lang = request.cookies.get("lang", "uz")
-    t = get_translations(lang)
-    return templates.TemplateResponse(request=request, name="employees.html", context={
-        "request": request,
-        "page_title": menus.get("employees"),
-        "menus": menus,
-        "t": t,
-        "lang": lang,
-        "employees": emps,
-        "notifs": get_notifications(request, db),
-    })
-
 
 @router.get("/about")
 def about_page(request: Request, db: Session = Depends(get_db)):
@@ -1252,6 +1489,14 @@ def psychological_portrait_page(request: Request, db: Session = Depends(get_db))
     selected_year = str(request.query_params.get("year") or "all").strip() or "all"
     selected_month = str(request.query_params.get("month") or "all").strip() or "all"
     selected_day = str(request.query_params.get("day") or "all").strip() or "all"
+    table_search = str(request.query_params.get("q") or "").strip()
+    selected_department_id = str(request.query_params.get("department_id") or "all").strip() or "all"
+    selected_position_id = str(request.query_params.get("position_id") or "all").strip() or "all"
+    try:
+        current_page = max(1, int(request.query_params.get("page") or 1))
+    except Exception:
+        current_page = 1
+    page_size = 50
 
     def _norm(value: str | None) -> str:
         text = str(value or "").strip().casefold().replace("yo'q", "yoq")
@@ -1261,20 +1506,24 @@ def psychological_portrait_page(request: Request, db: Session = Depends(get_db))
             text = text.replace("  ", " ")
         return text.strip()
 
-    categories = [
-        {"key": "neutral", "uz": "Xotirjam", "ru": "Спокойный", "aliases": ["xotirjam", "neutral", "calm", "spokoynyy", "спокойный"]},
-        {"key": "happy", "uz": "Quvnoq", "ru": "Радостный", "aliases": ["quvnoq", "happy", "joyful", "xursand", "радостный"]},
-        {"key": "sad", "uz": "Xafa", "ru": "Грустный", "aliases": ["xafa", "sad", "mahzun", "грустный"]},
-        {"key": "anxious", "uz": "Xavotirli", "ru": "Тревожный", "aliases": ["xavotirli", "anxious", "worry", "тревожный"]},
-        {"key": "angry", "uz": "Jahli chiqqan", "ru": "Раздражённый", "aliases": ["jahli chiqqan", "angry", "mad", "gazablangan", "g'azablangan", "раздражённый"]},
-        {"key": "surprised", "uz": "Hayron", "ru": "Удивлённый", "aliases": ["hayron", "surprised", "удивлённый"]},
-        {"key": "indifferent", "uz": "Befarq", "ru": "Безразличный", "aliases": ["befarq", "indifferent", "безразличный"]},
-        {"key": "unknown", "uz": "Aniqlanmadi", "ru": "Не определено", "aliases": ["aniqlanmadi", "unknown", "noma'lum", "nomalum", "не определено"]},
-    ]
-    alias_map: dict[str, str] = {}
-    for c in categories:
-        for a in c["aliases"]:
-            alias_map[_norm(a)] = c["key"]
+    category_keys = ("happy", "neutral", "sad", "fear", "angry", "surprise", "disgust", "contempt", "undetermined")
+    categories = []
+    for key in category_keys:
+        label_uz, label_ru = state_labels(key)
+        categories.append({"key": key, "uz": label_uz.title(), "ru": label_ru.title()})
+
+    def _infer_state_key(row: EmployeePsychologicalState) -> str:
+        if str(row.state_key or "").strip():
+            return str(row.state_key).strip()
+        norm_uz = _norm(row.state_uz)
+        norm_ru = _norm(row.state_ru)
+        for key in category_keys:
+            label_uz, label_ru = state_labels(key)
+            if norm_uz and norm_uz == _norm(label_uz):
+                return key
+            if norm_ru and norm_ru == _norm(label_ru):
+                return key
+        return "undetermined"
 
     def _apply_date(query):
         q = query
@@ -1303,6 +1552,19 @@ def psychological_portrait_page(request: Request, db: Session = Depends(get_db))
         employee_q = employee_q.filter(Employee.id == -1)
     scoped_employee_ids = [int(r.id) for r in employee_q.with_entities(Employee.id).all()]
     total_employees = len(scoped_employee_ids)
+    department_choices = (
+        db.query(Department.id, Department.name)
+        .filter(Department.organization_id.in_(allowed_org_ids or [-1]))
+        .order_by(Department.name.asc())
+        .all()
+    )
+    position_q = (
+        db.query(Position.id, Position.name, Position.department_id)
+        .filter(Position.organization_id.in_(allowed_org_ids or [-1]))
+    )
+    if selected_department_id != "all" and selected_department_id.isdigit():
+        position_q = position_q.filter(Position.department_id == int(selected_department_id))
+    position_choices = position_q.order_by(Position.name.asc()).all()
 
     states_base = db.query(EmployeePsychologicalState)
     if scoped_employee_ids:
@@ -1322,40 +1584,57 @@ def psychological_portrait_page(request: Request, db: Session = Depends(get_db))
         day_base = day_base.filter(func.substr(EmployeePsychologicalState.state_date, 6, 2) == selected_month)
     days = [str(r.d or "").strip() for r in day_base.with_entities(func.substr(EmployeePsychologicalState.state_date, 9, 2).label("d")).distinct().order_by(func.substr(EmployeePsychologicalState.state_date, 9, 2).asc()).all() if str(r.d or "").strip()]
 
-    selected_total = int(filtered_states.with_entities(func.count(EmployeePsychologicalState.id)).scalar() or 0)
-    selected_employees = int(filtered_states.with_entities(func.count(func.distinct(EmployeePsychologicalState.employee_id))).scalar() or 0)
+    filtered_state_rows = (
+        filtered_states
+        .order_by(EmployeePsychologicalState.assessed_at.desc(), EmployeePsychologicalState.id.desc())
+        .all()
+    )
+    selected_total = len(filtered_state_rows)
+    selected_employees = len({int(row.employee_id) for row in filtered_state_rows if row.employee_id is not None})
     selected_coverage = round((selected_employees / total_employees) * 100) if total_employees else 0
 
-    latest_state = filtered_states.order_by(EmployeePsychologicalState.assessed_at.desc(), EmployeePsychologicalState.id.desc()).first()
+    latest_state = filtered_state_rows[0] if filtered_state_rows else None
     latest_activity = latest_state.assessed_at.isoformat() if latest_state and latest_state.assessed_at else None
 
-    source_rows = filtered_states.with_entities(EmployeePsychologicalState.source, func.count(EmployeePsychologicalState.id)).group_by(EmployeePsychologicalState.source).all()
+    source_counter: dict[str, int] = {}
+    for row in filtered_state_rows:
+        source_key = str(row.source or "manual").strip() or "manual"
+        source_counter[source_key] = source_counter.get(source_key, 0) + 1
     source_breakdown = []
-    for source_key, count_value in source_rows:
+    for source_key, count_value in source_counter.items():
         safe_source = str(source_key or "manual")
         c = int(count_value or 0)
         source_breakdown.append({"label": safe_source, "count": c, "percent": round((c / max(1, selected_total)) * 100)})
     source_breakdown.sort(key=lambda item: item["count"], reverse=True)
 
-    state_rows = filtered_states.with_entities(EmployeePsychologicalState.state_uz, EmployeePsychologicalState.state_ru, func.count(EmployeePsychologicalState.id)).group_by(EmployeePsychologicalState.state_uz, EmployeePsychologicalState.state_ru).all()
-    category_counts: dict[str, int] = {}
-    for item in categories:
-        key = str(item.get("key") or "unknown")
-        category_counts[key] = 0
-    for state_uz, state_ru, count_value in state_rows:
-        key = alias_map.get(_norm(state_uz or state_ru), "unknown")
-        category_counts[key] = category_counts.get(key, 0) + int(count_value or 0)
+    aggregate_items: list[dict[str, float]] = []
+    dominant_counts: dict[str, int] = {item["key"]: 0 for item in categories}
+    for row in filtered_state_rows:
+        state_key = _infer_state_key(row)
+        emotion_scores = deserialize_emotion_scores(row.emotion_scores_json)
+        if not emotion_scores and state_key != "undetermined":
+            emotion_scores = {state_key: 1.0}
+        aggregate_items.append(emotion_scores)
+        dominant_counts[state_key] = dominant_counts.get(state_key, 0) + 1
+
+    average_emotions = aggregate_emotion_scores(aggregate_items)
+    average_profile = build_psychological_profile(
+        max(average_emotions, key=average_emotions.get) if average_emotions else "undetermined",
+        emotion_scores=average_emotions,
+    )
 
     state_breakdown = []
     for item in categories:
-        key = str(item.get("key") or "unknown")
-        cnt = int(category_counts.get(key, 0))
-        state_breakdown.append({
-            "key": key,
-            "label": item["uz"] if lang == "uz" else item["ru"],
-            "count": cnt,
-            "percent": round((cnt / max(1, selected_total)) * 100),
-        })
+        key = str(item.get("key") or "undetermined")
+        avg_value = float(average_emotions.get(key, 0.0))
+        state_breakdown.append(
+            {
+                "key": key,
+                "label": item["uz"] if lang == "uz" else item["ru"],
+                "count": int(dominant_counts.get(key, 0)),
+                "percent": round(avg_value * 100, 1),
+            }
+        )
 
     recent_rows_query = (
         db.query(EmployeePsychologicalState, Employee)
@@ -1366,24 +1645,89 @@ def psychological_portrait_page(request: Request, db: Session = Depends(get_db))
     else:
         recent_rows_query = recent_rows_query.filter(EmployeePsychologicalState.id == -1)
 
+    recent_rows_query = _apply_date(recent_rows_query)
+    if table_search:
+        like = f"%{table_search.casefold()}%"
+        recent_rows_query = recent_rows_query.filter(
+            or_(
+                func.lower(Employee.first_name).like(like),
+                func.lower(Employee.last_name).like(like),
+                func.lower(Employee.middle_name).like(like),
+                func.lower(Employee.personal_id).like(like),
+            )
+        )
+    if selected_department_id != "all" and selected_department_id.isdigit():
+        recent_rows_query = recent_rows_query.filter(Employee.department_id == int(selected_department_id))
+    if selected_position_id != "all" and selected_position_id.isdigit():
+        recent_rows_query = recent_rows_query.filter(Employee.position_id == int(selected_position_id))
+
+    table_total = recent_rows_query.count()
+    total_pages = max(1, (table_total + page_size - 1) // page_size)
+    current_page = min(current_page, total_pages)
     recent_rows = (
-        _apply_date(recent_rows_query)
+        recent_rows_query
         .order_by(EmployeePsychologicalState.assessed_at.desc(), EmployeePsychologicalState.id.desc())
-        .limit(20)
+        .offset((current_page - 1) * page_size)
+        .limit(page_size)
         .all()
     )
-    recent_states = [
-        {
-            "employee_id": int(emp.id),
-            "employee_name": " ".join(part for part in [emp.first_name, emp.last_name, emp.middle_name] if part and str(part).strip()).strip() or "-",
-            "state": str(state.state_ru or "-") if lang == "ru" else str(state.state_uz or "-"),
-            "state_date": str(state.state_date or ""),
-            "source": str(state.source or "manual"),
-            "assessed_at": state.assessed_at.isoformat() if state.assessed_at else None,
-            "note": str(state.note or ""),
-        }
-        for state, emp in recent_rows
-    ]
+    recent_states = []
+    public_base_url = normalize_public_web_base_url(get_public_web_base_url())
+
+    def _absolute_asset_url(value: str | None) -> str | None:
+        text = str(value or "").strip()
+        if not text:
+            return None
+        if text.startswith("http://") or text.startswith("https://"):
+            return text
+        if text.startswith("/"):
+            return f"{public_base_url}{text}"
+        return text
+
+    for state, emp in recent_rows:
+        inferred_state_key = _infer_state_key(state)
+        emotion_scores = deserialize_emotion_scores(state.emotion_scores_json)
+        if not emotion_scores and inferred_state_key != "undetermined":
+            emotion_scores = {inferred_state_key: 1.0}
+        profile = build_psychological_profile(
+            inferred_state_key,
+            confidence=state.confidence,
+            emotion_scores=emotion_scores,
+        )
+        image_log_query = (
+            db.query(AttendanceLog.snapshot_url)
+            .filter(
+                AttendanceLog.employee_id == emp.id,
+                AttendanceLog.snapshot_url.isnot(None),
+                AttendanceLog.snapshot_url != "",
+            )
+        )
+        if state.state_date:
+            image_log_query = image_log_query.filter(func.date(AttendanceLog.timestamp) == state.state_date)
+        image_log = image_log_query.order_by(AttendanceLog.timestamp.desc(), AttendanceLog.id.desc()).first()
+        source_image_url = _absolute_asset_url(image_log[0] if image_log else None)
+        fallback_image_url = _absolute_asset_url(emp.image_url)
+        recent_states.append(
+            {
+                "employee_id": int(emp.id),
+                "employee_name": " ".join(part for part in [emp.first_name, emp.last_name, emp.middle_name] if part and str(part).strip()).strip() or "-",
+                "row_no": ((current_page - 1) * page_size) + len(recent_states) + 1,
+                "personal_id": str(emp.personal_id or ""),
+                "department": str((emp.department_ref.name if emp.department_ref else emp.department) or "-"),
+                "position": str((emp.position_ref.name if emp.position_ref else emp.position) or "-"),
+                "source_image_url": source_image_url,
+                "fallback_image_url": fallback_image_url,
+                "state": str(state.state_ru or profile.get("state_ru") or "-") if lang == "ru" else str(state.state_uz or profile.get("state_uz") or "-"),
+                "state_date": str(state.state_date or ""),
+                "state_key": inferred_state_key,
+                "source": str(state.source or "manual"),
+                "assessed_at": state.assessed_at.isoformat() if state.assessed_at else None,
+                "note": str(state.note or ""),
+                "confidence_percent": round(float(profile.get("confidence") or 0.0) * 100, 1),
+                "profile_text": str(profile.get("profile_text_ru") if lang == "ru" else profile.get("profile_text_uz") or ""),
+                "top_emotions": profile.get("top_emotions_ru") if lang == "ru" else profile.get("top_emotions_uz"),
+            }
+        )
 
     portrait_score = selected_coverage if total_employees else 0
     if portrait_score >= 75:
@@ -1398,17 +1742,17 @@ def psychological_portrait_page(request: Request, db: Session = Depends(get_db))
         {"label": "Jami xodimlar" if lang == "uz" else "Всего сотрудников", "value": total_employees, "hint": "Tizimdagi xodimlar" if lang == "uz" else "Сотрудники в системе", "tone": "slate"},
         {"label": "Tanlangan davr yozuvlari" if lang == "uz" else "Записи за период", "value": selected_total, "hint": _period_label(), "tone": "blue"},
         {"label": "Qayd qilingan xodimlar" if lang == "uz" else "Отмеченные сотрудники", "value": selected_employees, "hint": f"Qamrov: {selected_coverage}%" if lang == "uz" else f"Покрытие: {selected_coverage}%", "tone": "emerald"},
-        {"label": "Asosiy holatlar" if lang == "uz" else "Ключевые состояния", "value": len(state_breakdown), "hint": "Angry/Neutral va boshqalar" if lang == "uz" else "Angry/Neutral и другие", "tone": "violet"},
+        {"label": "Asosiy profil" if lang == "uz" else "Ключевой профиль", "value": average_profile.get("profile_text_uz") if lang == "uz" else average_profile.get("profile_text_ru"), "hint": "O'rtacha emotsiya profili" if lang == "uz" else "Средний профиль эмоций", "tone": "violet"},
         {"label": "So'nggi yozuv vaqti" if lang == "uz" else "Время последней записи", "value": latest_activity or "-", "hint": "Tanlangan davr bo'yicha" if lang == "uz" else "За выбранный период", "tone": "amber"},
         {"label": "Holat darajasi" if lang == "uz" else "Уровень", "value": portrait_level.title(), "hint": "Oddiy ko'rsatkich" if lang == "uz" else "Простой показатель", "tone": "red"},
     ]
     portrait_signals = [
         {"title": "Qamrov" if lang == "uz" else "Покрытие", "value": portrait_score, "description": "Tanlangan davr bo'yicha qamrov foizi" if lang == "uz" else "Процент покрытия за выбранный период"},
         {"title": "Monitoring holati" if lang == "uz" else "Состояние мониторинга", "value": portrait_level.title(), "description": "Yozuvlar to'liqligi" if lang == "uz" else "Полнота записей"},
-        {"title": "So'nggi yozuv" if lang == "uz" else "Последняя запись", "value": latest_activity or "-", "description": "Oxirgi qayd vaqti" if lang == "uz" else "Время последней записи"},
+        {"title": "O'rtacha profil" if lang == "uz" else "Средний профиль", "value": average_profile.get("profile_text_uz") if lang == "uz" else average_profile.get("profile_text_ru"), "description": "Tanlangan davr bo'yicha top-3 emotsiya" if lang == "uz" else "Топ-3 эмоции за выбранный период"},
     ]
     portrait_notes = [
-        "Bu sahifa AI asosida xodim holatini ko'rsatadi." if lang == "uz" else "Эта страница показывает состояние сотрудников на основе AI.",
+        "Har bir rasm uchun emotsiyalar foizlarda saqlanadi." if lang == "uz" else "Для каждого снимка эмоции сохраняются в процентах.",
         "Bu tibbiy tashxis emas, faqat kuzatuv uchun." if lang == "uz" else "Это не медицинский диагноз, только для наблюдения.",
         "Filtr orqali yil/oy/kun bo'yicha ko'ring." if lang == "uz" else "Используйте фильтр год/месяц/день.",
     ]
@@ -1427,6 +1771,21 @@ def psychological_portrait_page(request: Request, db: Session = Depends(get_db))
         "state_breakdown": state_breakdown,
         "source_breakdown": source_breakdown,
         "recent_states": recent_states,
+        "table_search": table_search,
+        "selected_department_id": selected_department_id,
+        "selected_position_id": selected_position_id,
+        "department_choices": [{"id": int(row.id), "name": str(row.name or "-")} for row in department_choices],
+        "position_choices": [{"id": int(row.id), "name": str(row.name or "-"), "department_id": int(row.department_id or 0)} for row in position_choices],
+        "pagination": {
+            "page": current_page,
+            "page_size": page_size,
+            "total": table_total,
+            "total_pages": total_pages,
+            "has_prev": current_page > 1,
+            "has_next": current_page < total_pages,
+            "prev_page": max(1, current_page - 1),
+            "next_page": min(total_pages, current_page + 1),
+        },
         "selected_year": selected_year,
         "selected_month": selected_month,
         "selected_day": selected_day,
@@ -1442,6 +1801,7 @@ def psychological_portrait_page(request: Request, db: Session = Depends(get_db))
             "portrait_level": portrait_level,
             "latest_activity": latest_activity,
             "selected_period_label": _period_label(),
+            "average_profile_text": average_profile.get("profile_text_ru") if lang == "ru" else average_profile.get("profile_text_uz"),
         },
         "notifs": get_notifications(request, db),
     })
@@ -1470,6 +1830,8 @@ def organizations_page(request: Request, db: Session = Depends(get_db)):
     page_title = "Организации" if lang == "ru" else "Tashkilotlar"
 
     org_rows = db.query(Organization).order_by(Organization.id.desc()).all()
+    org_ids = [int(o.id) for o in org_rows]
+    users_count_by_org = _get_organization_user_counts(db, org_ids)
     organizations = [
         {
             "id": int(o.id),
@@ -1478,6 +1840,7 @@ def organizations_page(request: Request, db: Session = Depends(get_db)):
             "organization_type_label": get_organization_type_label(o.organization_type, lang=lang),
             "subscription_status": (o.subscription_status.value if hasattr(o.subscription_status, "value") else str(o.subscription_status or "pending")),
             "default_start_time": str(o.default_start_time or "09:00"),
+            "users_count": int(users_count_by_org.get(int(o.id), 0)),
             "employees_count": len(o.employees),
             "devices_count": len(o.devices),
         }
@@ -1535,6 +1898,7 @@ def edit_organization_page(request: Request, org_id: int, db: Session = Depends(
         "notifs": get_notifications(request, db),
     })
 
+
 @router.get("/isup-server")
 def isup_dashboard_page(request: Request, db: Session = Depends(get_db)):
     menus = get_menus_dict(request)
@@ -1558,6 +1922,20 @@ def redis_dashboard_page(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(request=request, name="redis_dashboard.html", context={
         "request": request,
         "page_title": menus.get("redis_monitor", "REDIS"),
+        "menus": menus,
+        "t": t,
+        "lang": lang,
+        "notifs": get_notifications(request, db),
+    })
+
+@router.get('/middleware-logs')
+async def middleware_logs(request: Request, db: Session = Depends(get_db)):
+    menus = get_menus_dict(request)
+    lang = request.cookies.get("lang", "uz")
+    t = get_translations(lang)
+    return templates.TemplateResponse(request=request, name="middleware_logs.html", context={
+        "request": request,
+        "page_title": menus.get("middleware_logs", "Tizim Loglari"),
         "menus": menus,
         "t": t,
         "lang": lang,

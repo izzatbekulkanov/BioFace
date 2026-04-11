@@ -6,10 +6,17 @@
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t.users_title }}</h1>
         <p id="users-count-text" class="mt-1 text-sm text-gray-500 dark:text-gray-400">Yuklanmoqda...</p>
     </div>
-    <a href="/users/add" class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-700">
-        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-        {{ t.add_user }}
-    </a>
+    <div class="flex flex-wrap items-center gap-2">
+        <a href="/user-approvals" class="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-800 shadow-sm transition hover:-translate-y-0.5 hover:bg-amber-100 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-200 dark:hover:bg-amber-900/30">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+            Google tasdiqlash
+            <span id="pending-approvals-badge" class="hidden rounded-full bg-amber-600 px-2 py-0.5 text-xs font-bold text-white">0</span>
+        </a>
+        <a href="/users/add" class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-700">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            {{ t.add_user }}
+        </a>
+    </div>
 </div>
 
 <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
@@ -22,8 +29,9 @@
                     <th class="px-5 py-3 font-medium">Username</th>
                     <th class="px-5 py-3 font-medium">Otasining ismi</th>
                     <th class="px-5 py-3 font-medium">{{ t.email }}</th>
-                    <th class="px-5 py-3 font-medium">Telefon</th>
+                    <th class="px-5 py-3 font-medium">{{ t.phone }}</th>
                     <th class="px-5 py-3 font-medium">{{ t.role }}</th>
+                    <th class="px-5 py-3 font-medium">Status</th>
                     <th class="px-5 py-3 font-medium">{{ t.organization }}</th>
                     <th class="px-5 py-3 font-medium text-right">{{ t.actions }}</th>
                 </tr>
@@ -118,6 +126,16 @@ function renderTable() {
         const middleName = escapeHtml(String(u.middle_name || "-"));
         const orgNames = Array.isArray(u.organization_names) ? u.organization_names.filter(Boolean) : [];
         const orgText = orgNames.length ? orgNames.join(", ") : (u.organization_name || "-");
+
+        let statusBadge = '';
+        if (u.status === 'active' || !u.status) {
+            statusBadge = `<span class="inline-flex items-center rounded-full border border-green-200 bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:border-green-800 dark:bg-green-900/30 dark:text-green-300">Faol</span>`;
+        } else if (u.status === 'pending') {
+            statusBadge = `<span class="inline-flex items-center rounded-full border border-yellow-200 bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800 dark:border-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">Kutilmoqda</span>`;
+        } else {
+            statusBadge = `<span class="inline-flex items-center rounded-full border border-red-200 bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300">Nofaol</span>`;
+        }
+
         const avatar = u.image_url ? `
             <img src="${escapeHtml(u.image_url)}" alt="avatar" class="h-10 w-10 rounded-full border border-gray-200 object-cover dark:border-gray-700">
         ` : `
@@ -147,6 +165,7 @@ function renderTable() {
                         ${escapeHtml(rolesMapping[u.role] || u.role || "-")}
                     </span>
                 </td>
+                <td class="px-5 py-4 whitespace-nowrap">${statusBadge}</td>
                 <td class="px-5 py-4 text-gray-500 dark:text-gray-400">${escapeHtml(orgText)}</td>
                 <td class="px-5 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div class="flex items-center justify-end gap-2">
@@ -172,6 +191,20 @@ async function loadUsers() {
         renderTable();
     } catch (e) {
         console.error("Users load xatoligi", e);
+    }
+}
+
+async function loadPendingApprovalsCount() {
+    try {
+        const res = await fetch("/api/users/pending");
+        const data = await res.json().catch(() => ({ users: [] }));
+        const count = Array.isArray(data.users) ? data.users.length : 0;
+        const badge = document.getElementById("pending-approvals-badge");
+        if (!badge) return;
+        badge.textContent = String(count);
+        badge.classList.toggle("hidden", count <= 0);
+    } catch (e) {
+        console.error("Pending approvals count xatoligi", e);
     }
 }
 
@@ -218,6 +251,9 @@ document.getElementById("users-next-page").addEventListener("click", () => {
     renderTable();
 });
 
-document.addEventListener("DOMContentLoaded", loadUsers);
+document.addEventListener("DOMContentLoaded", () => {
+    loadUsers();
+    loadPendingApprovalsCount();
+});
 </script>
 {% endblock %}

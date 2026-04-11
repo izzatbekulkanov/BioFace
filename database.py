@@ -63,6 +63,14 @@ def ensure_schema() -> bool:
                     conn.execute(text("ALTER TABLE organizations ADD COLUMN telegram_admin_chat_id VARCHAR"))
                 if "telegram_bot_token" not in org_cols:
                     conn.execute(text("ALTER TABLE organizations ADD COLUMN telegram_bot_token VARCHAR"))
+                if "google_oauth_enabled" not in org_cols:
+                    conn.execute(text("ALTER TABLE organizations ADD COLUMN google_oauth_enabled BOOLEAN DEFAULT 0"))
+                if "google_client_id" not in org_cols:
+                    conn.execute(text("ALTER TABLE organizations ADD COLUMN google_client_id VARCHAR"))
+                if "google_client_secret" not in org_cols:
+                    conn.execute(text("ALTER TABLE organizations ADD COLUMN google_client_secret VARCHAR"))
+                if "google_redirect_uri" not in org_cols:
+                    conn.execute(text("ALTER TABLE organizations ADD COLUMN google_redirect_uri VARCHAR"))
                 conn.execute(
                     text(
                         "UPDATE organizations "
@@ -119,10 +127,29 @@ def ensure_schema() -> bool:
                     "middle_name": "ALTER TABLE users ADD COLUMN middle_name VARCHAR",
                     "phone": "ALTER TABLE users ADD COLUMN phone VARCHAR",
                     "image_url": "ALTER TABLE users ADD COLUMN image_url VARCHAR",
+                    "status": "ALTER TABLE users ADD COLUMN status VARCHAR DEFAULT 'active'",
+                    "menu_permissions": "ALTER TABLE users ADD COLUMN menu_permissions VARCHAR",
+                    "google_oauth_enabled": "ALTER TABLE users ADD COLUMN google_oauth_enabled BOOLEAN DEFAULT 0",
+                    "google_sub": "ALTER TABLE users ADD COLUMN google_sub VARCHAR",
+                    "last_login_provider": "ALTER TABLE users ADD COLUMN last_login_provider VARCHAR",
                 }
                 for col_name, sql in user_alters.items():
                     if col_name not in user_cols:
                         conn.execute(text(sql))
+                conn.execute(
+                    text(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_google_sub "
+                        "ON users (google_sub) "
+                        "WHERE google_sub IS NOT NULL AND trim(google_sub) <> ''"
+                    )
+                )
+                conn.execute(
+                    text(
+                        "UPDATE users "
+                        "SET google_oauth_enabled = COALESCE(google_oauth_enabled, 0), "
+                        "last_login_provider = COALESCE(NULLIF(trim(last_login_provider), ''), 'password')"
+                    )
+                )
 
                 # Backfill first_name from legacy name if needed.
                 conn.execute(
@@ -167,8 +194,8 @@ def ensure_schema() -> bool:
                     conn.execute(
                         text(
                             "INSERT INTO users "
-                            "(name, first_name, last_name, middle_name, email, phone, image_url, hashed_password, role, organization_id) "
-                            "VALUES (:name, :first_name, :last_name, :middle_name, :email, :phone, :image_url, :hashed_password, :role, NULL)"
+                            "(name, first_name, last_name, middle_name, email, phone, image_url, hashed_password, role, google_oauth_enabled, last_login_provider, organization_id) "
+                            "VALUES (:name, :first_name, :last_name, :middle_name, :email, :phone, :image_url, :hashed_password, :role, 0, 'password', NULL)"
                         ),
                         {
                             "name": default_name,
@@ -191,11 +218,180 @@ def ensure_schema() -> bool:
                     conn.execute(text("ALTER TABLE employees ADD COLUMN employee_type VARCHAR"))
                 if "middle_name" not in emp_cols:
                     conn.execute(text("ALTER TABLE employees ADD COLUMN middle_name VARCHAR"))
+                if "department_id" not in emp_cols:
+                    conn.execute(text("ALTER TABLE employees ADD COLUMN department_id INTEGER"))
+                if "position_id" not in emp_cols:
+                    conn.execute(text("ALTER TABLE employees ADD COLUMN position_id INTEGER"))
                 conn.execute(
                     text(
                         "CREATE UNIQUE INDEX IF NOT EXISTS ux_employees_personal_id "
                         "ON employees (personal_id) "
                         "WHERE personal_id IS NOT NULL AND trim(personal_id) <> ''"
+                    )
+                )
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_employees_department_id ON employees (department_id)"))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_employees_position_id ON employees (position_id)"))
+
+            if "departments" not in inspector.get_table_names():
+                conn.execute(
+                    text(
+                        """
+                        CREATE TABLE IF NOT EXISTS departments (
+                            id INTEGER PRIMARY KEY,
+                            name VARCHAR NOT NULL,
+                            organization_id INTEGER NOT NULL,
+                            created_at DATETIME,
+                            FOREIGN KEY(organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+                        )
+                        """
+                    )
+                )
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_departments_organization_id "
+                    "ON departments (organization_id)"
+                )
+            )
+            conn.execute(
+                text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS ux_departments_org_name_ci "
+                    "ON departments (organization_id, lower(trim(name)))"
+                )
+            )
+
+            if "positions" not in inspector.get_table_names():
+                conn.execute(
+                    text(
+                        """
+                        CREATE TABLE IF NOT EXISTS positions (
+                            id INTEGER PRIMARY KEY,
+                            name VARCHAR NOT NULL,
+                            organization_id INTEGER NOT NULL,
+                            department_id INTEGER,
+                            created_at DATETIME,
+                            FOREIGN KEY(organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+                            FOREIGN KEY(department_id) REFERENCES departments(id) ON DELETE CASCADE
+                        )
+                        """
+                    )
+                )
+            else:
+                position_cols = {c["name"] for c in inspector.get_columns("positions")}
+                if "department_id" not in position_cols:
+                    conn.execute(text("ALTER TABLE positions ADD COLUMN department_id INTEGER"))
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_positions_organization_id "
+                    "ON positions (organization_id)"
+                )
+            )
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_positions_department_id "
+                    "ON positions (department_id)"
+                )
+            )
+            conn.execute(text("DROP INDEX IF EXISTS ux_positions_org_name_ci"))
+            conn.execute(
+                text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS ux_positions_org_dept_name_ci "
+                    "ON positions (organization_id, ifnull(department_id, 0), lower(trim(name)))"
+                )
+            )
+
+            if "employees" in inspector.get_table_names():
+                conn.execute(
+                    text(
+                        """
+                        INSERT OR IGNORE INTO departments (name, organization_id, created_at)
+                        SELECT MIN(trim(department)) AS name, organization_id, CURRENT_TIMESTAMP
+                        FROM employees
+                        WHERE organization_id IS NOT NULL
+                          AND department IS NOT NULL
+                          AND trim(department) <> ''
+                        GROUP BY organization_id, lower(trim(department))
+                        """
+                    )
+                )
+                conn.execute(
+                    text(
+                        """
+                        INSERT OR IGNORE INTO positions (name, organization_id, department_id, created_at)
+                        SELECT
+                            MIN(trim(position)) AS name,
+                            organization_id,
+                            department_id,
+                            CURRENT_TIMESTAMP
+                        FROM employees
+                        WHERE organization_id IS NOT NULL
+                          AND position IS NOT NULL
+                          AND trim(position) <> ''
+                        GROUP BY organization_id, ifnull(department_id, 0), lower(trim(position))
+                        """
+                    )
+                )
+                conn.execute(
+                    text(
+                        """
+                        UPDATE employees
+                        SET department_id = (
+                            SELECT departments.id
+                            FROM departments
+                            WHERE departments.organization_id = employees.organization_id
+                              AND lower(trim(departments.name)) = lower(trim(employees.department))
+                            LIMIT 1
+                        )
+                        WHERE organization_id IS NOT NULL
+                          AND department IS NOT NULL
+                          AND trim(department) <> ''
+                          AND department_id IS NULL
+                        """
+                    )
+                )
+                conn.execute(
+                    text(
+                        """
+                        UPDATE employees
+                        SET position_id = (
+                            SELECT positions.id
+                            FROM positions
+                            WHERE positions.organization_id = employees.organization_id
+                              AND ifnull(positions.department_id, 0) = ifnull(employees.department_id, 0)
+                              AND lower(trim(positions.name)) = lower(trim(employees.position))
+                            LIMIT 1
+                        )
+                        WHERE organization_id IS NOT NULL
+                          AND position IS NOT NULL
+                          AND trim(position) <> ''
+                        """
+                    )
+                )
+                conn.execute(
+                    text(
+                        """
+                        UPDATE employees
+                        SET department = (
+                            SELECT departments.name
+                            FROM departments
+                            WHERE departments.id = employees.department_id
+                            LIMIT 1
+                        )
+                        WHERE department_id IS NOT NULL
+                        """
+                    )
+                )
+                conn.execute(
+                    text(
+                        """
+                        UPDATE employees
+                        SET position = (
+                            SELECT positions.name
+                            FROM positions
+                            WHERE positions.id = employees.position_id
+                            LIMIT 1
+                        )
+                        WHERE position_id IS NOT NULL
+                        """
                     )
                 )
 
@@ -207,6 +403,12 @@ def ensure_schema() -> bool:
                     conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN wellbeing_note_ru VARCHAR"))
                 if "wellbeing_note_source" not in attendance_cols:
                     conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN wellbeing_note_source VARCHAR"))
+                if "psychological_state_key" not in attendance_cols:
+                    conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN psychological_state_key VARCHAR"))
+                if "psychological_state_confidence" not in attendance_cols:
+                    conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN psychological_state_confidence FLOAT"))
+                if "emotion_scores_json" not in attendance_cols:
+                    conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN emotion_scores_json VARCHAR"))
 
             if "employee_camera_links" not in inspector.get_table_names():
                 conn.execute(
@@ -349,8 +551,11 @@ def ensure_schema() -> bool:
                         CREATE TABLE IF NOT EXISTS employee_psychological_states (
                             id INTEGER PRIMARY KEY,
                             employee_id INTEGER NOT NULL,
+                            state_key VARCHAR,
                             state_uz VARCHAR NOT NULL,
                             state_ru VARCHAR NOT NULL,
+                            confidence FLOAT,
+                            emotion_scores_json VARCHAR,
                             state_date VARCHAR NOT NULL,
                             source VARCHAR NOT NULL DEFAULT 'manual',
                             note VARCHAR,
@@ -374,6 +579,12 @@ def ensure_schema() -> bool:
                             "WHERE state_date IS NULL OR trim(state_date) = ''"
                         )
                     )
+                if "state_key" not in psych_cols:
+                    conn.execute(text("ALTER TABLE employee_psychological_states ADD COLUMN state_key VARCHAR"))
+                if "confidence" not in psych_cols:
+                    conn.execute(text("ALTER TABLE employee_psychological_states ADD COLUMN confidence FLOAT"))
+                if "emotion_scores_json" not in psych_cols:
+                    conn.execute(text("ALTER TABLE employee_psychological_states ADD COLUMN emotion_scores_json VARCHAR"))
             conn.execute(
                 text(
                     "CREATE INDEX IF NOT EXISTS ix_employee_psychological_states_employee_id "

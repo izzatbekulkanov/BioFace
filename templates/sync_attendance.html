@@ -67,6 +67,19 @@
             </div>
         </div>
 
+        <div id="sync-progress-panel" class="hidden rounded-2xl border border-blue-200 bg-blue-50 p-4 shadow-sm dark:border-blue-900/40 dark:bg-blue-900/20">
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <p id="sync-progress-title" class="text-sm font-semibold text-blue-900 dark:text-blue-100">ISUP orqali sinxronlash tayyorlanmoqda...</p>
+                    <p id="sync-progress-detail" class="mt-1 text-xs text-blue-700/80 dark:text-blue-200/80">0%</p>
+                </div>
+                <span id="sync-progress-percent" class="text-2xl font-bold text-blue-900 dark:text-blue-100">0%</span>
+            </div>
+            <div class="mt-3 h-3 overflow-hidden rounded-full bg-white dark:bg-blue-950/50">
+                <div id="sync-progress-bar" class="h-full rounded-full bg-blue-600 transition-all duration-300" style="width: 0%;"></div>
+            </div>
+        </div>
+
         <div>
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
@@ -265,6 +278,35 @@ function setSyncStatus(message, isError = false) {
         el.classList.remove("text-red-600", "dark:text-red-400");
         el.classList.add("text-gray-500", "dark:text-gray-400");
     }
+}
+
+function setSyncProgress(percent, title = "", detail = "") {
+    const panel = document.getElementById("sync-progress-panel");
+    const bar = document.getElementById("sync-progress-bar");
+    const pct = document.getElementById("sync-progress-percent");
+    const titleEl = document.getElementById("sync-progress-title");
+    const detailEl = document.getElementById("sync-progress-detail");
+    const safePercent = Math.max(0, Math.min(100, Math.round(Number(percent || 0))));
+    panel.classList.remove("hidden");
+    bar.style.width = `${safePercent}%`;
+    pct.textContent = `${safePercent}%`;
+    if (title) titleEl.textContent = title;
+    detailEl.textContent = detail || `${safePercent}%`;
+}
+
+function resetSyncProgress() {
+    setSyncProgress(0, "ISUP orqali sinxronlash tayyorlanmoqda...", "0%");
+}
+
+function getTargetSyncCameras(organizationId, cameraId) {
+    const cameras = Array.isArray(pageState.cameras) ? pageState.cameras : [];
+    if (cameraId) {
+        return cameras.filter((cam) => String(cam.id) === String(cameraId));
+    }
+    if (organizationId) {
+        return cameras.filter((cam) => String(cam.organization_id || "") === String(organizationId));
+    }
+    return cameras;
 }
 
 function getPageSize() {
@@ -633,35 +675,62 @@ async function syncAttendance(backfillHours = 168, organizationId = null, camera
     }
     pageState.syncLoading = true;
     setRefreshLoading(true);
+    resetSyncProgress();
     setSyncStatus("ISUP orqali kameradan davomat yuklanmoqda...");
-    const params = new URLSearchParams();
-    params.set("backfill_hours", String(backfillHours));
-    params.set("max_events", "800");
     const selectedSyncDate = getSelectedSyncDate();
-    if (selectedSyncDate) {
-        params.set("sync_date", selectedSyncDate);
-    }
-    if (organizationId) {
-        params.set("organization_id", String(organizationId));
-    }
-    if (cameraId) {
-        params.set("camera_id", String(cameraId));
-    }
     try {
-        const res = await fetch(`/api/attendance/sync?${params.toString()}`, { method: "POST" });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || data.ok === false) {
-            throw new Error(data.detail || data.message || "Davomatni kameradan sinxronlab bo'lmadi");
+        const targetCameras = getTargetSyncCameras(organizationId, cameraId);
+        if (!targetCameras.length) {
+            throw new Error("Sinxronlash uchun kamera topilmadi");
         }
 
-        pageState.rawItems = normalizeSyncedItems(data.attendance_items || data.items || data.rows || []);
+        const allItems = [];
+        let insertedTotal = 0;
+        let duplicateTotal = 0;
+        let fetchedTotal = 0;
+        const total = targetCameras.length;
+        setSyncProgress(3, "ISUP orqali kameralar tayyorlanmoqda...", `0/${total} kamera`);
+
+        for (let idx = 0; idx < targetCameras.length; idx += 1) {
+            const cam = targetCameras[idx];
+            const startPercent = Math.round((idx / total) * 90) + 5;
+            setSyncProgress(startPercent, `ISUP orqali davomat olinmoqda: ${cam.name || `Kamera ${cam.id}`}`, `${idx}/${total} kamera`);
+
+            const params = new URLSearchParams();
+            params.set("backfill_hours", String(backfillHours));
+            params.set("max_events", "800");
+            params.set("camera_id", String(cam.id));
+            if (selectedSyncDate) {
+                params.set("sync_date", selectedSyncDate);
+            }
+            if (cam.organization_id || organizationId) {
+                params.set("organization_id", String(cam.organization_id || organizationId));
+            }
+
+            const res = await fetch(`/api/attendance/sync?${params.toString()}`, { method: "POST" });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || data.ok === false) {
+                throw new Error(data.detail || data.message || `${cam.name || cam.id} kameradan davomat olib bo'lmadi`);
+            }
+
+            const inserted = Number(data.inserted || 0);
+            const duplicates = Number(data.duplicates || 0);
+            const fetched = Number(data.fetched || 0);
+            insertedTotal += inserted;
+            duplicateTotal += duplicates;
+            fetchedTotal += fetched;
+            allItems.push(...normalizeSyncedItems(data.attendance_items || data.items || data.rows || []));
+            const donePercent = Math.round(((idx + 1) / total) * 90) + 8;
+            setSyncProgress(donePercent, `Sinxronlandi: ${cam.name || `Kamera ${cam.id}`}`, `${idx + 1}/${total} kamera · ${fetched} o'qildi · ${inserted} yangi · ${duplicates} dublikat`);
+        }
+
+        pageState.rawItems = allItems;
         pageState.pagination.page = 1;
         applyFiltersAndRender();
 
-        const inserted = Number(data.inserted || 0);
-        const duplicates = Number(data.duplicates || 0);
-        const syncDateText = data.sync_date ? ` [kun: ${data.sync_date}]` : "";
-        const message = (data.message || `Sinxron yakunlandi: ${inserted} yangi, ${duplicates} dublikat.`) + syncDateText;
+        setSyncProgress(100, "Sinxronlash yakunlandi", `${total}/${total} kamera · ${insertedTotal} yangi · ${duplicateTotal} dublikat`);
+        const syncDateText = selectedSyncDate ? ` [kun: ${selectedSyncDate}]` : "";
+        const message = `Sinxron yakunlandi: ${insertedTotal} yangi, ${duplicateTotal} dublikat, ${fetchedTotal} o'qildi.` + syncDateText;
         setSyncStatus(message);
     } finally {
         pageState.syncLoading = false;

@@ -4,6 +4,7 @@ import argparse
 import base64
 import ctypes
 from concurrent.futures import ThreadPoolExecutor
+import ipaddress
 import json
 import os
 import re
@@ -22,6 +23,7 @@ from urllib.parse import urlsplit
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
+from time_utils import normalize_timestamp_tashkent, now_tashkent
 
 try:
     import httpx
@@ -40,14 +42,18 @@ except Exception:  # pragma: no cover - runtime dependency check
 
 try:
     from system_config import (
+        get_camera_event_push_base_url,
         get_isup_public_host,
         get_public_web_base_url,
+        normalize_camera_event_push_base_url,
         normalize_isup_public_host,
         normalize_public_web_base_url,
     )
 except Exception:  # pragma: no cover - runtime dependency check
+    get_camera_event_push_base_url = None
     get_isup_public_host = None
     get_public_web_base_url = None
+    normalize_camera_event_push_base_url = None
     normalize_isup_public_host = None
     normalize_public_web_base_url = None
 
@@ -187,6 +193,28 @@ def resolve_public_web_base_url_from_env() -> str:
     return ""
 
 
+def resolve_camera_event_push_base_url_from_env() -> str:
+    configured = (os.getenv("CAMERA_EVENT_PUSH_BASE_URL") or "").strip()
+    if normalize_camera_event_push_base_url is not None:
+        configured = normalize_camera_event_push_base_url(configured)
+    if configured:
+        return configured
+
+    if get_camera_event_push_base_url is not None:
+        try:
+            saved = (
+                normalize_camera_event_push_base_url(get_camera_event_push_base_url())
+                if normalize_camera_event_push_base_url is not None
+                else get_camera_event_push_base_url()
+            )
+            if saved:
+                return saved
+        except Exception:
+            pass
+
+    return ""
+
+
 class NET_EHOME_IPADDRESS(ctypes.Structure):
     _fields_ = [
         ("szIP", ctypes.c_char * 128),
@@ -312,6 +340,22 @@ class NET_EHOME_PTXML_PARAM(ctypes.Structure):
         ("dwOutSize", DWORD),
         ("dwReturnedXMLLen", DWORD),
         ("byRes", BYTE * 32),
+    ]
+
+
+class NET_EHOME_ISAPI_PASSTHROUGH_PARAM(ctypes.Structure):
+    _fields_ = [
+        ("pRequestUrl", ctypes.c_void_p),
+        ("dwRequestUrlLen", DWORD),
+        ("pCondBuffer", ctypes.c_void_p),
+        ("dwCondSize", DWORD),
+        ("pInBuffer", ctypes.c_void_p),
+        ("dwInSize", DWORD),
+        ("pOutBuffer", ctypes.c_void_p),
+        ("dwOutSize", DWORD),
+        ("dwReturnedXMLLen", DWORD),
+        ("byMimeType", BYTE),
+        ("byRes", BYTE * 31),
     ]
 
 
@@ -819,7 +863,8 @@ class RedisCommandBridge:
 
     @staticmethod
     def _valid_personal_id(value: str) -> bool:
-        return bool(value and len(value) == 7 and value.isdigit() and not value.startswith("0"))
+        text = str(value or "").strip()
+        return bool(text and len(text) <= 32)
 
     @staticmethod
     def _try_parse_json(text: str) -> Any:
@@ -1056,7 +1101,7 @@ class RedisCommandBridge:
                     SET used_faces = ?, is_online = 1, last_seen_at = ?
                     WHERE id = ?
                     """,
-                    (int(face_count), utc_now().replace(tzinfo=None).isoformat(), int(row_id)),
+                    (int(face_count), now_tashkent().isoformat(), int(row_id)),
                 )
                 conn.commit()
         except Exception:
@@ -1120,14 +1165,17 @@ class RedisCommandBridge:
         method: str,
         path: str,
         json_body: Optional[dict[str, Any]] = None,
+        raw_body: Optional[str] = None,
+        files: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
         try:
-            body_text = None if json_body is None else json.dumps(json_body, ensure_ascii=False)
+            body_text = raw_body if raw_body is not None else (None if json_body is None else json.dumps(json_body, ensure_ascii=False))
             sdk_payload = self.runtime.isapi_passthrough(
                 login_id=state.login_id,
                 method=method,
                 request_path=path,
                 body=body_text,
+                files=files,
             )
             text = self._compact_text(str(sdk_payload.get("text") or ""))
             parsed_json = self._try_parse_json(text)
@@ -1140,6 +1188,7 @@ class RedisCommandBridge:
                 "json": parsed_json,
                 "text": text,
                 "error": reason,
+                "raw_bytes": sdk_payload.get("raw_bytes"),
             }
         except Exception as exc:
             return {
@@ -1160,6 +1209,8 @@ class RedisCommandBridge:
         path: str,
         params: dict[str, Any],
         json_body: Optional[dict[str, Any]] = None,
+        raw_body: Optional[str] = None,
+        files: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
         if httpx is None:
             return {
@@ -1191,7 +1242,12 @@ class RedisCommandBridge:
                 verify=False,
                 trust_env=False,
             ) as client:
-                response = client.request(method.upper(), url, json=json_body)
+                if files is not None:
+                    response = client.request(method.upper(), url, files=files, data=json_body if isinstance(json_body, dict) else None)
+                elif raw_body is not None:
+                    response = client.request(method.upper(), url, content=raw_body.encode("utf-8"))
+                else:
+                    response = client.request(method.upper(), url, json=json_body)
 
             text = self._compact_text(response.text or "")
             parsed_json = None
@@ -1233,57 +1289,20 @@ class RedisCommandBridge:
         path: str,
         params: dict[str, Any],
         json_body: Optional[dict[str, Any]] = None,
+        raw_body: Optional[str] = None,
+        files: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
         allow_http_fallback = self._parse_bool(params.get("allow_http_fallback"), False)
-        isup_only_mode = not allow_http_fallback
-        force_http = self._parse_bool(params.get("force_http"), False)
-        force_sdk = self._parse_bool(params.get("force_sdk"), False) or isup_only_mode
-
-        request_path = path if path.startswith("/") else f"/{path}"
-
-        # Default mode: ISUP SDK only. Direct HTTP digest fallback is disabled unless explicitly allowed.
-        if force_http and isup_only_mode:
-            return {
-                "ok": False,
-                "transport": "isup_sdk_ptxml",
-                "request_path": request_path,
-                "status_code": None,
-                "json": None,
-                "text": "",
-                "error": "HTTP fallback o'chirilgan (ISUP-only mode).",
-            }
-
-        sdk_result: dict[str, Any] | None = None
-        if not force_http:
-            sdk_result = self._request_via_sdk(state, method, path, json_body=json_body)
-            if not isinstance(sdk_result, dict):
-                sdk_result = {
-                    "ok": False,
-                    "transport": "isup_sdk_ptxml",
-                    "request_path": request_path,
-                    "status_code": None,
-                    "json": None,
-                    "text": "",
-                    "error": "ISUP SDK so'rovi bajarilmadi.",
-                }
-            if sdk_result.get("ok"):
-                return sdk_result
-            if force_sdk:
-                return sdk_result
-
-        if isup_only_mode:
-            if sdk_result is not None:
-                return sdk_result
-            return {
-                "ok": False,
-                "transport": "isup_sdk_ptxml",
-                "request_path": request_path,
-                "status_code": None,
-                "json": None,
-                "text": "",
-                "error": "ISUP SDK so'rovi bajarilmadi.",
-            }
-
+        
+        # 1. SDK orqali urunib ko'ramiz
+        sdk_response = self._request_via_sdk(state, method, path, json_body=json_body, raw_body=raw_body, files=files)
+        if sdk_response.get("ok"):
+            return sdk_response
+            
+        if not allow_http_fallback:
+            return sdk_response
+            
+        # 2. HTTP orqali fallback
         http_result = self._request_via_http(
             target_device_id,
             state,
@@ -1291,9 +1310,19 @@ class RedisCommandBridge:
             path,
             params,
             json_body=json_body,
+            raw_body=raw_body,
+            files=files,
         )
-        if sdk_result is not None and sdk_result.get("error"):
-            http_result["sdk_error"] = sdk_result.get("error")
+        
+        # Agar ikkisi ham xato bopqolsa SDK xatosini ham doim ko'rsatamiz
+        if not http_result.get("ok"):
+            err = str(http_result.get("error") or "")
+            sdk_err = str(sdk_response.get("error") or "Noma'lum ISUP xatosi")
+            http_result["error"] = f"SDK: {sdk_err} | HTTP: {err}"
+            
+            if sdk_response.get("error"):
+                http_result["sdk_error"] = sdk_response.get("error")
+                
         return http_result
 
     @staticmethod
@@ -1458,6 +1487,106 @@ class RedisCommandBridge:
     def _cmd_get_users(self, target_device_id: str, state: DeviceState, params: dict[str, Any]) -> dict[str, Any]:
         max_results = max(1, min(self._safe_int(params.get("max_results"), 100), 500))
         start_pos = max(0, self._safe_int(params.get("searchResultPosition"), 0))
+        personal_id = str(
+            params.get("personal_id")
+            or params.get("employeeNo")
+            or params.get("employeeNoString")
+            or ""
+        ).strip()
+
+        def _parse_user_search_response(response: dict[str, Any]) -> tuple[list[dict[str, Any]], int]:
+            payload = response.get("json")
+            search_info = payload.get("UserInfoSearch", {}) if isinstance(payload, dict) else {}
+            rows = search_info.get("UserInfo")
+            users_raw: list[dict[str, Any]]
+            if isinstance(rows, list):
+                users_raw = [item for item in rows if isinstance(item, dict)]
+            elif isinstance(rows, dict):
+                users_raw = [rows]
+            else:
+                users_raw = []
+
+            users = [
+                {
+                    "employeeNo": str(item.get("employeeNo") or "").strip(),
+                    "name": str(item.get("name") or "").strip(),
+                    "userType": item.get("userType"),
+                    "Valid": item.get("Valid"),
+                }
+                for item in users_raw
+            ]
+            total_matches = self._safe_int(search_info.get("totalMatches"), len(users))
+            return users, total_matches
+
+        targeted_attempt_errors: list[str] = []
+        if personal_id:
+            base_cond = {
+                "searchID": str(int(time.time())),
+                "searchResultPosition": 0,
+                "maxResults": max(1, min(max_results, 10)),
+            }
+            targeted_bodies = [
+                {
+                    "UserInfoSearchCond": {
+                        **base_cond,
+                        "EmployeeNoList": [{"employeeNo": personal_id}],
+                    }
+                },
+                {
+                    "UserInfoSearchCond": {
+                        **base_cond,
+                        "searchType": "byEmployeeNo",
+                        "EmployeeNoList": [{"employeeNo": personal_id}],
+                    }
+                },
+                {
+                    "UserInfoSearchCond": {
+                        **base_cond,
+                        "employeeNoList": [{"employeeNo": personal_id}],
+                    }
+                },
+            ]
+
+            for request_body in targeted_bodies:
+                response = self._request_camera(
+                    target_device_id,
+                    state,
+                    "POST",
+                    "/ISAPI/AccessControl/UserInfo/Search?format=json",
+                    params,
+                    json_body=request_body,
+                )
+                if not response.get("ok"):
+                    targeted_attempt_errors.append(str(response.get("error") or "User qidiruvi muvaffaqiyatsiz"))
+                    continue
+                users, total_matches = _parse_user_search_response(response)
+                exact_users = [
+                    row for row in users
+                    if str(row.get("employeeNo") or "").strip() == personal_id
+                ]
+                if exact_users:
+                    return {
+                        "ok": True,
+                        "users": exact_users,
+                        "count": len(exact_users),
+                        "total_matches": len(exact_users),
+                        "transport": response.get("transport"),
+                        "status_code": response.get("status_code"),
+                        "filter_applied": True,
+                        "message": f"{len(exact_users)} ta foydalanuvchi topildi.",
+                    }
+                if total_matches == 0:
+                    return {
+                        "ok": True,
+                        "users": [],
+                        "count": 0,
+                        "total_matches": 0,
+                        "transport": response.get("transport"),
+                        "status_code": response.get("status_code"),
+                        "filter_applied": True,
+                        "message": "Foydalanuvchi topilmadi.",
+                    }
+
         request_body = {
             "UserInfoSearchCond": {
                 "searchID": str(int(time.time())),
@@ -1474,35 +1603,18 @@ class RedisCommandBridge:
             json_body=request_body,
         )
         if not response.get("ok"):
+            error_message = response.get("error") or "User list olinmadi"
+            if targeted_attempt_errors:
+                error_message = f"{error_message}; targeted lookup: {' | '.join(targeted_attempt_errors[:3])}"
             return {
                 "ok": False,
-                "error": response.get("error") or "User list olinmadi",
+                "error": error_message,
                 "transport": response.get("transport"),
                 "status_code": response.get("status_code"),
                 "sdk_error": response.get("sdk_error"),
             }
 
-        payload = response.get("json")
-        search_info = payload.get("UserInfoSearch", {}) if isinstance(payload, dict) else {}
-        rows = search_info.get("UserInfo")
-        users_raw: list[dict[str, Any]]
-        if isinstance(rows, list):
-            users_raw = [item for item in rows if isinstance(item, dict)]
-        elif isinstance(rows, dict):
-            users_raw = [rows]
-        else:
-            users_raw = []
-
-        users = [
-            {
-                "employeeNo": str(item.get("employeeNo") or "").strip(),
-                "name": str(item.get("name") or "").strip(),
-                "userType": item.get("userType"),
-                "Valid": item.get("Valid"),
-            }
-            for item in users_raw
-        ]
-        total_matches = self._safe_int(search_info.get("totalMatches"), len(users))
+        users, total_matches = _parse_user_search_response(response)
         return {
             "ok": True,
             "users": users,
@@ -1510,6 +1622,7 @@ class RedisCommandBridge:
             "total_matches": total_matches,
             "transport": response.get("transport"),
             "status_code": response.get("status_code"),
+            "filter_applied": False,
             "message": f"{len(users)} ta foydalanuvchi olindi.",
         }
 
@@ -1792,37 +1905,52 @@ class RedisCommandBridge:
         decoded = self._decode_image_b64(face_url)
         if decoded is not None:
             return decoded
-        if httpx is None:
-            return None
-
-        conn, _ = self._resolve_http_connection(target_device_id, state, params)
-        if conn is None:
-            return None
-
+            
         url = str(face_url).strip()
         if not url:
             return None
-        if not re.match(r"^https?://", url, flags=re.IGNORECASE):
-            if not url.startswith("/"):
-                url = f"/{url}"
-            url = f"{conn['base_url']}{url}"
-
-        try:
-            with httpx.Client(
-                auth=httpx.DigestAuth(conn["username"], conn["password"]),
-                timeout=float(conn["timeout"]),
-                verify=False,
-                trust_env=False,
-            ) as client:
-                response = client.get(url)
-            if int(response.status_code) >= 400:
-                return None
-            raw = bytes(response.content or b"")
-            if self._is_image_bytes(raw):
-                return raw
-            return self._decode_image_b64(response.text)
-        except Exception:
-            return None
+            
+        # Try HTTP first if available
+        if httpx is not None:
+            conn, _ = self._resolve_http_connection(target_device_id, state, params)
+            if conn is not None:
+                http_url = url
+                if not re.match(r"^https?://", http_url, flags=re.IGNORECASE):
+                    if not http_url.startswith("/"):
+                        http_url = f"/{http_url}"
+                    http_url = f"{conn['base_url']}{http_url}"
+        
+                try:
+                    with httpx.Client(
+                        auth=httpx.DigestAuth(conn["username"], conn["password"]),
+                        timeout=float(conn["timeout"]),
+                        verify=False,
+                        trust_env=False,
+                    ) as client:
+                        response = client.get(http_url)
+                    if int(response.status_code) < 400:
+                        raw = bytes(response.content or b"")
+                        if self._is_image_bytes(raw):
+                            return raw
+                        dec = self._decode_image_b64(response.text)
+                        if dec:
+                            return dec
+                except Exception:
+                    pass
+                    
+        # Fallback to ISUP GET request for the ISAPI URL
+        isapi_path = url
+        if re.match(r"^https?://", url, flags=re.IGNORECASE):
+            # Extract just the path if it's a full URL
+            parsed = re.sub(r"^https?://[^/]+", "", url, flags=re.IGNORECASE)
+            isapi_path = parsed if parsed else "/"
+            
+        isup_resp = self._request_camera(target_device_id, state, "GET", isapi_path, params)
+        raw_b = isup_resp.get("raw_bytes")
+        if isinstance(raw_b, bytes) and self._is_image_bytes(raw_b):
+            return raw_b
+            
+        return None
 
     @staticmethod
     def _extract_face_url_from_item(item: dict[str, Any]) -> str:
@@ -1866,7 +1994,15 @@ class RedisCommandBridge:
 
     def _cmd_get_face_image(self, target_device_id: str, state: DeviceState, params: dict[str, Any]) -> dict[str, Any]:
         personal_id = str(params.get("personal_id") or params.get("fpid") or "").strip()
-        if not personal_id:
+        db_emp_id = str(params.get("db_emp_id") or "").strip()
+        
+        candidates_fpid = []
+        if personal_id:
+            candidates_fpid.append(personal_id)
+        if db_emp_id and db_emp_id != personal_id:
+            candidates_fpid.append(db_emp_id)
+            
+        if not candidates_fpid:
             return {"ok": False, "error": "personal_id (FPID) kiritilishi shart."}
 
         face_lib_type = str(params.get("face_lib_type") or "blackFD").strip() or "blackFD"
@@ -1875,42 +2011,36 @@ class RedisCommandBridge:
         request_params = dict(params or {})
         request_params.setdefault("allow_http_fallback", True)
 
-        attempts = [
-            (
-                "POST",
-                "/ISAPI/Intelligent/FDLib/FDSearch?format=json",
-                {
-                    "faceLibType": face_lib_type,
-                    "FDID": fdid,
-                    "FPID": personal_id,
-                    "searchResultPosition": 0,
-                    "maxResults": 1,
-                },
-                "fdsearch_by_fpid",
-            ),
-            (
-                "POST",
-                "/ISAPI/Intelligent/FDLib/FaceDataRecord?format=json",
-                {
-                    "FaceDataRecord": {
-                        "faceLibType": face_lib_type,
-                        "FDID": fdid,
-                        "FPID": personal_id,
-                    }
-                },
-                "face_data_record_nested",
-            ),
-            (
-                "POST",
-                "/ISAPI/Intelligent/FDLib/FaceDataRecord?format=json",
-                {
-                    "faceLibType": face_lib_type,
-                    "FDID": fdid,
-                    "FPID": personal_id,
-                },
-                "face_data_record_flat",
-            ),
-        ]
+        attempts = []
+        for c_fpid in candidates_fpid:
+            attempts.extend([
+                (
+                    "POST",
+                    "/ISAPI/AccessControl/FaceInfo/Search?format=json",
+                    {
+                        "FaceInfoSearchCond": {
+                            "searchID": "1",
+                            "searchResultPosition": 0,
+                            "maxResults": 1,
+                            "EmployeeNoList": [{"employeeNo": c_fpid}]
+                        }
+                    },
+                    f"face_info_search_primary_{c_fpid}"
+                ),
+                (
+                    "POST",
+                    "/ISAPI/AccessControl/FaceInfo/Search",
+                    {
+                        "FaceInfoSearchCond": {
+                            "searchID": "1",
+                            "searchResultPosition": 0,
+                            "maxResults": 3,
+                            "EmployeeNoList": [{"employeeNo": c_fpid}]
+                        }
+                    },
+                    f"face_info_search_secondary_{c_fpid}"
+                ),
+            ])
 
         errors: list[str] = []
         for method, path, body, mode in attempts:
@@ -1932,25 +2062,40 @@ class RedisCommandBridge:
                 match_list = payload.get("MatchList")
                 if isinstance(match_list, list):
                     candidates.extend([x for x in match_list if isinstance(x, dict)])
-                face_data_record = payload.get("FaceDataRecord")
-                if isinstance(face_data_record, dict):
-                    candidates.append(face_data_record)
+                for key in ["FaceDataRecord", "FaceInfo", "UserInfoDetail", "UserInfo"]:
+                    val = payload.get(key)
+                    if isinstance(val, dict):
+                        candidates.append(val)
+                for key in ["FaceInfoSearch", "UserInfoSearch", "UserInfoDetailSearch"]:
+                    val = payload.get(key)
+                    if isinstance(val, dict):
+                        sub_list = val.get("FaceInfo") or val.get("UserInfoDetail") or val.get("UserInfo")
+                        if isinstance(sub_list, list):
+                            candidates.extend([x for x in sub_list if isinstance(x, dict)])
                 candidates.append(payload)
 
             text_payload = str(response.get("text") or "")
             if text_payload:
                 parsed = self._try_parse_json(text_payload)
                 if isinstance(parsed, dict):
-                    if isinstance(parsed.get("MatchList"), list):
-                        candidates.extend([x for x in parsed.get("MatchList", []) if isinstance(x, dict)])
-                    face_data_record = parsed.get("FaceDataRecord")
-                    if isinstance(face_data_record, dict):
-                        candidates.append(face_data_record)
+                    match_list = parsed.get("MatchList")
+                    if isinstance(match_list, list):
+                        candidates.extend([x for x in match_list if isinstance(x, dict)])
+                    for key in ["FaceDataRecord", "FaceInfo", "UserInfoDetail", "UserInfo"]:
+                        val = parsed.get(key)
+                        if isinstance(val, dict):
+                            candidates.append(val)
+                    for key in ["FaceInfoSearch", "UserInfoSearch", "UserInfoDetailSearch"]:
+                        val = parsed.get(key)
+                        if isinstance(val, dict):
+                            sub_list = val.get("FaceInfo") or val.get("UserInfoDetail") or val.get("UserInfo")
+                            if isinstance(sub_list, list):
+                                candidates.extend([x for x in sub_list if isinstance(x, dict)])
                     candidates.append(parsed)
 
             for item in candidates:
                 fpid = str(item.get("FPID") or item.get("employeeNo") or "").strip()
-                if fpid and fpid != personal_id:
+                if fpid and fpid not in candidates_fpid:
                     continue
 
                 face_url = self._extract_face_url_from_item(item)
@@ -1977,9 +2122,64 @@ class RedisCommandBridge:
 
             errors.append(f"{mode}: rasm topilmadi")
 
+        # Full exhaustive fallback using FDSearch pagination if direct lookup failed
+        for c_fpid in candidates_fpid:
+            # We call _cmd_get_face_records and search through the results for our fpid
+            scan_params = dict(request_params)
+            scan_params["all"] = True
+            scan_params["limit"] = 3000
+            scan_resp = self._cmd_get_face_records(target_device_id, state, scan_params)
+            
+            if scan_resp.get("ok"):
+                for record in scan_resp.get("records", []):
+                    camera_raw_item = record.get("raw", {})
+                    fpid = str(record.get("fpid") or record.get("FPID") or record.get("employeeNo") or camera_raw_item.get("FPID") or camera_raw_item.get("employeeNo") or "").strip()
+                    if fpid == c_fpid:
+                        mode = f"fallback_scan_{c_fpid}"
+                        face_url = str(record.get("face_url") or "")
+                        if not face_url and isinstance(camera_raw_item, dict):
+                            face_url = self._extract_face_url_from_item(camera_raw_item)
+                            
+                        raw = self._download_face_url_bytes(target_device_id, state, request_params, face_url) if face_url else None
+                        
+                        if raw is None and isinstance(camera_raw_item, dict):
+                            model_data = self._extract_model_data_from_item(camera_raw_item)
+                            if model_data:
+                                raw = self._decode_image_b64(model_data)
+                                
+                        if raw is not None:
+                            mime = self._guess_image_mime(raw)
+                            return {
+                                "ok": True,
+                                "personal_id": personal_id,
+                                "image_b64": base64.b64encode(raw).decode("ascii"),
+                                "image_mime": mime,
+                                "mode_used": mode,
+                                "transport": scan_resp.get("transport"),
+                                "status_code": scan_resp.get("status_code"),
+                                "message": f"{personal_id} uchun face rasmi qidiruv usulida olindi.",
+                            }
+                        else:
+                            errors.append(f"fallback_scan_{c_fpid}: Foydalanuvchi ma'lumoti topildi, lekin {face_url} manzilidagi rasmni ISUP orqali yuklab olish bloklangan (camera firmware cheklovi)")
+                            found_but_blocked = True
+                            break
+                        
+                if not locals().get("found_but_blocked"):
+                    errors.append(f"fallback_scan_{c_fpid}: umuman topilmadi")
+            else:
+                errors.append(f"fallback_scan_{c_fpid}: {scan_resp.get('error')}")
+
+        err_str = "; ".join(errors) if errors else "Kameradan face rasmi olinmadi"
+        
+        try:
+            with open("C:/Users/Izzatbek/Documents/FaceX/TRACER_FACE.txt", "a") as f:
+                f.write(f"RETURNING FALSE (_cmd_get_face_image) for {personal_id}: {err_str}\n")
+        except:
+            pass
+
         return {
             "ok": False,
-            "error": "; ".join(errors) if errors else "Kameradan face rasmi olinmadi",
+            "error": err_str,
             "personal_id": personal_id,
             "message": "Kamera ushbu foydalanuvchi uchun rasm URL/blob qaytarmadi.",
         }
@@ -1988,14 +2188,235 @@ class RedisCommandBridge:
         face_lib_type = str(params.get("face_lib_type") or "blackFD").strip() or "blackFD"
         fdid = str(params.get("fdid") or "1").strip() or "1"
         page_size = max(1, min(self._safe_int(params.get("max_results"), 30), 30))
-        limit = max(1, min(self._safe_int(params.get("limit"), 300), 1000))
+        limit = max(1, min(self._safe_int(params.get("limit"), 300), 5000))
         fetch_all = self._parse_bool(params.get("all"), True)
+        include_media = self._parse_bool(params.get("include_media"), True)
+        include_raw = self._parse_bool(params.get("include_raw"), include_media)
+        personal_id = str(
+            params.get("personal_id")
+            or params.get("fpid")
+            or params.get("employeeNo")
+            or ""
+        ).strip()
 
         records: list[dict[str, Any]] = []
         total_matches = 0
         start_pos = max(0, self._safe_int(params.get("searchResultPosition"), 0))
         transport = "isup_sdk_ptxml"
         status_code: Optional[int] = None
+
+        def _extract_rows_from_match_list(match_list: list[dict[str, Any]]) -> list[dict[str, Any]]:
+            found_rows: list[dict[str, Any]] = []
+            for item in match_list:
+                if not isinstance(item, dict):
+                    continue
+                row = {
+                    "fpid": str(item.get("FPID") or item.get("employeeNo") or "").strip(),
+                    "face_lib_type": face_lib_type,
+                    "fdid": fdid,
+                }
+                if include_media:
+                    row["face_url"] = self._extract_face_url_from_item(item)
+                else:
+                    row["face_url"] = ""
+                if include_raw:
+                    row["raw"] = item
+                found_rows.append(row)
+            return found_rows
+
+        def _extract_face_candidates(payload: Any, text_payload: str) -> list[dict[str, Any]]:
+            candidates: list[dict[str, Any]] = []
+            if isinstance(payload, dict):
+                match_list = payload.get("MatchList")
+                if isinstance(match_list, list):
+                    candidates.extend([x for x in match_list if isinstance(x, dict)])
+                for key in ["FaceDataRecord", "FaceInfo", "UserInfoDetail", "UserInfo"]:
+                    val = payload.get(key)
+                    if isinstance(val, dict):
+                        candidates.append(val)
+                for key in ["FaceInfoSearch", "UserInfoSearch", "UserInfoDetailSearch"]:
+                    val = payload.get(key)
+                    if isinstance(val, dict):
+                        sub_list = val.get("FaceInfo") or val.get("UserInfoDetail") or val.get("UserInfo")
+                        if isinstance(sub_list, list):
+                            candidates.extend([x for x in sub_list if isinstance(x, dict)])
+                candidates.append(payload)
+
+            if text_payload:
+                parsed = self._try_parse_json(text_payload)
+                if isinstance(parsed, dict):
+                    match_list = parsed.get("MatchList")
+                    if isinstance(match_list, list):
+                        candidates.extend([x for x in match_list if isinstance(x, dict)])
+                    for key in ["FaceDataRecord", "FaceInfo", "UserInfoDetail", "UserInfo"]:
+                        val = parsed.get(key)
+                        if isinstance(val, dict):
+                            candidates.append(val)
+                    for key in ["FaceInfoSearch", "UserInfoSearch", "UserInfoDetailSearch"]:
+                        val = parsed.get(key)
+                        if isinstance(val, dict):
+                            sub_list = val.get("FaceInfo") or val.get("UserInfoDetail") or val.get("UserInfo")
+                            if isinstance(sub_list, list):
+                                candidates.extend([x for x in sub_list if isinstance(x, dict)])
+                    candidates.append(parsed)
+            return candidates
+
+        targeted_attempt_errors: list[str] = []
+        if personal_id:
+            targeted_request_bodies = [
+                {
+                    "faceLibType": face_lib_type,
+                    "FDID": fdid,
+                    "searchResultPosition": 0,
+                    "maxResults": 6,
+                    "FPID": [{"value": personal_id}],
+                },
+                {
+                    "faceLibType": face_lib_type,
+                    "FDID": fdid,
+                    "searchResultPosition": 0,
+                    "maxResults": 6,
+                    "FPID": [personal_id],
+                },
+                {
+                    "faceLibType": face_lib_type,
+                    "FDID": fdid,
+                    "searchResultPosition": 0,
+                    "maxResults": 6,
+                    "FPID": personal_id,
+                },
+            ]
+
+            for req_body in targeted_request_bodies:
+                response = self._request_camera(
+                    target_device_id,
+                    state,
+                    "POST",
+                    "/ISAPI/Intelligent/FDLib/FDSearch?format=json",
+                    params,
+                    json_body=req_body,
+                )
+                transport = str(response.get("transport") or transport)
+                status_code = response.get("status_code")
+                if not response.get("ok"):
+                    targeted_attempt_errors.append(str(response.get("error") or "Face qidiruvi muvaffaqiyatsiz"))
+                    continue
+
+                payload = response.get("json")
+                match_list = payload.get("MatchList", []) if isinstance(payload, dict) else []
+                if not isinstance(match_list, list):
+                    match_list = []
+                exact_rows = [
+                    row for row in _extract_rows_from_match_list(match_list)
+                    if str(row.get("fpid") or "").strip() == personal_id
+                ]
+                if exact_rows:
+                    return {
+                        "ok": True,
+                        "records": exact_rows[:1],
+                        "count": len(exact_rows[:1]),
+                        "total_matches": len(exact_rows[:1]),
+                        "face_lib_type": face_lib_type,
+                        "fdid": fdid,
+                        "raw_payload": payload,
+                        "raw_text": str(response.get("text") or ""),
+                        "transport": transport,
+                        "status_code": status_code,
+                        "filter_applied": True,
+                        "message": f"{len(exact_rows[:1])} ta kamera face record olindi.",
+                    }
+
+                if isinstance(payload, dict):
+                    payload_total = self._safe_int(payload.get("totalMatches"), len(match_list))
+                    if payload_total == 0:
+                        return {
+                            "ok": True,
+                            "records": [],
+                            "count": 0,
+                            "total_matches": 0,
+                            "face_lib_type": face_lib_type,
+                            "fdid": fdid,
+                            "raw_payload": payload,
+                            "raw_text": str(response.get("text") or ""),
+                            "transport": transport,
+                            "status_code": status_code,
+                            "filter_applied": True,
+                            "message": "Face record topilmadi.",
+                        }
+
+            face_info_attempts = [
+                (
+                    "POST",
+                    "/ISAPI/AccessControl/FaceInfo/Search?format=json",
+                    {
+                        "FaceInfoSearchCond": {
+                            "searchID": "1",
+                            "searchResultPosition": 0,
+                            "maxResults": 1,
+                            "EmployeeNoList": [{"employeeNo": personal_id}],
+                        }
+                    },
+                ),
+                (
+                    "POST",
+                    "/ISAPI/AccessControl/FaceInfo/Search",
+                    {
+                        "FaceInfoSearchCond": {
+                            "searchID": "1",
+                            "searchResultPosition": 0,
+                            "maxResults": 3,
+                            "EmployeeNoList": [{"employeeNo": personal_id}],
+                        }
+                    },
+                ),
+            ]
+
+            for method, path, req_body in face_info_attempts:
+                response = self._request_camera(
+                    target_device_id,
+                    state,
+                    method,
+                    path,
+                    params,
+                    json_body=req_body,
+                )
+                transport = str(response.get("transport") or transport)
+                status_code = response.get("status_code")
+                if not response.get("ok"):
+                    targeted_attempt_errors.append(str(response.get("error") or "FaceInfo qidiruvi muvaffaqiyatsiz"))
+                    continue
+
+                payload = response.get("json")
+                text_payload = str(response.get("text") or "")
+                candidates = _extract_face_candidates(payload, text_payload)
+                for item in candidates:
+                    if not isinstance(item, dict):
+                        continue
+                    candidate_fpid = str(item.get("FPID") or item.get("employeeNo") or "").strip()
+                    if candidate_fpid != personal_id:
+                        continue
+                    record = {
+                        "fpid": personal_id,
+                        "face_lib_type": face_lib_type,
+                        "fdid": fdid,
+                        "face_url": self._extract_face_url_from_item(item) if include_media else "",
+                    }
+                    if include_raw:
+                        record["raw"] = item
+                    return {
+                        "ok": True,
+                        "records": [record],
+                        "count": 1,
+                        "total_matches": 1,
+                        "face_lib_type": face_lib_type,
+                        "fdid": fdid,
+                        "raw_payload": payload,
+                        "raw_text": text_payload,
+                        "transport": transport,
+                        "status_code": status_code,
+                        "filter_applied": True,
+                        "message": "1 ta kamera face record olindi.",
+                    }
 
         while True:
             req_body = {
@@ -2030,19 +2451,8 @@ class RedisCommandBridge:
             if isinstance(payload, dict):
                 total_matches = max(total_matches, self._safe_int(payload.get("totalMatches"), len(match_list)))
 
-            for item in match_list:
-                if not isinstance(item, dict):
-                    continue
-                face_url = self._extract_face_url_from_item(item)
-                records.append(
-                    {
-                        "fpid": str(item.get("FPID") or "").strip(),
-                        "face_url": face_url,
-                        "face_lib_type": face_lib_type,
-                        "fdid": fdid,
-                        "raw": item,
-                    }
-                )
+            for row in _extract_rows_from_match_list(match_list):
+                records.append(row)
                 if len(records) >= limit:
                     break
 
@@ -2053,7 +2463,7 @@ class RedisCommandBridge:
             if not match_list:
                 break
 
-            start_pos += len(match_list)
+            start_pos += max(len(match_list), 1)
             if total_matches and start_pos >= total_matches:
                 break
 
@@ -2068,6 +2478,7 @@ class RedisCommandBridge:
             "raw_text": str(response.get("text") or ""),
             "transport": transport,
             "status_code": status_code,
+            "filter_applied": False,
             "message": f"{len(records)} ta kamera face record olindi.",
         }
 
@@ -2298,29 +2709,55 @@ class RedisCommandBridge:
         if not self._valid_personal_id(personal_id):
             return {
                 "ok": False,
-                "error": "personal_id 7 xonali bo'lishi va 0 bilan boshlanmasligi kerak.",
+                "error": "personal_id bo'sh bo'lmasligi va 32 belgidan oshmasligi kerak.",
             }
 
         first_name = str(params.get("first_name") or (employee or {}).get("first_name") or "").strip()
         last_name = str(params.get("last_name") or (employee or {}).get("last_name") or "").strip()
         full_name = f"{first_name} {last_name}".strip() or str(params.get("name") or "").strip() or f"User {personal_id}"
 
-        request_body = self._build_user_record_payload(personal_id, full_name)
-        response = self._request_camera(
-            target_device_id,
-            state,
-            "POST",
-            "/ISAPI/AccessControl/UserInfo/Record?format=json",
-            params,
-            json_body=request_body,
-        )
-        if not response.get("ok"):
+        request_body_info = self._build_user_record_payload(personal_id, full_name)
+        
+        # UserInfo ni UserInfoDetail ga o'rab ham tayyorlaymiz
+        request_body_detail = {"UserInfoDetail": request_body_info}
+
+        attempts = [
+            ("POST", "/ISAPI/AccessControl/UserInfo/Record?format=json", request_body_info, "post_userinfo_record"),
+            ("PUT", "/ISAPI/AccessControl/UserInfo/SetUp?format=json", request_body_info, "put_userinfo_setup"),
+            ("POST", "/ISAPI/AccessControl/UserInfo/Record?format=json", request_body_detail, "post_detail_record"),
+            ("PUT", "/ISAPI/AccessControl/UserInfo/SetUp?format=json", request_body_detail, "put_detail_setup"),
+            ("PUT", "/ISAPI/AccessControl/UserInfoDetail/SetUp?format=json", request_body_detail, "put_userinfodetail_setup"),
+        ]
+
+        response = {}
+        errors = []
+        for method, path, body, mode in attempts:
+            res = self._request_camera(
+                target_device_id,
+                state,
+                method,
+                path,
+                params,
+                json_body=body,
+            )
+            if res.get("ok"):
+                response = res
+                response["used_mode"] = mode
+                break
+            
+            err_msg = str(res.get("error") or res.get("sdk_error") or "Unknown error")
+            status_c = res.get("status_code", 0)
+            errors.append(f"{mode}: statusCode={status_c}, error={err_msg}")
+            
+            # Agar xato 6 (bad json format) yoki 4 (not supported) bo'lsa keyingisiga o'tamiz
+            # Agar network error bo'lsa ham davom etamiz.
+
+        if not response or not response.get("ok"):
             return {
                 "ok": False,
-                "error": response.get("error") or "Foydalanuvchi kameraga yozilmadi",
-                "transport": response.get("transport"),
-                "status_code": response.get("status_code"),
-                "sdk_error": response.get("sdk_error"),
+                "error": "Foydalanuvchi kameraga yozilmadi (Barcha urinishlar muvaffaqiyatsiz)",
+                "details": "; ".join(errors),
+                "transport": (response or {}).get("transport"),
             }
 
         return {
@@ -2470,6 +2907,9 @@ class RedisCommandBridge:
         }
 
     def _cmd_set_face(self, target_device_id: str, state: DeviceState, params: dict[str, Any]) -> dict[str, Any]:
+        with open("C:/Users/Izzatbek/Documents/FaceX/TRACER_FACE.txt", "a") as f:
+            f.write(f"HIT _cmd_set_face for personal_id: {params.get('personal_id')} face_url: {bool(params.get('face_url'))} face_b64: {bool(params.get('face_b64'))}\n")
+            
         personal_id = str(params.get("personal_id") or params.get("fpid") or "").strip()
         face_url = str(params.get("face_url") or "").strip()
         face_b64 = str(params.get("face_b64") or params.get("face_data") or "").strip()
@@ -2479,14 +2919,15 @@ class RedisCommandBridge:
         if not face_url and not face_b64:
             return {"ok": False, "error": "face_b64 yoki face_url kiritilishi shart."}
 
+        clean_b64 = ""
         if face_b64:
-            clean = re.sub(r"\s+", "", face_b64)
-            if len(clean) < 256:
+            clean_b64 = re.sub(r"\s+", "", face_b64)
+            if len(clean_b64) < 256:
                 return {"ok": False, "error": "face_b64 juda qisqa yoki noto'g'ri"}
             try:
                 import base64
 
-                raw_face = base64.b64decode(clean, validate=False)
+                raw_face = base64.b64decode(clean_b64, validate=False)
             except Exception:
                 return {"ok": False, "error": "face_b64 decode qilinmadi"}
 
@@ -2515,123 +2956,42 @@ class RedisCommandBridge:
         request_params = dict(params or {})
         request_params.setdefault("allow_http_fallback", True)
 
-        payload_attempts: list[tuple[str, str, dict[str, Any], str]] = []
-        clean_b64 = ""
-        if face_b64:
-            clean_b64 = re.sub(r"\s+", "", face_b64)
-            data_uri = f"data:{face_mime};base64,{clean_b64}"
-            # 1) To'liq ISUP: rasmni inline base64 qilib yuborish.
-            payload_attempts.extend(
-                [
-                    (
-                        "POST",
-                        "/ISAPI/Intelligent/FDLib/FDSetUp?format=json",
-                        {
-                            "faceLibType": face_lib_type,
-                            "FDID": fdid,
-                            "FPID": personal_id,
-                            "faceData": clean_b64,
-                        },
-                        "inline_faceData_post",
-                    ),
-                    (
-                        "PUT",
-                        "/ISAPI/Intelligent/FDLib/FDSetUp?format=json",
-                        {
-                            "faceLibType": face_lib_type,
-                            "FDID": fdid,
-                            "FPID": personal_id,
-                            "faceData": clean_b64,
-                        },
-                        "inline_faceData",
-                    ),
-                    (
-                        "PUT",
-                        "/ISAPI/Intelligent/FDLib/FDSetUp?format=json",
-                        {
-                            "FaceDataRecord": {
-                                "faceLibType": face_lib_type,
-                                "FDID": fdid,
-                                "FPID": personal_id,
-                                "faceData": clean_b64,
-                            }
-                        },
-                        "inline_faceData_setup_nested",
-                    ),
-                    (
-                        "POST",
-                        "/ISAPI/Intelligent/FDLib/FaceDataRecord?format=json",
-                        {
-                            "FaceDataRecord": {
-                                "faceLibType": face_lib_type,
-                                "FDID": fdid,
-                                "FPID": personal_id,
-                                "faceData": clean_b64,
-                            }
-                        },
-                        "inline_faceDataRecord",
-                    ),
-                    (
-                        "POST",
-                        "/ISAPI/Intelligent/FDLib/FaceDataRecord?format=json",
-                        {
-                            "faceLibType": face_lib_type,
-                            "FDID": fdid,
-                            "FPID": personal_id,
-                            "faceData": clean_b64,
-                        },
-                        "inline_faceDataRecord_flat",
-                    ),
-                    (
-                        "PUT",
-                        "/ISAPI/Intelligent/FDLib/FDSetUp?format=json",
-                        {
-                            "faceLibType": face_lib_type,
-                            "FDID": fdid,
-                            "FPID": personal_id,
-                            "faceURL": data_uri,
-                        },
-                        "inline_data_uri",
-                    ),
-                    (
-                        "POST",
-                        "/ISAPI/Intelligent/FDLib/FaceDataRecord?format=json",
-                        {
-                            "faceLibType": face_lib_type,
-                            "FDID": fdid,
-                            "FPID": personal_id,
-                            "faceURL": data_uri,
-                        },
-                        "inline_data_uri_record",
-                    ),
-                ]
-            )
+        xml_face_payload = f"""<?xml version="1.0" encoding="utf-8"?>
+<FaceDataRecord xmlns="http://www.isapi.org/ver20/XMLSchema" version="2.0">
+    <faceLibType>{face_lib_type}</faceLibType>
+    <FDID>{fdid}</FDID>
+    <FPID>{personal_id}</FPID>
+    <faceURL>{clean_b64}</faceURL>
+</FaceDataRecord>"""
 
-        # 2) Fallback: tashqi URL asosida (agar foydalanuvchi o'zi bergan bo'lsa).
-        if face_url:
-            payload_attempts.extend(
-                [
-                    (
-                        "PUT",
-                        "/ISAPI/Intelligent/FDLib/FDSetUp?format=json",
-                        {
-                            "faceLibType": face_lib_type,
-                            "FDID": fdid,
-                            "FPID": personal_id,
-                            "faceURL": face_url,
-                        },
-                        "face_url_put",
-                    ),
+        payload_attempts: list[tuple[str, str, Optional[dict[str, Any]], Optional[str], str, Optional[dict[str, Any]]]] = []
+        
+        # 1-qadam: Faqatgina HTTP Multipart (Fayl formatida) o'ramini ishlating!  
+        # Boshqa eski usullar (XML/JSON inline Base64) aldamchi tarzda 200 OK qaytarib, o'ziga rasmni yozmasligi kuzatildi. 
+        if face_b64:
+            try:
+                import base64
+                raw_face = base64.b64decode(clean_b64, validate=False)
+                payload_attempts.extend([
                     (
                         "POST",
-                        "/ISAPI/Intelligent/FDLib/FDSetUp?format=json",
+                        "/ISAPI/Intelligent/FDLib/FaceDataRecord?format=xml",
+                        None,
+                        xml_face_payload,
+                        "isup_xml_inline_b64",
+                        None
+                    ),
+                    (
+                        "PUT",
+                        "/ISAPI/Intelligent/FDLib/FaceDataRecord?format=json",
                         {
                             "faceLibType": face_lib_type,
                             "FDID": fdid,
                             "FPID": personal_id,
-                            "faceURL": face_url,
                         },
-                        "face_url_post",
+                        None,
+                        "isup_multipart_face_native_put",
+                        {"FaceImage": ("face.jpg", raw_face, face_mime)}
                     ),
                     (
                         "POST",
@@ -2640,12 +3000,41 @@ class RedisCommandBridge:
                             "faceLibType": face_lib_type,
                             "FDID": fdid,
                             "FPID": personal_id,
-                            "faceURL": face_url,
                         },
-                        "face_url_record_post",
-                    ),
-                ]
-            )
+                        None,
+                        "isup_multipart_face_native_post",
+                        {"FaceImage": ("face.jpg", raw_face, face_mime)}
+                    )
+                ])
+            except Exception:
+                pass
+                
+        if face_url:
+            public_base = self.runtime.public_web_base_url or f"http://{self.runtime.public_host}:8000"
+            if face_url.startswith("/"):
+                absolute_url = f"{public_base.rstrip('/')}{face_url}"
+            elif not face_url.startswith("http"):
+                absolute_url = f"{public_base.rstrip('/')}/{face_url}"
+            else:
+                absolute_url = face_url
+                
+            payload_attempts.insert(0, (
+                "POST",
+                "/ISAPI/Intelligent/FDLib/FaceDataRecord?format=json",
+                {
+                    "faceLibType": face_lib_type,
+                    "FDID": fdid,
+                    "FPID": personal_id,
+                    "faceURL": absolute_url,
+                },
+                None,
+                "url_download_via_camera_native",
+                None
+            ))
+
+        for i, attempt in enumerate(payload_attempts):
+            if len(attempt) == 5:
+                payload_attempts[i] = attempt + (None,)
 
         response: Optional[dict[str, Any]] = None
         method_used: Optional[str] = None
@@ -2653,7 +3042,8 @@ class RedisCommandBridge:
         mode_used: Optional[str] = None
         last_error = "Kameraga face yozilmadi"
         errors: list[str] = []
-        for method, path, payload, mode in payload_attempts:
+        
+        for method, path, json_body, raw_body, mode, files_data in payload_attempts:
             method_err = None
             attempts = 2 if method == "PUT" else 1
             for attempt_idx in range(attempts):
@@ -2663,7 +3053,9 @@ class RedisCommandBridge:
                     method,
                     path,
                     request_params,
-                    json_body=payload,
+                    json_body=json_body,
+                    raw_body=raw_body,
+                    files=files_data,
                 )
                 if current.get("ok"):
                     response = current
@@ -2684,12 +3076,23 @@ class RedisCommandBridge:
             if response is not None:
                 break
             if method_err:
-                errors.append(f"{method} {path}: {method_err}")
+                errors.append(f"{method} {path}: {method_err} [dbg: cur_err={current.get('error')} sdk_err={current.get('sdk_error')}]")
 
         if response is None:
             human_error = "; ".join(errors) if errors else last_error
             if clean_b64 and "face_url" in human_error.lower():
                 human_error = f"{human_error}. Inline ISUP face payload qabul qilinmadi."
+                
+            try:
+                with open(r"C:\Users\Izzatbek\Documents\FaceX\.runtime\face_debug.log", "a", encoding="utf-8") as f:
+                    f.write(f"--- SET FACE FAILED for {personal_id} ---\n")
+                    f.write(f"ERRORS: {human_error}\n\n")
+            except Exception:
+                pass
+            
+            with open("C:/Users/Izzatbek/Documents/FaceX/TRACER_FACE.txt", "a") as f:
+                f.write(f"RETURNING FALSE: {human_error}\n")
+                
             return {
                 "ok": False,
                 "error": human_error,
@@ -2697,6 +3100,9 @@ class RedisCommandBridge:
                 "status_code": None,
                 "sdk_error": None,
             }
+
+        with open("C:/Users/Izzatbek/Documents/FaceX/TRACER_FACE.txt", "a") as f:
+            f.write(f"RETURNING TRUE: mode_used={mode_used}\n")
 
         return {
             "ok": True,
@@ -2748,7 +3154,7 @@ class RedisCommandBridge:
                     skipped_items.append(
                         {
                             "employee_id": row.get("id"),
-                            "reason": "personal_id noto'g'ri yoki bo'sh",
+                            "reason": "personal_id bo'sh yoki juda uzun",
                         }
                     )
                 continue
@@ -2956,9 +3362,13 @@ class RedisCommandBridge:
                 proto = str(parsed.get('protocolType') or '').upper()
                 
                 if proto == 'EHOME' or id_val == '1':
-                    ip = parsed.get('ipAddress')
-                    port = parsed.get('portNo')
-                    if ip and port:
+                    ip = str(parsed.get('ipAddress') or '').strip()
+                    port = str(parsed.get('portNo') or '').strip()
+                    ehome_disabled = (
+                        ip in {'', '0.0.0.0', '::', 'Kiritilmagan'}
+                        or port in {'', '0', 'Kiritilmagan'}
+                    )
+                    if not ehome_disabled:
                         summary["ehome_enabled"] = True
                         summary["ehome_server"] = f"{ip}:{port}"
                 
@@ -2999,12 +3409,18 @@ class RedisCommandBridge:
         if login_id is None:
             return {"ok": False, "error": "login_id mavjud emas"}
         try:
-            if params.get("public_web_base_url"):
-                custom_base = str(params.get("public_web_base_url") or "").strip()
-                if normalize_public_web_base_url is not None:
+            if params.get("camera_event_push_base_url") or params.get("public_web_base_url"):
+                custom_base = str(
+                    params.get("camera_event_push_base_url")
+                    or params.get("public_web_base_url")
+                    or ""
+                ).strip()
+                if normalize_camera_event_push_base_url is not None:
+                    custom_base = normalize_camera_event_push_base_url(custom_base)
+                elif normalize_public_web_base_url is not None:
                     custom_base = normalize_public_web_base_url(custom_base)
                 if custom_base:
-                    self.runtime.public_web_base_url = custom_base
+                    self.runtime.camera_event_push_base_url = custom_base
             if params.get("host"):
                 custom_host = str(params.get("host") or "").strip()
                 if normalize_isup_public_host is not None:
@@ -3022,6 +3438,7 @@ class RedisCommandBridge:
                     "ok": False,
                     "host": self.runtime.public_host,
                     "port": self.runtime.alarm_port,
+                    "camera_event_push_base_url": self.runtime.camera_event_push_base_url or None,
                     "public_web_base_url": self.runtime.public_web_base_url or None,
                     "response": response_text[:300],
                     "steps": resp.get("steps"),
@@ -3033,11 +3450,12 @@ class RedisCommandBridge:
                 "ok": True,
                 "host": self.runtime.public_host,
                 "port": self.runtime.alarm_port,
+                "camera_event_push_base_url": self.runtime.camera_event_push_base_url or None,
                 "public_web_base_url": self.runtime.public_web_base_url or None,
                 "response": response_text[:300],
                 "steps": resp.get("steps"),
                 "transport": "isup_sdk_ptxml",
-                "message": f"EHome alarm/picture {self.runtime.public_host}:{self.runtime.alarm_port}/{self.runtime.picture_port} hamda Webhook Event Notification muvaffaqiyatli yangilandi.",
+                "message": "EHome alarm/picture va webhook event notification yangilandi.",
             }
         except Exception as exc:
             return {"ok": False, "error": str(exc)}
@@ -3171,6 +3589,7 @@ class HikvisionSdkRuntime:
         sdk_dir: Path,
         public_host: str,
         public_web_base_url: str,
+        camera_event_push_base_url: str,
         picture_dir: Path,
     ) -> None:
         self.isup_key = isup_key
@@ -3183,6 +3602,7 @@ class HikvisionSdkRuntime:
         self.sdk_dir = sdk_dir
         self.public_host = public_host
         self.public_web_base_url = public_web_base_url
+        self.camera_event_push_base_url = camera_event_push_base_url
         self.picture_dir = picture_dir
         self.registry = DeviceRegistry()
         self.command_bridge = RedisCommandBridge(self, self.redis_host, self.redis_port)
@@ -3204,6 +3624,8 @@ class HikvisionSdkRuntime:
         self._snap_lock = _threading.Lock()
         self._snapshot_index_path = self.picture_dir / "_employee_snapshot_index.json"
         self._snapshot_index_lock = _threading.Lock()
+        self._attendance_sync_cursor: dict[str, datetime] = {}
+        self._attendance_sync_lock = _threading.Lock()
 
         # Keep callback references to avoid GC.
         self._cms_cb = DEVICE_REGISTER_CB(self._on_device_register)
@@ -3254,7 +3676,10 @@ class HikvisionSdkRuntime:
             return f"subStatusCode={sub_status}"
         return None
 
-    def _build_ehome_notification_xml(self) -> str:
+    def _build_ehome_notification_xml(self) -> Optional[str]:
+        host = str(self.public_host or "").strip()
+        if not host:
+            return None
         return (
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
             "<HttpHostNotification version=\"2.0\" xmlns=\"http://www.isapi.org/ver20/XMLSchema\">"
@@ -3263,14 +3688,199 @@ class HikvisionSdkRuntime:
             "<protocolType>EHome</protocolType>"
             "<parameterFormatType>XML</parameterFormatType>"
             "<addressingFormatType>ipaddress</addressingFormatType>"
-            f"<ipAddress>{self.public_host}</ipAddress>"
-            f"<portNo>{self.alarm_port}</portNo>"
+            f"<ipAddress>{host}</ipAddress>"
+            f"<portNo>{int(self.alarm_port or 7661)}</portNo>"
             "<httpAuthenticationMethod>none</httpAuthenticationMethod>"
             "</HttpHostNotification>"
         )
 
+    def _build_system_ehome_network_xml(
+        self,
+        *,
+        device_id: str,
+        extended: bool = True,
+    ) -> Optional[str]:
+        host = str(self.public_host or "").strip()
+        dev_id = str(device_id or "").strip()
+        if not host or not dev_id:
+            return None
+
+        try:
+            ipaddress.ip_address(host)
+            addressing_xml = (
+                "<addressingFormatType>ipaddress</addressingFormatType>"
+                f"<ipAddress>{host}</ipAddress>"
+            )
+        except ValueError:
+            addressing_xml = (
+                "<addressingFormatType>hostname</addressingFormatType>"
+                f"<hostName>{host}</hostName>"
+            )
+
+        extra_xml = ""
+        if extended:
+            extra_xml = (
+                f"<key>{self.isup_key}</key>"
+                "<centralGroup>true</centralGroup>"
+                "<mainChannel>N1</mainChannel>"
+            )
+
+        return (
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+            "<Ehome version=\"2.0\" xmlns=\"http://www.isapi.org/ver20/XMLSchema\">"
+            "<enabled>true</enabled>"
+            f"{addressing_xml}"
+            f"<portNo>{int(self.register_port or 7660)}</portNo>"
+            f"<deviceID>{dev_id}</deviceID>"
+            "<registerStatus>true</registerStatus>"
+            f"{extra_xml}"
+            "<protocolVersion>v5.0</protocolVersion>"
+            "</Ehome>"
+        )
+
+    def _upsert_system_ehome_network_config(self, login_id: int) -> dict[str, Any]:
+        path = "/ISAPI/System/Network/EHome"
+        state = next((item for item in self.registry.all() if item.login_id == login_id), None)
+        device_id = str(state.device_id or "").strip() if state is not None else ""
+        if not device_id:
+            return {
+                "ok": False,
+                "method": "PUT",
+                "path": path,
+                "error": "device_id topilmadi",
+                "response": "",
+            }
+
+        attempts: list[dict[str, Any]] = []
+        for extended in (True, False):
+            xml_body = self._build_system_ehome_network_xml(device_id=device_id, extended=extended)
+            if not xml_body:
+                continue
+            response = self.isapi_passthrough(
+                login_id=login_id,
+                method="PUT",
+                request_path=path,
+                body=xml_body.encode("utf-8"),
+            )
+            response_text = str(response.get("text") or "")
+            response_error = self._notification_error_reason(response_text)
+            attempts.append(
+                {
+                    "extended": extended,
+                    "error": response_error,
+                    "response": response_text[:400],
+                }
+            )
+            if response_error is None:
+                return {
+                    "ok": True,
+                    "method": "PUT",
+                    "path": path,
+                    "response": response_text[:400],
+                    "device_id": device_id,
+                    "extended": extended,
+                    "attempts": attempts,
+                }
+
+        last_attempt = attempts[-1] if attempts else {}
+        return {
+            "ok": False,
+            "method": "PUT",
+            "path": path,
+            "error": last_attempt.get("error") or "EHome network config yozilmadi",
+            "response": str(last_attempt.get("response") or ""),
+            "device_id": device_id,
+            "attempts": attempts,
+        }
+
+    def _build_ehome_disabled_notification_xml(self) -> str:
+        return (
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+            "<HttpHostNotification version=\"2.0\" xmlns=\"http://www.isapi.org/ver20/XMLSchema\">"
+            "<id>1</id>"
+            "<url></url>"
+            "<protocolType>EHome</protocolType>"
+            "<parameterFormatType>XML</parameterFormatType>"
+            "<addressingFormatType>ipaddress</addressingFormatType>"
+            "<ipAddress>0.0.0.0</ipAddress>"
+            "<portNo>0</portNo>"
+            "<httpAuthenticationMethod>none</httpAuthenticationMethod>"
+            "</HttpHostNotification>"
+        )
+
+    def _disable_ehome_notification_config(self, login_id: int) -> dict[str, Any]:
+        path = "/ISAPI/Event/notification/httpHosts/1"
+        delete_error: Optional[str] = None
+        delete_text = ""
+        try:
+            delete_resp = self.isapi_passthrough(
+                login_id=login_id,
+                method="DELETE",
+                request_path=path,
+            )
+            delete_text = str(delete_resp.get("text") or "")
+            delete_error = self._notification_error_reason(delete_text)
+            if delete_error is None:
+                return {
+                    "ok": True,
+                    "method": "DELETE",
+                    "path": path,
+                    "response": delete_text[:400],
+                }
+        except Exception as exc:
+            delete_error = str(exc)
+
+        fallback_resp = self.isapi_passthrough(
+            login_id=login_id,
+            method="PUT",
+            request_path=path,
+            body=self._build_ehome_disabled_notification_xml().encode("utf-8"),
+        )
+        fallback_text = str(fallback_resp.get("text") or "")
+        fallback_error = self._notification_error_reason(fallback_text)
+        return {
+            "ok": fallback_error is None,
+            "method": "PUT",
+            "path": path,
+            "error": fallback_error or delete_error,
+            "response": fallback_text[:400],
+            "fallback_from": delete_error,
+        }
+
+    def _upsert_ehome_notification_config(self, login_id: int) -> dict[str, Any]:
+        path = "/ISAPI/Event/notification/httpHosts/1"
+        xml_body = self._build_ehome_notification_xml()
+        if not xml_body:
+            return {
+                "ok": False,
+                "method": "PUT",
+                "path": path,
+                "error": "public_host bo'sh",
+                "response": "",
+                "host": "",
+                "port": int(self.alarm_port or 7661),
+            }
+
+        response = self.isapi_passthrough(
+            login_id=login_id,
+            method="PUT",
+            request_path=path,
+            body=xml_body.encode("utf-8"),
+        )
+        response_text = str(response.get("text") or "")
+        response_error = self._notification_error_reason(response_text)
+        return {
+            "ok": response_error is None,
+            "method": "PUT",
+            "path": path,
+            "error": response_error,
+            "response": response_text[:400],
+            "host": str(self.public_host or "").strip(),
+            "port": int(self.alarm_port or 7661),
+        }
+
     def _build_webhook_notification_xml(self) -> tuple[Optional[str], Optional[str]]:
-        public_base = str(self.public_web_base_url or "").strip().rstrip("/")
+        public_base = str(self.camera_event_push_base_url or "").strip().rstrip("/")
         if not public_base:
             return None, None
 
@@ -3283,6 +3893,17 @@ class HikvisionSdkRuntime:
         protocol = "HTTP" if scheme == "http" else "HTTPS"
         port = parsed.port or (443 if protocol == "HTTPS" else 80)
         webhook_url = f"{public_base}/api/v1/httppost/"
+        try:
+            ipaddress.ip_address(host)
+            addressing_xml = (
+                "<addressingFormatType>ipaddress</addressingFormatType>"
+                f"<ipAddress>{host}</ipAddress>"
+            )
+        except ValueError:
+            addressing_xml = (
+                "<addressingFormatType>hostname</addressingFormatType>"
+                f"<hostName>{host}</hostName>"
+            )
         xml_body = (
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
             "<HttpHostNotification version=\"2.0\" xmlns=\"http://www.isapi.org/ver20/XMLSchema\">"
@@ -3290,8 +3911,7 @@ class HikvisionSdkRuntime:
             f"<url>{webhook_url}</url>"
             f"<protocolType>{protocol}</protocolType>"
             "<parameterFormatType>JSON</parameterFormatType>"
-            "<addressingFormatType>hostname</addressingFormatType>"
-            f"<hostName>{host}</hostName>"
+            f"{addressing_xml}"
             f"<portNo>{port}</portNo>"
             "<httpAuthenticationMethod>none</httpAuthenticationMethod>"
             "<SubscribeEvent>"
@@ -3315,28 +3935,46 @@ class HikvisionSdkRuntime:
     def push_event_notification_config(self, login_id: int) -> dict[str, Any]:
         steps: list[dict[str, Any]] = []
 
-        ehome_resp = self.isapi_passthrough(
-            login_id=login_id,
-            method="PUT",
-            request_path="/ISAPI/Event/notification/httpHosts/1",
-            body=self._build_ehome_notification_xml().encode("utf-8"),
+        system_ehome_resp = self._upsert_system_ehome_network_config(login_id)
+        steps.append(
+            {
+                "name": "system_ehome",
+                "path": "/ISAPI/System/Network/EHome",
+                "method": system_ehome_resp.get("method"),
+                "ok": bool(system_ehome_resp.get("ok")),
+                "error": system_ehome_resp.get("error"),
+                "response": str(system_ehome_resp.get("response") or "")[:400],
+                "device_id": system_ehome_resp.get("device_id"),
+                "extended": system_ehome_resp.get("extended"),
+                "attempts": system_ehome_resp.get("attempts"),
+            }
         )
-        ehome_text = str(ehome_resp.get("text") or "")
-        ehome_error = self._notification_error_reason(ehome_text)
+        if not system_ehome_resp.get("ok"):
+            return {
+                "ok": False,
+                "error": system_ehome_resp.get("error") or "System EHome config yozilmadi",
+                "text": str(system_ehome_resp.get("response") or ""),
+                "steps": steps,
+            }
+
+        ehome_resp = self._upsert_ehome_notification_config(login_id)
         steps.append(
             {
                 "name": "ehome",
                 "path": "/ISAPI/Event/notification/httpHosts/1",
-                "ok": ehome_error is None,
-                "error": ehome_error,
-                "response": ehome_text[:400],
+                "method": ehome_resp.get("method"),
+                "ok": bool(ehome_resp.get("ok")),
+                "error": ehome_resp.get("error"),
+                "response": str(ehome_resp.get("response") or "")[:400],
+                "host": ehome_resp.get("host"),
+                "port": ehome_resp.get("port"),
             }
         )
-        if ehome_error:
+        if not ehome_resp.get("ok"):
             return {
                 "ok": False,
-                "error": ehome_error,
-                "text": ehome_text,
+                "error": ehome_resp.get("error") or "EHome notification yozilmadi",
+                "text": str(ehome_resp.get("response") or ""),
                 "steps": steps,
             }
 
@@ -3366,19 +4004,23 @@ class HikvisionSdkRuntime:
                     "name": "webhook",
                     "ok": True,
                     "skipped": True,
-                    "response": "public_web_base_url yo'qligi uchun webhook sozlanmadi.",
+                    "response": "camera_event_push_base_url yo'qligi uchun webhook sozlanmadi.",
                 }
             )
 
         summary = "; ".join(
             (
                 f"{step['name']}={'ok' if step.get('ok') else step.get('error') or 'error'}"
-                + (f" ({step.get('url')})" if step.get("url") else "")
+                + (
+                    f" ({step.get('host')}:{step.get('port')})"
+                    if step.get("name") == "ehome" and step.get("host")
+                    else (f" ({step.get('url')})" if step.get("url") else "")
+                )
             )
             for step in steps
         )
         return {
-            "ok": True,
+            "ok": all(step.get("ok") or step.get("skipped") for step in steps),
             "text": summary,
             "steps": steps,
             "webhook_url": webhook_url,
@@ -3583,18 +4225,37 @@ class HikvisionSdkRuntime:
             f"[ISUP SDK] listeners started: register={self.register_port}, "
             f"alarm={self.alarm_port}, picture={self.picture_port}, api={self.api_port}"
         )
-        # Background thread: barcha online kameralarga alarm/picture server info yuboradi
+        # Background thread: barcha online kameralarda real-time event konfiguratsiyasini
+        # (EHome alarm + ixtiyoriy HTTP/HTTPS webhook) bir xil holatda ushlab turadi.
         import threading as _thrd
         self._server_info_pusher = _thrd.Thread(
             target=self._periodic_server_info_push,
             daemon=True,
         )
         self._server_info_pusher.start()
+        self._attendance_fallback_thread = _thrd.Thread(
+            target=self._periodic_attendance_delta_sync,
+            daemon=True,
+        )
+        self._attendance_fallback_thread.start()
+
+    def _schedule_webhook_only_sync(self, login_id: Optional[int], delay_seconds: float = 1.5) -> None:
+        if login_id is None:
+            return
+
+        def _runner() -> None:
+            try:
+                time.sleep(max(0.1, float(delay_seconds or 0.1)))
+                self.push_event_notification_config(int(login_id))
+            except Exception:
+                pass
+
+        Thread(target=_runner, daemon=True).start()
 
     def _periodic_server_info_push(self) -> None:
         """
         Background thread: har 60 soniyada barcha online kameralarga
-        EHome + HTTP fallback event notification konfiguratsiyasini yozadi.
+        EHome alarm/picture va HTTP/HTTPS webhook konfiguratsiyasini qayta yozadi.
         Bu ENUM_DEV_ON callback kelmasa ham ishlaydi.
         """
         import time as _time
@@ -3614,7 +4275,7 @@ class HikvisionSdkRuntime:
                 # Barcha online qurilmalar uchun DB da last_seen_at va is_online larni yangilash
                 if online_device_ids:
                     try:
-                        now_str = utc_now().replace(tzinfo=None).isoformat()
+                        now_str = now_tashkent().isoformat()
                         with self._db_connect() as conn:
                             placeholders = ",".join(["?"] * len(online_device_ids))
                             conn.execute(
@@ -3687,12 +4348,82 @@ class HikvisionSdkRuntime:
         method: str,
         request_path: str,
         body: str | bytes | None = None,
+        files: Optional[dict[str, Any]] = None,
         out_size: int = 1024 * 1024,
     ) -> dict[str, Any]:
         if self._cms is None:
             raise RuntimeError("HCISUPCMS hali yuklanmagan.")
 
         method_upper = (method or "").strip().upper()
+        
+        clean_path = (request_path or "").strip()
+        if not clean_path:
+            raise ValueError("ISAPI path bo'sh bo'lmasligi kerak.")
+        if not clean_path.startswith("/"):
+            clean_path = f"/{clean_path}"
+
+        # If HTTP multipart is required OR body is too large for PTXML
+        if files or (body and len(body) > 60000):
+            if files:
+                import uuid
+                boundary = f"----WebKitFormBoundary{uuid.uuid4().hex}"
+                
+                body_parts = []
+                if body is not None:
+                    # Assuming body is JSON string
+                    body_parts.append(f"--{boundary}\r\nContent-Disposition: form-data; name=\"FaceDataRecord\"\r\nContent-Type: application/json\r\n\r\n{body if isinstance(body, str) else body.decode('utf-8')}\r\n")
+                
+                for key, file_info in files.items():
+                    if isinstance(file_info, tuple) and len(file_info) >= 3:
+                        filename, filedata, mimetype = file_info[0], file_info[1], file_info[2]
+                    else:
+                        filename, filedata, mimetype = "file.jpg", file_info, "application/octet-stream"
+                        
+                    part = f"--{boundary}\r\nContent-Disposition: form-data; name=\"{key}\"; filename=\"{filename}\"\r\nContent-Type: {mimetype}\r\n\r\n".encode("utf-8")
+                    part += filedata if isinstance(filedata, bytes) else str(filedata).encode("utf-8")
+                    part += b"\r\n"
+                    body_parts.append(part)
+                    
+                body_parts.append(f"--{boundary}--\r\n".encode("utf-8"))
+                
+                final_body = b""
+                for p in body_parts:
+                    final_body += p if isinstance(p, bytes) else p.encode("utf-8")
+                    
+                mime_type_code = 2
+            else:
+                # No files, just large body
+                final_body = body if isinstance(body, bytes) else body.encode("utf-8")
+                mime_type_code = 1 if b"xml" in final_body[:50].lower() else 0
+
+            request_bytes = f"{method_upper} {clean_path}".encode("utf-8", errors="ignore")
+            request_buffer = ctypes.create_string_buffer(request_bytes + b"\x00")
+            input_buffer = ctypes.create_string_buffer(final_body)
+            safe_out_size = max(4096, min(int(out_size), 4 * 1024 * 1024))
+            output_buffer = ctypes.create_string_buffer(safe_out_size)
+            
+            params = NET_EHOME_ISAPI_PASSTHROUGH_PARAM()
+            params.pRequestUrl = ctypes.cast(request_buffer, ctypes.c_void_p)
+            params.dwRequestUrlLen = len(request_bytes)
+            params.pCondBuffer = None
+            params.dwCondSize = 0
+            params.pInBuffer = ctypes.cast(input_buffer, ctypes.c_void_p)
+            params.dwInSize = len(final_body)
+            params.pOutBuffer = ctypes.cast(output_buffer, ctypes.c_void_p)
+            params.dwOutSize = safe_out_size
+            params.dwReturnedXMLLen = 0
+            params.byMimeType = mime_type_code
+            
+            ok = bool(self._cms.NET_ECMS_ISAPIPassThrough(int(login_id), ctypes.byref(params)))
+            if not ok:
+                return {"ok": False, "error": f"ISAPIPassThrough Error Code: {self._cms.NET_ECMS_GetLastError()}"}
+            
+            returned_len = params.dwReturnedXMLLen
+            if returned_len > safe_out_size:
+                returned_len = safe_out_size
+            output_bytes = output_buffer.raw[:returned_len]
+            return {"ok": True, "text": output_bytes.decode("utf-8", errors="ignore")}
+
         method_map = {
             "GET": self._cms.NET_ECMS_GetPTXMLConfig,
             "PUT": self._cms.NET_ECMS_PutPTXMLConfig,
@@ -3702,12 +4433,6 @@ class HikvisionSdkRuntime:
         func = method_map.get(method_upper)
         if func is None:
             raise ValueError(f"PTXML method qo'llab-quvvatlanmaydi: {method_upper or method!r}")
-
-        clean_path = (request_path or "").strip()
-        if not clean_path:
-            raise ValueError("ISAPI path bo'sh bo'lmasligi kerak.")
-        if not clean_path.startswith("/"):
-            clean_path = f"/{clean_path}"
 
         request_bytes = clean_path.encode("utf-8", errors="ignore")
         request_buffer = ctypes.create_string_buffer(request_bytes + b"\x00")
@@ -3806,6 +4531,7 @@ class HikvisionSdkRuntime:
                         self._fill_server_info(server_info)
                     except Exception:
                         pass
+                self._schedule_webhook_only_sync(user_id)
                 return True
 
             if data_type == ENUM_DEV_ON and reg_info is not None:
@@ -3822,12 +4548,13 @@ class HikvisionSdkRuntime:
                     with self._db_connect() as conn:
                         conn.execute(
                             "UPDATE devices SET is_online = 1, last_seen_at = ? WHERE isup_device_id = ?",
-                            (utc_now().replace(tzinfo=None).isoformat(), state.device_id)
+                            (now_tashkent().isoformat(), state.device_id)
                         )
                         conn.commit()
                 except Exception as e:
                     print(f"[ISUP SDK] db update error on ON: {e}")
 
+                self._schedule_webhook_only_sync(state.login_id)
                 print(f"[ISUP SDK] device online: {state.device_id} ({state.ip}:{state.port})")
                 return True
 
@@ -3863,7 +4590,7 @@ class HikvisionSdkRuntime:
                     with self._db_connect() as conn:
                         conn.execute(
                             "UPDATE devices SET is_online = 1, last_seen_at = ? WHERE isup_device_id = ?",
-                            (utc_now().replace(tzinfo=None).isoformat(), state.device_id)
+                            (now_tashkent().isoformat(), state.device_id)
                         )
                         conn.commit()
                 except Exception as e:
@@ -3881,16 +4608,23 @@ class HikvisionSdkRuntime:
         info.dwKeepAliveSec = 15
         info.dwTimeOutCount = 6
         info.dwNTPInterval = 3600
-        info.dwAlarmKeepAliveSec = 15
-        info.dwAlarmTimeOutCount = 5
-        info.dwAlarmServerType = 0  # 0=TCP only (more reliable for face access controllers)
-        info.dwPicServerType = 0    # 0=ISUP Storage Server (binary stream) / port 7662
+        info.dwAlarmKeepAliveSec = 0
+        info.dwAlarmTimeOutCount = 0
+        # Hikvision EHome server info:
+        # 0 = UDP-only alarm, 1 = TCP + UDP alarm.
+        # Biz NET_EALARM_StartListen ni TCP bilan ochyapmiz, shu sabab 1 bo'lishi kerak.
+        info.dwAlarmServerType = 1
+        # HCISUPSS native picture listener VRB picture server sifatida ishlaydi.
+        info.dwPicServerType = 1
 
-        # Kameraga yuboradigan server IP: kamera shu IP orqali ulangan bo'lsa,
-        # alarm va picture serverini ham shu local IP orqali ko'rsatamiz.
-        # Bu boshqa tarmoqdagi kameralarga ham ishlaydi.
+        # ISUP register/redirect saqlanadi va real-time alarm/picture oqimi ham
+        # qayta yoqiladi. HTTP/HTTPS webhook bo'lsa u ikkilamchi kanal sifatida
+        # qoladi, asosiy real-time oqim esa EHome alarm/picture hisoblanadi.
         server_ip = self._detect_server_bind_ip()
-        print(f"[ISUP SDK] fill_server_info: alarm/picture host={server_ip}:{self.alarm_port}/{self.picture_port}")
+        print(
+            f"[ISUP SDK] fill_server_info: alarm={server_ip}:{self.alarm_port}, "
+            f"picture={server_ip}:{self.picture_port}, redirect={server_ip}:{self.register_port}"
+        )
 
         set_ip_address(info.struTCPAlarmSever, server_ip, self.alarm_port)
         set_ip_address(info.struUDPAlarmSever, server_ip, self.alarm_port)
@@ -4002,25 +4736,17 @@ class HikvisionSdkRuntime:
 
     @staticmethod
     def _parse_alarm_timestamp(value: Optional[str]) -> datetime:
+        normalized = normalize_timestamp_tashkent(value)
+        if normalized is not None:
+            return normalized
+
         text = str(value or "").strip()
-        if not text:
-            return utc_now().replace(tzinfo=None)
-
-        normalized = text.replace("Z", "+00:00")
-        try:
-            dt = datetime.fromisoformat(normalized)
-            if dt.tzinfo is not None:
-                return dt.astimezone(timezone.utc).replace(tzinfo=None)
-            return dt
-        except Exception:
-            pass
-
         for fmt in ("%Y-%m-%d %H:%M:%S", "%Y/%m/%d %H:%M:%S", "%Y%m%d%H%M%S"):
             try:
                 return datetime.strptime(text, fmt)
             except Exception:
                 continue
-        return utc_now().replace(tzinfo=None)
+        return now_tashkent()
 
     def _db_connect(self) -> sqlite3.Connection:
         db_path = (Path(__file__).resolve().parent / "bioface.db").resolve()
@@ -4154,6 +4880,325 @@ class HikvisionSdkRuntime:
                 return state
         return None
 
+    def _get_delta_sync_cursor(self, state: "DeviceState") -> Optional[datetime]:
+        device_key = str(state.device_id or "").strip()
+        if not device_key:
+            return None
+        with self._attendance_sync_lock:
+            cached = self._attendance_sync_cursor.get(device_key)
+        if cached is not None:
+            return cached
+
+        try:
+            with self._db_connect() as conn:
+                row = conn.execute(
+                    """
+                    SELECT MAX(l.timestamp)
+                    FROM attendance_logs l
+                    JOIN devices d ON d.id = l.device_id
+                    WHERE lower(COALESCE(d.isup_device_id, '')) = lower(?)
+                       OR lower(COALESCE(d.name, '')) = lower(?)
+                       OR lower(COALESCE(d.mac_address, '')) = lower(?)
+                    """,
+                    (device_key, device_key, device_key),
+                ).fetchone()
+        except Exception:
+            row = None
+
+        seeded = self._parse_alarm_timestamp(row[0]) if row and row[0] else None
+        with self._attendance_sync_lock:
+            if seeded is not None:
+                self._attendance_sync_cursor[device_key] = seeded
+            return self._attendance_sync_cursor.get(device_key)
+
+    def _set_delta_sync_cursor(self, state: "DeviceState", value: Optional[datetime]) -> None:
+        device_key = str(state.device_id or "").strip()
+        if not device_key or value is None:
+            return
+        with self._attendance_sync_lock:
+            prev = self._attendance_sync_cursor.get(device_key)
+            if prev is None or value > prev:
+                self._attendance_sync_cursor[device_key] = value
+
+    def _log_isup_alarm_request(
+        self,
+        *,
+        client_ip: Optional[str],
+        status_code: int,
+        serial: str,
+        person_id: str,
+        person_name: str,
+        device_id: Optional[int],
+        snapshot_url: Optional[str],
+        error: Optional[str] = None,
+        method: str = "ISUP",
+        url: str = "/isup/alarm/7661",
+        content_type: str = "application/isup-alarm+xml",
+        user_agent: str = "hikvision-isup-sdk",
+    ) -> None:
+        try:
+            details = {
+                "serial": str(serial or "").strip() or None,
+                "person_id": str(person_id or "").strip() or None,
+                "person_name": str(person_name or "").strip() or None,
+                "device_id": int(device_id) if device_id is not None else None,
+                "snapshot_url": str(snapshot_url or "").strip() or None,
+                "error": str(error or "").strip() or None,
+            }
+            with self._db_connect() as conn:
+                conn.execute(
+                    """
+                    INSERT INTO request_logs
+                    (method, url, client_ip, content_type, user_agent, status_code, response_time_ms, created_at, details)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        str(method or "ISUP"),
+                        str(url or "/isup/alarm/7661"),
+                        str(client_ip or "").strip() or None,
+                        str(content_type or "application/isup-alarm+xml"),
+                        str(user_agent or "hikvision-isup-sdk"),
+                        int(status_code or 0),
+                        0,
+                        now_tashkent().isoformat(sep=" "),
+                        json.dumps(details, ensure_ascii=False),
+                    ),
+                )
+                conn.commit()
+        except Exception:
+            return
+
+    def _ingest_delta_sync_event(self, state: "DeviceState", row: dict[str, Any]) -> Optional[int]:
+        if not isinstance(row, dict):
+            return None
+
+        person_id = str(row.get("person_id") or "").strip()
+        person_name = str(row.get("person_name") or "").strip()
+        snapshot_url = str(row.get("snapshot_url") or "").strip() or None
+        event_dt = self._parse_alarm_timestamp(row.get("timestamp"))
+        event_time_sql = event_dt.strftime("%Y-%m-%d %H:%M:%S")
+        serial = str(state.serial or state.device_id or "").strip()
+        client_ip = str(state.ip or "").strip()
+
+        with self._db_connect() as conn:
+            device_row = conn.execute(
+                """
+                SELECT id, name, mac_address, isup_device_id
+                FROM devices
+                WHERE lower(COALESCE(isup_device_id, '')) = lower(?)
+                   OR lower(COALESCE(name, '')) = lower(?)
+                   OR lower(COALESCE(mac_address, '')) = lower(?)
+                LIMIT 1
+                """,
+                (state.device_id, state.device_id, state.device_id),
+            ).fetchone()
+            if device_row is None and serial:
+                device_row = conn.execute(
+                    """
+                    SELECT id, name, mac_address, isup_device_id
+                    FROM devices
+                    WHERE lower(COALESCE(isup_device_id, '')) = lower(?)
+                       OR lower(COALESCE(name, '')) = lower(?)
+                    LIMIT 1
+                    """,
+                    (serial, serial),
+                ).fetchone()
+
+            employee_row: Optional[sqlite3.Row] = None
+            if person_id:
+                employee_row = conn.execute(
+                    """
+                    SELECT id, first_name, last_name, personal_id
+                    FROM employees
+                    WHERE trim(COALESCE(personal_id, '')) = ?
+                    LIMIT 1
+                    """,
+                    (person_id,),
+                ).fetchone()
+                if employee_row is None and person_id.isdigit():
+                    employee_row = conn.execute(
+                        """
+                        SELECT id, first_name, last_name, personal_id
+                        FROM employees
+                        WHERE id = ?
+                        LIMIT 1
+                        """,
+                        (int(person_id),),
+                    ).fetchone()
+
+            if employee_row is not None and not person_name:
+                first = str(employee_row["first_name"] or "").strip()
+                last = str(employee_row["last_name"] or "").strip()
+                person_name = f"{first} {last}".strip()
+
+            device_id = int(device_row["id"]) if device_row is not None else None
+            camera_mac = str(device_row["mac_address"] or "").strip() if device_row is not None else None
+
+            dedupe = conn.execute(
+                """
+                SELECT id
+                FROM attendance_logs
+                WHERE COALESCE(device_id, -1) = COALESCE(?, -1)
+                  AND COALESCE(person_id, '') = COALESCE(?, '')
+                  AND ABS(strftime('%s', timestamp) - strftime('%s', ?)) <= 8
+                ORDER BY id DESC
+                LIMIT 1
+                """,
+                (device_id, person_id or None, event_time_sql),
+            ).fetchone()
+
+            inserted_log_id: Optional[int] = None
+            inserted_new = False
+            if dedupe is None:
+                status = "aniqlandi" if employee_row is not None else "noma'lum"
+                cur = conn.execute(
+                    """
+                    INSERT INTO attendance_logs
+                    (employee_id, device_id, camera_mac, person_id, person_name, snapshot_url, timestamp, status)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        int(employee_row["id"]) if employee_row is not None else None,
+                        device_id,
+                        camera_mac,
+                        person_id or None,
+                        person_name or None,
+                        snapshot_url,
+                        event_time_sql,
+                        status,
+                    ),
+                )
+                inserted_log_id = cur.lastrowid
+                inserted_new = True
+            else:
+                inserted_log_id = int(dedupe["id"])
+
+            if device_row is not None:
+                conn.execute(
+                    """
+                    UPDATE devices
+                    SET is_online = 1, last_seen_at = ?
+                    WHERE id = ?
+                    """,
+                    (now_tashkent().isoformat(), int(device_row["id"])),
+                )
+
+            if inserted_log_id and snapshot_url:
+                self._attach_snapshot_to_log_and_employee(
+                    conn,
+                    log_id=inserted_log_id,
+                    snapshot_url=snapshot_url,
+                )
+
+            conn.commit()
+
+        if inserted_log_id and inserted_new:
+            self._publish_alarm_event_to_redis(
+                source="isup_delta_sync",
+                log_id=inserted_log_id,
+                timestamp=event_time_sql,
+                device_row=device_row,
+                camera_mac=camera_mac,
+                person_id=person_id,
+                person_name=person_name,
+                status=("aniqlandi" if employee_row is not None else "noma'lum"),
+                snapshot_url=snapshot_url,
+            )
+            self._log_isup_alarm_request(
+                client_ip=client_ip or camera_mac,
+                status_code=200,
+                serial=serial,
+                person_id=person_id,
+                person_name=person_name,
+                device_id=int(device_row["id"]) if device_row is not None else None,
+                snapshot_url=snapshot_url,
+                method="ISUP-SYNC",
+                url="/isup/delta-sync",
+                content_type="application/json",
+                user_agent="hikvision-isup-delta-sync",
+            )
+            if not snapshot_url:
+                import threading as _thrd
+                _thrd.Thread(
+                    target=self._fetch_device_snapshot_async,
+                    args=(state.device_id, inserted_log_id),
+                    daemon=True,
+                ).start()
+            self.registry.add_trace(
+                "attendance_sync",
+                {
+                    "serial": serial or None,
+                    "person_id": person_id or None,
+                    "device_id": int(device_row["id"]) if device_row is not None else None,
+                    "log_id": int(inserted_log_id),
+                },
+            )
+        return inserted_log_id
+
+    def _periodic_attendance_delta_sync(self) -> None:
+        import time as _time
+        _time.sleep(12)
+        while True:
+            try:
+                for state in self.registry.all():
+                    if not state.online or state.login_id is None:
+                        continue
+                    cursor_dt = self._get_delta_sync_cursor(state)
+                    threshold = (
+                        cursor_dt - timedelta(seconds=2)
+                        if isinstance(cursor_dt, datetime)
+                        else now_tashkent() - timedelta(minutes=2)
+                    )
+                    try:
+                        result = self.command_bridge._cmd_get_attendance_events(
+                            state.device_id,
+                            state,
+                            {"hours": 1, "limit": 40, "max_results": 10},
+                        )
+                    except Exception:
+                        continue
+                    if not isinstance(result, dict) or not result.get("ok"):
+                        self.registry.add_trace(
+                            "attendance_sync_poll",
+                            {
+                                "device_id": state.device_id,
+                                "ok": False,
+                                "error": str(result.get("error") if isinstance(result, dict) else "unknown"),
+                            },
+                        )
+                        continue
+                    rows = result.get("events") or []
+                    if not isinstance(rows, list):
+                        continue
+                    self.registry.add_trace(
+                        "attendance_sync_poll",
+                        {
+                            "device_id": state.device_id,
+                            "ok": True,
+                            "rows": len(rows),
+                            "cursor": cursor_dt.isoformat() if isinstance(cursor_dt, datetime) else None,
+                            "threshold": threshold.isoformat() if isinstance(threshold, datetime) else None,
+                        },
+                    )
+                    newest_dt = cursor_dt
+                    sortable: list[tuple[datetime, dict[str, Any]]] = []
+                    for row in rows:
+                        if not isinstance(row, dict):
+                            continue
+                        row_dt = self._parse_alarm_timestamp(row.get("timestamp"))
+                        sortable.append((row_dt, row))
+                    sortable.sort(key=lambda item: item[0])
+                    for row_dt, row in sortable:
+                        if row_dt < threshold:
+                            continue
+                        self._ingest_delta_sync_event(state, row)
+                        if newest_dt is None or row_dt > newest_dt:
+                            newest_dt = row_dt
+                    self._set_delta_sync_cursor(state, newest_dt)
+            except Exception as exc:
+                print(f"[ISUP SDK] attendance delta sync xato: {exc}")
+            _time.sleep(5)
+
     def _on_alarm_message(self, handle: int, alarm_msg_ptr: Any, p_user: int) -> bool:
         try:
             if not alarm_msg_ptr:
@@ -4177,12 +5222,31 @@ class HikvisionSdkRuntime:
             xml_fields = self._extract_alarm_xml_fields(xml_text)
 
             person_id = (
-                (json_payload and self._find_first_value(json_payload, {"employeeNo", "person_id", "personId", "employeeID", "employeeId"}))
+                (
+                    json_payload
+                    and self._find_first_value(
+                        json_payload,
+                        {
+                            "employeeNo",
+                            "employeeNoString",
+                            "person_id",
+                            "personId",
+                            "personID",
+                            "employeeID",
+                            "employeeId",
+                            "cardNo",
+                            "cardReaderNo",
+                        },
+                    )
+                )
                 or xml_fields.get("employeeNo")
+                or xml_fields.get("employeeNoString")
                 or xml_fields.get("personID")
                 or xml_fields.get("personId")
                 or xml_fields.get("employeeID")
                 or xml_fields.get("employeeId")
+                or xml_fields.get("cardNo")
+                or xml_fields.get("cardReaderNo")
                 or ""
             ).strip()
             person_name = (
@@ -4226,9 +5290,10 @@ class HikvisionSdkRuntime:
                     print(f"[ISUP SDK] embedded image decode xato: {img_exc}")
 
             event_time_text = (
-                (json_payload and self._find_first_value(json_payload, {"eventTime", "dateTime", "timestamp", "time"}))
+                (json_payload and self._find_first_value(json_payload, {"eventTime", "dateTime", "timestamp", "time", "localTime"}))
                 or xml_fields.get("eventTime")
                 or xml_fields.get("dateTime")
+                or xml_fields.get("localTime")
                 or xml_fields.get("time")
                 or None
             )
@@ -4238,6 +5303,7 @@ class HikvisionSdkRuntime:
             state = self.registry.find(serial) if serial else None
             if state is None and serial:
                 state = self._state_by_serial(serial)
+            client_ip = str(state.ip or "").strip() if state is not None else ""
 
             device_candidates: list[str] = []
             for item in (
@@ -4366,7 +5432,7 @@ class HikvisionSdkRuntime:
                         SET is_online = 1, last_seen_at = ?
                         WHERE id = ?
                         """,
-                        (utc_now().replace(tzinfo=None).isoformat(), int(device_row["id"])),
+                        (now_tashkent().isoformat(), int(device_row["id"])),
                     )
 
                 if inserted_log_id and snapshot_url:
@@ -4388,6 +5454,15 @@ class HikvisionSdkRuntime:
                     person_id=person_id,
                     person_name=person_name,
                     status=("aniqlandi" if employee_row is not None else "noma'lum"),
+                    snapshot_url=snapshot_url,
+                )
+                self._log_isup_alarm_request(
+                    client_ip=client_ip or camera_mac,
+                    status_code=200,
+                    serial=serial,
+                    person_id=person_id,
+                    person_name=person_name,
+                    device_id=int(device_row["id"]) if device_row is not None else None,
                     snapshot_url=snapshot_url,
                 )
 
@@ -4425,6 +5500,16 @@ class HikvisionSdkRuntime:
         except Exception as exc:
             print(f"[ISUP SDK] alarm callback exception: {exc}")
             self.registry.add_trace("alarm_7661_error", {"error": str(exc)})
+            self._log_isup_alarm_request(
+                client_ip=None,
+                status_code=500,
+                serial="",
+                person_id="",
+                person_name="",
+                device_id=None,
+                snapshot_url=None,
+                error=str(exc),
+            )
             return True
 
     def _publish_alarm_event_to_redis(
@@ -4704,6 +5789,7 @@ def build_app(runtime: HikvisionSdkRuntime) -> FastAPI:
             "mode": "hikvision_sdk",
             "public_host": runtime.public_host,
             "public_web_base_url": runtime.public_web_base_url or None,
+            "camera_event_push_base_url": runtime.camera_event_push_base_url or None,
             "register_port": runtime.register_port,
             "alarm_port": runtime.alarm_port,
             "picture_port": runtime.picture_port,
@@ -4765,6 +5851,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--sdk-dir", default=str(Path(__file__).resolve().parent / "hikvision_sdk"))
     parser.add_argument("--public-host", default=resolve_public_host_from_env())
     parser.add_argument("--public-web-base-url", default=resolve_public_web_base_url_from_env())
+    parser.add_argument("--camera-event-push-base-url", default=resolve_camera_event_push_base_url_from_env())
     parser.add_argument(
         "--picture-dir",
         default=str(Path(__file__).resolve().parent / "static" / "uploads" / "isup"),
@@ -4786,6 +5873,7 @@ def main() -> None:
         sdk_dir=Path(args.sdk_dir).resolve(),
         public_host=args.public_host,
         public_web_base_url=args.public_web_base_url,
+        camera_event_push_base_url=args.camera_event_push_base_url,
         picture_dir=Path(args.picture_dir).resolve(),
     )
     runtime.start()

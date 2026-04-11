@@ -1,0 +1,452 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ page_title }}</h1>
+        <p id="approvals-count-text" class="mt-1 text-sm text-gray-500 dark:text-gray-400">Yuklanmoqda...</p>
+    </div>
+    <a href="/users" class="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        {{ t.users_title if t and t.get('users_title') else 'Foydalanuvchilar ro\'yxati' }}
+    </a>
+</div>
+
+<div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-400">
+                    <th class="px-5 py-3 font-medium">#</th>
+                    <th class="px-5 py-3 font-medium">F.I.O</th>
+                    <th class="px-5 py-3 font-medium">Username</th>
+                    <th class="px-5 py-3 font-medium">Email</th>
+                    <th class="px-5 py-3 font-medium">Google</th>
+                    <th class="px-5 py-3 font-medium">Status</th>
+                    <th class="px-5 py-3 font-medium">{{ t.organization if t and t.get('organization') else 'Tashkilot' }}</th>
+                    <th class="px-5 py-3 font-medium text-right">{{ t.actions if t and t.get('actions') else 'Amallar' }}</th>
+                </tr>
+            </thead>
+            <tbody id="approval-table-body" class="divide-y divide-gray-100 text-sm dark:divide-gray-800"></tbody>
+        </table>
+    </div>
+    <div id="empty-state" class="hidden py-12 text-center text-gray-500 dark:text-gray-400">
+        Tasdiqlanishi kutilayotgan Google foydalanuvchilar yo'q.
+    </div>
+</div>
+
+<script>
+const roleOptions = [
+    { value: "SuperAdmin", label: {{ t.super_admin|tojson }} },
+    { value: "MahallaAdmin", label: {{ t.mahalla_admin|tojson }} },
+    { value: "MaktabAdmin", label: {{ t.maktab_admin|tojson }} },
+    { value: "KollejAdmin", label: {{ t.kollej_admin|tojson }} },
+    { value: "TashkilotAdmin", label: {{ t.tashkilot_admin|tojson }} },
+    { value: "KorxonaAdmin", label: {{ t.korxona_admin|tojson }} },
+];
+const approvalOrganizations = [
+    {% for org in organizations %}
+    { id: {{ org.id }}, name: {{ org.name|tojson }} },
+    {% endfor %}
+];
+const menuPermissionGroups = {{ menu_permission_groups|tojson }};
+const rolePermissionDefaults = {{ role_permission_defaults|tojson }};
+let pendingUsersCache = [];
+let approvalMenuSelection = new Set();
+let approvalOrgSelection = new Set();
+let approvalMenuDirty = false;
+
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+function fullName(user) {
+    const first = String(user.first_name || "").trim();
+    const last = String(user.last_name || "").trim();
+    const middle = String(user.middle_name || "").trim();
+    const byParts = `${first} ${last} ${middle}`.trim();
+    if (byParts) return byParts;
+    return String(user.name || "Foydalanuvchi").trim() || "Foydalanuvchi";
+}
+
+function userInitial(user) {
+    const name = fullName(user);
+    return name && name !== "Foydalanuvchi" ? name[0].toUpperCase() : "U";
+}
+
+function normalizeUsernamePart(value) {
+    return String(value || "")
+        .trim()
+        .toLowerCase()
+        .normalize("NFKD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/['`]/g, "")
+        .replace(/[^a-z0-9]+/g, "");
+}
+
+function usernamePreview(user) {
+    const nameParts = fullName(user).split(/\s+/).filter(Boolean);
+    const first = normalizeUsernamePart(user.first_name || nameParts[0] || "");
+    const last = normalizeUsernamePart(user.last_name || nameParts.slice(1).join(" "));
+    return `${first}${last}` || "user";
+}
+
+function renderBadge(text, tone) {
+    const tones = {
+        green: "border-green-200 bg-green-100 text-green-800 dark:border-green-800 dark:bg-green-900/30 dark:text-green-300",
+        yellow: "border-yellow-200 bg-yellow-100 text-yellow-800 dark:border-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
+        blue: "border-blue-200 bg-blue-100 text-blue-800 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
+        gray: "border-gray-200 bg-gray-100 text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300",
+    };
+    return `<span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${tones[tone] || tones.gray}">${escapeHtml(text)}</span>`;
+}
+
+function roleOptionsHtml(selectedRole) {
+    return roleOptions.map((role) => {
+        const selected = role.value === selectedRole ? "selected" : "";
+        return `<option value="${escapeHtml(role.value)}" ${selected}>${escapeHtml(role.label)}</option>`;
+    }).join("");
+}
+
+function renderTable(users) {
+    pendingUsersCache = users;
+    const tbody = document.getElementById("approval-table-body");
+    const empty = document.getElementById("empty-state");
+    document.getElementById("approvals-count-text").textContent = `${users.length} ta tasdiqlanmagan foydalanuvchi`;
+
+    if (!users.length) {
+        tbody.innerHTML = "";
+        empty.classList.remove("hidden");
+        return;
+    }
+
+    empty.classList.add("hidden");
+    tbody.innerHTML = users.map((u, index) => {
+        const orgNames = Array.isArray(u.organization_names) ? u.organization_names.filter(Boolean) : [];
+        const orgText = orgNames.length ? orgNames.join(", ") : (u.organization_name || "-");
+        const avatar = u.image_url ? `
+            <img src="${escapeHtml(u.image_url)}" alt="avatar" class="h-10 w-10 rounded-full border border-gray-200 object-cover dark:border-gray-700">
+        ` : `
+            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-orange-600 text-sm font-bold text-white">
+                ${escapeHtml(userInitial(u))}
+            </div>
+        `;
+        const statusBadge = u.status === "pending"
+            ? renderBadge("Yangi foydalanuvchi", "yellow")
+            : renderBadge("Google ruxsat kutilmoqda", "yellow");
+        const googleBadge = u.google_sub
+            ? renderBadge("Google so'rovi", "blue")
+            : renderBadge("Noaniq", "gray");
+
+        return `
+            <tr class="transition hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                <td class="px-5 py-4 whitespace-nowrap font-medium text-gray-600 dark:text-gray-300">${index + 1}</td>
+                <td class="px-5 py-4 whitespace-nowrap">
+                    <div class="flex items-center gap-3">
+                        ${avatar}
+                        <div>
+                            <div class="font-medium text-gray-900 dark:text-white">${escapeHtml(fullName(u))}</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">ID: ${escapeHtml(u.id)}</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-5 py-4 whitespace-nowrap text-gray-700 dark:text-gray-300">${escapeHtml(u.name || "-")}</td>
+                <td class="px-5 py-4 whitespace-nowrap text-gray-700 dark:text-gray-300">${escapeHtml(u.email || "-")}</td>
+                <td class="px-5 py-4 whitespace-nowrap">${googleBadge}</td>
+                <td class="px-5 py-4 whitespace-nowrap">${statusBadge}</td>
+                <td class="px-5 py-4 text-gray-500 dark:text-gray-400">${escapeHtml(orgText)}</td>
+                <td class="px-5 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div class="flex items-center justify-end gap-2">
+                        <button onclick="openApprovalModal(${u.id})" class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4"/></svg>
+                            Tasdiqlash
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join("");
+}
+
+function setApprovalError(body, message) {
+    const errorEl = body.querySelector("#approval-error");
+    if (!errorEl) return;
+    errorEl.textContent = message || "";
+    errorEl.classList.toggle("hidden", !message);
+}
+
+function updateApprovalOrgSummary(body) {
+    const summaryEl = body.querySelector("#approval-org-summary");
+    if (!summaryEl) return;
+    const count = approvalOrgSelection.size;
+    if (!count) {
+        summaryEl.textContent = "Hech qanday tashkilot tanlanmagan. Kamida bitta tashkilot kerak.";
+        summaryEl.className = "mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 dark:border-red-800/50 dark:bg-red-900/20 dark:text-red-300";
+        return;
+    }
+    summaryEl.textContent = `${count} ta tashkilot tanlandi`;
+    summaryEl.className = "mt-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-600 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-300";
+}
+
+function renderApprovalOrganizations(body) {
+    const listEl = body.querySelector("#approval-org-list");
+    if (!listEl) return;
+    if (!approvalOrganizations.length) {
+        listEl.innerHTML = `
+            <div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-900/20 dark:text-amber-200">
+                Tizimda tashkilot topilmadi.
+            </div>
+        `;
+        updateApprovalOrgSummary(body);
+        return;
+    }
+
+    listEl.innerHTML = approvalOrganizations.map((org) => {
+        const orgId = Number(org.id);
+        const checked = approvalOrgSelection.has(orgId) ? "checked" : "";
+        return `
+            <label class="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2.5 py-2 hover:border-emerald-300 hover:bg-emerald-50/50 dark:border-gray-700 dark:bg-gray-900 dark:hover:border-emerald-700 dark:hover:bg-emerald-900/10">
+                <input type="checkbox" class="approval-org-option h-3.5 w-3.5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" value="${escapeHtml(orgId)}" ${checked}>
+                <span class="min-w-0 truncate text-xs font-semibold text-gray-800 dark:text-gray-100">${escapeHtml(org.name)}</span>
+            </label>
+        `;
+    }).join("");
+
+    for (const cb of listEl.querySelectorAll(".approval-org-option")) {
+        cb.addEventListener("change", (event) => {
+            const orgId = Number(event.target.value || 0);
+            if (!Number.isInteger(orgId) || orgId <= 0) return;
+            if (event.target.checked) approvalOrgSelection.add(orgId);
+            else approvalOrgSelection.delete(orgId);
+            updateApprovalOrgSummary(body);
+        });
+    }
+    updateApprovalOrgSummary(body);
+}
+
+function updateApprovalMenuSummary(body) {
+    const summaryEl = body.querySelector("#approval-menu-summary");
+    if (!summaryEl) return;
+    const count = approvalMenuSelection.size;
+    if (!count) {
+        summaryEl.textContent = "Hech qanday menyu tanlanmagan. Kamida bitta bo'lim kerak.";
+        summaryEl.className = "mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 dark:border-red-800/50 dark:bg-red-900/20 dark:text-red-300";
+        return;
+    }
+    summaryEl.textContent = `${count} ta menyu tanlandi`;
+    summaryEl.className = "mt-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-600 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-300";
+}
+
+function renderApprovalMenus(body) {
+    const groupsEl = body.querySelector("#approval-menu-groups");
+    if (!groupsEl) return;
+    groupsEl.innerHTML = menuPermissionGroups.map((group) => {
+        const groupItems = Array.isArray(group.items) ? group.items : [];
+        const selectedCount = groupItems.filter((item) => approvalMenuSelection.has(item.key)).length;
+        const items = groupItems.map((item) => {
+            const checked = approvalMenuSelection.has(item.key) ? "checked" : "";
+            return `
+                <label title="${escapeHtml(item.description || item.title)}" class="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 hover:border-emerald-300 hover:bg-emerald-50/50 dark:border-gray-700 dark:bg-gray-900 dark:hover:border-emerald-700 dark:hover:bg-emerald-900/10">
+                    <input type="checkbox" class="approval-menu-option h-3.5 w-3.5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" value="${escapeHtml(item.key)}" ${checked}>
+                    <span class="min-w-0 truncate text-xs font-semibold text-gray-800 dark:text-gray-100">${escapeHtml(item.title)}</span>
+                </label>
+            `;
+        }).join("");
+        return `
+            <section class="rounded-xl border border-gray-200 bg-gray-50 p-2.5 dark:border-gray-700 dark:bg-gray-800/40">
+                <div class="mb-2 flex items-center justify-between gap-2">
+                    <span class="truncate text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">${escapeHtml(group.title)}</span>
+                    <span class="shrink-0 rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-gray-500 ring-1 ring-gray-200 dark:bg-gray-900 dark:text-gray-400 dark:ring-gray-700">${selectedCount}/${groupItems.length}</span>
+                </div>
+                <div class="grid gap-1.5">${items}</div>
+            </section>
+        `;
+    }).join("");
+
+    for (const cb of groupsEl.querySelectorAll(".approval-menu-option")) {
+        cb.addEventListener("change", (event) => {
+            const key = String(event.target.value || "").trim();
+            if (!key) return;
+            approvalMenuDirty = true;
+            if (event.target.checked) approvalMenuSelection.add(key);
+            else approvalMenuSelection.delete(key);
+            updateApprovalMenuSummary(body);
+        });
+    }
+    updateApprovalMenuSummary(body);
+}
+
+function applyApprovalRoleDefaults(body, force = false) {
+    if (!force && approvalMenuDirty) return;
+    const role = String(body.querySelector("#approval-role")?.value || "TashkilotAdmin");
+    const defaults = Array.isArray(rolePermissionDefaults[role]) ? rolePermissionDefaults[role] : [];
+    approvalMenuSelection = new Set(defaults);
+    approvalMenuDirty = false;
+    renderApprovalMenus(body);
+}
+
+function openApprovalModal(id) {
+    const user = pendingUsersCache.find((item) => Number(item.id) === Number(id));
+    if (!user) {
+        if (window.AppNotify) window.AppNotify.error("Foydalanuvchi topilmadi");
+        return;
+    }
+
+    const selectedRole = rolePermissionDefaults[user.role] ? user.role : "TashkilotAdmin";
+    const userOrgIds = Array.isArray(user.organization_ids) ? user.organization_ids.filter(Boolean) : [];
+    approvalOrgSelection = new Set(userOrgIds.map((value) => Number(value)).filter((value) => Number.isInteger(value) && value > 0));
+    const fallbackOrgId = Number(user.organization_id || 0);
+    if (!approvalOrgSelection.size && Number.isInteger(fallbackOrgId) && fallbackOrgId > 0) {
+        approvalOrgSelection.add(fallbackOrgId);
+    }
+    if (!approvalOrgSelection.size && approvalOrganizations.length === 1) {
+        approvalOrgSelection.add(Number(approvalOrganizations[0].id));
+    }
+    const avatarHtml = user.image_url
+        ? `<img src="${escapeHtml(user.image_url)}" alt="avatar" class="h-12 w-12 rounded-2xl border border-gray-200 object-cover dark:border-gray-700">`
+        : `<div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-base font-bold text-white">${escapeHtml(userInitial(user))}</div>`;
+
+    const body = document.createElement("div");
+    body.className = "space-y-4";
+    body.innerHTML = `
+        <div class="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-900/50 dark:bg-amber-900/10">
+            <div class="flex items-start gap-3">
+                ${avatarHtml}
+                <div class="min-w-0">
+                    <div class="text-base font-bold text-gray-900 dark:text-white">${escapeHtml(fullName(user))}</div>
+                    <div class="mt-0.5 text-sm text-gray-600 dark:text-gray-300">${escapeHtml(user.email || "-")}</div>
+                    <div class="mt-2 rounded-lg bg-white px-3 py-2 text-xs font-medium text-gray-600 ring-1 ring-amber-200 dark:bg-gray-900 dark:text-gray-300 dark:ring-amber-900/50">
+                        Username avtomatik saqlanadi: <span class="font-bold text-gray-900 dark:text-white">${escapeHtml(usernamePreview(user))}</span>.
+                        Agar band bo'lsa oxiriga raqam qo'shiladi.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid gap-3 lg:grid-cols-[minmax(0,260px)_1fr]">
+            <div>
+                <label class="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-300">Huquqi <span class="text-red-500">*</span></label>
+                <select id="approval-role" class="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 outline-none transition focus:bg-white focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-100 dark:focus:bg-gray-800">
+                    ${roleOptionsHtml(selectedRole)}
+                </select>
+            </div>
+            <div class="rounded-2xl border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
+                <div class="text-sm font-bold text-gray-900 dark:text-white">Tashkilotlar <span class="text-red-500">*</span></div>
+                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Foydalanuvchini bir yoki bir nechta tashkilotga biriktiring.</p>
+                <div id="approval-org-summary"></div>
+                <div id="approval-org-list" class="mt-3 grid max-h-36 gap-2 overflow-y-auto pr-1 sm:grid-cols-2"></div>
+            </div>
+        </div>
+
+        <div class="rounded-2xl border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <div class="text-sm font-bold text-gray-900 dark:text-white">Menyu ruxsatlari <span class="text-red-500">*</span></div>
+                    <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Foydalanuvchi qaysi sahifalarga kira olishini tanlang.</p>
+                </div>
+                <button type="button" id="approval-role-defaults" class="shrink-0 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300 dark:hover:bg-emerald-900/50">
+                    Rol defaultlari
+                </button>
+            </div>
+            <div id="approval-menu-summary"></div>
+            <div id="approval-menu-groups" class="mt-3 grid max-h-[38vh] gap-2 overflow-y-auto pr-1 sm:grid-cols-2"></div>
+        </div>
+
+        <div id="approval-error" class="hidden rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800/50 dark:bg-red-900/20 dark:text-red-300"></div>
+
+        <div class="flex justify-end gap-2 border-t border-gray-100 pt-3 dark:border-gray-800">
+            <button type="button" id="approval-cancel" class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800">Bekor qilish</button>
+            <button type="button" id="approval-submit" class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60">
+                <svg id="approval-submit-spinner" class="hidden h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                </svg>
+                Tasdiqlash
+            </button>
+        </div>
+    `;
+
+    window.AppModal.open({
+        title: "Google foydalanuvchini tasdiqlash",
+        size: "2xl",
+        bodyNode: body,
+    });
+
+    renderApprovalOrganizations(body);
+    applyApprovalRoleDefaults(body, true);
+    body.querySelector("#approval-role").addEventListener("change", () => applyApprovalRoleDefaults(body, false));
+    body.querySelector("#approval-role-defaults").addEventListener("click", () => applyApprovalRoleDefaults(body, true));
+    body.querySelector("#approval-cancel").addEventListener("click", () => window.AppModal.close("approval_cancel"));
+    body.querySelector("#approval-submit").addEventListener("click", () => submitApproval(id, body));
+}
+
+async function submitApproval(id, body) {
+    const role = String(body.querySelector("#approval-role")?.value || "").trim();
+    const organizationIds = Array.from(approvalOrgSelection).filter((value) => Number.isInteger(value) && value > 0);
+    const menuPermissions = Array.from(approvalMenuSelection);
+
+    if (!role) {
+        setApprovalError(body, "Huquqni tanlang");
+        return;
+    }
+    if (!organizationIds.length) {
+        setApprovalError(body, "Kamida bitta tashkilotni tanlang");
+        return;
+    }
+    if (!menuPermissions.length) {
+        setApprovalError(body, "Kamida bitta menyu ruxsati tanlang");
+        return;
+    }
+    setApprovalError(body, "");
+
+    const submitBtn = body.querySelector("#approval-submit");
+    const spinner = body.querySelector("#approval-submit-spinner");
+    submitBtn.disabled = true;
+    spinner.classList.remove("hidden");
+    try {
+        const res = await fetch(`/api/users/${id}/approve`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                role,
+                organization_id: organizationIds[0],
+                organization_ids: organizationIds,
+                menu_permissions: menuPermissions,
+            }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            setApprovalError(body, data.detail || "Tasdiqlashda xatolik");
+            return;
+        }
+        window.AppModal.close("approval_success");
+        if (window.AppNotify) window.AppNotify.success(data.message || "Foydalanuvchi tasdiqlandi");
+        await loadPendingUsers();
+    } catch (e) {
+        console.error("Approve user xatoligi", e);
+        setApprovalError(body, "Tasdiqlashda xatolik");
+    } finally {
+        submitBtn.disabled = false;
+        spinner.classList.add("hidden");
+    }
+}
+
+async function loadPendingUsers() {
+    try {
+        const res = await fetch("/api/users/pending");
+        const data = await res.json().catch(() => ({ users: [] }));
+        renderTable(Array.isArray(data.users) ? data.users : []);
+    } catch (e) {
+        console.error("Pending users load xatoligi", e);
+    }
+}
+
+document.addEventListener("DOMContentLoaded", loadPendingUsers);
+</script>
+{% endblock %}
+

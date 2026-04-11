@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="max-w-4xl mx-auto">
+<div class="w-full max-w-7xl mx-auto">
     <div class="mb-6 flex items-center justify-between">
         <div>
             <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t.edit }}</h1>
@@ -15,7 +15,8 @@
         <div class="space-y-6">
             <div id="user-error" class="hidden text-sm text-red-600 bg-red-50 dark:bg-red-900/20 px-4 py-3 rounded-lg border border-red-200 dark:border-red-800/30"></div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="space-y-5">
+                <section class="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Ism <span class="text-red-500">*</span></label>
                     <input type="text" id="inp-first-name" value="{{ user.first_name or '' }}" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 placeholder-gray-400">
@@ -32,8 +33,15 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Username (login nomi)</label>
-                    <input type="text" id="inp-username" value="{{ user.name or '' }}" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 placeholder-gray-400">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Username (login nomi) <span class="text-red-500">*</span></label>
+                    <div class="relative">
+                        <input type="text" id="inp-username" value="{{ user.name or '' }}" autocomplete="username" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 pr-10 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 placeholder-gray-400">
+                        <svg id="username-check-spinner" class="absolute right-3 top-1/2 hidden h-4 w-4 -translate-y-1/2 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                        </svg>
+                    </div>
+                    <p id="username-hint" class="mt-1 text-xs text-gray-500 dark:text-gray-400">Username tizimda yagona bo'lishi kerak.</p>
                 </div>
 
                 <div>
@@ -53,6 +61,12 @@
                 </div>
 
                 <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Parol tasdiqlash</label>
+                    <input type="password" id="inp-password-confirm" placeholder="Yangi parolni qayta kiriting" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 placeholder-gray-400">
+                    <p id="password-confirm-hint" class="mt-1 text-xs text-gray-500 dark:text-gray-400">Parol o'zgartirilsa, tasdiqlash ham kiritiladi.</p>
+                </div>
+
+                <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ t.role }} <span class="text-red-500">*</span></label>
                     <select id="inp-role" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100">
                         <option value="SuperAdmin" {% if user.role.value == 'SuperAdmin' %}selected{% endif %}>{{ t.super_admin }}</option>
@@ -61,6 +75,15 @@
                         <option value="KollejAdmin" {% if user.role.value == 'KollejAdmin' %}selected{% endif %}>{{ t.kollej_admin }}</option>
                         <option value="TashkilotAdmin" {% if user.role.value == 'TashkilotAdmin' %}selected{% endif %}>{{ t.tashkilot_admin }}</option>
                         <option value="KorxonaAdmin" {% if user.role.value == 'KorxonaAdmin' %}selected{% endif %}>{{ t.korxona_admin }}</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Status <span class="text-red-500">*</span></label>
+                    <select id="inp-status" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100">
+                        <option value="active" {% if user.status == 'active' %}selected{% endif %}>Faol (Active)</option>
+                        <option value="pending" {% if user.status == 'pending' %}selected{% endif %}>Kutilmoqda (Pending)</option>
+                        <option value="inactive" {% if user.status == 'inactive' %}selected{% endif %}>Nofaol (Inactive)</option>
                     </select>
                 </div>
 
@@ -79,6 +102,31 @@
                         </div>
                     </div>
                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Bir nechta tashkilotni qidirib tanlashingiz mumkin.</p>
+                </div>
+
+                <label class="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50 md:col-span-2">
+                    <span class="flex items-center gap-3 min-w-0">
+                        <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-sm font-bold text-gray-700 shadow-sm ring-1 ring-gray-200 dark:bg-gray-900 dark:text-gray-200 dark:ring-gray-700">G</span>
+                        <span class="min-w-0">
+                            <span class="block text-sm font-semibold text-gray-900 dark:text-white">Google OAuth</span>
+                            <span class="block truncate text-xs text-gray-500 dark:text-gray-400">Google orqali kirish ruxsati va keyingi OAuth bog'lanishi saqlanadi.</span>
+                        </span>
+                    </span>
+                    <input type="checkbox" id="inp-google-oauth" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" {% if user.google_oauth_enabled %}checked{% endif %}>
+                </label>
+
+                <div class="md:col-span-2">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ 'Menyu ruxsatlari' if lang == 'uz' else 'Права на меню' }}</label>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ 'Foydalanuvchi qaysi bo‘limlarni ko‘ra olishini tanlang.' if lang == 'uz' else 'Выберите разделы, доступные пользователю.' }}</p>
+                        </div>
+                        <button type="button" id="btn-role-defaults" class="inline-flex items-center rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50">
+                            {{ 'Rol defaultlari' if lang == 'uz' else 'Стандарт роли' }}
+                        </button>
+                    </div>
+                    <div id="menu-permissions-summary" class="mt-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-600 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-300"></div>
+                    <div id="menu-permission-groups" class="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"></div>
                 </div>
 
                 <div class="md:col-span-2">
@@ -128,6 +176,7 @@
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Rasm URL (ixtiyoriy)</label>
                     <input type="url" id="inp-image-url" value="{{ user.image_url or '' }}" placeholder="https://example.com/avatar.jpg" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 placeholder-gray-400">
                 </div>
+                </section>
             </div>
 
             <div class="pt-4 mt-6 border-t border-gray-100 dark:border-gray-800 flex justify-end">
@@ -143,8 +192,15 @@
 <script>
 const imageInput = document.getElementById('inp-image');
 const firstNameInput = document.getElementById('inp-first-name');
+const lastNameInput = document.getElementById('inp-last-name');
 const usernameInput = document.getElementById('inp-username');
+const usernameHint = document.getElementById('username-hint');
+const usernameSpinner = document.getElementById('username-check-spinner');
 const phoneInput = document.getElementById('inp-phone');
+const passwordInput = document.getElementById('inp-password');
+const passwordConfirmInput = document.getElementById('inp-password-confirm');
+const passwordConfirmHint = document.getElementById('password-confirm-hint');
+const googleOauthInput = document.getElementById('inp-google-oauth');
 const imageUrlInput = document.getElementById('inp-image-url');
 const dropzone = document.getElementById('user-image-dropzone');
 const uploadEmpty = document.getElementById('user-upload-empty');
@@ -161,14 +217,214 @@ const orgSummary = document.getElementById('inp-orgs-summary');
 const orgSearchInput = document.getElementById('inp-orgs-search');
 const orgDropdown = document.getElementById('inp-orgs-dropdown');
 const orgList = document.getElementById('inp-orgs-list');
+const menuPermissionGroupsEl = document.getElementById('menu-permission-groups');
+const menuPermissionSummaryEl = document.getElementById('menu-permissions-summary');
+const roleDefaultsBtn = document.getElementById('btn-role-defaults');
+const statusInput = document.getElementById('inp-status');
 const orgOptionsData = [
     {% for org in organizations %}
     { id: {{ org.id }}, name: {{ org.name|tojson }} },
     {% endfor %}
 ];
 const selectedOrgIds = new Set({{ user_org_ids|tojson }});
+const selectedMenuPermissions = new Set({{ user_menu_permissions|tojson }});
+const rolePermissionDefaults = {{ role_permission_defaults|tojson }};
+const menuPermissionGroups = {{ menu_permission_groups|tojson }};
 const currentImageUrl = "{{ user.image_url or '' }}";
+const USERNAME_EXCLUDE_USER_ID = {{ user.id }};
+const USERNAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{1,30}[A-Za-z0-9]$/;
+usernameInput.dataset.autoGenerated = '1';
+let menuPermissionsDirty = false;
+const usernameCheckState = {
+    timer: null,
+    requestSeq: 0,
+    value: '',
+    available: false,
+    checking: false,
+};
 let shouldClearImage = false;
+
+function normalizeUsername(value) {
+    return String(value || '').trim();
+}
+
+function normalizeUsernamePart(value) {
+    return String(value || '')
+        .trim()
+        .toLowerCase()
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/['`]/g, '')
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_+|_+$/g, '');
+}
+
+function buildUsernameSuggestion() {
+    const parts = [normalizeUsernamePart(firstNameInput.value), normalizeUsernamePart(lastNameInput.value)].filter(Boolean);
+    return parts.join('_') || normalizeUsernamePart(firstNameInput.value) || normalizeUsernamePart(lastNameInput.value) || 'user';
+}
+
+function syncUsernameSuggestion(force = false) {
+    const suggestion = buildUsernameSuggestion();
+    const current = normalizeUsername(usernameInput.value);
+    if (force || !current || usernameInput.dataset.autoGenerated === '1') {
+        usernameInput.value = suggestion;
+        usernameInput.dataset.autoGenerated = '1';
+        queueUsernameCheck();
+    }
+}
+
+function getUsernameFormatError(username) {
+    if (!username) return 'Username majburiy.';
+    if (!USERNAME_PATTERN.test(username)) {
+        return "Username 3-32 belgi, bo'sh joysiz, faqat lotin harf/raqam/._- bo'lishi kerak. Boshi va oxiri harf yoki raqam bo'lsin.";
+    }
+    return '';
+}
+
+function setUsernameStatus(status, message) {
+    usernameInput.classList.remove('border-red-400', 'border-emerald-400', 'focus:ring-red-500', 'focus:ring-emerald-500');
+    usernameHint.className = 'mt-1 text-xs';
+    if (usernameSpinner) usernameSpinner.classList.toggle('hidden', status !== 'checking');
+    if (status === 'ok') {
+        usernameInput.classList.add('border-emerald-400', 'focus:ring-emerald-500');
+        usernameHint.classList.add('text-emerald-600', 'dark:text-emerald-400');
+    } else if (status === 'error') {
+        usernameInput.classList.add('border-red-400', 'focus:ring-red-500');
+        usernameHint.classList.add('text-red-600', 'dark:text-red-400');
+    } else if (status === 'checking') {
+        usernameHint.classList.add('text-blue-600', 'dark:text-blue-400');
+    } else {
+        usernameHint.classList.add('text-gray-500', 'dark:text-gray-400');
+    }
+    usernameHint.textContent = message;
+}
+
+async function checkUsernameAvailabilityNow() {
+    const username = normalizeUsername(usernameInput.value);
+    usernameCheckState.value = username;
+    usernameCheckState.available = false;
+    const formatError = getUsernameFormatError(username);
+    if (formatError) {
+        setUsernameStatus('error', formatError);
+        return false;
+    }
+
+    const seq = ++usernameCheckState.requestSeq;
+    usernameCheckState.checking = true;
+    setUsernameStatus('checking', 'Username tekshirilmoqda...');
+    try {
+        const params = new URLSearchParams({ username });
+        if (USERNAME_EXCLUDE_USER_ID) params.set('exclude_user_id', String(USERNAME_EXCLUDE_USER_ID));
+        const res = await fetch(`/api/users/username/check?${params.toString()}`);
+        const data = await res.json().catch(() => ({}));
+        if (seq !== usernameCheckState.requestSeq) return false;
+        usernameCheckState.available = Boolean(data.available);
+        setUsernameStatus(
+            data.available ? 'ok' : 'error',
+            data.message || (data.available ? 'Username ishlatish mumkin.' : 'Bu username band.')
+        );
+        return Boolean(data.available);
+    } catch (_) {
+        if (seq === usernameCheckState.requestSeq) {
+            setUsernameStatus('error', 'Username tekshirishda xatolik.');
+        }
+        return false;
+    } finally {
+        if (seq === usernameCheckState.requestSeq) {
+            usernameCheckState.checking = false;
+            if (usernameSpinner) usernameSpinner.classList.add('hidden');
+        }
+    }
+}
+
+function queueUsernameCheck() {
+    clearTimeout(usernameCheckState.timer);
+    const username = normalizeUsername(usernameInput.value);
+    const formatError = getUsernameFormatError(username);
+    if (formatError) {
+        usernameCheckState.available = false;
+        setUsernameStatus('error', formatError);
+        return;
+    }
+    setUsernameStatus('checking', 'Username tekshirilmoqda...');
+    usernameCheckState.timer = setTimeout(() => {
+        checkUsernameAvailabilityNow();
+    }, 350);
+}
+
+async function ensureUsernameAvailable() {
+    const username = normalizeUsername(usernameInput.value);
+    const formatError = getUsernameFormatError(username);
+    if (formatError) {
+        setUsernameStatus('error', formatError);
+        return false;
+    }
+    if (usernameCheckState.value === username && usernameCheckState.available) {
+        return true;
+    }
+    return await checkUsernameAvailabilityNow();
+}
+
+function updateMenuPermissionSummary() {
+    const count = selectedMenuPermissions.size;
+    if (!count) {
+        menuPermissionSummaryEl.textContent = "{{ 'Hech qanday menyu tanlanmagan. Kamida bitta bo‘lim kerak.' if lang == 'uz' else 'Ни одно меню не выбрано. Нужен хотя бы один раздел.' }}";
+        menuPermissionSummaryEl.className = 'mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 dark:border-red-800/50 dark:bg-red-900/20 dark:text-red-300';
+        return;
+    }
+    menuPermissionSummaryEl.textContent = `${count} {{ 'ta menyu tanlandi' if lang == 'uz' else 'разделов выбрано' }}`;
+    menuPermissionSummaryEl.className = 'mt-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-600 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-300';
+}
+
+function renderMenuPermissions() {
+    if (!menuPermissionGroupsEl) return;
+    menuPermissionGroupsEl.innerHTML = menuPermissionGroups.map((group) => {
+        const groupItems = group.items || [];
+        const selectedCount = groupItems.filter((item) => selectedMenuPermissions.has(item.key)).length;
+        const items = (group.items || []).map((item) => {
+            const checked = selectedMenuPermissions.has(item.key) ? 'checked' : '';
+            return `
+                <label title="${item.description || item.title}" class="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 hover:border-blue-300 hover:bg-blue-50/40 dark:border-gray-700 dark:bg-gray-900 dark:hover:border-blue-700 dark:hover:bg-blue-900/10">
+                    <input type="checkbox" class="menu-permission-option h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500" value="${item.key}" ${checked}>
+                    <span class="min-w-0 truncate text-xs font-semibold text-gray-800 dark:text-gray-100">${item.title}</span>
+                </label>
+            `;
+        }).join('');
+        return `
+            <section class="rounded-xl border border-gray-200 bg-gray-50 p-2.5 dark:border-gray-700 dark:bg-gray-800/40">
+                <div class="mb-2 flex items-center justify-between gap-2">
+                    <span class="truncate text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">${group.title}</span>
+                    <span class="shrink-0 rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-gray-500 ring-1 ring-gray-200 dark:bg-gray-900 dark:text-gray-400 dark:ring-gray-700">${selectedCount}/${groupItems.length}</span>
+                </div>
+                <div class="grid gap-1.5">${items}</div>
+            </section>
+        `;
+    }).join('');
+
+    for (const cb of menuPermissionGroupsEl.querySelectorAll('.menu-permission-option')) {
+        cb.addEventListener('change', (e) => {
+            const key = String(e.target.value || '').trim();
+            if (!key) return;
+            menuPermissionsDirty = true;
+            if (e.target.checked) selectedMenuPermissions.add(key);
+            else selectedMenuPermissions.delete(key);
+            updateMenuPermissionSummary();
+        });
+    }
+    updateMenuPermissionSummary();
+}
+
+function applyRoleDefaults(force = false) {
+    const role = String(document.getElementById('inp-role').value || '');
+    const defaults = rolePermissionDefaults[role] || [];
+    if (!force && menuPermissionsDirty) return;
+    selectedMenuPermissions.clear();
+    for (const key of defaults) selectedMenuPermissions.add(key);
+    menuPermissionsDirty = false;
+    renderMenuPermissions();
+}
 
 function updateOrgSummary() {
     const selected = orgOptionsData.filter((o) => selectedOrgIds.has(Number(o.id)));
@@ -344,8 +600,51 @@ function clearAvatar() {
     setAvatarLetter();
 }
 
-firstNameInput.addEventListener('input', setAvatarLetter);
-usernameInput.addEventListener('input', setAvatarLetter);
+firstNameInput.addEventListener('input', () => {
+    setAvatarLetter();
+    syncUsernameSuggestion();
+});
+lastNameInput.addEventListener('input', () => {
+    syncUsernameSuggestion();
+});
+usernameInput.addEventListener('input', () => {
+    usernameInput.dataset.autoGenerated = '0';
+    setAvatarLetter();
+    queueUsernameCheck();
+});
+
+passwordInput.addEventListener('input', () => {
+    const pwd = passwordInput.value;
+    const confirm = passwordConfirmInput.value;
+    if (!pwd) {
+        passwordConfirmHint.className = 'mt-1 text-xs text-gray-500 dark:text-gray-400';
+        passwordConfirmHint.textContent = "Parol o'zgartirilmasa, tasdiqlash shart emas.";
+    } else if (pwd === confirm) {
+        passwordConfirmHint.className = 'mt-1 text-xs text-emerald-600 dark:text-emerald-400';
+        passwordConfirmHint.textContent = 'Parol tasdiqlandi.';
+    } else {
+        passwordConfirmHint.className = 'mt-1 text-xs text-red-600 dark:text-red-400';
+        passwordConfirmHint.textContent = "Parol tasdig'i mos emas.";
+    }
+});
+
+passwordConfirmInput.addEventListener('input', () => {
+    const pwd = passwordInput.value;
+    const confirm = passwordConfirmInput.value;
+    if (!confirm) {
+        passwordConfirmHint.className = 'mt-1 text-xs text-gray-500 dark:text-gray-400';
+        passwordConfirmHint.textContent = "Parol o'zgartirilsa, tasdiqlash ham kiritiladi.";
+    } else if (pwd === confirm) {
+        passwordConfirmHint.className = 'mt-1 text-xs text-emerald-600 dark:text-emerald-400';
+        passwordConfirmHint.textContent = 'Parol tasdiqlandi.';
+    } else {
+        passwordConfirmHint.className = 'mt-1 text-xs text-red-600 dark:text-red-400';
+        passwordConfirmHint.textContent = "Parol tasdig'i mos emas.";
+    }
+});
+
+document.getElementById('inp-role').addEventListener('change', () => applyRoleDefaults(false));
+if (roleDefaultsBtn) roleDefaultsBtn.addEventListener('click', () => applyRoleDefaults(true));
 
 imageInput.addEventListener('change', () => {
     const file = imageInput.files?.[0];
@@ -420,6 +719,12 @@ phoneInput.addEventListener('paste', (e) => {
     phoneInput.value = formatPhoneMask(text);
 });
 
+if (selectedMenuPermissions.size === 0) {
+    applyRoleDefaults(true);
+} else {
+    renderMenuPermissions();
+}
+
 async function saveUser() {
     const name = document.getElementById('inp-username').value.trim();
     const first_name = document.getElementById('inp-first-name').value.trim();
@@ -429,14 +734,23 @@ async function saveUser() {
     const phoneRaw = document.getElementById('inp-phone').value.trim();
     const phone = phoneRaw ? formatPhoneMask(phoneRaw) : '';
     const password = document.getElementById('inp-password').value.trim();
+    const passwordConfirm = document.getElementById('inp-password-confirm').value.trim();
     const role = document.getElementById('inp-role').value;
+    const status = document.getElementById('inp-status').value;
     const organization_ids = Array.from(selectedOrgIds).map((v) => Number(v)).filter((v) => Number.isInteger(v) && v > 0);
+    const menu_permissions = Array.from(selectedMenuPermissions);
     const image_url = document.getElementById('inp-image-url').value.trim();
     const image = imageInput.files?.[0];
+    const google_oauth_enabled = Boolean(googleOauthInput?.checked);
 
     const errEl = document.getElementById('user-error');
-    if (!first_name || !email) {
-        errEl.textContent = "Ism va Email majburiy!";
+    if (!name || !first_name || !email) {
+        errEl.textContent = "Username, Ism va Email majburiy!";
+        errEl.classList.remove('hidden');
+        return;
+    }
+    if (password && password !== passwordConfirm) {
+        errEl.textContent = "Parol tasdig'i mos emas.";
         errEl.classList.remove('hidden');
         return;
     }
@@ -445,11 +759,17 @@ async function saveUser() {
         errEl.classList.remove('hidden');
         return;
     }
+    if (!menu_permissions.length) {
+        errEl.textContent = "Kamida bitta menyu ruxsati tanlang.";
+        errEl.classList.remove('hidden');
+        return;
+    }
 
     errEl.classList.add('hidden');
     document.getElementById('save-spinner').classList.remove('hidden');
 
     const formData = new FormData();
+    formData.append('username', name);
     formData.append('name', name);
     formData.append('first_name', first_name);
     formData.append('last_name', last_name);
@@ -457,6 +777,9 @@ async function saveUser() {
     formData.append('email', email);
     formData.append('phone', phone);
     formData.append('role', role);
+    formData.append('status', status);
+    formData.append('menu_permissions', JSON.stringify(menu_permissions));
+    formData.append('google_oauth_enabled', google_oauth_enabled ? 'true' : 'false');
     formData.append('organization_ids', JSON.stringify(organization_ids));
     formData.append('organization_id', organization_ids.length ? String(organization_ids[0]) : '');
     if (image_url) formData.append('image_url', image_url);

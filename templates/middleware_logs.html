@@ -1,0 +1,415 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mb-6">
+    <div class="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+                {% if lang == 'ru' %}Системные логи{% else %}Tizim Loglari{% endif %}
+            </h1>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                {% if lang == 'ru' %}Все входящие HTTP-запросы в реальном времени{% else %}Serverga kelgan barcha HTTP so'rovlar — real vaqt{% endif %}
+            </p>
+        </div>
+        <div class="flex items-center gap-3">
+            <span id="live-indicator" class="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" style="opacity:0.6;transition:opacity 0.3s;">
+                <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500"></span> LIVE
+            </span>
+        </div>
+    </div>
+</div>
+
+{# ─── Stats — flex qatorda ─── #}
+<div class="mb-6 flex flex-row gap-4 overflow-x-auto">
+    <div class="flex-1 min-w-[120px] rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <p class="mb-1 text-xs text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}Всего{% else %}Jami{% endif %}</p>
+        <p class="text-xl font-bold text-gray-900 dark:text-white" id="stat-total">—</p>
+    </div>
+    <div class="flex-1 min-w-[120px] rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <p class="mb-1 text-xs text-emerald-500">2xx OK</p>
+        <p class="text-xl font-bold text-emerald-600 dark:text-emerald-400" id="stat-ok">—</p>
+    </div>
+    <div class="flex-1 min-w-[120px] rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <p class="mb-1 text-xs text-amber-500">4xx</p>
+        <p class="text-xl font-bold text-amber-600 dark:text-amber-400" id="stat-4xx">—</p>
+    </div>
+    <div class="flex-1 min-w-[120px] rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <p class="mb-1 text-xs text-red-500">5xx</p>
+        <p class="text-xl font-bold text-red-600 dark:text-red-400" id="stat-5xx">—</p>
+    </div>
+</div>
+
+{# ─── Chart — status breakdown ─── #}
+<div class="mb-6 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="flex items-center justify-between border-b border-gray-100 bg-gray-50/50 px-6 py-4 dark:border-gray-800 dark:bg-gray-800/20">
+        <h3 class="font-semibold text-gray-900 dark:text-white text-sm">{% if lang == 'ru' %}Статусы запросов{% else %}So'rov statuslari{% endif %}</h3>
+        <span class="text-xs text-gray-400">{% if lang == 'ru' %}По коду ответа{% else %}Javob kodi bo'yicha{% endif %}</span>
+    </div>
+    <div class="p-6">
+        <div id="chart-bars" class="space-y-2">
+            <p class="text-sm text-gray-400 text-center py-4">Yuklanmoqda...</p>
+        </div>
+    </div>
+</div>
+
+{# ─── Filters ─── #}
+<div class="mb-4 overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+    <div class="flex flex-wrap items-end gap-3 px-6 py-4">
+        <div class="flex-1 min-w-[180px]">
+            <label class="mb-1 block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}Поиск{% else %}Qidiruv{% endif %}</label>
+            <input id="f-search" type="text" placeholder="URL, ism, user-agent..." class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
+        </div>
+        <div class="min-w-[150px]">
+            <label class="mb-1 block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">IP</label>
+            <select id="f-ip" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 pr-8 text-sm font-mono text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40 appearance-none" style="background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;">
+                <option value="">{% if lang == 'ru' %}Все IP{% else %}Barcha IP{% endif %}</option>
+            </select>
+        </div>
+        <div>
+            <label class="mb-1 block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Method</label>
+            <select id="f-method" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 pr-8 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40 appearance-none" style="background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;">
+                <option value="">Barchasi</option>
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="DELETE">DELETE</option>
+            </select>
+        </div>
+        <div>
+            <label class="mb-1 block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Status</label>
+            <select id="f-status" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 pr-8 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40 appearance-none" style="background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;">
+                <option value="">Barchasi</option>
+                <option value="200">200 OK</option>
+                <option value="302">302 Redirect</option>
+                <option value="303">303 Redirect</option>
+                <option value="400">400 Bad</option>
+                <option value="401">401 Unauth</option>
+                <option value="403">403 Forbidden</option>
+                <option value="404">404 Not Found</option>
+                <option value="500">500 Error</option>
+            </select>
+        </div>
+        <div>
+            <label class="mb-1 block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}На стр.{% else %}Sahifada{% endif %}</label>
+            <select id="f-limit" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 pr-8 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40 appearance-none" style="background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;">
+                <option value="50">50</option>
+                <option value="100" selected>100</option>
+                <option value="200">200</option>
+                <option value="500">500</option>
+            </select>
+        </div>
+        <div class="flex items-center gap-2">
+            <div>
+                <label class="mb-1 block text-xs text-transparent select-none">_</label>
+                <button id="btn-reset" class="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    Reset
+                </button>
+            </div>
+            <div>
+                <label class="mb-1 block text-xs text-transparent select-none">_</label>
+                <button id="btn-clear-all" class="inline-flex items-center gap-2 rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 dark:border-red-800 dark:bg-gray-800 dark:text-red-400 dark:hover:bg-red-900/20">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    {% if lang == 'ru' %}Очистить{% else %}Tozalash{% endif %}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ─── Table ─── #}
+<div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+            <thead class="border-b border-gray-100 bg-gray-50 text-xs uppercase text-gray-700 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-300">
+                <tr>
+                    <th class="px-4 py-4 font-semibold">#</th>
+                    <th class="px-4 py-4 font-semibold">{% if lang == 'ru' %}Время{% else %}Vaqti{% endif %}</th>
+                    <th class="px-4 py-4 font-semibold">IP</th>
+                    <th class="px-4 py-4 font-semibold">Method</th>
+                    <th class="px-4 py-4 font-semibold">URL</th>
+                    <th class="px-4 py-4 font-semibold">Content-Type</th>
+                    <th class="px-4 py-4 font-semibold">User-Agent</th>
+                    <th class="px-4 py-4 font-semibold">{% if lang == 'ru' %}Детали{% else %}Tafsilot{% endif %}</th>
+                    <th class="px-4 py-4 font-semibold">Status</th>
+                    <th class="px-4 py-4 font-semibold">ms</th>
+                </tr>
+            </thead>
+            <tbody id="log-tbody" class="divide-y divide-gray-100 dark:divide-gray-800">
+                <tr><td colspan="10" class="py-8 text-center text-gray-400">Yuklanmoqda...</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="flex flex-col items-center justify-between gap-3 border-t border-gray-100 px-6 py-4 dark:border-gray-800 sm:flex-row">
+        <p id="page-info" class="text-xs text-gray-500 dark:text-gray-400">—</p>
+        <div class="inline-flex items-center gap-2">
+            <button id="btn-prev" class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">← {% if lang == 'ru' %}Назад{% else %}Oldingi{% endif %}</button>
+            <div id="page-numbers" class="flex items-center gap-1"></div>
+            <button id="btn-next" class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">{% if lang == 'ru' %}Вперёд{% else %}Keyingi{% endif %} →</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var state = { page: 1, pages: 1, total: 0 };
+    var searchTimer = null, ipTimer = null;
+
+    function esc(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+
+    var SEL_ARROW = "background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;";
+
+    function methodBadge(m) {
+        var cls = {
+            GET:    'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+            POST:   'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+            PUT:    'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+            DELETE: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+        };
+        var c = cls[m] || 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400';
+        return '<span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ' + c + '">' + esc(m) + '</span>';
+    }
+
+    function statusCls(s) {
+        if (!s) return 'text-gray-400';
+        if (s >= 500) return 'font-bold text-red-600 dark:text-red-400';
+        if (s >= 400) return 'font-semibold text-amber-600 dark:text-amber-400';
+        if (s >= 300) return 'text-blue-500 dark:text-blue-400';
+        return 'text-emerald-600 dark:text-emerald-400';
+    }
+
+    function statusColor(code) {
+        if (code >= 500) return '#ef4444';
+        if (code >= 400) return '#f59e0b';
+        if (code >= 300) return '#3b82f6';
+        if (code >= 200) return '#10b981';
+        return '#6b7280';
+    }
+
+    function msCls(ms) {
+        if (ms > 2000) return 'font-semibold text-red-500';
+        if (ms > 500) return 'text-amber-500';
+        return 'text-gray-400 dark:text-gray-500';
+    }
+
+    function fmt(iso) {
+        if (!iso) return '—';
+        return new Date(iso).toLocaleString('ru-RU');
+    }
+
+    // ─── Load stats + chart + IP select ───
+    function loadStats() {
+        fetch('/api/middleware-logs/stats')
+            .then(function(r) { return r.json(); })
+            .then(function(json) {
+                if (!json.ok) return;
+
+                // IP select
+                var ipSel = document.getElementById('f-ip');
+                var curVal = ipSel.value;
+                ipSel.innerHTML = '<option value="">{% if lang == "ru" %}Все IP{% else %}Barcha IP{% endif %}</option>';
+                (json.ips || []).forEach(function(ip) {
+                    var opt = document.createElement('option');
+                    opt.value = ip; opt.textContent = ip;
+                    if (ip === curVal) opt.selected = true;
+                    ipSel.appendChild(opt);
+                });
+                ipSel.style = SEL_ARROW;
+
+                // Chart
+                var breakdown = json.status_breakdown || [];
+                var chartEl = document.getElementById('chart-bars');
+                if (!breakdown.length) {
+                    chartEl.innerHTML = '<p class="text-sm text-gray-400 text-center py-4">Ma\'lumot yo\'q</p>';
+                    return;
+                }
+                var maxCount = Math.max.apply(null, breakdown.map(function(r) { return r.count; }));
+                chartEl.innerHTML = breakdown.map(function(r) {
+                    var pct = maxCount > 0 ? Math.round(r.count / maxCount * 100) : 0;
+                    var color = statusColor(r.code);
+                    return '<div class="flex items-center gap-3">' +
+                        '<span class="w-12 text-right text-xs font-mono font-semibold" style="color:' + color + '">' + r.code + '</span>' +
+                        '<div class="flex-1 bg-gray-100 dark:bg-gray-800 rounded-full h-6 overflow-hidden">' +
+                            '<div class="h-full rounded-full flex items-center px-2 text-xs font-medium text-white transition-all duration-500" style="width:' + Math.max(pct, 4) + '%;background:' + color + '">' +
+                                (pct > 15 ? r.count : '') +
+                            '</div>' +
+                        '</div>' +
+                        '<span class="w-12 text-xs font-semibold text-gray-600 dark:text-gray-300">' + r.count + '</span>' +
+                    '</div>';
+                }).join('');
+            })
+            .catch(function() {});
+    }
+
+    function buildRow(l) {
+        var ua = l.user_agent ? (l.user_agent.length > 38 ? l.user_agent.slice(0,36)+'…' : l.user_agent) : '—';
+        var ct = l.content_type ? l.content_type.split(';')[0] : '—';
+        var detailHtml = l.details
+            ? '<span class="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">' + esc(l.details) + '</span>'
+            : '<span class="text-gray-300 dark:text-gray-700">—</span>';
+
+        return '<tr class="transition hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer log-row" data-log=\'' + esc(JSON.stringify(l)) + '\'>' +
+            '<td class="whitespace-nowrap px-4 py-3 font-mono text-xs text-gray-400">#' + l.id + '</td>' +
+            '<td class="whitespace-nowrap px-4 py-3 text-xs">' + fmt(l.created_at) + '</td>' +
+            '<td class="px-4 py-3 font-mono text-xs font-semibold text-gray-800 dark:text-gray-200">' + esc(l.client_ip || '—') + '</td>' +
+            '<td class="px-4 py-3">' + methodBadge(l.method) + '</td>' +
+            '<td class="px-4 py-3 max-w-[200px]"><span class="block truncate font-mono text-xs" title="' + esc(l.url) + '">' + esc(l.url) + '</span></td>' +
+            '<td class="px-4 py-3 max-w-[130px]"><span class="block truncate text-xs text-gray-500" title="' + esc(l.content_type) + '">' + esc(ct) + '</span></td>' +
+            '<td class="px-4 py-3 max-w-[160px]"><span class="block truncate text-xs text-gray-500" title="' + esc(l.user_agent) + '">' + esc(ua) + '</span></td>' +
+            '<td class="px-4 py-3">' + detailHtml + '</td>' +
+            '<td class="whitespace-nowrap px-4 py-3 text-xs ' + statusCls(l.status_code) + '">' + (l.status_code || '—') + '</td>' +
+            '<td class="whitespace-nowrap px-4 py-3 text-xs ' + msCls(l.response_time_ms) + '">' + (l.response_time_ms > 0 ? l.response_time_ms + ' ms' : '—') + '</td>' +
+        '</tr>';
+    }
+
+    function setStats(total, data) {
+        var ok = 0, c4 = 0, c5 = 0;
+        data.forEach(function(l) {
+            if (l.status_code >= 500) c5++;
+            else if (l.status_code >= 400) c4++;
+            else if (l.status_code > 0) ok++;
+        });
+        document.getElementById('stat-total').textContent = total;
+        document.getElementById('stat-ok').textContent = ok;
+        document.getElementById('stat-4xx').textContent = c4;
+        document.getElementById('stat-5xx').textContent = c5;
+    }
+
+    function renderPagination(total, page, pages) {
+        document.getElementById('page-info').textContent = 'Jami: ' + total + ' ta | Sahifa: ' + page + ' / ' + pages;
+        document.getElementById('btn-prev').disabled = page <= 1;
+        document.getElementById('btn-next').disabled = page >= pages;
+        var nums = document.getElementById('page-numbers');
+        var html = '';
+        var start = Math.max(1, page - 2), end = Math.min(pages, page + 2);
+        for (var i = start; i <= end; i++) {
+            html += '<button data-p="' + i + '" class="px-2.5 py-1 text-xs rounded-lg border ' +
+                (i === page ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700') +
+                ' transition">' + i + '</button>';
+        }
+        nums.innerHTML = html;
+        nums.querySelectorAll('button').forEach(function(b) {
+            b.addEventListener('click', function() { state.page = parseInt(b.dataset.p); load(false); });
+        });
+    }
+
+    function buildParams() {
+        var p = new URLSearchParams();
+        p.set('page', state.page);
+        p.set('limit', document.getElementById('f-limit').value);
+        var m = document.getElementById('f-method').value;
+        var st = document.getElementById('f-status').value;
+        var q = document.getElementById('f-search').value.trim();
+        var ip = document.getElementById('f-ip').value;
+        if (m) p.set('method', m);
+        if (st) p.set('status', st);
+        if (q) p.set('search', q);
+        if (ip) p.set('ip', ip);
+        return p;
+    }
+
+    function load(silent) {
+        var tbody = document.getElementById('log-tbody');
+        if (!silent) tbody.innerHTML = '<tr><td colspan="10" class="py-8 text-center text-gray-400">Yuklanmoqda...</td></tr>';
+
+        fetch('/api/middleware-logs?' + buildParams())
+            .then(function(r) { return r.json(); })
+            .then(function(json) {
+                if (!json.ok) { tbody.innerHTML = '<tr><td colspan="10" class="py-8 text-center text-red-400">API xatosi</td></tr>'; return; }
+                state.total = json.total; state.pages = json.pages; state.page = json.page;
+
+                if (!json.data || !json.data.length) {
+                    tbody.innerHTML = '<tr><td colspan="10" class="py-8 text-center text-gray-500 dark:text-gray-400">Log topilmadi</td></tr>';
+                    renderPagination(0, 1, 1);
+                    setStats(0, []);
+                    return;
+                }
+                tbody.innerHTML = json.data.map(buildRow).join('');
+                renderPagination(json.total, json.page, json.pages);
+                setStats(json.total, json.data);
+
+                tbody.querySelectorAll('.log-row').forEach(function(row) {
+                    row.addEventListener('click', function() {
+                        try {
+                            var l = JSON.parse(row.dataset.log.replace(/&#39;/g, "'"));
+                            showDetailModal(l);
+                        } catch(e) {}
+                    });
+                });
+
+                var li = document.getElementById('live-indicator');
+                if (li) { li.style.opacity = '1'; setTimeout(function() { li.style.opacity = '0.6'; }, 800); }
+            })
+            .catch(function(e) {
+                tbody.innerHTML = '<tr><td colspan="10" class="py-8 text-center text-red-400">Xato: ' + esc(e.message) + '</td></tr>';
+            });
+    }
+
+    function showDetailModal(l) {
+        var rows = [
+            ['#', l.id], ['Vaqti', fmt(l.created_at)], ['IP', l.client_ip || '—'],
+            ['Method', l.method], ['URL', l.url], ['Content-Type', l.content_type || '—'],
+            ['User-Agent', l.user_agent || '—'], ['Tafsilot', l.details || '—'],
+            ['Status', l.status_code || '—'], ['Vaqt', l.response_time_ms > 0 ? l.response_time_ms + ' ms' : '—']
+        ];
+        window.AppModal.open({
+            title: '{% if lang == "ru" %}Детали запроса{% else %}So\'rov tafsilotlari{% endif %}',
+            size: 'md',
+            bodyHtml: '<div class="space-y-3">' + rows.map(function(r) {
+                return '<div class="flex gap-3"><span class="w-24 shrink-0 text-xs font-semibold text-gray-500 dark:text-gray-400">' + esc(r[0]) + '</span><span class="break-all text-xs text-gray-800 dark:text-gray-200">' + esc(r[1]) + '</span></div>';
+            }).join('') + '</div>'
+        });
+    }
+
+    document.getElementById('btn-clear-all').addEventListener('click', function() {
+        window.AppDialog.confirm({
+            title: '{% if lang == "ru" %}Подтверждение{% else %}Tasdiqlash{% endif %}',
+            message: '{% if lang == "ru" %}Все логи будут удалены!{% else %}Barcha loglar o\'chiriladi!{% endif %}',
+            confirmText: '{% if lang == "ru" %}Удалить{% else %}O\'chirish{% endif %}',
+            cancelText: '{% if lang == "ru" %}Отмена{% else %}Bekor qilish{% endif %}',
+            tone: 'danger'
+        }).then(function(confirmed) {
+            if (!confirmed) return;
+            fetch('/api/middleware-logs/clear', { method: 'DELETE' })
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    if (d.ok) {
+                        window.AppNotify.success(d.deleted + ' ta log o\'chirildi');
+                        state.page = 1; load(false); loadStats();
+                    } else window.AppNotify.error('Xato yuz berdi');
+                })
+                .catch(function() { window.AppNotify.error('Server bilan bog\'lanib bo\'lmadi'); });
+        });
+    });
+
+    ['f-method', 'f-status', 'f-limit', 'f-ip'].forEach(function(id) {
+        document.getElementById(id).addEventListener('change', function() { state.page = 1; load(false); });
+    });
+    document.getElementById('f-search').addEventListener('input', function() {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(function() { state.page = 1; load(false); }, 400);
+    });
+    document.getElementById('btn-reset').addEventListener('click', function() {
+        document.getElementById('f-search').value = '';
+        document.getElementById('f-ip').value = '';
+        document.getElementById('f-method').value = '';
+        document.getElementById('f-status').value = '';
+        document.getElementById('f-limit').value = '100';
+        state.page = 1; load(false);
+    });
+    document.getElementById('btn-prev').addEventListener('click', function() { if (state.page > 1) { state.page--; load(false); } });
+    document.getElementById('btn-next').addEventListener('click', function() { if (state.page < state.pages) { state.page++; load(false); } });
+
+    // Auto-refresh har 4 soniyada
+    setInterval(function() {
+        if (state.page === 1) { load(true); loadStats(); }
+    }, 4000);
+
+    loadStats();
+    load(false);
+})();
+</script>
+{% endblock %}

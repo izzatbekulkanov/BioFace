@@ -152,7 +152,10 @@ async function loadOrgInfo() {
         try {
             const usrsRes = await fetch('/api/users');
             const allUsers = await usrsRes.json();
-            const orgUsers = allUsers.filter(u => u.organization_id == orgId);
+            const orgUsers = allUsers.filter(u => {
+                const linkedIds = Array.isArray(u.organization_ids) ? u.organization_ids.map((id) => Number(id)) : [];
+                return linkedIds.includes(Number(orgId)) || Number(u.organization_id) === Number(orgId);
+            });
             document.getElementById('stat-usr').textContent = orgUsers.length;
             document.getElementById('users-list').innerHTML = orgUsers.length === 0
                 ? '<p class="p-5 text-gray-400 text-center">Admin yo\'q</p>'

@@ -1,87 +1,127 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="mb-6">
-    <div class="flex items-center gap-3 mb-2">
-        <a href="/devices" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-        </a>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ page_title }}</h1>
-    </div>
-    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 ml-9">
-        Hikvision DS-K1T341 / DS-K1T343 qurilmalarini BioFace ga toliq ISUP 5.0 asosida ulash tartibi
-    </p>
-</div>
+<div class="space-y-6">
+    <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900 md:p-6">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div class="min-w-0">
+                <div class="mb-3 flex items-center gap-3">
+                    <a href="/devices" class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 transition hover:bg-gray-50 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
+                    </a>
+                    <div class="min-w-0">
+                        <p class="text-xs font-semibold uppercase tracking-[0.22em] text-blue-600 dark:text-blue-400">Kamera qo‘llanma</p>
+                        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ page_title }}</h1>
+                    </div>
+                </div>
+                <p class="max-w-3xl text-sm leading-6 text-gray-600 dark:text-gray-300">
+                    Hikvision DS-K1T341 / DS-K1T343 qurilmalarini BioFace ga toliq ISUP 5.0 asosida ulash tartibi
+                </p>
+            </div>
 
-<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 md:p-8 shadow-sm space-y-7">
-    <section>
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">1. Kamera veb interfeysiga kirish</h3>
-        <ul class="list-disc ml-6 text-gray-600 dark:text-gray-400 space-y-2">
-            <li>Kamera IP manzilini brauzerda oching (masalan: <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-red-500 dark:text-red-400">http://10.10.0.16</code>).</li>
-            <li>Login odatda <strong class="text-gray-900 dark:text-white">admin</strong>, parol esa qurilma aktivatsiyasida qoyilgan parol.</li>
-        </ul>
+            <div class="grid gap-2 sm:justify-items-end">
+                <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">ISUP 5.0</span>
+                <span class="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">Hikvision setup guide</span>
+            </div>
+        </div>
     </section>
 
-    <section>
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">2. Platform Access - ISUP 5.0 sozlamasi</h3>
-        <ol class="list-decimal ml-6 text-gray-600 dark:text-gray-400 space-y-2">
-            <li><strong class="text-gray-900 dark:text-white">Network -> Advanced Settings -> Platform Access -> ISUP</strong> bolimiga oting.</li>
-            <li><strong class="text-gray-900 dark:text-white">Enable</strong> ni yoqing va <strong class="text-gray-900 dark:text-white">Protocol Version = ISUP5.0</strong> qiling.</li>
-            <li><strong class="text-gray-900 dark:text-white">Server IP Address</strong> sifatida BioFace server IP sini kiriting:
-                <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-red-500 dark:text-red-400">{{ isup_guide.server_host }}</code>
-            </li>
-            <li><strong class="text-gray-900 dark:text-white">Port</strong> (Register/CMS):
-                <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-red-500 dark:text-red-400">{{ isup_guide.register_port }}</code>
-            </li>
-            <li><strong class="text-gray-900 dark:text-white">Device ID</strong> ni BioFace dagi kamera <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">isup_device_id</code> qiymati bilan bir xil kiriting (masalan: <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">CAM1111</code>).</li>
-            <li><strong class="text-gray-900 dark:text-white">Encryption Key</strong>:
-                <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-red-500 dark:text-red-400">{{ isup_guide.isup_key }}</code>
-            </li>
-            <li><strong class="text-gray-900 dark:text-white">Save</strong> qiling va Registration Status ni <strong class="text-gray-900 dark:text-white">Refresh</strong> bilan tekshiring.</li>
-        </ol>
+    <section class="grid gap-4 xl:grid-cols-2">
+        <article class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <div class="mb-4 flex items-center gap-3">
+                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-sm font-bold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">1</div>
+                <h3 class="text-base font-bold text-gray-900 dark:text-white">Kamera veb interfeysiga kirish</h3>
+            </div>
+            <ul class="space-y-3 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                <li class="flex gap-3">
+                    <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500"></span>
+                    <span>Kamera IP manzilini brauzerda oching (masalan: <code class="inline-flex rounded-lg bg-gray-100 px-2 py-0.5 font-mono text-xs text-red-500 dark:bg-gray-800 dark:text-red-400">http://10.10.0.16</code>).</span>
+                </li>
+                <li class="flex gap-3">
+                    <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500"></span>
+                    <span>Login odatda <strong class="text-gray-900 dark:text-white">admin</strong>, parol esa qurilma aktivatsiyasida qoyilgan parol.</span>
+                </li>
+            </ul>
+        </article>
+
+        <article class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <div class="mb-4 flex items-center gap-3">
+                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-sm font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">2</div>
+                <h3 class="text-base font-bold text-gray-900 dark:text-white">Platform Access - ISUP 5.0 sozlamasi</h3>
+            </div>
+            <ol class="space-y-3 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                <li class="flex gap-3"><span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500"></span><span><strong class="text-gray-900 dark:text-white">Network -> Advanced Settings -> Platform Access -> ISUP</strong> bolimiga oting.</span></li>
+                <li class="flex gap-3"><span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500"></span><span><strong class="text-gray-900 dark:text-white">Enable</strong> ni yoqing va <strong class="text-gray-900 dark:text-white">Protocol Version = ISUP5.0</strong> qiling.</span></li>
+                <li class="flex gap-3"><span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500"></span><span><strong class="text-gray-900 dark:text-white">Server IP Address</strong> sifatida BioFace server IP sini kiriting: <code class="inline-flex rounded-lg bg-gray-100 px-2 py-0.5 font-mono text-xs text-red-500 dark:bg-gray-800 dark:text-red-400">{{ isup_guide.server_host }}</code></span></li>
+                <li class="flex gap-3"><span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500"></span><span><strong class="text-gray-900 dark:text-white">Port</strong> (Register/CMS): <code class="inline-flex rounded-lg bg-gray-100 px-2 py-0.5 font-mono text-xs text-red-500 dark:bg-gray-800 dark:text-red-400">{{ isup_guide.register_port }}</code></span></li>
+                <li class="flex gap-3"><span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500"></span><span><strong class="text-gray-900 dark:text-white">Device ID</strong> ni BioFace dagi kamera <code class="inline-flex rounded-lg bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-200">isup_device_id</code> qiymati bilan bir xil kiriting (masalan: <code class="inline-flex rounded-lg bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-200">CAM1111</code>).</span></li>
+                <li class="flex gap-3"><span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500"></span><span><strong class="text-gray-900 dark:text-white">Encryption Key</strong>: <code class="inline-flex rounded-lg bg-gray-100 px-2 py-0.5 font-mono text-xs text-red-500 dark:bg-gray-800 dark:text-red-400">{{ isup_guide.isup_key }}</code></span></li>
+                <li class="flex gap-3"><span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500"></span><span><strong class="text-gray-900 dark:text-white">Save</strong> qiling va Registration Status ni <strong class="text-gray-900 dark:text-white">Refresh</strong> bilan tekshiring.</span></li>
+            </ol>
+        </article>
+
+        <article class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <div class="mb-4 flex items-center gap-3">
+                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-sm font-bold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">3</div>
+                <h3 class="text-base font-bold text-gray-900 dark:text-white">ISUP Listening (Alarm/Picture) sozlamasi</h3>
+            </div>
+            <ol class="space-y-3 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                <li class="flex gap-3"><span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500"></span><span><strong class="text-gray-900 dark:text-white">ISUP Alarm Center IP/Domain Name</strong>: <code class="inline-flex rounded-lg bg-gray-100 px-2 py-0.5 font-mono text-xs text-red-500 dark:bg-gray-800 dark:text-red-400">{{ isup_guide.server_host }}</code></span></li>
+                <li class="flex gap-3"><span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500"></span><span><strong class="text-gray-900 dark:text-white">ISUP Alarm Center URL</strong>: <code class="inline-flex rounded-lg bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-200">/</code></span></li>
+                <li class="flex gap-3"><span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500"></span><span><strong class="text-gray-900 dark:text-white">ISUP Alarm Center Port</strong>: <code class="inline-flex rounded-lg bg-gray-100 px-2 py-0.5 font-mono text-xs text-red-500 dark:bg-gray-800 dark:text-red-400">{{ isup_guide.alarm_port }}</code></span></li>
+                <li class="flex gap-3"><span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500"></span><span>Agar qurilmada alohida Picture server maydoni bolsa, uni ham shu server IP va <code class="inline-flex rounded-lg bg-gray-100 px-2 py-0.5 font-mono text-xs text-red-500 dark:bg-gray-800 dark:text-red-400">{{ isup_guide.picture_port }}</code> portga moslang.</span></li>
+            </ol>
+        </article>
+
+        <article class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <div class="mb-4 flex items-center gap-3">
+                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-sm font-bold text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">4</div>
+                <h3 class="text-base font-bold text-gray-900 dark:text-white">BioFace ichida tekshirish</h3>
+            </div>
+            <ul class="space-y-3 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                <li class="flex gap-3">
+                    <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-violet-500"></span>
+                    <span><a href="/isup-server" class="inline-flex items-center gap-1 font-semibold text-blue-600 transition hover:text-blue-700 hover:underline dark:text-blue-400 dark:hover:text-blue-300">ISUP Server</a> sahifasida quyilarni tekshiring: portlar <code class="inline-flex rounded-lg bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-200">{{ isup_guide.register_port }}</code>, <code class="inline-flex rounded-lg bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-200">{{ isup_guide.alarm_port }}</code>, <code class="inline-flex rounded-lg bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-200">{{ isup_guide.picture_port }}</code> listening holatda bolsin va qurilma Connected royxatida chiqsin.</span>
+                </li>
+                <li class="flex gap-3">
+                    <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-violet-500"></span>
+                    <span>Quick API tekshiruv: <code class="inline-flex rounded-lg bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-200">{{ isup_guide.health_url }}</code>, <code class="inline-flex rounded-lg bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-200">{{ isup_guide.process_url }}</code>, <code class="inline-flex rounded-lg bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-200">{{ isup_guide.devices_url }}</code>.</span>
+                </li>
+            </ul>
+        </article>
     </section>
 
-    <section>
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">3. ISUP Listening (Alarm/Picture) sozlamasi</h3>
-        <ol class="list-decimal ml-6 text-gray-600 dark:text-gray-400 space-y-2">
-            <li><strong class="text-gray-900 dark:text-white">ISUP Alarm Center IP/Domain Name</strong>:
-                <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-red-500 dark:text-red-400">{{ isup_guide.server_host }}</code>
+    <section class="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm dark:border-amber-500/20 dark:bg-amber-900/20 md:p-6">
+        <div class="mb-4 flex items-center gap-3">
+            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86l-7.42 12.84A2 2 0 004.6 20h14.8a2 2 0 001.73-3.3L12.71 3.86a2 2 0 00-2.42 0z"></path>
+                </svg>
+            </div>
+            <div>
+                <p class="text-sm font-semibold text-amber-900 dark:text-amber-100">Muhim eslatmalar</p>
+                <p class="text-xs text-amber-700/90 dark:text-amber-200/90">ISUP ulanishini to‘g‘ri ishlashi uchun quyidagilarni albatta tekshiring.</p>
+            </div>
+        </div>
+        <ul class="space-y-3 text-sm leading-6 text-amber-900 dark:text-amber-100/95">
+            <li class="flex gap-3">
+                <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-600 dark:bg-amber-200"></span>
+                <span>ISUP rejimida register, alarm va picture oqimi toliq ISUP kanallari orqali ishlaydi.</span>
             </li>
-            <li><strong class="text-gray-900 dark:text-white">ISUP Alarm Center URL</strong>: <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">/</code></li>
-            <li><strong class="text-gray-900 dark:text-white">ISUP Alarm Center Port</strong>:
-                <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-red-500 dark:text-red-400">{{ isup_guide.alarm_port }}</code>
+            <li class="flex gap-3">
+                <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-600 dark:bg-amber-200"></span>
+                <span>Kamera serverga chiqishi uchun firewall da TCP <strong>{{ isup_guide.register_port }}</strong>, <strong>{{ isup_guide.alarm_port }}</strong>, <strong>{{ isup_guide.picture_port }}</strong> ochiq bolishi kerak.</span>
             </li>
-            <li>Agar qurilmada alohida Picture server maydoni bolsa, uni ham shu server IP va
-                <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-red-500 dark:text-red-400">{{ isup_guide.picture_port }}</code>
-                portga moslang.
+            <li class="flex gap-3">
+                <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-600 dark:bg-amber-200"></span>
+                <span>Server bind manzili <code class="inline-flex rounded-lg bg-white/70 px-2 py-0.5 font-mono text-xs text-amber-900 dark:bg-gray-900/40 dark:text-amber-100">{{ isup_guide.bind_host }}</code> bo'lishi normal. Kamera ichiga esa har doim real server IP/DNS yoziladi: <code class="inline-flex rounded-lg bg-white/70 px-2 py-0.5 font-mono text-xs text-amber-900 dark:bg-gray-900/40 dark:text-amber-100">{{ isup_guide.server_host }}</code>.</span>
             </li>
-        </ol>
-    </section>
-
-    <section>
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">4. BioFace ichida tekshirish</h3>
-        <ul class="list-disc ml-6 text-gray-600 dark:text-gray-400 space-y-2">
-            <li><a href="/isup-server" class="text-blue-600 dark:text-blue-400 hover:underline">ISUP Server</a> sahifasida quyilarni tekshiring:
-                portlar <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">{{ isup_guide.register_port }}</code>,
-                <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">{{ isup_guide.alarm_port }}</code>,
-                <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">{{ isup_guide.picture_port }}</code>
-                listening holatda bolsin va qurilma Connected royxatida chiqsin.
+            <li class="flex gap-3">
+                <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-600 dark:bg-amber-200"></span>
+                <span>Agar Registration Status offline qolsa, avval network mask, gateway va Encryption Key ni qayta tekshiring.</span>
             </li>
-            <li>Quick API tekshiruv:
-                <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">{{ isup_guide.health_url }}</code>,
-                <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">{{ isup_guide.process_url }}</code>,
-                <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">{{ isup_guide.devices_url }}</code>.
-            </li>
-        </ul>
-    </section>
-
-    <section class="rounded-xl border border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-900/20 px-4 py-4 text-sm text-amber-800 dark:text-amber-200">
-        <p class="font-semibold mb-2">Muhim eslatmalar</p>
-        <ul class="list-disc ml-6 space-y-1">
-            <li>ISUP rejimida register, alarm va picture oqimi toliq ISUP kanallari orqali ishlaydi.</li>
-            <li>Kamera serverga chiqishi uchun firewall da TCP <strong>{{ isup_guide.register_port }}</strong>, <strong>{{ isup_guide.alarm_port }}</strong>, <strong>{{ isup_guide.picture_port }}</strong> ochiq bolishi kerak.</li>
-            <li>Server bind manzili <code>{{ isup_guide.bind_host }}</code> bo'lishi normal. Kamera ichiga esa har doim real server IP/DNS yoziladi: <code>{{ isup_guide.server_host }}</code>.</li>
-            <li>Agar Registration Status offline qolsa, avval network mask, gateway va Encryption Key ni qayta tekshiring.</li>
         </ul>
     </section>
 </div>

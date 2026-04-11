@@ -13,60 +13,107 @@
         <input type="hidden" id="empId" value="{{ emp.id }}">
         
         <div class="grid gap-6 mb-6 grid-cols-1 md:grid-cols-2">
-            <div>
-                <label for="firstName" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{{ t.first_name }} <span class="text-red-500">*</span></label>
-                <input type="text" id="firstName" value="{{ emp.first_name }}" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" required>
-            </div>
-            <div>
-                <label for="lastName" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{{ t.last_name }} <span class="text-red-500">*</span></label>
-                <input type="text" id="lastName" value="{{ emp.last_name }}" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" required>
-            </div>
-            <div>
-                <label for="middleName" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Otasining ismi</label>
-                <input type="text" id="middleName" value="{{ emp.middle_name or '' }}" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
-            </div>
-            <div>
-                <label for="department" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{{ t.department }}</label>
-                <input type="text" id="department" value="{{ emp.department or '' }}" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
-            </div>
-            <div>
-                <label for="position" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{{ t.position }}</label>
-                <input type="text" id="position" value="{{ emp.position or '' }}" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
-            </div>
-            <div>
-                <label for="employeeType" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Xodim turi</label>
-                <select id="employeeType" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                    <option value="" {% if not emp.employee_type %}selected{% endif %}>Tanlanmagan</option>
-                    <option value="oquvchi" {% if emp.employee_type == 'oquvchi' %}selected{% endif %}>O'quvchi</option>
-                    <option value="oqituvchi" {% if emp.employee_type == 'oqituvchi' %}selected{% endif %}>O'qituvchi</option>
-                    <option value="hodim" {% if emp.employee_type == 'hodim' %}selected{% endif %}>Xodim</option>
-                </select>
-            </div>
-
-            <div class="col-span-1 md:col-span-2">
-                <label for="inpOrg" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{{ t.organization }}</label>
-                <select id="inpOrg" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" onchange="filterCamerasByOrg()">
-                    <option value="">-- Tashkilot tanlanmagan --</option>
-                    {% for org in organizations %}
-                    <option value="{{ org.id }}" {% if emp.organization_id == org.id %}selected{% endif %}>{{ org.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="col-span-1 md:col-span-2">
-                <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Ulangan kameralar (ISUP)</label>
-                <div id="cam-list" class="flex flex-wrap gap-2 p-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg min-h-[48px] text-sm text-gray-400">
-                    Kameralar yuklanmoqda...
+            <div class="col-span-1 md:col-span-2 grid gap-6 grid-cols-1 md:grid-cols-3">
+                <div>
+                    <label for="firstName" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{{ t.first_name }} <span class="text-red-500">*</span></label>
+                    <input type="text" id="firstName" value="{{ emp.first_name }}" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" required>
                 </div>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Shu xodim qaysi kameralarga yuborilganini tanlang.</p>
+                <div>
+                    <label for="lastName" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{{ t.last_name }} <span class="text-red-500">*</span></label>
+                    <input type="text" id="lastName" value="{{ emp.last_name }}" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" required>
+                </div>
+                <div>
+                    <label for="middleName" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Otasining ismi</label>
+                    <input type="text" id="middleName" value="{{ emp.middle_name or '' }}" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
+                </div>
             </div>
-            
+            <div class="col-span-1 md:col-span-2 grid gap-4 grid-cols-1 md:grid-cols-2">
+                <div>
+                    <label for="employeeType" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Xodim turi</label>
+                    <select id="employeeType" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 pr-10 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <option value="" {% if not emp.employee_type %}selected{% endif %}>Tanlanmagan</option>
+                        <option value="oquvchi" {% if emp.employee_type == 'oquvchi' %}selected{% endif %}>O'quvchi</option>
+                        <option value="oqituvchi" {% if emp.employee_type == 'oqituvchi' %}selected{% endif %}>O'qituvchi</option>
+                        <option value="hodim" {% if emp.employee_type == 'hodim' %}selected{% endif %}>Xodim</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="personalId" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Shaxsiy tabel / ID</label>
+                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <input type="text" id="personalId" value="{{ emp.personal_id or '' }}" maxlength="32" inputmode="numeric" autocomplete="off" readonly placeholder="Kamera ID yoki 7 xonali ID" class="bg-gray-50 font-mono border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
+                        <button type="button" id="btnGeneratePersonalId" onclick="generatePersonalId()" class="shrink-0 px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition">
+                            Generatsiya
+                        </button>
+                    </div>
+                    <label class="mt-2 inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                        <input type="checkbox" id="manualPersonalId" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" onchange="toggleManualPersonalId()">
+                        Qo'lda kiritish
+                    </label>
+                    <p id="personalIdHint" class="text-xs text-gray-500 mt-1">Mavjud kamera ID saqlanadi. Istasangiz yangi 7 xonali ID generatsiya qilishingiz mumkin.</p>
+                </div>
+            </div>
+            {% set org_assignment_title = "Tashkiliy birikma" %}
+            {% set org_assignment_description = "Tashkilot, bo'lim va shu bo'limga bog'liq lavozimni aniq tanlang." %}
+            {% set org_assignment_badge = "Tashkilot avtomatik cheklangan" %}
+            {% set org_assignment_selected_org_id = emp.organization_id or default_organization_id %}
+            {% set org_assignment_org_help = "Siz shu tashkilot bilan ishlaysiz." if single_organization_mode else "Faqat sizga biriktirilgan tashkilotlar ko'rsatiladi." %}
+            {% set org_assignment_department_id = emp.department_id or "" %}
+            {% set org_assignment_department_name = emp.department or "" %}
+            {% set org_assignment_department_help = "Bo'lim yuklanmoqda..." %}
+            {% set org_assignment_position_id = emp.position_id or "" %}
+            {% set org_assignment_position_name = emp.position or "" %}
+            {% set org_assignment_position_help = "Avval bo'limni tanlang." %}
+            {% include "employees/partials/org_assignment_fields.html" %}
+
             <div class="col-span-1 md:col-span-2">
-                <label for="personalId" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Shaxsiy Tabel Yoki Kamera ID (Ixtiyoriy)</label>
-                <input type="text" id="personalId" value="{{ emp.personal_id or '' }}" placeholder="Masalan: 0014 yoki A-123" class="bg-gray-50 font-mono border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
-                <p class="text-xs text-gray-500 mt-1">Kameralar bu xodimni yuzidan taniganda yuboradigan maxsus raqam/id.</p>
+                <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-900 dark:text-white">Kamera birikmasi va real holat</label>
+                        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                            Yuqorida qaysi kameralarga biriktirishni tanlang. Pastda esa tanlangan va avvaldan birikkan kameralar bo'yicha aniq holat chiqadi.
+                        </p>
+                    </div>
+                    <button
+                        id="refreshCameraStatusBtn"
+                        type="button"
+                        onclick="forceRefreshCameraStatuses()"
+                        class="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-700"
+                    >
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 4v5h.582m14.835 2A8.001 8.001 0 005.582 9m0 0H9m11 11v-5h-.581m0 0A8.003 8.003 0 0118.418 15M15 15h4" />
+                        </svg>
+                        Qayta tekshirish
+                    </button>
+                </div>
+                <div id="cameraStatusSummary" class="mt-4 flex flex-wrap gap-2">
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                        Kamera holati tayyorlanmoqda...
+                    </div>
+                </div>
+                <div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/40">
+                    <div id="cam-list" class="flex flex-wrap gap-2">
+                        <div class="rounded-xl border border-dashed border-slate-300 bg-white/80 px-4 py-3 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-300">
+                            Kameralar yuklanmoqda...
+                        </div>
+                    </div>
+                    <div class="mt-4 border-t border-slate-200 pt-4 dark:border-slate-700">
+                        <div class="mb-2 flex items-center justify-between gap-3">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Tekshirilgan kamera holati</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Tanlangan va avvaldan birikkan kameralar</p>
+                        </div>
+                        <div id="cameraStatusList" class="space-y-2">
+                            <div class="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-3 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-300">
+                                Holat tayyorlanmoqda...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <p id="cameraStatusLegend" class="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                    Kamera tanlash yuqorida, aniq status esa pastdagi ixcham ro'yxatda ko'rsatiladi.
+                </p>
             </div>
             
+
             <div class="col-span-1 md:col-span-2 flex flex-col sm:flex-row gap-6">
                 {% if emp.image_url %}
                 <div class="flex-shrink-0 relative group">
@@ -103,33 +150,11 @@
                                 <p id="emp-upload-file-size" class="text-xs text-gray-500 dark:text-gray-400 mt-1"></p>
                                 <div class="mt-2 flex items-center gap-2">
                                     <button type="button" id="emp-btn-change-file" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition">{% if lang == 'ru' %}Заменить{% else %}Almashtirish{% endif %}</button>
-                                    <button type="button" id="emp-btn-remove-file" class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200 text-xs font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition">{% if lang == 'ru' %}Удалить{% else %}O'chirish{% endif %}</button>
+                                    <button type="button" id="emp-btn-remove-file" class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200 text-xs font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition">{% if lang == 'ru' %}Удалить{% else %}O'chirish {% endif %}</button>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div class="mt-3 flex flex-wrap items-center gap-3">
-                        <button type="button" id="btn-import-face" class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M8 12l4 4m0 0l4-4m-4 4V3"/></svg>
-                            Kameradan rasmni sync qilish
-                        </button>
-                        <button type="button" id="btn-refresh-face-status" class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356-2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0A8.003 8.003 0 015.03 15m14.389 0H15"/></svg>
-                            ISUP holatini tekshirish
-                        </button>
-                        <span class="text-xs text-gray-500 dark:text-gray-400">Tanlangan kamera(lar)da shu xodim rasmi bor-yo'qligi tekshiriladi va kerak bo'lsa local bazaga sync qilinadi.</span>
-                    </div>
-                    <div id="camera-face-status-panel" class="mt-3 rounded-xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-900/40">
-                        <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                            <div>
-                                <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">ISUP rasm holati</h4>
-                                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Sahifa ochilganda kamera bazasi tekshiriladi. Natija shu yerda ko'rsatiladi.</p>
-                            </div>
-                            <div id="camera-face-status-summary" class="text-xs text-slate-500 dark:text-slate-400">Tekshirilmoqda...</div>
-                        </div>
-                        <div id="camera-face-status-list" class="mt-3 grid gap-2"></div>
-                    </div>
-                    <div id="cameraSyncFeedback" class="hidden mt-3 rounded-lg border px-3 py-2 text-sm"></div>
                 </div>
             </div>
             
@@ -157,21 +182,27 @@
             </a>
             <button id="btnSaveLocal" type="submit" class="text-white bg-amber-600 hover:bg-amber-700 focus:ring-4 focus:outline-none focus:ring-amber-300 font-medium rounded-lg text-sm w-full sm:w-auto px-6 py-2.5 text-center flex items-center gap-2">
                 <svg id="saveSpinner" class="hidden w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                O'zgarishni local saqlash
-            </button>
-            <button id="btnSaveWithCamera" type="button" class="text-white bg-emerald-600 hover:bg-emerald-700 focus:ring-4 focus:outline-none focus:ring-emerald-300 font-medium rounded-lg text-sm w-full sm:w-auto px-6 py-2.5 text-center flex items-center gap-2">
-                <svg id="saveCameraSpinner" class="hidden w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                Kamera bilan birga saqlash
+                {% if lang == "ru" %}Сохранить{% else %}Saqlash{% endif %}
             </button>
         </div>
     </form>
 </div>
 
+<script src="/static/js/employees/org-assignment.js?v=20260409a"></script>
 <script>
 const PRESELECTED_CAMERA_IDS = {{ (linked_camera_ids or []) | tojson }};
 const CURRENT_EMPLOYEE_IMAGE_URL = {{ (emp.image_url or '') | tojson }};
 const CURRENT_EMPLOYEE_PERSONAL_ID = {{ (emp.personal_id or '') | tojson }};
 let selectedCameraIds = new Set(PRESELECTED_CAMERA_IDS.map((x) => Number(x)));
+let cameraPresenceStatusMap = new Map();
+let cameraStatusRequestSeq = 0;
+let cameraStatusRefreshTimer = null;
+let currentOrganizationCameras = [];
+let cameraStatusLoading = false;
+let personalIdCheckTimer = null;
+let personalIdLastChecked = normalizePersonalIdInput(CURRENT_EMPLOYEE_PERSONAL_ID || '');
+let personalIdIsAvailable = Boolean(personalIdLastChecked);
+const initiallyLinkedCameraIds = new Set(PRESELECTED_CAMERA_IDS.map((x) => Number(x)));
 const empImageInput = document.getElementById('image');
 const empDropzone = document.getElementById('emp-image-dropzone');
 const empUploadEmpty = document.getElementById('emp-upload-empty');
@@ -182,18 +213,13 @@ const empUploadFileSize = document.getElementById('emp-upload-file-size');
 const empBtnOpenFile = document.getElementById('emp-btn-open-file');
 const empBtnChangeFile = document.getElementById('emp-btn-change-file');
 const empBtnRemoveFile = document.getElementById('emp-btn-remove-file');
-const importFaceBtn = document.getElementById('btn-import-face');
-const refreshFaceStatusBtn = document.getElementById('btn-refresh-face-status');
-const cameraSyncFeedback = document.getElementById('cameraSyncFeedback');
-const cameraFaceStatusSummary = document.getElementById('camera-face-status-summary');
-const cameraFaceStatusList = document.getElementById('camera-face-status-list');
 const saveSpinner = document.getElementById('saveSpinner');
-const saveCameraSpinner = document.getElementById('saveCameraSpinner');
 const saveLocalBtn = document.getElementById('btnSaveLocal');
-const saveWithCameraBtn = document.getElementById('btnSaveWithCamera');
-let cameraFaceStatusRequestId = 0;
-let cameraFaceStatusPollHandle = null;
-let cameraFaceImportPollHandle = null;
+const formErrorBlock = document.getElementById('formError');
+const cameraStatusSummaryBlock = document.getElementById('cameraStatusSummary');
+const cameraStatusListBlock = document.getElementById('cameraStatusList');
+const cameraStatusLegend = document.getElementById('cameraStatusLegend');
+const refreshCameraStatusBtn = document.getElementById('refreshCameraStatusBtn');
 
 function escHtml(value) {
     return String(value ?? '')
@@ -203,6 +229,19 @@ function escHtml(value) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
 }
+
+function setFormError(message) {
+    if (!message) {
+        formErrorBlock.classList.add('hidden');
+        formErrorBlock.textContent = '';
+        return;
+    }
+    formErrorBlock.textContent = message;
+    formErrorBlock.classList.remove('hidden');
+}
+const employeeOrgAssignment = window.EmployeeOrgAssignment.create({ setFormError });
+const departmentSelector = employeeOrgAssignment.departmentSelector;
+const positionSelector = employeeOrgAssignment.positionSelector;
 
 function empHumanFileSize(bytes) {
     if (!bytes) return '0 KB';
@@ -242,6 +281,546 @@ function setEmployeeSelectedImage(file) {
     showEmployeeUploadPreview(file);
 }
 
+function getCurrentPersonalIdForCameraStatus() {
+    const input = document.getElementById('personalId');
+    return normalizePersonalIdInput(input?.value || '');
+}
+
+function getCurrentEmployeePersonalId() {
+    return String(CURRENT_EMPLOYEE_PERSONAL_ID || '').trim();
+}
+
+function cameraPillHtml(label, tone = 'slate') {
+    const toneClasses = {
+        slate: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+        emerald: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
+        blue: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+        amber: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+        red: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
+        purple: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+        sky: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300',
+    };
+    return `<span class="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${toneClasses[tone] || toneClasses.slate}">${escHtml(label)}</span>`;
+}
+
+function getCameraStatusRow(camera) {
+    const cameraId = Number(camera?.id || 0);
+    const row = cameraPresenceStatusMap.get(cameraId);
+    if (row) {
+        return row;
+    }
+    return {
+        camera_id: cameraId,
+        camera_name: String(camera?.name || ''),
+        is_online: Boolean(camera?.is_online),
+        is_linked: initiallyLinkedCameraIds.has(cameraId),
+        checked: false,
+        user_exists: false,
+        face_image_exists: false,
+        face_record_exists: false,
+        status: cameraStatusLoading ? 'loading' : 'unknown',
+        error: '',
+    };
+}
+
+function getCameraStatusMeta(row) {
+    const status = String(row?.status || '');
+    if (status === 'loading' || !row) {
+        return {
+            label: 'Tekshirilmoqda',
+            tone: 'amber',
+            description: 'ISUP orqali kamera tekshirilmoqda.',
+        };
+    }
+    if (status === 'missing_personal_id') {
+        return {
+            label: 'ID kerak',
+            tone: 'amber',
+            description: "Shaxsiy ID bo'lmasa kameradagi xodimni aniq solishtirib bo'lmaydi.",
+        };
+    }
+    if (status === 'offline') {
+        return {
+            label: 'Offline',
+            tone: 'slate',
+            description: "Kamera hozir online emas, shu sabab live tekshiruv bajarilmadi.",
+        };
+    }
+    if (status === 'unsupported') {
+        return {
+            label: "Qo'llanmaydi",
+            tone: 'purple',
+            description: "Bu model tez face tekshiruvni to'liq qo'llamaydi.",
+        };
+    }
+    if (status === 'timeout') {
+        return {
+            label: 'Juda sekin',
+            tone: 'amber',
+            description: "Tekshiruv vaqtidan oshdi. Qayta tekshirish mumkin.",
+        };
+    }
+    if (status === 'error') {
+        return {
+            label: 'Xato',
+            tone: 'red',
+            description: String(row?.error || "Tekshiruvda xato yuz berdi."),
+        };
+    }
+    if (status === 'not_linked' && !row?.checked) {
+        return {
+            label: 'Tekshirilmagan',
+            tone: 'slate',
+            description: "Bu kamera hali chuqur tekshirilmadi.",
+        };
+    }
+
+    const faceExists = Boolean(row?.face_image_exists || row?.face_record_exists);
+    if (row?.user_exists && faceExists) {
+        return {
+            label: "To'liq mavjud",
+            tone: 'emerald',
+            description: "Kamerada xodim yozuvi ham, face rasmi ham mavjud.",
+        };
+    }
+    if (row?.user_exists) {
+        return {
+            label: 'User bor',
+            tone: 'blue',
+            description: "Kamerada xodim yozuvi bor, lekin face rasmi topilmadi.",
+        };
+    }
+    if (faceExists) {
+        return {
+            label: 'Face topildi',
+            tone: 'sky',
+            description: "Face mavjud, lekin user yozuvi noaniq yoki alohida qaytgan.",
+        };
+    }
+    return {
+        label: 'Topilmadi',
+        tone: 'slate',
+        description: "Bu xodim kamerada topilmadi.",
+    };
+}
+
+function getCameraCardClasses(metaTone, isSelected) {
+    const toneClasses = {
+        slate: 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800/90',
+        emerald: 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-900/30 dark:bg-emerald-900/10',
+        blue: 'border-blue-200 bg-blue-50/70 dark:border-blue-900/30 dark:bg-blue-900/10',
+        amber: 'border-amber-200 bg-amber-50/70 dark:border-amber-900/30 dark:bg-amber-900/10',
+        red: 'border-red-200 bg-red-50/70 dark:border-red-900/30 dark:bg-red-900/10',
+        purple: 'border-purple-200 bg-purple-50/70 dark:border-purple-900/30 dark:bg-purple-900/10',
+        sky: 'border-sky-200 bg-sky-50/70 dark:border-sky-900/30 dark:bg-sky-900/10',
+    };
+    const selectionClasses = isSelected ? 'ring-2 ring-blue-200 dark:ring-blue-900/40' : '';
+    return `${toneClasses[metaTone] || toneClasses.slate} ${selectionClasses}`.trim();
+}
+
+function resolvePresenceState(row, key) {
+    const status = String(row?.status || '');
+    const normalizedValue = key === 'face_image_exists'
+        ? Boolean(row?.face_image_exists || row?.face_record_exists)
+        : Boolean(row?.[key]);
+    if (status === 'ok') {
+        return normalizedValue ? 'yes' : 'no';
+    }
+    if (status === 'loading') {
+        return 'loading';
+    }
+    if (status === 'not_linked' && !row?.checked) {
+        return 'unchecked';
+    }
+    return 'unknown';
+}
+
+function presencePillHtml(row, key, yesLabel, noLabel, yesTone = 'emerald') {
+    const state = resolvePresenceState(row, key);
+    if (state === 'yes') {
+        return cameraPillHtml(yesLabel, yesTone);
+    }
+    if (state === 'no') {
+        return cameraPillHtml(noLabel, 'slate');
+    }
+    if (state === 'loading') {
+        return cameraPillHtml('Tekshirilmoqda', 'amber');
+    }
+    if (state === 'unchecked') {
+        return cameraPillHtml('Tekshirilmagan', 'slate');
+    }
+    return cameraPillHtml('Aniqlanmadi', 'amber');
+}
+
+function cameraDetailItemHtml(label, valueHtml, note) {
+    return `
+        <div class="rounded-xl border border-white/70 bg-white/80 px-3 py-3 dark:border-slate-700/80 dark:bg-slate-900/40">
+            <div class="flex items-center justify-between gap-3">
+                <span class="text-xs font-medium uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">${escHtml(label)}</span>
+                ${valueHtml}
+            </div>
+            <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">${escHtml(note)}</p>
+        </div>
+    `;
+}
+
+function getStatusTargetCameraIds(cameras) {
+    const availableIds = new Set((Array.isArray(cameras) ? cameras : []).map((camera) => Number(camera.id)));
+    const ids = new Set();
+    initiallyLinkedCameraIds.forEach((id) => {
+        if (availableIds.has(Number(id))) {
+            ids.add(Number(id));
+        }
+    });
+    selectedCameraIds.forEach((id) => {
+        if (availableIds.has(Number(id))) {
+            ids.add(Number(id));
+        }
+    });
+    return Array.from(ids).sort((a, b) => a - b);
+}
+
+function getStatusDisplayCameras(cameras) {
+    if (!Array.isArray(cameras) || cameras.length === 0) {
+        return [];
+    }
+    const targetIds = new Set(getStatusTargetCameraIds(cameras));
+    if (targetIds.size === 0) {
+        return [];
+    }
+    return cameras
+        .filter((camera) => targetIds.has(Number(camera.id)))
+        .sort((a, b) => {
+            const aSelected = selectedCameraIds.has(Number(a.id)) ? 1 : 0;
+            const bSelected = selectedCameraIds.has(Number(b.id)) ? 1 : 0;
+            if (aSelected !== bSelected) {
+                return bSelected - aSelected;
+            }
+            return String(a.name || '').localeCompare(String(b.name || ''));
+        });
+}
+
+function renderCameraStatusSummary(cameras) {
+    if (!cameraStatusSummaryBlock) {
+        return;
+    }
+    const visibleCameras = getStatusDisplayCameras(cameras);
+    if (!Array.isArray(cameras) || cameras.length === 0) {
+        cameraStatusSummaryBlock.innerHTML = `
+            <div class="rounded-full border border-dashed border-slate-300 bg-white px-3 py-2 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-300">
+                Tashkilot tanlangandan keyin kamera holati shu yerda ko'rsatiladi.
+            </div>
+        `;
+        if (cameraStatusLegend) {
+            cameraStatusLegend.textContent = "Kamera tanlash yuqorida, aniq status esa pastdagi ixcham ro'yxatda ko'rsatiladi.";
+        }
+        return;
+    }
+    if (visibleCameras.length === 0) {
+        cameraStatusSummaryBlock.innerHTML = `
+            <div class="rounded-full border border-dashed border-slate-300 bg-white px-3 py-2 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-300">
+                Holat ko'rish uchun kamida bitta kamerani tanlang.
+            </div>
+        `;
+        if (cameraStatusLegend) {
+            cameraStatusLegend.textContent = "Status ro'yxati faqat tanlangan yoki avvaldan birikkan kameralar uchun chiqadi.";
+        }
+        return;
+    }
+
+    const rows = visibleCameras.map((camera) => getCameraStatusRow(camera));
+    const issueStatuses = new Set(['missing_personal_id', 'offline', 'unsupported', 'error', 'timeout']);
+    const selectedCount = visibleCameras.filter((camera) => selectedCameraIds.has(Number(camera.id))).length;
+    const linkedCount = rows.filter((row) => Boolean(row?.is_linked)).length;
+    const userFoundCount = rows.filter((row) => Boolean(row?.user_exists)).length;
+    const faceFoundCount = rows.filter((row) => Boolean(row?.face_image_exists || row?.face_record_exists)).length;
+    const pendingCount = rows.filter((row) => String(row?.status || '') === 'loading').length;
+    const issueCount = rows.filter((row) => issueStatuses.has(String(row?.status || ''))).length;
+
+    const items = [
+        { label: 'Holat ko‘rsatilmoqda', value: visibleCameras.length, tone: 'slate' },
+        { label: 'Tanlangan', value: selectedCount, tone: 'blue' },
+        { label: 'Bazaga birikkan', value: linkedCount, tone: 'amber' },
+        { label: 'Kamerada topildi', value: userFoundCount, tone: 'emerald' },
+        { label: 'Face rasmi bor', value: faceFoundCount, tone: 'sky' },
+    ];
+    const issueItem = pendingCount > 0
+        ? { label: 'Tekshirilmoqda', value: pendingCount, tone: 'amber' }
+        : { label: 'Muammoli', value: issueCount, tone: issueCount > 0 ? 'red' : 'emerald' };
+
+    cameraStatusSummaryBlock.innerHTML = [...items, issueItem].map((item) => `
+        <div class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-200">
+            <span>${escHtml(item.label)}</span>
+            ${cameraPillHtml(String(item.value), item.tone)}
+        </div>
+    `).join('');
+
+    if (!cameraStatusLegend) {
+        return;
+    }
+    const personalId = getCurrentPersonalIdForCameraStatus();
+    if (!personalId) {
+        cameraStatusLegend.textContent = "Shaxsiy ID bo'lmasa kamera ichidan xodim va face holatini aniq tekshirib bo'lmaydi.";
+        return;
+    }
+    if (cameraStatusLoading) {
+        cameraStatusLegend.textContent = "ISUP orqali tanlangan kameralarda xodim va face holati tekshirilmoqda...";
+        return;
+    }
+    if (issueCount > 0) {
+        cameraStatusLegend.textContent = "Ba'zi kameralar offline yoki xato qaytardi. Qayta tekshirish orqali statusni yangilashingiz mumkin.";
+        return;
+    }
+    cameraStatusLegend.textContent = "Pastdagi ixcham ro'yxat tanlangan va avvaldan birikkan kameralar bo'yicha aniq holatni ko'rsatadi.";
+}
+
+function bindCameraCheckboxHandlers() {
+    const camList = document.getElementById('cam-list');
+    camList.querySelectorAll('.cam-check').forEach((input) => {
+        input.addEventListener('change', () => {
+            const id = Number(input.value);
+            if (input.checked) {
+                selectedCameraIds.add(id);
+            } else {
+                selectedCameraIds.delete(id);
+            }
+            renderCameraStatusSummary(currentOrganizationCameras);
+            renderCameraList(currentOrganizationCameras);
+            renderCameraStatusList(currentOrganizationCameras);
+            scheduleCameraStatusRefresh();
+        });
+    });
+}
+
+function renderCameraList(cameras) {
+    const camList = document.getElementById('cam-list');
+    if (!Array.isArray(cameras) || cameras.length === 0) {
+        camList.innerHTML = `
+            <div class="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-3 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-300">
+                Tashkilot bo'yicha kamera topilmadi.
+            </div>
+        `;
+        return;
+    }
+
+    camList.innerHTML = cameras.map((camera) => {
+        const cameraId = Number(camera.id);
+        const isSelected = selectedCameraIds.has(cameraId);
+        const isOffline = !Boolean(camera.is_online);
+        const checkedAttr = isSelected ? 'checked' : '';
+        const disabledAttr = isOffline ? 'disabled' : '';
+        const row = getCameraStatusRow(camera);
+        const isLinked = Boolean(row?.is_linked || initiallyLinkedCameraIds.has(cameraId));
+        const containerClasses = [
+            'inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition',
+            isSelected ? 'border-blue-300 bg-blue-50 text-blue-900 dark:border-blue-700 dark:bg-blue-900/20 dark:text-blue-100' : 'border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-200',
+            isOffline ? 'opacity-70' : 'hover:border-slate-300 hover:bg-slate-50 dark:hover:border-slate-600 dark:hover:bg-slate-700/70',
+        ].join(' ');
+        return `
+            <label data-camera-id="${cameraId}" class="${containerClasses}">
+                <input type="checkbox" value="${cameraId}" class="cam-check h-4 w-4 cursor-pointer rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed" ${checkedAttr} ${disabledAttr}>
+                <span class="h-2 w-2 rounded-full ${isOffline ? 'bg-slate-400' : 'bg-emerald-500'}"></span>
+                <span class="font-medium">${escHtml(camera.name)}</span>
+                ${isLinked ? '<span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-600 dark:text-amber-300">birikkan</span>' : ''}
+            </label>
+        `;
+    }).join('');
+
+    bindCameraCheckboxHandlers();
+}
+
+function renderCameraStatusList(cameras) {
+    if (!cameraStatusListBlock) {
+        return;
+    }
+    const visibleCameras = getStatusDisplayCameras(cameras);
+    if (!Array.isArray(cameras) || cameras.length === 0) {
+        cameraStatusListBlock.innerHTML = `
+            <div class="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-3 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-300">
+                Tashkilot tanlangandan keyin status shu yerda ko'rinadi.
+            </div>
+        `;
+        return;
+    }
+    if (visibleCameras.length === 0) {
+        cameraStatusListBlock.innerHTML = `
+            <div class="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-3 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-300">
+                Holatni ko'rish uchun kamida bitta kamerani tanlang.
+            </div>
+        `;
+        return;
+    }
+
+    cameraStatusListBlock.innerHTML = visibleCameras.map((camera) => {
+        const row = getCameraStatusRow(camera);
+        const meta = getCameraStatusMeta(row);
+        const cameraId = Number(camera.id);
+        const isSelected = selectedCameraIds.has(cameraId);
+        const isLinked = Boolean(row?.is_linked);
+        const onlinePill = cameraPillHtml(Boolean(camera.is_online) ? 'Online' : 'Offline', Boolean(camera.is_online) ? 'emerald' : 'slate');
+        const selectedPill = cameraPillHtml(isSelected ? 'Tanlangan' : 'Tanlanmagan', isSelected ? 'blue' : 'slate');
+        const linkedPill = cameraPillHtml(isLinked ? 'Birikkan' : 'Yangi', isLinked ? 'amber' : 'slate');
+        return `
+            <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-700 dark:bg-slate-800/90">
+                <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                    <div class="min-w-0">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="truncate text-sm font-semibold text-slate-900 dark:text-white">${escHtml(camera.name)}</span>
+                            ${onlinePill}
+                            ${selectedPill}
+                            ${linkedPill}
+                            ${cameraPillHtml(meta.label, meta.tone)}
+                        </div>
+                        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">${escHtml(meta.description)}</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        ${cameraPillHtml(`User: ${resolvePresenceState(row, 'user_exists') === 'yes' ? 'bor' : (resolvePresenceState(row, 'user_exists') === 'no' ? "yo'q" : 'tekshirilmoqda')}`, resolvePresenceState(row, 'user_exists') === 'yes' ? 'emerald' : (resolvePresenceState(row, 'user_exists') === 'no' ? 'slate' : 'amber'))}
+                        ${cameraPillHtml(`Face: ${resolvePresenceState(row, 'face_image_exists') === 'yes' ? 'bor' : (resolvePresenceState(row, 'face_image_exists') === 'no' ? "yo'q" : 'tekshirilmoqda')}`, resolvePresenceState(row, 'face_image_exists') === 'yes' ? 'sky' : (resolvePresenceState(row, 'face_image_exists') === 'no' ? 'slate' : 'amber'))}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function loadCameraPresenceStatuses(orgId, cameras) {
+    const empId = Number(document.getElementById('empId')?.value || 0);
+    if (!empId || !orgId || !Array.isArray(cameras) || cameras.length === 0) {
+        cameraPresenceStatusMap = new Map();
+        cameraStatusLoading = false;
+        renderCameraStatusSummary(cameras || []);
+        renderCameraList(cameras || []);
+        renderCameraStatusList(cameras || []);
+        return;
+    }
+
+    const personalId = getCurrentPersonalIdForCameraStatus();
+    const targetCameraIds = getStatusTargetCameraIds(cameras);
+    if (targetCameraIds.length === 0) {
+        cameraPresenceStatusMap = new Map();
+        cameraStatusLoading = false;
+        renderCameraStatusSummary(cameras);
+        renderCameraList(cameras);
+        renderCameraStatusList(cameras);
+        return;
+    }
+    const params = new URLSearchParams();
+    params.set('organization_id', String(orgId));
+    params.set('scan_scope', 'linked');
+    params.set('camera_ids', targetCameraIds.join(','));
+    if (personalId) {
+        params.set('personal_id', personalId);
+    }
+
+    cameraStatusLoading = true;
+    renderCameraStatusSummary(cameras);
+    renderCameraList(cameras);
+    renderCameraStatusList(cameras);
+    if (refreshCameraStatusBtn) {
+        refreshCameraStatusBtn.disabled = true;
+    }
+
+    const requestSeq = ++cameraStatusRequestSeq;
+    const timeoutMs = 12000;
+    try {
+        const timeoutResult = await Promise.race([
+            fetch(`/api/employees/${encodeURIComponent(empId)}/camera-status?${params.toString()}`)
+                .then(async (res) => ({
+                    timedOut: false,
+                    res,
+                    data: await res.json().catch(() => ({})),
+                })),
+            new Promise((resolve) => setTimeout(() => resolve({ timedOut: true }), timeoutMs)),
+        ]);
+
+        if (requestSeq !== cameraStatusRequestSeq) {
+            return false;
+        }
+        if (timeoutResult && timeoutResult.timedOut) {
+            cameraPresenceStatusMap = new Map(
+                targetCameraIds.map((cameraId) => [
+                    Number(cameraId),
+                    {
+                        camera_id: Number(cameraId),
+                        camera_name: String((cameras.find((item) => Number(item.id) === Number(cameraId)) || {}).name || ''),
+                        is_online: Boolean((cameras.find((item) => Number(item.id) === Number(cameraId)) || {}).is_online),
+                        is_linked: initiallyLinkedCameraIds.has(Number(cameraId)),
+                        checked: true,
+                        user_exists: false,
+                        face_image_exists: false,
+                        face_record_exists: false,
+                        status: 'timeout',
+                        error: '',
+                    },
+                ])
+            );
+            return true;
+        }
+
+        const res = timeoutResult?.res;
+        const data = timeoutResult?.data || {};
+        if (!res || !res.ok || data.ok === false) {
+            throw new Error(data.detail || 'Kamera statusini olishda xatolik');
+        }
+
+        const rows = Array.isArray(data.statuses) ? data.statuses : [];
+        cameraPresenceStatusMap = new Map(rows.map((row) => [Number(row.camera_id), row]));
+        return true;
+    } catch (err) {
+        if (requestSeq !== cameraStatusRequestSeq) {
+            return false;
+        }
+        cameraPresenceStatusMap = new Map(
+            targetCameraIds.map((cameraId) => [
+                Number(cameraId),
+                {
+                    camera_id: Number(cameraId),
+                    camera_name: String((cameras.find((item) => Number(item.id) === Number(cameraId)) || {}).name || ''),
+                    is_online: Boolean((cameras.find((item) => Number(item.id) === Number(cameraId)) || {}).is_online),
+                    is_linked: initiallyLinkedCameraIds.has(Number(cameraId)),
+                    checked: true,
+                    user_exists: false,
+                    face_image_exists: false,
+                    face_record_exists: false,
+                    status: 'error',
+                    error: String(err?.message || ''),
+                },
+            ])
+        );
+        return true;
+    } finally {
+        if (requestSeq === cameraStatusRequestSeq) {
+            cameraStatusLoading = false;
+            renderCameraStatusSummary(cameras);
+            renderCameraList(cameras);
+            renderCameraStatusList(cameras);
+            if (refreshCameraStatusBtn) {
+                refreshCameraStatusBtn.disabled = false;
+            }
+        }
+    }
+}
+
+function forceRefreshCameraStatuses() {
+    const orgId = Number(document.getElementById('inpOrg')?.value || 0);
+    if (!orgId || !currentOrganizationCameras.length) {
+        return;
+    }
+    loadCameraPresenceStatuses(orgId, currentOrganizationCameras).catch(() => null);
+}
+
+function scheduleCameraStatusRefresh() {
+    if (cameraStatusRefreshTimer) clearTimeout(cameraStatusRefreshTimer);
+    cameraStatusRefreshTimer = setTimeout(() => {
+        const orgId = Number(document.getElementById('inpOrg')?.value || 0);
+        if (orgId > 0 && currentOrganizationCameras.length > 0) {
+            loadCameraPresenceStatuses(orgId, currentOrganizationCameras).catch(() => null);
+            return;
+        }
+        filterCamerasByOrg();
+    }, 320);
+}
+
 function setEmployeeDropzoneActive(active) {
     if (active) {
         empDropzone.classList.add('ring-2', 'ring-blue-400', 'border-blue-500');
@@ -250,355 +829,172 @@ function setEmployeeDropzoneActive(active) {
     }
 }
 
-function setCameraSyncFeedback(message, kind = 'info') {
-    if (!cameraSyncFeedback) return;
-    cameraSyncFeedback.classList.remove('hidden', 'border-green-200', 'bg-green-50', 'text-green-800', 'border-red-200', 'bg-red-50', 'text-red-800', 'border-blue-200', 'bg-blue-50', 'text-blue-800');
-    if (kind === 'success') {
-        cameraSyncFeedback.classList.add('border-green-200', 'bg-green-50', 'text-green-800');
-    } else if (kind === 'error') {
-        cameraSyncFeedback.classList.add('border-red-200', 'bg-red-50', 'text-red-800');
-    } else {
-        cameraSyncFeedback.classList.add('border-blue-200', 'bg-blue-50', 'text-blue-800');
-    }
-    cameraSyncFeedback.textContent = message;
-}
-
-function getEffectivePersonalId() {
-    const currentValue = String(document.getElementById('personalId').value || '').trim();
-    return currentValue || String(CURRENT_EMPLOYEE_PERSONAL_ID || '').trim();
-}
-
-function isCameraPersonalIdValid(value) {
-    return /^[1-9]\d{6}$/.test(String(value || '').trim());
-}
-
-function getSelectedCameraIds() {
-    return Array.from(selectedCameraIds).filter((x) => Number.isInteger(x) && x > 0);
-}
-
-function getEmployeeImagePresenceForCameraMode() {
-    return Boolean(empImageInput.files?.[0] || CURRENT_EMPLOYEE_IMAGE_URL);
-}
-
-function validateEmployeeForm(mode = 'local') {
+function validateEmployeeForm() {
     const firstName = document.getElementById('firstName').value.trim();
     const lastName = document.getElementById('lastName').value.trim();
     if (!firstName || !lastName) {
         return { ok: false, message: "Ism va familiya majburiy." };
     }
-
-    if (mode !== 'with_camera') {
-        return { ok: true };
-    }
-
-    const effectivePersonalId = getEffectivePersonalId();
-    const selectedCameras = getSelectedCameraIds();
-    if (!selectedCameras.length) {
-        return { ok: false, message: "Kamera bilan saqlash uchun kamida bitta kamera tanlang." };
-    }
-    if (!isCameraPersonalIdValid(effectivePersonalId)) {
-        return { ok: false, message: "Kamera bilan saqlash uchun personal_id 7 xonali bo'lishi va 0 bilan boshlanmasligi kerak." };
-    }
-    if (!getEmployeeImagePresenceForCameraMode()) {
-        return { ok: false, message: "Kamera bilan saqlash uchun xodim rasmi majburiy." };
-    }
-    return {
-        ok: true,
-        effectivePersonalId,
-        selectedCameras,
-    };
+    return { ok: true };
 }
 
-function renderCameraFaceStatus(state) {
-    if (!cameraFaceStatusSummary || !cameraFaceStatusList) return;
-
-    if (!state || state.loading) {
-        cameraFaceStatusSummary.textContent = 'ISUP orqali tekshirilmoqda...';
-        cameraFaceStatusList.innerHTML = '<div class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">Kamera bazasi tekshirilmoqda...</div>';
-        return;
-    }
-
-    if (state.error) {
-        cameraFaceStatusSummary.textContent = 'Tekshiruv xato bilan tugadi';
-        cameraFaceStatusList.innerHTML = `<div class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:border-rose-900/40 dark:bg-rose-900/20 dark:text-rose-300">${escHtml(state.error || 'Xatolik')}</div>`;
-        return;
-    }
-
-    if (state.running) {
-        const processed = Number(state.processed_cameras || 0);
-        const total = Number(state.total_cameras || 0);
-        cameraFaceStatusSummary.textContent = `Tekshirilmoqda... ${processed}/${total || '?'}`;
-        cameraFaceStatusList.innerHTML = '<div class="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-700 dark:border-sky-900/40 dark:bg-sky-900/20 dark:text-sky-300">ISUP orqali to\'liq tekshiruv ketmoqda. Sahifa bloklanmaydi.</div>';
-        return;
-    }
-
-    const attempts = Array.isArray(state.attempts) ? state.attempts : [];
-    const localBadge = state.local_image_exists
-        ? '<span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">Local rasm: bor</span>'
-        : '<span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">Local rasm: yo\'q</span>';
-    const hasAnyImage = attempts.some((item) => Boolean(item && item.has_face_image));
-    const cameraBadge = hasAnyImage
-        ? '<span class="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">Kamera rasmi: bor</span>'
-        : '<span class="inline-flex items-center rounded-full bg-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">Kamera rasmi: topilmadi</span>';
-
-    let summaryText = [localBadge, cameraBadge].join(' ');
-    if (state.camera_sync_available && !state.local_image_exists) {
-        summaryText += ' <span class="inline-flex items-center rounded-full bg-violet-100 px-2.5 py-1 text-[11px] font-semibold text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">Sync qilish mumkin</span>';
-    }
-    cameraFaceStatusSummary.innerHTML = summaryText;
-
-    if (!attempts.length) {
-        cameraFaceStatusList.innerHTML = '<div class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">Tekshirish uchun mos kamera topilmadi.</div>';
-        return;
-    }
-
-    cameraFaceStatusList.innerHTML = attempts.map((item) => {
-        const statusChip = item.has_face_image
-            ? '<span class="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">Rasm bor</span>'
-            : (item.has_face_record
-                ? '<span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">Face record bor</span>'
-                : '<span class="inline-flex items-center rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">Rasm topilmadi</span>');
-        const syncChip = item.can_sync_image
-            ? '<span class="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">Sync mumkin</span>'
-            : '';
-        const errorText = item.error ? `<div class="mt-1 text-xs text-rose-600 dark:text-rose-300">${escHtml(item.error)}</div>` : '';
-        return `
-            <div class="rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900">
-                <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-                    <div class="min-w-0">
-                        <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">${escHtml(item.camera_name || 'Kamera')}</div>
-                        <div class="text-xs text-slate-500 dark:text-slate-400">${escHtml(String(item.image_source || item.status || '').replace(/_/g, ' '))}</div>
-                    </div>
-                    <div class="flex flex-wrap items-center gap-2">
-                        ${statusChip}
-                        ${syncChip}
-                    </div>
-                </div>
-                ${errorText}
-            </div>
-        `;
-    }).join('');
-}
-
-function stopCameraFaceStatusPolling() {
-    if (cameraFaceStatusPollHandle) {
-        window.clearTimeout(cameraFaceStatusPollHandle);
-        cameraFaceStatusPollHandle = null;
+function setPersonalIdHint(message, tone = 'neutral') {
+    const hint = document.getElementById('personalIdHint');
+    hint.textContent = message;
+    if (tone === 'success') {
+        hint.className = 'text-xs text-emerald-600 dark:text-emerald-400 mt-1';
+    } else if (tone === 'error') {
+        hint.className = 'text-xs text-red-600 dark:text-red-400 mt-1';
+    } else if (tone === 'warn') {
+        hint.className = 'text-xs text-amber-600 dark:text-amber-400 mt-1';
+    } else {
+        hint.className = 'text-xs text-gray-500 mt-1';
     }
 }
 
-async function pollEmployeeCameraFaceStatusJob(jobId, requestId) {
+function normalizePersonalIdInput(raw) {
+    return String(raw || '').trim();
+}
+
+function isValidPersonalIdFormat(value) {
+    return /^[1-9][0-9]{6}$/.test(value || '');
+}
+
+function toggleManualPersonalId() {
+    const input = document.getElementById('personalId');
+    const manual = document.getElementById('manualPersonalId').checked;
+    input.readOnly = !manual;
+    if (manual) {
+        input.focus();
+        setPersonalIdHint("Qo'lda kiritish yoqildi: mavjud kamera ID ni saqlashingiz yoki yangi ID kiritishingiz mumkin.", 'neutral');
+    } else {
+        setPersonalIdHint("Qo'lda kiritish o'chdi. Xohlasangiz generatsiya tugmasidan yangi 7 xonali ID olishingiz mumkin.", 'neutral');
+    }
+}
+
+async function checkPersonalIdAvailability(value) {
+    const normalizedValue = normalizePersonalIdInput(value);
+    const current = getCurrentEmployeePersonalId();
+    if (normalizedValue && normalizedValue === current) {
+        personalIdLastChecked = normalizedValue;
+        personalIdIsAvailable = true;
+        setPersonalIdHint("Hozirgi ID saqlanadi.", 'success');
+        return true;
+    }
     try {
-        const res = await fetch(`/api/employees/face-jobs/${encodeURIComponent(jobId)}`);
-        const data = await res.json().catch(() => ({}));
-        if (requestId !== cameraFaceStatusRequestId) return;
-        if (!res.ok || data.ok === false) {
-            throw new Error(data.detail || data.message || 'ISUP holatini tekshirib bo\'lmadi');
+        const empId = Number(document.getElementById('empId')?.value || 0);
+        const params = new URLSearchParams();
+        params.set('personal_id', normalizedValue);
+        params.set('allow_legacy', 'true');
+        if (empId > 0) {
+            params.set('exclude_employee_id', String(empId));
         }
-
-        if (data.status === 'queued' || data.status === 'running') {
-            renderCameraFaceStatus({
-                running: true,
-                processed_cameras: data.processed_cameras,
-                total_cameras: data.total_cameras,
-            });
-            cameraFaceStatusPollHandle = window.setTimeout(() => {
-                void pollEmployeeCameraFaceStatusJob(jobId, requestId);
-            }, 1000);
-            return;
+        const res = await fetch(`/api/employees/personal-id/validate?${params.toString()}`);
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data.detail || 'Tekshirishda xatolik');
         }
-
-        if (data.status === 'done') {
-            renderCameraFaceStatus(data.result || {});
-            return;
+        personalIdLastChecked = normalizedValue;
+        personalIdIsAvailable = Boolean(data.valid && data.available);
+        if (personalIdIsAvailable) {
+            setPersonalIdHint("ID bo'sh. Saqlash mumkin.", 'success');
+            return true;
         }
-
-        renderCameraFaceStatus({ error: data.error || 'ISUP tekshiruvi yakunlanmadi' });
-    } catch (error) {
-        if (requestId !== cameraFaceStatusRequestId) return;
-        renderCameraFaceStatus({ error: error.message || 'ISUP holatini tekshirib bo\'lmadi' });
+        setPersonalIdHint(data.message || "Bu ID band.", 'error');
+        return false;
+    } catch (e) {
+        personalIdIsAvailable = false;
+        setPersonalIdHint(`Tekshirishda xatolik: ${e.message}`, 'error');
+        return false;
     }
 }
 
-async function refreshEmployeeCameraFaceStatus() {
-    if (!cameraFaceStatusSummary || !cameraFaceStatusList) return;
-    const empId = document.getElementById('empId').value;
-    const effectivePersonalId = getEffectivePersonalId();
-    const selectedCameras = getSelectedCameraIds();
-    stopCameraFaceStatusPolling();
-    if (!effectivePersonalId) {
-        renderCameraFaceStatus({
-            error: "Xodimda personal_id yo'q. Kamera holatini tekshirish uchun avval personal_id kiriting.",
-        });
+function onPersonalIdInput() {
+    const input = document.getElementById('personalId');
+    const value = normalizePersonalIdInput(input.value);
+    if (input.value !== value) input.value = value;
+    personalIdIsAvailable = false;
+    personalIdLastChecked = '';
+    if (personalIdCheckTimer) clearTimeout(personalIdCheckTimer);
+
+    if (!value) {
+        setPersonalIdHint("ID bo'sh qoldirilsa eski qiymat saqlanadi.", 'warn');
+        scheduleCameraStatusRefresh();
         return;
     }
-    if (!selectedCameras.length) {
-        renderCameraFaceStatus({
-            error: "ISUP holatini ko'rish uchun kamida bitta kamera tanlang.",
-        });
+    if (value === getCurrentEmployeePersonalId()) {
+        setPersonalIdHint("Mavjud kamera ID saqlanadi.", 'success');
+        scheduleCameraStatusRefresh();
         return;
     }
-
-    const requestId = ++cameraFaceStatusRequestId;
-    renderCameraFaceStatus({ loading: true });
-
-    try {
-        const res = await fetch(`/api/employees/${empId}/camera-face-status/start`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                camera_ids: selectedCameras,
-                allow_camera_http_download: false,
-            }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (requestId !== cameraFaceStatusRequestId) return;
-        if (!res.ok || data.ok === false) {
-            throw new Error(data.detail || data.message || 'ISUP holatini tekshirib bo\'lmadi');
-        }
-        await pollEmployeeCameraFaceStatusJob(data.job_id, requestId);
-    } catch (error) {
-        if (requestId !== cameraFaceStatusRequestId) return;
-        renderCameraFaceStatus({ error: error.message || 'ISUP holatini tekshirib bo\'lmadi' });
+    if (isValidPersonalIdFormat(value)) {
+        setPersonalIdHint("ID tekshirilmoqda...", 'neutral');
+    } else {
+        setPersonalIdHint("Legacy yoki qisqa ID tekshirilmoqda. Faqat takrorlanmasligi muhim.", 'warn');
     }
+    personalIdCheckTimer = setTimeout(() => {
+        checkPersonalIdAvailability(value);
+        scheduleCameraStatusRefresh();
+    }, 250);
 }
 
-async function fetchCurrentEmployeeImageFile() {
-    const selected = empImageInput.files?.[0];
-    if (selected) return selected;
-    if (!CURRENT_EMPLOYEE_IMAGE_URL) return null;
+async function generatePersonalId() {
+    const input = document.getElementById('personalId');
+    const btn = document.getElementById('btnGeneratePersonalId');
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Kutilmoqda...';
     try {
-        const response = await fetch(CURRENT_EMPLOYEE_IMAGE_URL, { cache: 'no-store' });
-        if (!response.ok) return null;
-        const blob = await response.blob();
-        if (!blob || !blob.size) return null;
-        return new File([blob], 'employee-face.jpg', { type: blob.type || 'image/jpeg' });
-    } catch (_) {
-        return null;
-    }
-}
-
-async function pushEmployeeFaceToSelectedCameras(empId, personalId) {
-    const effectivePersonalId = String(personalId || '').trim() || CURRENT_EMPLOYEE_PERSONAL_ID;
-    if (!effectivePersonalId) {
-        throw new Error("Kameraga yuborish uchun shaxsiy ID kerak. Avval personal ID kiriting.");
-    }
-
-    const selectedCameras = Array.from(selectedCameraIds).filter((x) => Number.isInteger(x) && x > 0);
-    if (!selectedCameras.length) {
-        return { skipped: true };
-    }
-
-    const sourceImage = await fetchCurrentEmployeeImageFile();
-    if (!sourceImage) {
-        throw new Error("Kameraga yuborish uchun xodim rasmi topilmadi. Avval rasm yuklang.");
-    }
-
-    const firstName = document.getElementById('firstName').value.trim();
-    const lastName = document.getElementById('lastName').value.trim();
-    const cameraWarnings = [];
-    const pushResults = await Promise.allSettled(
-        selectedCameras.map(async (camId) => {
-            const cameraForm = new FormData();
-            cameraForm.append('first_name', firstName);
-            cameraForm.append('last_name', lastName);
-            cameraForm.append('personal_id', effectivePersonalId);
-            cameraForm.append('image', sourceImage);
-
-            const camRes = await fetch(`/api/cameras/${camId}/users/upload`, {
-                method: 'POST',
-                body: cameraForm,
-            });
-            const camJson = await camRes.json().catch(() => ({}));
-            if (!camRes.ok || camJson.ok === false) {
-                throw new Error(camJson.detail || camJson.message || `Kamera ${camId} ga yuborilmadi`);
-            }
-
-            if (camJson.set_face_response && camJson.set_face_response.accepted_with_warning) {
-                cameraWarnings.push(`Kamera ${camId}: ${camJson.set_face_response.warning || 'Rasm qo\'llanishi kechikishi mumkin'}`);
-            }
-            return camJson;
-        })
-    );
-
-    const failed = pushResults
-        .filter((result) => result.status === 'rejected')
-        .map((result) => result.reason?.message || 'Noma\'lum xatolik');
-    if (failed.length > 0) {
-        throw new Error(`Xodim saqlandi, lekin ${failed.length} kameraga yuborilmadi: ${failed.join('; ')}`);
-    }
-
-    if (cameraWarnings.length > 0) {
-        console.warn('Kamera rasm yuborish ogohlantirishlari:', cameraWarnings);
-    }
-    return { ok: true, warnings: cameraWarnings };
-}
-
-async function importEmployeeFaceFromCamera() {
-    const empId = document.getElementById('empId').value;
-    const selectedCameras = getSelectedCameraIds();
-    if (!selectedCameras.length) {
-        setCameraSyncFeedback('Kameradan rasm sync qilish uchun kamida bitta kamera tanlang.', 'error');
-        return;
-    }
-
-    importFaceBtn.disabled = true;
-    setCameraSyncFeedback('Kameradan rasm olinmoqda...', 'info');
-    try {
-        const res = await fetch(`/api/employees/${empId}/import-face-from-camera/start`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                camera_ids: selectedCameras,
-                allow_camera_http_download: false,
-            }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || data.ok === false) {
-            throw new Error(data.detail || data.message || 'Kameradan rasm olishda xatolik');
+        const res = await fetch('/api/employees/personal-id/generate');
+        const data = await res.json();
+        if (!res.ok || !data.personal_id) {
+            throw new Error(data.detail || "ID generatsiya qilib bo'lmadi");
         }
-        while (true) {
-            const statusRes = await fetch(`/api/employees/face-jobs/${encodeURIComponent(data.job_id)}`);
-            const statusData = await statusRes.json().catch(() => ({}));
-            if (!statusRes.ok || statusData.ok === false) {
-                throw new Error(statusData.detail || statusData.message || 'Kameradan rasm olishda xatolik');
-            }
-
-            if (statusData.status === 'queued' || statusData.status === 'running') {
-                const processed = Number(statusData.processed_cameras || 0);
-                const total = Number(statusData.total_cameras || 0);
-                setCameraSyncFeedback(`Kameradan rasm olinmoqda... ${processed}/${total || '?'}`, 'info');
-                await new Promise((resolve) => window.setTimeout(resolve, 1000));
-                continue;
-            }
-
-            if (statusData.status === 'done') {
-                const result = statusData.result || {};
-                if (result.image_url) {
-                    setCameraSyncFeedback(result.message || 'Rasm kameradan bazaga yuklandi', 'success');
-                    await refreshEmployeeCameraFaceStatus();
-                    window.setTimeout(() => window.location.reload(), 500);
-                    break;
-                }
-                throw new Error(result.message || 'Kameradan rasm olinmadi');
-            }
-
-            throw new Error(statusData.error || 'Kameradan rasm olishda xatolik');
-        }
-    } catch (error) {
-        setCameraSyncFeedback(error.message || 'Kameradan rasm olishda xatolik', 'error');
+        input.value = String(data.personal_id);
+        personalIdLastChecked = input.value;
+        personalIdIsAvailable = true;
+        setPersonalIdHint(`Generatsiya qilindi: ${input.value}`, 'success');
+        scheduleCameraStatusRefresh();
+    } catch (e) {
+        setPersonalIdHint(`Generatsiya xatosi: ${e.message}`, 'error');
     } finally {
-        importFaceBtn.disabled = false;
+        btn.disabled = false;
+        btn.textContent = originalText;
     }
+}
+
+async function ensurePersonalIdReady() {
+    const input = document.getElementById('personalId');
+    const value = normalizePersonalIdInput(input.value);
+    input.value = value;
+
+    if (!value) {
+        return '';
+    }
+    if (value === getCurrentEmployeePersonalId()) {
+        personalIdLastChecked = value;
+        personalIdIsAvailable = true;
+        return value;
+    }
+    if (personalIdLastChecked === value && personalIdIsAvailable) {
+        return value;
+    }
+    const ok = await checkPersonalIdAvailability(value);
+    return ok ? value : null;
 }
 
 async function filterCamerasByOrg() {
     const orgId = document.getElementById('inpOrg').value;
     const camList = document.getElementById('cam-list');
+    employeeOrgAssignment.loadCatalogs(orgId ? Number(orgId) : null).catch(() => null);
     if (!orgId) {
+        currentOrganizationCameras = [];
+        cameraPresenceStatusMap = new Map();
+        cameraStatusLoading = false;
         camList.innerHTML = 'Avval tashkilotni tanlang...';
         selectedCameraIds = new Set();
-        renderCameraFaceStatus({ error: "ISUP holatini tekshirish uchun avval tashkilot va kamera tanlang." });
+        renderCameraStatusSummary([]);
+        renderCameraStatusList([]);
         return;
     }
 
@@ -607,46 +1003,36 @@ async function filterCamerasByOrg() {
         const res = await fetch('/api/cameras/by-org/' + orgId);
         const allCameras = await res.json();
         if (!Array.isArray(allCameras) || allCameras.length === 0) {
+            currentOrganizationCameras = [];
+            cameraPresenceStatusMap = new Map();
+            cameraStatusLoading = false;
             camList.innerHTML = '<span class="text-gray-400 text-xs">Bu tashkilotda kamera yo\'q</span>';
             selectedCameraIds = new Set();
-            renderCameraFaceStatus({ error: "Bu tashkilotda tekshirish uchun kamera yo'q." });
+            renderCameraStatusSummary([]);
+            renderCameraStatusList([]);
             return;
         }
 
         const availableIds = new Set(allCameras.map((c) => Number(c.id)));
         selectedCameraIds = new Set([...selectedCameraIds].filter((id) => availableIds.has(Number(id))));
+        currentOrganizationCameras = allCameras;
+        cameraPresenceStatusMap = new Map();
+        cameraStatusLoading = true;
+        renderCameraStatusSummary(allCameras);
+        renderCameraList(allCameras);
+        renderCameraStatusList(allCameras);
 
-        camList.innerHTML = allCameras.map(c => {
-            const checked = selectedCameraIds.has(Number(c.id)) ? 'checked' : '';
-            const badge = c.is_online
-                ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-900/30'
-                : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700';
-            const dot = c.is_online ? 'bg-green-500' : 'bg-gray-400';
-            return `
-                <label class="flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-lg border ${badge}">
-                    <input type="checkbox" value="${c.id}" class="cam-check w-4 h-4 text-blue-600 cursor-pointer" ${checked}>
-                    <span class="text-sm text-gray-800 dark:text-gray-200">${c.name}</span>
-                    <span class="w-1.5 h-1.5 rounded-full ml-1 ${dot}"></span>
-                </label>
-            `;
-        }).join('');
-
-        camList.querySelectorAll('.cam-check').forEach((input) => {
-            input.addEventListener('change', () => {
-                const id = Number(input.value);
-                if (input.checked) {
-                    selectedCameraIds.add(id);
-                } else {
-                    selectedCameraIds.delete(id);
-                }
-                void refreshEmployeeCameraFaceStatus();
-            });
-        });
-        void refreshEmployeeCameraFaceStatus();
+        loadCameraPresenceStatuses(orgId, allCameras)
+            .then(() => null)
+            .catch(() => null);
     } catch (_) {
+        currentOrganizationCameras = [];
+        cameraPresenceStatusMap = new Map();
+        cameraStatusLoading = false;
         camList.innerHTML = '<span class="text-red-400 text-xs">Kameralarni yuklashda xato</span>';
         selectedCameraIds = new Set();
-        renderCameraFaceStatus({ error: "Kameralarni yuklashda xatolik bo'ldi." });
+        renderCameraStatusSummary([]);
+        renderCameraStatusList([]);
     }
 }
 
@@ -659,15 +1045,6 @@ empBtnChangeFile.addEventListener('click', () => empImageInput.click());
 empBtnRemoveFile.addEventListener('click', () => {
     empImageInput.value = '';
     showEmployeeUploadEmpty();
-});
-importFaceBtn.addEventListener('click', () => {
-    void importEmployeeFaceFromCamera();
-});
-refreshFaceStatusBtn.addEventListener('click', () => {
-    void refreshEmployeeCameraFaceStatus();
-});
-saveWithCameraBtn.addEventListener('click', () => {
-    void saveEditedEmployee(null, 'with_camera');
 });
 empImageInput.addEventListener('change', () => {
     const file = empImageInput.files?.[0];
@@ -693,14 +1070,21 @@ empDropzone.addEventListener('drop', (e) => {
     setEmployeeSelectedImage(file);
 });
 
-function setSaveLoading(localLoading = false, cameraLoading = false) {
-    saveSpinner.classList.toggle('hidden', !localLoading);
-    saveCameraSpinner.classList.toggle('hidden', !cameraLoading);
-    saveLocalBtn.disabled = localLoading || cameraLoading;
-    saveWithCameraBtn.disabled = localLoading || cameraLoading;
+function setSaveLoading(loading = false) {
+    saveSpinner.classList.toggle('hidden', !loading);
+    saveLocalBtn.disabled = loading;
 }
 
 function buildEmployeeFormData() {
+    const departmentResolution = departmentSelector.ensureResolved();
+    if (!departmentResolution.ok) {
+        throw new Error(departmentResolution.message);
+    }
+    const positionResolution = positionSelector.ensureResolved();
+    if (!positionResolution.ok) {
+        throw new Error(positionResolution.message);
+    }
+
     const formData = new FormData();
     formData.append('first_name', document.getElementById('firstName').value.trim());
     formData.append('last_name', document.getElementById('lastName').value.trim());
@@ -709,11 +1093,10 @@ function buildEmployeeFormData() {
     const pid = document.getElementById('personalId').value.trim();
     if (pid) formData.append('personal_id', pid);
 
-    const dept = document.getElementById('department').value.trim();
-    if (dept) formData.append('department', dept);
-
-    const pos = document.getElementById('position').value.trim();
-    if (pos) formData.append('position', pos);
+    formData.append('department_id', departmentResolution.id ? String(departmentResolution.id) : '');
+    formData.append('department', departmentResolution.name || '');
+    formData.append('position_id', positionResolution.id ? String(positionResolution.id) : '');
+    formData.append('position', positionResolution.name || '');
 
     const employeeType = document.getElementById('employeeType').value;
     formData.append('employee_type', employeeType);
@@ -738,23 +1121,27 @@ function buildEmployeeFormData() {
     return { formData, pid, selectedCameras };
 }
 
-async function saveEditedEmployee(event, mode = 'local') {
+async function saveEditedEmployee(event) {
     if (event) event.preventDefault();
-    const errBlock = document.getElementById('formError');
     const empId = document.getElementById('empId').value;
-    const validation = validateEmployeeForm(mode);
+    const validation = validateEmployeeForm();
 
-    errBlock.classList.add('hidden');
+    setFormError('');
     if (!validation.ok) {
-        errBlock.textContent = validation.message || 'Forma noto\'g\'ri to\'ldirilgan';
-        errBlock.classList.remove('hidden');
+        setFormError(validation.message || 'Forma noto\'g\'ri to\'ldirilgan');
         return;
     }
-    setSaveLoading(mode === 'local', mode === 'with_camera');
 
-    const { formData, pid, selectedCameras } = buildEmployeeFormData();
+    const readyPersonalId = await ensurePersonalIdReady();
+    if (readyPersonalId === null) {
+        setFormError("Shaxsiy ID noto'g'ri yoki band. Iltimos, qayta tekshiring.");
+        return;
+    }
+
+    setSaveLoading(true);
 
     try {
+        const { formData } = buildEmployeeFormData();
         const res = await fetch('/api/employees/' + empId, {
             method: 'PUT',
             body: formData
@@ -763,23 +1150,27 @@ async function saveEditedEmployee(event, mode = 'local') {
             const data = await res.json();
             throw new Error(data.detail || 'Xato yuz berdi');
         }
-
-        if (mode === 'with_camera') {
-            await pushEmployeeFaceToSelectedCameras(empId, validation.effectivePersonalId || pid || CURRENT_EMPLOYEE_PERSONAL_ID);
-        }
         window.location.href = '/employees';
     } catch(e) {
-        errBlock.textContent = e.message;
-        errBlock.classList.remove('hidden');
+        setFormError(e.message);
     } finally {
-        setSaveLoading(false, false);
+        setSaveLoading(false);
     }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    renderCameraFaceStatus({ loading: true });
     filterCamerasByOrg();
     showEmployeeUploadEmpty();
+    const personalIdInput = document.getElementById('personalId');
+    personalIdInput.addEventListener('input', onPersonalIdInput);
+    toggleManualPersonalId();
+    if (normalizePersonalIdInput(personalIdInput.value || '')) {
+        if (isValidPersonalIdFormat(normalizePersonalIdInput(personalIdInput.value || ''))) {
+            setPersonalIdHint('Mavjud ID yuklandi.', 'success');
+        } else {
+            setPersonalIdHint("Mavjud kamera ID yuklandi. Uni o'z holicha saqlash mumkin.", 'success');
+        }
+    }
 });
 </script>
 {% endblock %}

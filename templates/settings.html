@@ -296,6 +296,76 @@
 
 
 <!-- ══════════════════════════════════════
+     GOOGLE OAUTH CARD
+══════════════════════════════════════ -->
+<div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm mb-5 overflow-hidden">
+
+    <!-- Card Header with Toggle -->
+    <div class="px-6 py-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-800">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center shrink-0">
+                <svg class="w-5 h-5 text-orange-600 dark:text-orange-400" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                </svg>
+            </div>
+            <div>
+                <h2 class="font-semibold text-gray-900 dark:text-white text-sm leading-tight">Google OAuth Integratsiyasi</h2>
+                <p id="google-status-text" class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">O'chirilgan — Google orqali kirish yopilgan</p>
+            </div>
+        </div>
+
+        <!-- Toggle switch -->
+        <label class="relative inline-flex items-center cursor-pointer select-none" title="Yoqish / O'chirish">
+            <input type="checkbox" id="google-toggle" class="sr-only peer" onchange="toggleSection('google')">
+            <div id="google-track" class="w-11 h-6 rounded-full transition-colors duration-300" style="background-color: #d1d5db;"></div>
+            <div id="google-thumb" class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-300"></div>
+        </label>
+    </div>
+
+    <!-- Card Body -->
+    <div id="google-body" class="hidden px-6 py-5 grid md:grid-cols-2 gap-5 transition-all duration-300">
+
+        <!-- Client ID -->
+        <div>
+            <label for="google_client_id" class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">Google Client ID</label>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Masalan: 123456...apps.googleusercontent.com</p>
+            <input type="text" id="google_client_id" value=""
+                class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition"
+                placeholder="Client ID kiriting">
+        </div>
+
+        <!-- Client Secret -->
+        <div>
+            <label for="google_client_secret" class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">Google Client Secret</label>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Maxfiy kalitni kiriting</p>
+            <div class="relative">
+                <input type="password" id="google_client_secret" value=""
+                    class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 pr-12 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition"
+                    placeholder="Client Secret">
+                <button type="button" onclick="togglePassword('google_client_secret')"
+                    class="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Redirect URI -->
+        <div class="md:col-span-2">
+            <label for="google_redirect_uri" class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">Redirect URI</label>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Google konsolida ruxsat etilgan URL: <strong>https://bioface.uz/auth/callback</strong></p>
+            <input type="text" id="google_redirect_uri" value=""
+                class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition"
+                placeholder="https://bioface.uz/auth/callback">
+        </div>
+
+    </div>
+</div>
+
+
+<!-- ══════════════════════════════════════
      SMS GATEWAY CARD
 ══════════════════════════════════════ -->
 <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm mb-5 overflow-hidden">
@@ -450,9 +520,13 @@
 
         // Status text
         if (statusEl) {
-            statusEl.textContent = isOn
-                ? (key === 'bot' ? 'Yoqilgan — xabarnomalar yuborilmoqda' : 'Yoqilgan — SMS xabarnomalar faol')
-                : (key === 'bot' ? 'O\'chirilgan — bot xabar yubormasdi' : 'O\'chirilgan — SMS yuborilmaydi');
+            if (key === 'bot') {
+                statusEl.textContent = isOn ? 'Yoqilgan — xabarnomalar yuborilmoqda' : 'O\'chirilgan — bot xabar yubormasdi';
+            } else if (key === 'sms') {
+                statusEl.textContent = isOn ? 'Yoqilgan — SMS xabarnomalar faol' : 'O\'chirilgan — SMS yuborilmaydi';
+            } else if (key === 'google') {
+                statusEl.textContent = isOn ? 'Yoqilgan — Google orqali tizimga kirish mumkin' : 'O\'chirilgan — Google orqali kirish yopilgan';
+            }
         }
     }
 
@@ -581,6 +655,11 @@
         const telegramAdminChatId = document.getElementById('admin_chat_id').value.trim();
         const telegramBotToken = document.getElementById('bot_token').value.trim();
 
+        const googleOauthEnabled = document.getElementById('google-toggle').checked;
+        const googleClientId = document.getElementById('google_client_id').value.trim();
+        const googleClientSecret = document.getElementById('google_client_secret').value.trim();
+        const googleRedirectUri = document.getElementById('google_redirect_uri').value.trim();
+
         try {
             // Check and upload files first if selected
             let finalLogoUrl = document.getElementById('logo_url').value;
@@ -618,7 +697,11 @@
                     public_web_base_url: publicWebBaseUrl,
                     telegram_enabled: telegramEnabled,
                     telegram_admin_chat_id: telegramAdminChatId,
-                    telegram_bot_token: telegramBotToken
+                    telegram_bot_token: telegramBotToken,
+                    google_oauth_enabled: googleOauthEnabled,
+                    google_client_id: googleClientId,
+                    google_client_secret: googleClientSecret,
+                    google_redirect_uri: googleRedirectUri
                 })
             });
             const data = await resp.json();
@@ -740,6 +823,24 @@
                 document.getElementById('bot-users-text').textContent = `Telegram foydalanuvchilar: ${data.telegram_users_count}`;
             }
 
+            const googleToggle = document.getElementById('google-toggle');
+            const googleClientIdInput = document.getElementById('google_client_id');
+            const googleClientSecretInput = document.getElementById('google_client_secret');
+            const googleRedirectUriInput = document.getElementById('google_redirect_uri');
+
+            if (typeof data.google_oauth_enabled === 'boolean') {
+                googleToggle.checked = data.google_oauth_enabled;
+            }
+            if (typeof data.google_client_id === 'string') {
+                googleClientIdInput.value = data.google_client_id;
+            }
+            if (typeof data.google_redirect_uri === 'string') {
+                googleRedirectUriInput.value = data.google_redirect_uri;
+            }
+            if (data.google_client_secret_configured) {
+                googleClientSecretInput.placeholder = data.google_client_secret_masked || '********';
+            }
+
             await refreshBotProcessStatus(false);
         }
 
@@ -756,6 +857,8 @@
         }
         // Bot: checked by default → already open, set track colour
         toggleSection('bot');
+
+        toggleSection('google');
 
         // SMS: unchecked by default → body already hidden
         const smsTrack = document.getElementById('sms-track');

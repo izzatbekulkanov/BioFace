@@ -9,6 +9,12 @@
     </div>
 </div>
 
+{% if not camera_command_allowed %}
+<div class="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-200">
+    Kamera buyruqlari asosiy administrator uchun ochiq. Siz bu sahifada faqat o'zingizga biriktirilgan kameralarni ko'rasiz.
+</div>
+{% endif %}
+
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <!-- Chap tomon: Kamera Tanlash va Buyruq Formasi -->
     <div class="lg:col-span-1 space-y-6">
@@ -177,6 +183,7 @@
 </style>
 
 <script>
+const CAMERA_COMMAND_ALLOWED = {{ camera_command_allowed | tojson }};
 let cameras = [];
 
 function escapeHtml(value) {
@@ -206,7 +213,7 @@ function getSelectedCamera() {
 function updateSendButtonState() {
     const cam = getSelectedCamera();
     const selectedCmd = document.querySelector('input[name="cmd"]:checked');
-    const canSend = Boolean(cam && isCameraOnline(cam) && selectedCmd);
+    const canSend = Boolean(CAMERA_COMMAND_ALLOWED && cam && isCameraOnline(cam) && selectedCmd);
     document.getElementById('btn-send').disabled = !canSend;
 }
 
@@ -303,7 +310,7 @@ function handleCamSelect() {
     const statusEl = document.getElementById('cam-status-mini');
     const online = isCameraOnline(cam);
     
-    if (online) {
+    if (online && CAMERA_COMMAND_ALLOWED) {
         statusEl.className = 'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
         statusEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Online';
         offlineHint.classList.add('hidden');
@@ -311,8 +318,13 @@ function handleCamSelect() {
         cmdRadios.forEach(r => r.disabled = false);
     } else {
         statusEl.className = 'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400';
-        statusEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> Offline';
+        statusEl.innerHTML = CAMERA_COMMAND_ALLOWED
+            ? '<span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> Offline'
+            : '<span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Read only';
         offlineHint.classList.remove('hidden');
+        offlineHint.textContent = CAMERA_COMMAND_ALLOWED
+            ? "Kamera offline. Buyruq yuborish bloklangan."
+            : "Kamera buyruqlari sizning rolingiz uchun bloklangan.";
         sect.classList.replace('enabled-section', 'disabled-section');
         cmdRadios.forEach(r => {
             r.checked = false;
@@ -341,6 +353,10 @@ function clearTerminal() {
 }
 
 async function sendCommand() {
+    if (!CAMERA_COMMAND_ALLOWED) {
+        logTerminal('<span class="text-amber-400">! Kamera buyruqlari faqat asosiy administrator uchun ruxsat etilgan.</span>');
+        return;
+    }
     const camId = document.getElementById('sel-cam').value;
     const cmdInput = document.querySelector('input[name="cmd"]:checked');
     if (!camId || !cmdInput) return;

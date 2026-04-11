@@ -1,0 +1,88 @@
+<div class="col-span-1 md:col-span-2 rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 shadow-sm dark:border-slate-700 dark:from-slate-900 dark:to-slate-900/80 md:p-5">
+    <div class="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+            <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ org_assignment_title }}</h3>
+            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ org_assignment_description }}</p>
+        </div>
+        {% if single_organization_mode and org_assignment_badge %}
+        <span class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">{{ org_assignment_badge }}</span>
+        {% endif %}
+    </div>
+    <div class="grid gap-4 md:grid-cols-3">
+        <div>
+            <label for="inpOrg" class="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100">{{ t.organization }}</label>
+            <select
+                id="inpOrg"
+                class="block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-10 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:disabled:bg-slate-800 dark:disabled:text-slate-500"
+                onchange="filterCamerasByOrg()"
+                {% if single_organization_mode %}disabled{% endif %}
+            >
+                <option value="">-- Tashkilot tanlanmagan --</option>
+                {% for org in organizations %}
+                <option value="{{ org.id }}" {% if org_assignment_selected_org_id == org.id %}selected{% endif %}>{{ org.name }}</option>
+                {% endfor %}
+            </select>
+            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ org_assignment_org_help }}</p>
+        </div>
+        <div>
+            <label for="departmentSearch" class="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100">{{ t.department }}</label>
+            <div class="overflow-visible rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                <div class="flex items-stretch">
+                    <div class="relative min-w-0 flex-1">
+                        <input type="hidden" id="departmentId" value="{{ org_assignment_department_id }}">
+                        <input
+                            type="text"
+                            id="departmentSearch"
+                            value="{{ org_assignment_department_name }}"
+                            autocomplete="off"
+                            placeholder="Bo'limni qidiring yoki tanlang"
+                            class="block w-full border-0 bg-transparent px-4 py-3 text-sm text-slate-900 focus:ring-0 disabled:cursor-not-allowed disabled:text-slate-400 dark:text-white dark:disabled:text-slate-500"
+                        >
+                        <div id="departmentDropdown" class="hidden absolute left-2 right-2 top-full z-30 mt-2 max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800"></div>
+                    </div>
+                    <button
+                        type="button"
+                        id="addDepartmentBtn"
+                        class="cursor-pointer inline-flex w-12 shrink-0 items-center justify-center border-l border-slate-200 bg-slate-50 text-slate-600 transition hover:bg-blue-50 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-blue-900/30 dark:hover:text-blue-300"
+                        aria-label="Bo'lim qo'shish"
+                    >
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <p id="departmentHelp" class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ org_assignment_department_help }}</p>
+        </div>
+        <div>
+            <label for="positionSearch" class="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100">{{ t.position }}</label>
+            <div class="overflow-visible rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                <div class="flex items-stretch">
+                    <div class="relative min-w-0 flex-1">
+                        <input type="hidden" id="positionId" value="{{ org_assignment_position_id }}">
+                        <input
+                            type="text"
+                            id="positionSearch"
+                            value="{{ org_assignment_position_name }}"
+                            autocomplete="off"
+                            placeholder="Lavozimni qidiring yoki tanlang"
+                            class="block w-full border-0 bg-transparent px-4 py-3 text-sm text-slate-900 focus:ring-0 disabled:cursor-not-allowed disabled:text-slate-400 dark:text-white dark:disabled:text-slate-500"
+                        >
+                        <div id="positionDropdown" class="hidden absolute left-2 right-2 top-full z-30 mt-2 max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800"></div>
+                    </div>
+                    <button
+                        type="button"
+                        id="addPositionBtn"
+                        class="cursor-pointer inline-flex w-12 shrink-0 items-center justify-center border-l border-slate-200 bg-slate-50 text-slate-600 transition hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-blue-900/30 dark:hover:text-blue-300 dark:disabled:bg-slate-800 dark:disabled:text-slate-600"
+                        aria-label="Lavozim qo'shish"
+                    >
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <p id="positionHelp" class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ org_assignment_position_help }}</p>
+        </div>
+    </div>
+</div>
