@@ -31,6 +31,7 @@ cookies.txt
 isup_log.txt
 isup_err.txt
 isup_trigger.txt
+CAMERA_RAW_LOG.txt
 
 # Generated uploads
 static/uploads/

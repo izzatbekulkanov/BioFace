@@ -222,6 +222,8 @@ def ensure_schema() -> bool:
                     conn.execute(text("ALTER TABLE employees ADD COLUMN department_id INTEGER"))
                 if "position_id" not in emp_cols:
                     conn.execute(text("ALTER TABLE employees ADD COLUMN position_id INTEGER"))
+                if "schedule_id" not in emp_cols:
+                    conn.execute(text("ALTER TABLE employees ADD COLUMN schedule_id INTEGER"))
                 conn.execute(
                     text(
                         "CREATE UNIQUE INDEX IF NOT EXISTS ux_employees_personal_id "
@@ -231,6 +233,7 @@ def ensure_schema() -> bool:
                 )
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_employees_department_id ON employees (department_id)"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_employees_position_id ON employees (position_id)"))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_employees_schedule_id ON employees (schedule_id)"))
 
             if "departments" not in inspector.get_table_names():
                 conn.execute(
@@ -395,6 +398,94 @@ def ensure_schema() -> bool:
                     )
                 )
 
+            if "schedules" not in inspector.get_table_names():
+                conn.execute(
+                    text(
+                        """
+                        CREATE TABLE IF NOT EXISTS schedules (
+                            id INTEGER PRIMARY KEY,
+                            name VARCHAR NOT NULL,
+                            start_time VARCHAR NOT NULL DEFAULT '09:00',
+                            end_time VARCHAR NOT NULL DEFAULT '18:00',
+                            is_flexible BOOLEAN DEFAULT 0,
+                            organization_id INTEGER NOT NULL,
+                            created_at DATETIME,
+                            updated_at DATETIME,
+                            FOREIGN KEY(organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+                        )
+                        """
+                    )
+                )
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_schedules_organization_id ON schedules (organization_id)"))
+            conn.execute(
+                text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS ux_schedules_org_name_ci "
+                    "ON schedules (organization_id, lower(trim(name)))"
+                )
+            )
+            conn.execute(
+                text(
+                    """
+                    INSERT OR IGNORE INTO schedules (name, start_time, end_time, is_flexible, organization_id, created_at, updated_at)
+                    SELECT
+                        'Asosiy smena',
+                        COALESCE(NULLIF(trim(default_start_time), ''), '09:00'),
+                        COALESCE(NULLIF(trim(default_end_time), ''), '18:00'),
+                        0,
+                        id,
+                        CURRENT_TIMESTAMP,
+                        CURRENT_TIMESTAMP
+                    FROM organizations
+                    WHERE id IS NOT NULL
+                    """
+                )
+            )
+            if "employees" in inspector.get_table_names():
+                conn.execute(
+                    text(
+                        """
+                        UPDATE employees
+                        SET schedule_id = (
+                            SELECT schedules.id
+                            FROM schedules
+                            WHERE schedules.organization_id = employees.organization_id
+                            ORDER BY CASE WHEN lower(trim(schedules.name)) = 'asosiy smena' THEN 0 ELSE 1 END, schedules.id
+                            LIMIT 1
+                        )
+                        WHERE employees.organization_id IS NOT NULL
+                          AND employees.schedule_id IS NULL
+                          AND COALESCE(trim(employees.start_time), '') = ''
+                          AND COALESCE(trim(employees.end_time), '') = ''
+                        """
+                    )
+                )
+
+            if "holidays" not in inspector.get_table_names():
+                conn.execute(
+                    text(
+                        """
+                        CREATE TABLE IF NOT EXISTS holidays (
+                            id INTEGER PRIMARY KEY,
+                            title VARCHAR NOT NULL,
+                            date DATE NOT NULL,
+                            organization_id INTEGER,
+                            is_weekend BOOLEAN DEFAULT 0,
+                            created_at DATETIME,
+                            updated_at DATETIME,
+                            FOREIGN KEY(organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+                        )
+                        """
+                    )
+                )
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_holidays_date ON holidays (date)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_holidays_organization_id ON holidays (organization_id)"))
+            conn.execute(
+                text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS ux_holidays_scope_date_title "
+                    "ON holidays (ifnull(organization_id, 0), date, lower(trim(title)))"
+                )
+            )
+
             if "attendance_logs" in inspector.get_table_names():
                 attendance_cols = {c["name"] for c in inspector.get_columns("attendance_logs")}
                 if "wellbeing_note_uz" not in attendance_cols:
@@ -511,6 +602,69 @@ def ensure_schema() -> bool:
                 text(
                     "CREATE INDEX IF NOT EXISTS ix_telegram_user_bindings_employee_id "
                     "ON telegram_user_bindings (employee_id)"
+                )
+            )
+
+            if "telegram_contacts" not in inspector.get_table_names():
+                conn.execute(
+                    text(
+                        """
+                        CREATE TABLE IF NOT EXISTS telegram_contacts (
+                            id INTEGER PRIMARY KEY,
+                            employee_id INTEGER NOT NULL,
+                            telegram_chat_id VARCHAR NOT NULL,
+                            label VARCHAR,
+                            language VARCHAR NOT NULL DEFAULT 'uz',
+                            is_active BOOLEAN DEFAULT 1,
+                            created_at DATETIME,
+                            updated_at DATETIME,
+                            FOREIGN KEY(employee_id) REFERENCES employees(id) ON DELETE CASCADE
+                        )
+                        """
+                    )
+                )
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_telegram_contacts_employee_id ON telegram_contacts (employee_id)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_telegram_contacts_chat_id ON telegram_contacts (telegram_chat_id)"))
+            conn.execute(
+                text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS ux_telegram_contacts_emp_chat "
+                    "ON telegram_contacts (employee_id, telegram_chat_id)"
+                )
+            )
+
+            if "attendance_notification_logs" not in inspector.get_table_names():
+                conn.execute(
+                    text(
+                        """
+                        CREATE TABLE IF NOT EXISTS attendance_notification_logs (
+                            id INTEGER PRIMARY KEY,
+                            employee_id INTEGER NOT NULL,
+                            target_date DATE NOT NULL,
+                            notification_type VARCHAR NOT NULL DEFAULT 'missed_shift',
+                            schedule_id INTEGER,
+                            sent_at DATETIME,
+                            FOREIGN KEY(employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+                            FOREIGN KEY(schedule_id) REFERENCES schedules(id) ON DELETE SET NULL
+                        )
+                        """
+                    )
+                )
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_attendance_notification_logs_employee_id "
+                    "ON attendance_notification_logs (employee_id)"
+                )
+            )
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_attendance_notification_logs_target_date "
+                    "ON attendance_notification_logs (target_date)"
+                )
+            )
+            conn.execute(
+                text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS ux_attendance_notification_logs_unique "
+                    "ON attendance_notification_logs (employee_id, target_date, notification_type)"
                 )
             )
 

@@ -2,6 +2,7 @@ import os
 import time
 
 from access_control import resolve_menu_key_for_path, resolve_user_menu_permissions, user_has_menu_access
+from attendance_monitor import start_attendance_monitor, stop_attendance_monitor
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
@@ -11,7 +12,7 @@ from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 import models
 from database import engine, ensure_schema, SessionLocal
 from models import RequestLog
-from routers import auth, pages, webhook, cameras, employees, settings, organizations, users, system_monitor
+from routers import auth, pages, webhook, cameras, employees, settings, organizations, users, system_monitor, planning
 from time_utils import now_tashkent
 
 # Jadvallarni yaratish
@@ -175,6 +176,16 @@ app.add_middleware(
 
 app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 
+
+@app.on_event("startup")
+async def startup_background_services():
+    start_attendance_monitor()
+
+
+@app.on_event("shutdown")
+async def shutdown_background_services():
+    stop_attendance_monitor()
+
 # --- Routerlarni ulaymiz ---
 app.include_router(auth.router, tags=["Auth"])
 app.include_router(pages.router, tags=["Pages"])
@@ -185,3 +196,4 @@ app.include_router(settings.router, tags=["Settings API"])
 app.include_router(organizations.router, tags=["Organizations API"])
 app.include_router(users.router, tags=["Users API"])
 app.include_router(system_monitor.router, tags=["System Monitor API"])
+app.include_router(planning.router, tags=["Planning API"])

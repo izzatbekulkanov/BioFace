@@ -10,7 +10,7 @@ from sqlalchemy import String, and_, cast, exists, false, func, or_, true
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import Department, Device, Employee, EmployeeCameraLink, Organization, Position, UserOrganizationLink
+from models import Department, Device, Employee, EmployeeCameraLink, Organization, Position, Schedule, UserOrganizationLink
 from routers.employees_parts.catalogs import (
     UNSET,
     get_catalog_items_for_org,
@@ -41,6 +41,7 @@ from routers.cameras import (
     _resolve_online_command_target,
     _send_isup_command_or_raise,
 )
+from schedule_utils import resolve_employee_schedule
 
 router = APIRouter()
 
@@ -69,6 +70,7 @@ def _resolve_employee_allowed_org_ids(request: Request, db: Session) -> list[int
 
 
 def _serialize_employee_record(employee: Employee, org_map: dict[int, str], cam_map: dict[int, str], camera_map: dict[int, list[int]]) -> dict:
+    schedule_payload = resolve_employee_schedule(employee)
     return {
         "id": employee.id,
         "personal_id": employee.personal_id,
@@ -85,12 +87,44 @@ def _serialize_employee_record(employee: Employee, org_map: dict[int, str], cam_
         "added_date": employee.created_at.strftime("%Y-%m-%d") if employee.created_at else "",
         "start_time": employee.start_time,
         "end_time": employee.end_time,
+        "effective_start_time": schedule_payload.get("start_time"),
+        "effective_end_time": schedule_payload.get("end_time"),
+        "schedule_id": employee.schedule_id,
+        "schedule_name": schedule_payload.get("schedule_name"),
+        "schedule_is_flexible": bool(schedule_payload.get("is_flexible")),
+        "schedule_source": schedule_payload.get("source"),
         "avatar": employee.image_url or "",
         "organization_id": employee.organization_id,
         "organization_name": org_map.get(int(employee.organization_id)) if employee.organization_id is not None else None,
         "camera_ids": camera_map.get(int(employee.id), []),
         "camera_names": [cam_map[cam_id] for cam_id in camera_map.get(int(employee.id), []) if cam_id in cam_map],
     }
+
+
+def _resolve_schedule_selection(
+    db: Session,
+    *,
+    organization_id: Optional[int],
+    schedule_id_raw: Optional[str],
+    allow_unset: bool = False,
+):
+    if schedule_id_raw is None:
+        return UNSET if allow_unset else None
+
+    raw = str(schedule_id_raw or "").strip()
+    if not raw:
+        return None
+
+    schedule_id = parse_optional_positive_int(raw, field_label="Smena")
+    if schedule_id is None:
+        return None
+
+    schedule = db.query(Schedule).filter(Schedule.id == int(schedule_id)).first()
+    if schedule is None:
+        raise HTTPException(status_code=422, detail="Tanlangan smena topilmadi")
+    if organization_id is not None and int(schedule.organization_id) != int(organization_id):
+        raise HTTPException(status_code=422, detail="Tanlangan smena boshqa tashkilotga tegishli")
+    return schedule
 
 
 def _build_employee_payload(db: Session, employees: list[Employee], allowed_org_ids: list[int]) -> list[dict]:
@@ -1307,6 +1341,7 @@ def create_employee(
     last_name: str = Form(...),
     middle_name: Optional[str] = Form(None),
     personal_id: Optional[str] = Form(None),
+    schedule_id: Optional[str] = Form(None),
     department_id: Optional[str] = Form(None),
     position_id: Optional[str] = Form(None),
     department: Optional[str] = Form(None),
@@ -1322,6 +1357,13 @@ def create_employee(
     parsed_camera_ids = parse_camera_ids(camera_ids)
     normalized_employee_type = normalize_employee_type(employee_type)
     resolved_org_id = resolve_effective_org_id(request, db, organization_id)
+    schedule_item = _resolve_schedule_selection(
+        db,
+        organization_id=resolved_org_id,
+        schedule_id_raw=schedule_id,
+    )
+    if isinstance(schedule_item, Schedule) and resolved_org_id is None:
+        resolved_org_id = int(schedule_item.organization_id)
 
     normalized_personal_id = normalize_personal_id(personal_id)
     if normalized_personal_id is None:
@@ -1359,6 +1401,7 @@ def create_employee(
         last_name=last_name,
         middle_name=(middle_name.strip() if middle_name else None),
         personal_id=normalized_personal_id,
+        schedule_id=int(schedule_item.id) if isinstance(schedule_item, Schedule) else None,
         department_id=int(department_item.id) if isinstance(department_item, Department) else None,
         department=department_item.name if isinstance(department_item, Department) else None,
         position_id=int(position_item.id) if isinstance(position_item, Position) else None,
@@ -1385,6 +1428,7 @@ def create_employee(
         "ok": True,
         "id": new_emp.id,
         "personal_id": new_emp.personal_id,
+        "schedule_id": new_emp.schedule_id,
         "camera_ids": linked_camera_ids,
         "message": "Xodim qo'shildi",
     }
@@ -1398,6 +1442,7 @@ def update_employee(
     last_name: Optional[str] = Form(None),
     middle_name: Optional[str] = Form(None),
     personal_id: Optional[str] = Form(None),
+    schedule_id: Optional[str] = Form(None),
     department_id: Optional[str] = Form(None),
     position_id: Optional[str] = Form(None),
     department: Optional[str] = Form(None),
@@ -1457,6 +1502,24 @@ def update_employee(
         resolved_org_id = resolve_effective_org_id(request, db, organization_id)
         emp.organization_id = resolved_org_id
     org_changed = resolved_org_id != original_org_id
+
+    schedule_item = _resolve_schedule_selection(
+        db,
+        organization_id=resolved_org_id,
+        schedule_id_raw=schedule_id,
+        allow_unset=True,
+    )
+    if isinstance(schedule_item, Schedule) and resolved_org_id is None:
+        resolved_org_id = int(schedule_item.organization_id)
+        emp.organization_id = resolved_org_id
+        org_changed = resolved_org_id != original_org_id
+    if schedule_item is UNSET:
+        if org_changed and emp.schedule_id is not None:
+            current_schedule = db.query(Schedule).filter(Schedule.id == int(emp.schedule_id)).first()
+            if current_schedule is None or int(current_schedule.organization_id) != int(resolved_org_id or 0):
+                emp.schedule_id = None
+    else:
+        emp.schedule_id = int(schedule_item.id) if isinstance(schedule_item, Schedule) else None
 
     department_item = resolve_department_selection(
         db,
@@ -1591,6 +1654,7 @@ def update_employee(
     payload = {"ok": True, "message": "Xodim yangilandi"}
     if linked_camera_ids is not None:
         payload["camera_ids"] = linked_camera_ids
+    payload["schedule_id"] = emp.schedule_id
     if camera_sync is not None:
         payload["camera_sync"] = camera_sync
     return payload

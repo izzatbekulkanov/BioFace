@@ -1,6 +1,6 @@
 import enum
 from datetime import datetime, timezone
-from sqlalchemy import CheckConstraint, Column, Integer, String, Boolean, DateTime, ForeignKey, Float, Enum as SQLEnum
+from sqlalchemy import CheckConstraint, Column, Integer, String, Boolean, DateTime, ForeignKey, Float, Date, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 
 from database import Base
@@ -47,6 +47,8 @@ class Organization(Base):
     employees = relationship("Employee", back_populates="organization", cascade="all, delete")
     departments = relationship("Department", back_populates="organization", cascade="all, delete")
     positions = relationship("Position", back_populates="organization", cascade="all, delete")
+    schedules = relationship("Schedule", back_populates="organization", cascade="all, delete")
+    holidays = relationship("Holiday", back_populates="organization", cascade="all, delete")
 
 
 class User(Base):
@@ -116,6 +118,7 @@ class Employee(Base):
     position = Column(String, nullable=True)
     department_id = Column(Integer, ForeignKey("departments.id"), nullable=True, index=True)
     position_id = Column(Integer, ForeignKey("positions.id"), nullable=True, index=True)
+    schedule_id = Column(Integer, ForeignKey("schedules.id"), nullable=True, index=True)
     employee_type = Column(String, nullable=True)  # oquvchi, oqituvchi, hodim
     image_url = Column(String, nullable=True)
     has_access = Column(Boolean, default=True)
@@ -126,10 +129,12 @@ class Employee(Base):
     organization = relationship("Organization", back_populates="employees")
     department_ref = relationship("Department", back_populates="employees")
     position_ref = relationship("Position", back_populates="employees")
+    schedule = relationship("Schedule", back_populates="employees")
     attendance_logs = relationship("AttendanceLog", back_populates="employee", cascade="all, delete")
     camera_links = relationship("EmployeeCameraLink", back_populates="employee", cascade="all, delete")
     wellbeing_notes = relationship("EmployeeWellbeingNote", back_populates="employee", cascade="all, delete")
     psychological_states = relationship("EmployeePsychologicalState", back_populates="employee", cascade="all, delete")
+    telegram_contacts = relationship("TelegramContact", back_populates="employee", cascade="all, delete")
 
 
 class Department(Base):
@@ -155,6 +160,21 @@ class Position(Base):
     organization = relationship("Organization", back_populates="positions")
     department = relationship("Department", back_populates="positions")
     employees = relationship("Employee", back_populates="position_ref")
+
+
+class Schedule(Base):
+    __tablename__ = "schedules"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    start_time = Column(String, nullable=False, default="09:00")
+    end_time = Column(String, nullable=False, default="18:00")
+    is_flexible = Column(Boolean, default=False)
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False, index=True)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, nullable=False)
+
+    organization = relationship("Organization", back_populates="schedules")
+    employees = relationship("Employee", back_populates="schedule")
 
 
 class TelegramUserBinding(Base):
@@ -239,6 +259,43 @@ class EmployeePsychologicalState(Base):
     updated_at = Column(DateTime, default=utc_now, nullable=False)
 
     employee = relationship("Employee", back_populates="psychological_states")
+
+
+class Holiday(Base):
+    __tablename__ = "holidays"
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    date = Column(Date, nullable=False, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True, index=True)
+    is_weekend = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, nullable=False)
+
+    organization = relationship("Organization", back_populates="holidays")
+
+
+class TelegramContact(Base):
+    __tablename__ = "telegram_contacts"
+    id = Column(Integer, primary_key=True, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False, index=True)
+    telegram_chat_id = Column(String, nullable=False, index=True)
+    label = Column(String, nullable=True)
+    language = Column(String, nullable=False, default="uz")
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, nullable=False)
+
+    employee = relationship("Employee", back_populates="telegram_contacts")
+
+
+class AttendanceNotificationLog(Base):
+    __tablename__ = "attendance_notification_logs"
+    id = Column(Integer, primary_key=True, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False, index=True)
+    target_date = Column(Date, nullable=False, index=True)
+    notification_type = Column(String, nullable=False, index=True, default="missed_shift")
+    schedule_id = Column(Integer, ForeignKey("schedules.id"), nullable=True, index=True)
+    sent_at = Column(DateTime, default=utc_now, nullable=False)
 
 
 

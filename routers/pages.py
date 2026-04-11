@@ -5,7 +5,7 @@ from fastapi import APIRouter, Request, Depends
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import and_, func, or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from access_control import (
     build_permission_groups,
     filter_menu_structure_by_permissions,
@@ -37,6 +37,7 @@ from routers.cameras_parts.psychology_utils import (
     state_labels,
 )
 from time_utils import now_tashkent, today_tashkent_range
+from schedule_utils import get_attendance_deadline, get_late_minutes, is_holiday_for_org, resolve_employee_schedule
 from system_config import (
     ISUP_ALARM_PORT,
     ISUP_API_PORT,
@@ -247,6 +248,7 @@ def _build_reports_rows(
 
     employees_query = (
         db.query(Employee)
+        .options(selectinload(Employee.organization), selectinload(Employee.schedule))
         .outerjoin(Employee.organization)
         .filter(Employee.organization_id.in_(allowed_org_ids))
     )
@@ -285,9 +287,11 @@ def _build_reports_rows(
         emp_id = int(emp.id)
         first_log = first_log_by_emp.get(emp_id)
         org = emp.organization
+        if is_holiday_for_org(db, target_day_start.date(), emp.organization_id):
+            continue
 
-        org_start = (org.default_start_time if org and org.default_start_time else "09:00")
-        start_h, start_m = _parse_hhmm_or_default(emp.start_time or org_start, 9, 0)
+        schedule_payload = resolve_employee_schedule(emp)
+        start_h, start_m = _parse_hhmm_or_default(schedule_payload.get("start_time"), 9, 0)
         expected_start = target_day_start.replace(hour=start_h, minute=start_m, second=0, microsecond=0)
 
         status_key = "absent"
@@ -295,9 +299,9 @@ def _build_reports_rows(
         delay_minutes = 0
         if first_log and first_log.timestamp:
             arrival_time = first_log.timestamp
-            if first_log.timestamp > expected_start:
+            delay_minutes = get_late_minutes(emp, target_day_start, first_log.timestamp)
+            if delay_minutes > 0:
                 status_key = "late"
-                delay_minutes = int((first_log.timestamp - expected_start).total_seconds() / 60)
             else:
                 continue
 
@@ -352,8 +356,10 @@ def _build_reports_rows(
             continue
 
         org = emp.organization
-        org_start = (org.default_start_time if org and org.default_start_time else "09:00")
-        start_h, start_m = _parse_hhmm_or_default(emp.start_time or org_start, 9, 0)
+        if is_holiday_for_org(db, target_day_start.date(), emp.organization_id):
+            continue
+        schedule_payload = resolve_employee_schedule(emp)
+        start_h, start_m = _parse_hhmm_or_default(schedule_payload.get("start_time"), 9, 0)
         expected_start = target_day_start.replace(hour=start_h, minute=start_m, second=0, microsecond=0)
         full_name = f"{emp.first_name} {emp.middle_name or ''} {emp.last_name}".replace("  ", " ").strip()
         search_text = " ".join([
@@ -671,6 +677,7 @@ def _build_shifts_page_payload(request: Request, db: Session, lang: str) -> tupl
 
     employees = (
         db.query(Employee)
+        .options(selectinload(Employee.organization), selectinload(Employee.schedule))
         .filter(Employee.organization_id.in_(active_org_ids))
         .order_by(
             func.lower(func.coalesce(Employee.first_name, "")).asc(),
@@ -687,16 +694,20 @@ def _build_shifts_page_payload(request: Request, db: Session, lang: str) -> tupl
     }
     rows: list[dict] = []
     custom_shift_count = 0
+    schedule_shift_count = 0
     default_shift_count = 0
     for emp in employees:
         org = emp.organization
-        org_start = str(org.default_start_time or "09:00") if org else "09:00"
-        org_end = str(org.default_end_time or "18:00") if org else "18:00"
-        start_time = str(emp.start_time or org_start or "09:00")
-        end_time = str(emp.end_time or org_end or "18:00")
-        is_custom = bool(str(emp.start_time or "").strip() or str(emp.end_time or "").strip())
-        if is_custom:
+        schedule_payload = resolve_employee_schedule(emp)
+        org_start = str(schedule_payload.get("default_start_time") or "09:00")
+        org_end = str(schedule_payload.get("default_end_time") or "18:00")
+        start_time = str(schedule_payload.get("start_time") or org_start or "09:00")
+        end_time = str(schedule_payload.get("end_time") or org_end or "18:00")
+        source = str(schedule_payload.get("source") or "organization_default")
+        if source == "employee_override":
             custom_shift_count += 1
+        elif source == "schedule":
+            schedule_shift_count += 1
         else:
             default_shift_count += 1
 
@@ -718,13 +729,29 @@ def _build_shifts_page_payload(request: Request, db: Session, lang: str) -> tupl
             "end_time": end_time,
             "default_start_time": org_start,
             "default_end_time": org_end,
-            "shift_source": "custom" if is_custom else "organization",
-            "shift_source_label": "Персональная" if is_custom and lang == "ru" else ("Shaxsiy" if is_custom else ("Организация" if lang == "ru" else "Tashkilot")),
+            "schedule_id": schedule_payload.get("schedule_id"),
+            "schedule_name": schedule_payload.get("schedule_name"),
+            "schedule_is_flexible": bool(schedule_payload.get("is_flexible")),
+            "shift_source": "custom" if source == "employee_override" else ("schedule" if source == "schedule" else "organization"),
+            "shift_source_label": (
+                "Персональная"
+                if source == "employee_override" and lang == "ru"
+                else "Shaxsiy"
+                if source == "employee_override"
+                else "Смена"
+                if source == "schedule" and lang == "ru"
+                else "Smena"
+                if source == "schedule"
+                else "Организация"
+                if lang == "ru"
+                else "Tashkilot"
+            ),
         })
 
     return organizations, rows, {
         "total_employees": len(rows),
         "custom_shift_count": custom_shift_count,
+        "schedule_shift_count": schedule_shift_count,
         "default_shift_count": default_shift_count,
         "organization_count": len(organizations),
     }
@@ -753,14 +780,6 @@ def get_notifications(request: Request, db: Session) -> dict:
         return {"late": 0, "absent": 0, "total": 0}
 
     today_start, _ = today_tashkent_range()
-    org_defaults = {
-        int(row.id): _parse_hhmm_or_default(row.default_start_time)
-        for row in (
-            db.query(Organization.id, Organization.default_start_time)
-            .filter(Organization.id.in_(allowed_org_ids))
-            .all()
-        )
-    }
 
     todays_first_logs = (
         db.query(AttendanceLog)
@@ -791,18 +810,15 @@ def get_notifications(request: Request, db: Session) -> dict:
             if log.device and log.device.organization_id is not None
             else None
         )
-        expected_h, expected_m = org_defaults.get(org_id, (9, 0))
-        if emp.start_time:
-            expected_h, expected_m = _parse_hhmm_or_default(emp.start_time, expected_h, expected_m)
-
-        expected_time = log.timestamp.replace(hour=expected_h, minute=expected_m, second=0, microsecond=0)
-        if log.timestamp > expected_time:
-            delay = int((log.timestamp - expected_time).total_seconds() // 60)
-            if delay > 0:
-                late_count += 1
+        if is_holiday_for_org(db, today_start.date(), org_id):
+            continue
+        delay = get_late_minutes(emp, today_start, log.timestamp)
+        if delay > 0:
+            late_count += 1
 
     all_emps = (
         db.query(Employee)
+        .options(selectinload(Employee.organization), selectinload(Employee.schedule))
         .filter(
             Employee.has_access.is_(True),
             Employee.organization_id.in_(allowed_org_ids),
@@ -811,17 +827,13 @@ def get_notifications(request: Request, db: Session) -> dict:
     )
     absent_count = 0
     local_now = now_tashkent()
-    local_now_time = local_now.time()
     for emp in all_emps:
         if emp.id in seen_emps:
             continue
-
-        org_id = int(emp.organization_id) if emp.organization_id is not None else None
-        expected_h, expected_m = org_defaults.get(org_id, (9, 0))
-        if emp.start_time:
-            expected_h, expected_m = _parse_hhmm_or_default(emp.start_time, expected_h, expected_m)
-
-        if local_now_time > datetime(2000, 1, 1, expected_h, expected_m).time():
+        if is_holiday_for_org(db, today_start.date(), emp.organization_id):
+            continue
+        deadline = get_attendance_deadline(emp, today_start.date())
+        if local_now >= deadline:
             absent_count += 1
 
     return {
@@ -874,13 +886,9 @@ def _build_dashboard_metrics(request: Request, db: Session) -> dict:
         return base_payload
 
     org_ids = [int(row.id) for row in org_rows]
-    org_defaults = {
-        int(row.id): _parse_hhmm_or_default(row.default_start_time)
-        for row in org_rows
-    }
-
     employees = (
-        db.query(Employee.id, Employee.organization_id, Employee.has_access, Employee.start_time)
+        db.query(Employee)
+        .options(selectinload(Employee.organization), selectinload(Employee.schedule))
         .filter(Employee.organization_id.in_(org_ids))
         .all()
     )
@@ -915,24 +923,22 @@ def _build_dashboard_metrics(request: Request, db: Session) -> dict:
                 first_logs_by_employee[emp_id] = log
 
     attendance_by_org: dict[int, dict] = defaultdict(lambda: {"present": 0, "absent": 0, "late": 0})
-    now_time = now_tashkent().time()
+    now_local = now_tashkent()
     for emp in employees:
         if not bool(emp.has_access) or emp.organization_id is None:
             continue
         org_id = int(emp.organization_id)
-        expected_h, expected_m = org_defaults.get(org_id, (9, 0))
-        if emp.start_time:
-            expected_h, expected_m = _parse_hhmm_or_default(emp.start_time, expected_h, expected_m)
+        if is_holiday_for_org(db, today_start.date(), org_id):
+            continue
 
         first_log = first_logs_by_employee.get(int(emp.id))
         if first_log and first_log.timestamp:
             attendance_by_org[org_id]["present"] += 1
-            expected_time = first_log.timestamp.replace(hour=expected_h, minute=expected_m, second=0, microsecond=0)
-            if first_log.timestamp > expected_time:
+            if get_late_minutes(emp, today_start, first_log.timestamp) > 0:
                 attendance_by_org[org_id]["late"] += 1
             continue
 
-        if now_time > datetime(2000, 1, 1, expected_h, expected_m).time():
+        if now_local >= get_attendance_deadline(emp, today_start.date()):
             attendance_by_org[org_id]["absent"] += 1
 
     devices = (
@@ -1505,6 +1511,8 @@ def add_employee_page(request: Request, db: Session = Depends(get_db)):
         "organizations": organizations,
         "default_organization_id": default_organization_id,
         "single_organization_mode": len(organizations) == 1,
+        "schedule_selected_id": "",
+        "schedule_help": "Avval tashkilotni tanlang.",
         "cameras": db.query(Device).order_by(Device.name).all(),
         "employee_form_title": employee_form_title,
         "employee_form_description": employee_form_description,
@@ -1532,6 +1540,7 @@ def employee_profile_page(request: Request, emp_id: int, db: Session = Depends(g
     lang = request.cookies.get("lang", "uz")
     t = get_translations(lang)
     page_title = f"{emp.first_name} {emp.last_name} - Profil"
+    schedule_payload = resolve_employee_schedule(emp)
     return templates.TemplateResponse(request=request, name="employee_profile.html", context={
         "request": request,
         "page_title": page_title,
@@ -1539,6 +1548,7 @@ def employee_profile_page(request: Request, emp_id: int, db: Session = Depends(g
         "t": t,
         "lang": lang,
         "emp": emp,
+        "schedule_payload": schedule_payload,
         "linked_cameras": [
             {
                 "id": int(row[0]),
@@ -1586,6 +1596,8 @@ def edit_employee_page(request: Request, emp_id: int, db: Session = Depends(get_
         "organizations": organizations,
         "default_organization_id": default_organization_id,
         "single_organization_mode": len(organizations) == 1,
+        "schedule_selected_id": int(emp.schedule_id) if emp.schedule_id is not None else "",
+        "schedule_help": "Tashkilot uchun smenalar yuklanadi.",
         "cameras": db.query(Device).order_by(Device.name).all(),
         "notifs": get_notifications(request, db),
     })

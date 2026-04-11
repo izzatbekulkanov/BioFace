@@ -17,6 +17,7 @@ from routers.employees_parts.common import (
     normalize_wellbeing_note_source,
     serialize_psychological_state_row,
 )
+from schedule_utils import get_late_minutes, is_holiday_for_org, resolve_employee_schedule
 
 router = APIRouter()
 
@@ -57,16 +58,14 @@ def _humanize_seconds(total_seconds: int) -> str:
 def _build_lateness_period(
     db: Session,
     *,
-    employee_id: int,
+    employee: Employee,
     start_dt: datetime,
     end_dt: datetime,
-    expected_hour: int,
-    expected_minute: int,
 ) -> dict[str, Any]:
     logs = (
         db.query(AttendanceLog)
         .filter(
-            AttendanceLog.employee_id == int(employee_id),
+            AttendanceLog.employee_id == int(employee.id),
             AttendanceLog.timestamp >= start_dt,
             AttendanceLog.timestamp < end_dt,
         )
@@ -91,8 +90,9 @@ def _build_lateness_period(
             base = datetime.strptime(day_key, "%Y-%m-%d")
         except Exception:
             continue
-        expected_dt = base.replace(hour=expected_hour, minute=expected_minute)
-        delta = max(0, int((first_seen - expected_dt).total_seconds()))
+        if is_holiday_for_org(db, base.date(), employee.organization_id):
+            continue
+        delta = max(0, int(get_late_minutes(employee, base.date(), first_seen) * 60))
         if delta > 0:
             late_days += 1
             late_seconds += delta
@@ -333,42 +333,32 @@ def get_employee_insights(
     start_this_year = datetime(now.year, 1, 1, 0, 0, 0)
     end_this_year = datetime(now.year + 1, 1, 1, 0, 0, 0)
 
-    org_start = employee.organization.default_start_time if employee.organization else "09:00"
-    default_h, default_m = _parse_hhmm(org_start, 9, 0)
-    expected_h, expected_m = _parse_hhmm(employee.start_time, default_h, default_m)
+    schedule_payload = resolve_employee_schedule(employee)
 
     lateness = {
         "this_month": _build_lateness_period(
             db,
-            employee_id=int(employee.id),
+            employee=employee,
             start_dt=start_this_month,
             end_dt=end_this_month,
-            expected_hour=expected_h,
-            expected_minute=expected_m,
         ),
         "prev_month": _build_lateness_period(
             db,
-            employee_id=int(employee.id),
+            employee=employee,
             start_dt=start_prev_month,
             end_dt=end_prev_month,
-            expected_hour=expected_h,
-            expected_minute=expected_m,
         ),
         "prev_prev_month": _build_lateness_period(
             db,
-            employee_id=int(employee.id),
+            employee=employee,
             start_dt=start_prev_prev_month,
             end_dt=end_prev_prev_month,
-            expected_hour=expected_h,
-            expected_minute=expected_m,
         ),
         "this_year": _build_lateness_period(
             db,
-            employee_id=int(employee.id),
+            employee=employee,
             start_dt=start_this_year,
             end_dt=end_this_year,
-            expected_hour=expected_h,
-            expected_minute=expected_m,
         ),
     }
 
@@ -403,8 +393,8 @@ def get_employee_insights(
                 "employee_department": str(employee.department or ""),
                 "employee_position": str(employee.position or ""),
                 "employee_has_access": bool(employee.has_access),
-                "employee_start_time": str(employee.start_time or ""),
-                "employee_end_time": str(employee.end_time or ""),
+                "employee_start_time": str(schedule_payload.get("start_time") or ""),
+                "employee_end_time": str(schedule_payload.get("end_time") or ""),
                 "employee_organization": str(employee.organization.name if employee.organization else ""),
                 "attendance_events": logs_count,
                 "last_seen_at": latest_log.timestamp.isoformat() if latest_log and latest_log.timestamp else None,
@@ -469,7 +459,7 @@ def get_employee_insights(
         "employee": {
             "id": int(employee.id),
             "personal_id": str(employee.personal_id or ""),
-            "expected_start_time": f"{expected_h:02d}:{expected_m:02d}",
+            "expected_start_time": str(schedule_payload.get("start_time") or "09:00"),
         },
         "camera": {
             "linked_count": len(camera_items),
@@ -485,5 +475,4 @@ def get_employee_insights(
         },
         "lateness": lateness,
     }
-
 

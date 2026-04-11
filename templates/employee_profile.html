@@ -53,6 +53,10 @@
             </div>
         </div>
         <div class="flex gap-2">
+            <button id="openTelegramContactsBtn" type="button" class="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-300 dark:hover:bg-emerald-900/30">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 4L3 11.5l7 2.2M21 4l-4.8 16-6.2-6.3M21 4L10 13.7"/></svg>
+                Telegram
+            </button>
             <a href="/employees/{{ emp.id }}/edit" class="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                 {{ t.edit }}
@@ -109,7 +113,16 @@
                 </div>
                 <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/70">
                     <span class="text-gray-500 dark:text-gray-400">Ish jadvali</span>
-                    <b class="text-gray-900 dark:text-gray-100">{{ emp.start_time or "09:00" }} - {{ emp.end_time or "18:00" }}</b>
+                    <b class="text-gray-900 dark:text-gray-100">{{ schedule_payload.start_time or "09:00" }} - {{ schedule_payload.end_time or "18:00" }}</b>
+                </div>
+                <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/70">
+                    <span class="text-gray-500 dark:text-gray-400">Smena</span>
+                    <b class="text-gray-900 dark:text-gray-100">
+                        {{ schedule_payload.schedule_name or "Tashkilot default" }}
+                        {% if schedule_payload.is_flexible %}
+                        <span class="ml-2 rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">Erkin</span>
+                        {% endif %}
+                    </b>
                 </div>
                 <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/70">
                     <span class="text-gray-500 dark:text-gray-400">Status</span>
@@ -797,6 +810,199 @@ async function loadLogs(page = 1) {
     }
 }
 
+function telegramContactTone(isActive) {
+    return isActive
+        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+        : 'bg-slate-100 text-slate-700 dark:bg-slate-700/70 dark:text-slate-200';
+}
+
+function buildTelegramContactsModal() {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'space-y-4';
+    wrapper.innerHTML = `
+        <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-300">
+            Telegram observer kontaktlarini shu yerdan boshqaring. Har bir aktiv kontakt smena o'tib ketib kelinmasa neytral bildirishnoma oladi.
+        </div>
+        <form id="telegramContactForm" class="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+            <input type="hidden" id="telegramContactId" value="">
+            <div>
+                <label class="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100">Telegram chat ID</label>
+                <input id="telegramChatId" type="text" class="block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white" placeholder="Masalan: 123456789">
+            </div>
+            <div class="grid gap-3 sm:grid-cols-2">
+                <div>
+                    <label class="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100">Label</label>
+                    <input id="telegramContactLabel" type="text" class="block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white" placeholder="Masalan: Direktor">
+                </div>
+                <div>
+                    <label class="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100">Til</label>
+                    <select id="telegramContactLanguage" class="block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                        <option value="uz">O'zbekcha</option>
+                        <option value="ru">Русский</option>
+                    </select>
+                </div>
+            </div>
+            <label class="inline-flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                <input id="telegramContactActive" type="checkbox" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" checked>
+                Aktiv bildirishnoma olsin
+            </label>
+            <div id="telegramContactError" class="hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300"></div>
+            <div class="flex flex-wrap items-center justify-end gap-2">
+                <button id="telegramContactResetBtn" type="button" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">Tozalash</button>
+                <button id="telegramContactSaveBtn" type="submit" class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700">
+                    <span id="telegramContactSaveSpinner" class="hidden h-4 w-4 animate-spin rounded-full border-2 border-white/35 border-t-white"></span>
+                    <span id="telegramContactSaveText">Saqlash</span>
+                </button>
+            </div>
+        </form>
+        <div>
+            <div class="mb-2 flex items-center justify-between gap-3">
+                <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Bog'langan kontaktlar</h4>
+                <span id="telegramContactsCount" class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">0 ta</span>
+            </div>
+            <div id="telegramContactsList" class="space-y-2">
+                <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-4 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300">Yuklanmoqda...</div>
+            </div>
+        </div>
+    `;
+    return wrapper;
+}
+
+function setTelegramContactError(modalRoot, message) {
+    const errorEl = modalRoot.querySelector('#telegramContactError');
+    if (!errorEl) return;
+    errorEl.textContent = message || '';
+    errorEl.classList.toggle('hidden', !message);
+}
+
+function resetTelegramContactForm(modalRoot, item = null) {
+    modalRoot.querySelector('#telegramContactId').value = item ? String(item.id) : '';
+    modalRoot.querySelector('#telegramChatId').value = item ? String(item.telegram_chat_id || '') : '';
+    modalRoot.querySelector('#telegramContactLabel').value = item ? String(item.label || '') : '';
+    modalRoot.querySelector('#telegramContactLanguage').value = item ? String(item.language || 'uz') : 'uz';
+    modalRoot.querySelector('#telegramContactActive').checked = item ? Boolean(item.is_active) : true;
+    modalRoot.querySelector('#telegramContactSaveText').textContent = item ? 'Yangilash' : 'Saqlash';
+    setTelegramContactError(modalRoot, '');
+}
+
+function renderTelegramContactsList(modalRoot, items) {
+    const listEl = modalRoot.querySelector('#telegramContactsList');
+    const countEl = modalRoot.querySelector('#telegramContactsCount');
+    countEl.textContent = `${items.length} ta`;
+    if (!items.length) {
+        listEl.innerHTML = '<div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-4 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300">Kontakt topilmadi.</div>';
+        return;
+    }
+    listEl.innerHTML = items.map((item) => `
+        <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div class="min-w-0">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">${esc(item.label || 'Kuzatuvchi')}</span>
+                        <span class="rounded-full px-2 py-0.5 text-[11px] font-semibold ${telegramContactTone(Boolean(item.is_active))}">${item.is_active ? 'Aktiv' : 'Nofaol'}</span>
+                        <span class="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">${esc((item.language || 'uz').toUpperCase())}</span>
+                    </div>
+                    <div class="mt-2 text-sm text-slate-600 dark:text-slate-300">${esc(item.telegram_chat_id || '-')}</div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" data-telegram-edit="${item.id}" class="rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-300 dark:hover:bg-amber-900/30">Tahrirlash</button>
+                    <button type="button" data-telegram-delete="${item.id}" class="rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 dark:bg-rose-900/20 dark:text-rose-300 dark:hover:bg-rose-900/30">O'chirish</button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function fetchTelegramContacts(modalRoot) {
+    const listEl = modalRoot.querySelector('#telegramContactsList');
+    listEl.innerHTML = '<div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-4 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300">Yuklanmoqda...</div>';
+    const response = await fetch(`/api/employees/${EMP_ID}/telegram-contacts`);
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || payload.ok === false) {
+        throw new Error(payload.detail || 'Telegram kontaktlarni yuklab bo\'lmadi');
+    }
+    const items = Array.isArray(payload.items) ? payload.items : [];
+    renderTelegramContactsList(modalRoot, items);
+    modalRoot.querySelectorAll('[data-telegram-edit]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const item = items.find((entry) => String(entry.id) === String(button.dataset.telegramEdit));
+            if (item) {
+                resetTelegramContactForm(modalRoot, item);
+                modalRoot.querySelector('#telegramChatId')?.focus();
+            }
+        });
+    });
+    modalRoot.querySelectorAll('[data-telegram-delete]').forEach((button) => {
+        button.addEventListener('click', async () => {
+            if (!confirm('Kontaktni o\'chirishni tasdiqlaysizmi?')) return;
+            const responseDelete = await fetch(`/api/employees/${EMP_ID}/telegram-contacts/${button.dataset.telegramDelete}`, {
+                method: 'DELETE'
+            });
+            const payloadDelete = await responseDelete.json().catch(() => ({}));
+            if (!responseDelete.ok || payloadDelete.ok === false) {
+                setTelegramContactError(modalRoot, payloadDelete.detail || 'Kontaktni o\'chirib bo\'lmadi');
+                return;
+            }
+            await fetchTelegramContacts(modalRoot);
+        });
+    });
+}
+
+async function openTelegramContactsModal() {
+    const modalRoot = buildTelegramContactsModal();
+    window.AppModal?.open({
+        title: 'Telegram observerlar',
+        size: 'xl',
+        bodyNode: modalRoot,
+    });
+    resetTelegramContactForm(modalRoot, null);
+    modalRoot.querySelector('#telegramContactResetBtn')?.addEventListener('click', () => resetTelegramContactForm(modalRoot, null));
+    modalRoot.querySelector('#telegramContactForm')?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const saveBtn = modalRoot.querySelector('#telegramContactSaveBtn');
+        const spinner = modalRoot.querySelector('#telegramContactSaveSpinner');
+        const contactId = String(modalRoot.querySelector('#telegramContactId')?.value || '').trim();
+        const chatId = String(modalRoot.querySelector('#telegramChatId')?.value || '').trim();
+        const payload = {
+            telegram_chat_id: chatId,
+            label: String(modalRoot.querySelector('#telegramContactLabel')?.value || '').trim(),
+            language: String(modalRoot.querySelector('#telegramContactLanguage')?.value || 'uz').trim(),
+            is_active: Boolean(modalRoot.querySelector('#telegramContactActive')?.checked),
+        };
+        if (!payload.telegram_chat_id) {
+            setTelegramContactError(modalRoot, 'Telegram chat ID majburiy');
+            return;
+        }
+        setTelegramContactError(modalRoot, '');
+        saveBtn.disabled = true;
+        spinner.classList.remove('hidden');
+        try {
+            const response = await fetch(
+                contactId
+                    ? `/api/employees/${EMP_ID}/telegram-contacts/${contactId}`
+                    : `/api/employees/${EMP_ID}/telegram-contacts`,
+                {
+                    method: contactId ? 'PUT' : 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                }
+            );
+            const body = await response.json().catch(() => ({}));
+            if (!response.ok || body.ok === false) {
+                throw new Error(body.detail || 'Kontaktni saqlab bo\'lmadi');
+            }
+            resetTelegramContactForm(modalRoot, null);
+            await fetchTelegramContacts(modalRoot);
+        } catch (error) {
+            setTelegramContactError(modalRoot, error.message || 'Kontaktni saqlab bo\'lmadi');
+        } finally {
+            saveBtn.disabled = false;
+            spinner.classList.add('hidden');
+        }
+    });
+    await fetchTelegramContacts(modalRoot);
+}
+
 function initControls() {
     const yearSel = document.getElementById("cal-year");
     const monthSel = document.getElementById("cal-month");
@@ -854,6 +1060,12 @@ function initControls() {
         if (activeCalendarButton) {
             positionCalendarPopover(activeCalendarButton);
         }
+    });
+
+    document.getElementById('openTelegramContactsBtn')?.addEventListener('click', () => {
+        openTelegramContactsModal().catch((error) => {
+            alert(error.message || 'Telegram kontaktlarni ochib bo\'lmadi');
+        });
     });
 }
 

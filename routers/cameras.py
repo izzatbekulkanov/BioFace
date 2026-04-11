@@ -32,6 +32,7 @@ from database import SessionLocal, get_db
 from hikvision_sdk import get_sdk_status
 from isup_manager import get_process_status
 from models import Device, AttendanceLog, Employee, EmployeeWellbeingNote, Organization, EmployeeCameraLink, UserOrganizationLink
+from schedule_utils import get_late_minutes, is_holiday_for_org, resolve_employee_schedule
 from time_utils import now_tashkent, normalize_timestamp_tashkent, today_tashkent_range
 from system_config import (
     ISUP_API_URL,
@@ -3170,15 +3171,21 @@ def _build_today_status_items(
     items: list[dict[str, Any]] = []
     for emp in employees:
         emp_id = int(emp.id)
+        if is_holiday_for_org(db, target_day_start.date(), emp.organization_id):
+            continue
         emp_logs = logs_by_employee.get(emp_id, [])
         first_seen = emp_logs[0].timestamp if emp_logs else None
         last_seen = emp_logs[-1].timestamp if emp_logs else None
 
-        org_start = emp.organization.default_start_time if emp.organization else "09:00"
-        h, m = _parse_hhmm_or_default(emp.start_time or org_start, 9, 0)
-        expected_start = target_day_start.replace(hour=h, minute=m, second=0, microsecond=0)
-        is_late = bool(first_seen and first_seen > expected_start)
-        late_minutes = int((first_seen - expected_start).total_seconds() // 60) if is_late and first_seen else 0
+        schedule_payload = resolve_employee_schedule(emp)
+        expected_start = target_day_start.replace(
+            hour=_parse_hhmm_or_default(schedule_payload.get("start_time"), 9, 0)[0],
+            minute=_parse_hhmm_or_default(schedule_payload.get("start_time"), 9, 0)[1],
+            second=0,
+            microsecond=0,
+        )
+        late_minutes = get_late_minutes(emp, target_day_start.date(), first_seen)
+        is_late = late_minutes > 0
 
         include = False
         if today_status == "came":
@@ -3293,21 +3300,23 @@ def _compute_employee_daily_summary(
         if emp_id not in first_log_by_emp:
             first_log_by_emp[emp_id] = log
 
+    eligible_employees = [
+        emp for emp in employees
+        if not is_holiday_for_org(db, target_day_start.date(), emp.organization_id)
+    ]
+
     came = 0
     came_late = 0
-    for emp in employees:
+    for emp in eligible_employees:
         emp_id = int(emp.id)
         first_log = first_log_by_emp.get(emp_id)
         if not first_log or not first_log.timestamp:
             continue
         came += 1
-        org_start = emp.organization.default_start_time if emp.organization else "09:00"
-        h, m = _parse_hhmm_or_default(emp.start_time or org_start, 9, 0)
-        expected_start = target_day_start.replace(hour=h, minute=m, second=0, microsecond=0)
-        if first_log.timestamp > expected_start:
+        if get_late_minutes(emp, target_day_start.date(), first_log.timestamp) > 0:
             came_late += 1
 
-    total_employees = len(employees)
+    total_employees = len(eligible_employees)
     did_not_come = max(0, total_employees - came)
     return {
         "total_employees": total_employees,
@@ -3525,11 +3534,7 @@ def get_attendance_groups(
                     employee_image_url = f"{base_url}{employee.image_url}" if not employee.image_url.startswith("http") else employee.image_url
                 employee_name = f"{employee.first_name} {employee.last_name}".strip()
                 if row.first_timestamp:
-                    org_start = employee.organization.default_start_time if employee.organization else "09:00"
-                    h, m = _parse_hhmm_or_default(employee.start_time or org_start, 9, 0)
-                    expected_start = row.first_timestamp.replace(hour=h, minute=m, second=0, microsecond=0)
-                    if row.first_timestamp > expected_start:
-                        late_minutes = int((row.first_timestamp - expected_start).total_seconds() // 60)
+                    late_minutes = get_late_minutes(employee, row.first_timestamp.date(), row.first_timestamp)
 
         group_identity = str(row.group_identity or "")
         detail_query = _apply_attendance_filters(

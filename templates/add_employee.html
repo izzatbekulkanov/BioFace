@@ -65,6 +65,7 @@
             {% set org_assignment_position_name = "" %}
             {% set org_assignment_position_help = "Avval bo'limni tanlang." %}
             {% include "employees/partials/org_assignment_fields.html" %}
+            {% include "employees/partials/schedule_fields.html" %}
 
             <div class="col-span-1 md:col-span-2">
                 <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Kameralarni Tanlash (ISUP orqali yuzni yuborish)</label>
@@ -143,6 +144,7 @@
 </div>
 
 <script src="/static/js/employees/org-assignment.js?v=20260409a"></script>
+<script src="/static/js/employees/schedule-picker.js?v=20260412a"></script>
 <script>
 let allCameras = [];
 let personalIdCheckTimer = null;
@@ -172,6 +174,9 @@ function setFormError(message) {
 const employeeOrgAssignment = window.EmployeeOrgAssignment.create({ setFormError });
 const departmentSelector = employeeOrgAssignment.departmentSelector;
 const positionSelector = employeeOrgAssignment.positionSelector;
+const schedulePicker = window.EmployeeSchedulePicker.create({
+    selectedId: {{ (schedule_selected_id or '')|tojson }},
+});
 
 function empHumanFileSize(bytes) {
     if (!bytes) return '0 KB';
@@ -355,6 +360,7 @@ async function filterCamerasByOrg() {
     const orgId = document.getElementById('inpOrg').value;
     const camList = document.getElementById('cam-list');
     await employeeOrgAssignment.loadCatalogs(orgId ? Number(orgId) : null);
+    await schedulePicker.loadSchedules(orgId ? Number(orgId) : null);
     if (!orgId) {
         camList.innerHTML = 'Avval tashkilotni tanlang...';
         allCameras = [];
@@ -427,6 +433,8 @@ async function saveNewEmployee(event) {
 
     const orgId = document.getElementById('inpOrg').value;
     if (orgId) formData.append('organization_id', orgId);
+    const scheduleId = schedulePicker.getValue();
+    if (scheduleId) formData.append('schedule_id', scheduleId);
 
     const imageFile = document.getElementById('image').files[0];
     if (imageFile) formData.append('image', imageFile);

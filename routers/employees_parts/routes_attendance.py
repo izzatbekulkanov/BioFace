@@ -7,6 +7,13 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models import AttendanceLog, Device, Employee, EmployeeCameraLink
+from schedule_utils import (
+    get_expected_end_dt,
+    get_expected_start_dt,
+    get_late_minutes,
+    is_holiday_for_org,
+    resolve_employee_schedule,
+)
 
 router = APIRouter()
 
@@ -69,12 +76,7 @@ def get_employee_attendance_calendar(
     else:
         month_end = datetime(target_year, target_month + 1, 1, 0, 0, 0)
 
-    org_start = emp.organization.default_start_time if emp.organization else "09:00"
-    org_end = emp.organization.default_end_time if emp.organization else "18:00"
-    def_h, def_m = _parse_hhmm(org_start, 9, 0)
-    def_end_h, def_end_m = _parse_hhmm(org_end, 18, 0)
-    exp_h, exp_m = _parse_hhmm(emp.start_time, def_h, def_m)
-    exp_end_h, exp_end_m = _parse_hhmm(emp.end_time, def_end_h, def_end_m)
+    schedule_payload = resolve_employee_schedule(emp)
 
     logs = (
         db.query(AttendanceLog)
@@ -126,6 +128,29 @@ def get_employee_attendance_calendar(
     for day_num in range(1, days_in_month + 1):
         day_dt = datetime(target_year, target_month, day_num, 0, 0, 0)
         day_key = day_dt.strftime("%Y-%m-%d")
+        if is_holiday_for_org(db, day_dt.date(), emp.organization_id):
+            days.append(
+                {
+                    "day": day_num,
+                    "date": day_key,
+                    "present": False,
+                    "status": "holiday",
+                    "event_count": 0,
+                    "first_seen": None,
+                    "last_seen": None,
+                    "expected_time": get_expected_start_dt(emp, day_dt.date()).isoformat(),
+                    "expected_end_time": get_expected_end_dt(emp, day_dt.date()).isoformat(),
+                    "late_seconds": 0,
+                    "late_minutes": 0,
+                    "late_human": "0 daqiqa",
+                    "late_human_full": "0 daqiqa",
+                    "worked_seconds": 0,
+                    "worked_human": "0 daqiqa",
+                    "camera_names": [],
+                    "is_holiday": True,
+                }
+            )
+            continue
         found = day_map.get(day_key)
         if not found:
             summary["absent_days"] += 1
@@ -138,8 +163,8 @@ def get_employee_attendance_calendar(
                     "event_count": 0,
                     "first_seen": None,
                     "last_seen": None,
-                    "expected_time": day_dt.replace(hour=exp_h, minute=exp_m).isoformat(),
-                    "expected_end_time": day_dt.replace(hour=exp_end_h, minute=exp_end_m).isoformat(),
+                    "expected_time": get_expected_start_dt(emp, day_dt.date()).isoformat(),
+                    "expected_end_time": get_expected_end_dt(emp, day_dt.date()).isoformat(),
                     "late_seconds": 0,
                     "late_minutes": 0,
                     "late_human": "0 daqiqa",
@@ -153,9 +178,10 @@ def get_employee_attendance_calendar(
 
         first_seen = found["first_seen"]
         last_seen = found["last_seen"]
-        expected_dt = day_dt.replace(hour=exp_h, minute=exp_m)
-        expected_end_dt = day_dt.replace(hour=exp_end_h, minute=exp_end_m)
-        late_seconds = max(0, int((first_seen - expected_dt).total_seconds()))
+        expected_dt = get_expected_start_dt(emp, day_dt.date())
+        expected_end_dt = get_expected_end_dt(emp, day_dt.date())
+        late_minutes = get_late_minutes(emp, day_dt.date(), first_seen)
+        late_seconds = late_minutes * 60
         late_minutes = late_seconds // 60
         worked_seconds = max(0, int((last_seen - first_seen).total_seconds()))
         status = "late" if late_minutes > 0 else "present"
@@ -221,8 +247,11 @@ def get_employee_attendance_calendar(
             "position": emp.position,
             "organization_id": emp.organization_id,
             "organization_name": emp.organization.name if emp.organization else None,
-            "start_time": emp.start_time or f"{def_h:02d}:{def_m:02d}",
-            "end_time": emp.end_time or f"{def_end_h:02d}:{def_end_m:02d}",
+            "start_time": schedule_payload.get("start_time") or "09:00",
+            "end_time": schedule_payload.get("end_time") or "18:00",
+            "schedule_id": schedule_payload.get("schedule_id"),
+            "schedule_name": schedule_payload.get("schedule_name"),
+            "schedule_is_flexible": bool(schedule_payload.get("is_flexible")),
             "image_url": emp.image_url or "",
             "has_access": bool(emp.has_access),
         },

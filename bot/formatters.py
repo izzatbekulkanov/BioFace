@@ -7,6 +7,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 from bot.i18n import get_message
 from bot.services.attendance import DailyAttendanceSummary, MonthlyAttendanceDay, MonthlyAttendanceSummary
+from schedule_utils import resolve_employee_schedule
 
 
 def _format_value(value: object | None) -> str:
@@ -54,6 +55,8 @@ def _status_label(language: str, status: str) -> str:
         return get_message(language, "status_present")
     if status == "late":
         return get_message(language, "status_late")
+    if status == "holiday":
+        return "Выходной" if language == "ru" else "Dam olish"
     return get_message(language, "status_absent")
 
 
@@ -63,6 +66,8 @@ def _status_emoji(status: str) -> str:
         return "✅"
     if normalized == "late":
         return "⚠️"
+    if normalized == "holiday":
+        return "🟦"
     return "❌"
 
 
@@ -71,15 +76,11 @@ def format_employee_profile(employee, language: str = "uz") -> str:
         part for part in [employee.first_name, employee.last_name, employee.middle_name] if part and str(part).strip()
     )
     organization_name = None
-    default_start_time = None
-    default_end_time = None
     if getattr(employee, "organization", None) is not None:
         organization_name = getattr(employee.organization, "name", None)
-        default_start_time = getattr(employee.organization, "default_start_time", None)
-        default_end_time = getattr(employee.organization, "default_end_time", None)
-
-    start_time = employee.start_time if str(employee.start_time or "").strip() else default_start_time
-    end_time = employee.end_time if str(employee.end_time or "").strip() else default_end_time
+    schedule_payload = resolve_employee_schedule(employee)
+    start_time = schedule_payload.get("start_time")
+    end_time = schedule_payload.get("end_time")
 
     access_label = get_message(language, "access_yes") if employee.has_access else get_message(language, "access_no")
 
@@ -246,6 +247,8 @@ def build_month_calendar_keyboard(days: list[MonthlyAttendanceDay], year: int, m
                     label = f"🟩{day_num:02d}"
                 elif item.status == "late":
                     label = f"🟨{day_num:02d}"
+                elif item.status == "holiday":
+                    label = f"🟦{day_num:02d}"
                 else:
                     label = f"🟥{day_num:02d}"
             row.append(InlineKeyboardButton(label, callback_data=f"cal:day:{item.date_label if item else f'{year:04d}-{month:02d}-{day_num:02d}'}"))
@@ -266,5 +269,4 @@ def format_month_day_detail(day: MonthlyAttendanceDay, language: str = "uz") -> 
         f"{get_message(language, 'summary_worked')}: {_format_duration_hms(day.worked_seconds)}",
     ]
     return "\n".join(lines)
-
 

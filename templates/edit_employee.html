@@ -64,6 +64,7 @@
             {% set org_assignment_position_name = emp.position or "" %}
             {% set org_assignment_position_help = "Avval bo'limni tanlang." %}
             {% include "employees/partials/org_assignment_fields.html" %}
+            {% include "employees/partials/schedule_fields.html" %}
 
             <div class="col-span-1 md:col-span-2">
                 <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -189,6 +190,7 @@
 </div>
 
 <script src="/static/js/employees/org-assignment.js?v=20260409a"></script>
+<script src="/static/js/employees/schedule-picker.js?v=20260412a"></script>
 <script>
 const PRESELECTED_CAMERA_IDS = {{ (linked_camera_ids or []) | tojson }};
 const CURRENT_EMPLOYEE_IMAGE_URL = {{ (emp.image_url or '') | tojson }};
@@ -220,6 +222,9 @@ const cameraStatusSummaryBlock = document.getElementById('cameraStatusSummary');
 const cameraStatusListBlock = document.getElementById('cameraStatusList');
 const cameraStatusLegend = document.getElementById('cameraStatusLegend');
 const refreshCameraStatusBtn = document.getElementById('refreshCameraStatusBtn');
+const schedulePicker = window.EmployeeSchedulePicker.create({
+    selectedId: {{ (schedule_selected_id or '')|tojson }},
+});
 
 function escHtml(value) {
     return String(value ?? '')
@@ -987,6 +992,7 @@ async function filterCamerasByOrg() {
     const orgId = document.getElementById('inpOrg').value;
     const camList = document.getElementById('cam-list');
     employeeOrgAssignment.loadCatalogs(orgId ? Number(orgId) : null).catch(() => null);
+    schedulePicker.loadSchedules(orgId ? Number(orgId) : null).catch(() => null);
     if (!orgId) {
         currentOrganizationCameras = [];
         cameraPresenceStatusMap = new Map();
@@ -1111,6 +1117,7 @@ function buildEmployeeFormData() {
     if (orgId) {
         formData.append('organization_id', orgId);
     }
+    formData.append('schedule_id', schedulePicker.getValue());
 
     const selectedCameras = Array.from(selectedCameraIds).filter((x) => Number.isInteger(x) && x > 0);
     formData.append('camera_ids', JSON.stringify(selectedCameras));
