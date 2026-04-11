@@ -15,6 +15,7 @@ import re
 import time
 import uuid
 import zipfile
+from urllib.parse import urlsplit
 from xml.sax.saxutils import escape as xml_escape
 from fastapi import APIRouter, Request, Depends, HTTPException, File, UploadFile, Form, BackgroundTasks
 from fastapi.responses import Response, StreamingResponse
@@ -26,7 +27,8 @@ import httpx
 from PIL import Image
 from io import BytesIO
 
-from database import get_db
+from attendance_utils import ATTENDANCE_FLOOD_GUARD_SECONDS, build_attendance_sessions
+from database import SessionLocal, get_db
 from hikvision_sdk import get_sdk_status
 from isup_manager import get_process_status
 from models import Device, AttendanceLog, Employee, EmployeeWellbeingNote, Organization, EmployeeCameraLink, UserOrganizationLink
@@ -100,6 +102,7 @@ MIN_FACE_SIDE = 160
 MAX_FACE_SIDE = 720
 MIN_FACE_ASPECT = 0.6
 MAX_FACE_ASPECT = 1.67
+CAMERA_EVENT_PUSH_PATH = "/api/v1/httppost/"
 
 
 def _today_local_range() -> tuple[datetime, datetime]:
@@ -116,6 +119,33 @@ _CAMERA_EVENT_DEBUG = os.getenv("CAMERA_EVENT_DEBUG", "0").strip().lower() in {"
 def _camera_event_debug(message: str) -> None:
     if _CAMERA_EVENT_DEBUG:
         print(message)
+
+
+def _build_camera_event_push_target(request: Request) -> dict[str, str]:
+    event_base_url = _resolve_camera_event_push_base_url(request)
+    webhook_url = f"{event_base_url}{CAMERA_EVENT_PUSH_PATH}" if event_base_url else ""
+    webhook_host = ""
+    webhook_port = ""
+    if event_base_url:
+        try:
+            parsed = urlsplit(event_base_url)
+            webhook_host = str(parsed.hostname or "").strip()
+            if parsed.port:
+                webhook_port = str(parsed.port)
+            elif parsed.scheme == "https":
+                webhook_port = "443"
+            elif parsed.scheme == "http":
+                webhook_port = "80"
+        except Exception:
+            webhook_host = ""
+            webhook_port = ""
+    return {
+        "webhook_base_url": event_base_url,
+        "webhook_host": webhook_host,
+        "webhook_port": webhook_port,
+        "webhook_path": CAMERA_EVENT_PUSH_PATH,
+        "webhook_url": webhook_url,
+    }
 
 
 def _safe_wellbeing_source(value: Optional[str]) -> str:
@@ -221,51 +251,6 @@ def _parse_camera_timestamp(value: Any) -> Optional[datetime]:
 
 def _parse_event_timestamp_local(value: Any) -> Optional[datetime]:
     return _parse_camera_timestamp(value)
-
-
-def _summarize_today_events_from_isup_rows(rows: list[dict[str, Any]]) -> tuple[dict[str, Any], dict[str, Any]]:
-    start, end = _today_local_range()
-    total = 0
-    known = 0
-    latest_ts: Optional[datetime] = None
-    invalid_ts = 0
-
-    for row in rows:
-        if not isinstance(row, dict):
-            invalid_ts += 1
-            continue
-
-        dt = _parse_event_timestamp_local(row.get("timestamp"))
-        if dt is None:
-            invalid_ts += 1
-            continue
-        if not (start <= dt < end):
-            continue
-
-        total += 1
-        status_text = str(row.get("status") or "").strip().lower()
-        person_id = str(row.get("person_id") or "").strip()
-        person_name = str(row.get("person_name") or "").strip().lower()
-        if status_text == "aniqlandi" or person_id or (person_name and person_name not in {"noma'lum", "unknown", "-"}):
-            known += 1
-
-        if latest_ts is None or dt > latest_ts:
-            latest_ts = dt
-
-    summary = {
-        "date": start.strftime("%Y-%m-%d"),
-        "count": total,
-        "known_count": known,
-        "unknown_count": max(0, total - known),
-        "latest_timestamp": latest_ts.isoformat() if latest_ts else None,
-    }
-    diagnostics = {
-        "raw_event_count": len(rows),
-        "today_window_start": start.isoformat(),
-        "today_window_end": end.isoformat(),
-        "invalid_timestamp_count": invalid_ts,
-    }
-    return summary, diagnostics
 
 
 def _publish_attendance_event_redis(
@@ -920,7 +905,7 @@ def list_cameras(request: Request, db: Session = Depends(get_db)):
             else cams_query.filter(Device.id == -1)
         )
     cams = cams_query.order_by(Device.id).all()
-    event_base_url = _resolve_camera_event_push_base_url(request)
+    push_target = _build_camera_event_push_target(request)
     now = now_tashkent()
     day_start, day_end = _today_local_range()
     isup_map, source = _get_live_isup_map()
@@ -977,7 +962,7 @@ def list_cameras(request: Request, db: Session = Depends(get_db)):
             "is_online": dynamic_online,
             "last_seen_at": c.last_seen_at.isoformat() if c.last_seen_at else None,
             "created_at": c.created_at.isoformat() if c.created_at else None,
-            "webhook_url": f"{event_base_url}/api/v1/httppost/" if event_base_url else "",
+            **push_target,
             "events_today": today_count,
             "today_attendance_count": today_count,
         })
@@ -1066,16 +1051,22 @@ def add_camera(request: Request, data: CameraCreate, db: Session = Depends(get_d
     db.commit()
     db.refresh(cam)
     
-    # Kamera event push URL alohida sozlama orqali beriladi.
-    event_base_url = _resolve_camera_event_push_base_url(request)
-    webhook_url = f"{event_base_url}/api/v1/httppost/" if event_base_url else ""
+    # Kamera event push host/path alohida qaytariladi.
+    push_target = _build_camera_event_push_target(request)
+    webhook_url = push_target["webhook_url"]
+    webhook_host = push_target["webhook_host"]
+    webhook_port = push_target["webhook_port"]
+    webhook_path = push_target["webhook_path"]
 
     return {
         "ok": True, 
         "id": cam.id, 
-        "webhook_url": webhook_url,
+        **push_target,
         "message": (
-            f"Kamera saqlandi. Sozlamalarga quyidagi URL ni yozing: {webhook_url}"
+            (
+                "Kamera saqlandi. HTTP Listening uchun "
+                f"IP: {webhook_host}, Port: {webhook_port}, URL: {webhook_path}"
+            )
             if webhook_url
             else "Kamera saqlandi. Avval Sozlamalar sahifasida Camera Event Push Base URL ni belgilang."
         )
@@ -1429,7 +1420,6 @@ ALLOWED_COMMANDS = {
     "ping":         "Kameraga ulanishni tekshirish",
     "get_device_snapshot": "Kameradan batafsil holat/capacity ma'lumotini olish",
     "get_users":    "Kameradagi yuzlar ro'yxatini olish",
-    "get_attendance_events": "Kameradagi davomat eventlarini olish",
     "get_today_attendance_count": "Bugungi attendance sonini olish",
     "get_face_records": "Kameradagi yuz (face record) ro'yxatini olish",
     "sync_faces":   "Serverdan yuz bazasini kameraga sinxronlashtirish",
@@ -1443,7 +1433,8 @@ ALLOWED_COMMANDS = {
     "clear_logs":   "Kameradagi mahalliy jurnalni tozalash",
     "get_logs":     "Kameraning ichki jurnalini yuklab olish",
     "get_alarm_server": "Kameradan HTTP notification (Event) sozlamalarini olish",
-    "set_alarm_server": "Kameraga EHome/Webhook sozlamalarini yozish",
+    "set_alarm_server": "Kameraga ISUP/Webhook sozlamalarini yozish",
+    "set_tashkent_timezone": "Kameraning vaqtini Asia/Tashkent ga sinxronlash",
     "raw_get":      "ISAPI orqali ixtiyoriy GET so'rov qabul qilish",
     "raw_put":      "ISAPI orqali ixtiyoriy PUT so'rov qabul qilish",
     "raw_post":     "ISAPI orqali ixtiyoriy POST so'rov qabul qilish",
@@ -1499,50 +1490,24 @@ def send_command(request: Request, cam_id: int, payload: CommandPayload, db: Ses
         raise HTTPException(status_code=404, detail="Kamera topilmadi")
 
     if payload.command == "get_today_attendance_count":
-        target_id, _, source = _resolve_online_command_target(cam)
-        params = payload.params or {}
-        try:
-            hours = max(1, min(int(params.get("hours") or 168), 24 * 30))
-        except Exception:
-            hours = 168
-        try:
-            limit = max(1, min(int(params.get("limit") or 2000), 4000))
-        except Exception:
-            limit = 2000
-
-        isup_response = _send_isup_command_or_raise(
-            target_id,
-            "get_attendance_events",
-            {
-                "hours": hours,
-                "limit": limit,
-                "max_results": max(10, min(limit, 2000)),
-            },
-            timeout=35.0,
-        )
-        rows = isup_response.get("events", []) if isinstance(isup_response, dict) else []
-        if not isinstance(rows, list):
-            rows = []
-
-        today_attendance, diagnostics = _summarize_today_events_from_isup_rows(rows)
-        diagnostics["isup_attempts"] = isup_response.get("attempts") if isinstance(isup_response, dict) else None
+        today_attendance = _get_today_attendance_summary(db, cam)
         return {
             "ok": True,
-            "transport": "isup_redis",
-            "isup_source": source,
+            "transport": "database",
+            "isup_source": None,
             "camera": cam.name,
             "command": payload.command,
             "description": ALLOWED_COMMANDS[payload.command],
-            "target_device_id": target_id,
+            "target_device_id": cam.isup_device_id,
             "today_attendance": today_attendance,
-            "diagnostics": diagnostics,
+            "diagnostics": {
+                "source": "http_push_db",
+            },
             "response": {
                 **today_attendance,
-                "raw_event_count": diagnostics.get("raw_event_count"),
-                "invalid_timestamp_count": diagnostics.get("invalid_timestamp_count"),
-                "isup_attempts": diagnostics.get("isup_attempts"),
+                "source": "http_push_db",
             },
-            "message": f"ISUP orqali bugungi attendance soni: {today_attendance['count']} ta.",
+            "message": f"Bazada saqlangan bugungi attendance soni: {today_attendance['count']} ta.",
         }
 
     params = dict(payload.params or {})
@@ -1552,11 +1517,15 @@ def send_command(request: Request, cam_id: int, payload: CommandPayload, db: Ses
         if event_base_url and not params.get("camera_event_push_base_url") and not params.get("public_web_base_url"):
             params["camera_event_push_base_url"] = event_base_url
 
+    transport_command = payload.command
+    if payload.command == "set_tashkent_timezone":
+        params.setdefault("force", True)
+
     target_id, _, source = _resolve_online_command_target(cam)
 
     response = _send_isup_command_or_raise(
         target_id,
-        payload.command,
+        transport_command,
         params,
         timeout=10.0,
     )
@@ -1573,7 +1542,11 @@ def send_command(request: Request, cam_id: int, payload: CommandPayload, db: Ses
         "target_device_id": target_id,
         "response": response,
         "today_attendance": today_attendance,
-        "message": f"'{ALLOWED_COMMANDS[payload.command]}' buyrug'i ISUP orqali yuborildi. Bugungi attendance: {today_attendance['count']} ta.",
+        "message": (
+            str(response.get("message") or "Kamera vaqti Asia/Tashkent ga sinxronlandi.")
+            if payload.command == "set_tashkent_timezone"
+            else f"'{ALLOWED_COMMANDS[payload.command]}' buyrug'i ISUP orqali yuborildi. Bugungi attendance: {today_attendance['count']} ta."
+        ),
     }
 
 
@@ -3010,6 +2983,144 @@ def _parse_hhmm_or_default(value: Optional[str], default_h: int = 9, default_m: 
         return default_h, default_m
 
 
+def _format_camera_label(camera_names: list[str]) -> str:
+    safe_names = [str(name or "").strip() for name in camera_names if str(name or "").strip()]
+    if not safe_names:
+        return "Noma'lum kamera"
+    if len(safe_names) == 1:
+        return safe_names[0]
+    preview = ", ".join(safe_names[:2])
+    if len(safe_names) > 2:
+        return f"{preview} +{len(safe_names) - 2}"
+    return preview
+
+
+def _build_attendance_session_payload(session_logs: list[AttendanceLog]) -> dict[str, Any]:
+    ordered_logs = sorted(
+        [log for log in session_logs if log.timestamp is not None],
+        key=lambda log: (log.timestamp or datetime.min, log.id or 0),
+    )
+    if not ordered_logs:
+        return {
+            "id": "",
+            "timestamp": None,
+            "first_timestamp": None,
+            "camera_id": None,
+            "camera_name": "Noma'lum kamera",
+            "camera_mac": None,
+            "camera_count": 0,
+            "raw_event_count": 0,
+            "snapshot_url": None,
+            "status": "noma'lum",
+        }
+
+    first_log = ordered_logs[0]
+    last_log = ordered_logs[-1]
+    snapshot_log = next((log for log in reversed(ordered_logs) if log.snapshot_url), last_log)
+    camera_ids: set[int] = set()
+    camera_names: list[str] = []
+    camera_macs: list[str] = []
+    for log in ordered_logs:
+        if log.device_id is not None:
+            camera_ids.add(int(log.device_id))
+        camera_name = str(log.device.name or "").strip() if log.device is not None else ""
+        if camera_name and camera_name not in camera_names:
+            camera_names.append(camera_name)
+        camera_mac = str(log.camera_mac or "").strip()
+        if camera_mac and camera_mac not in camera_macs:
+            camera_macs.append(camera_mac)
+
+    duration_seconds = 0
+    if first_log.timestamp and last_log.timestamp:
+        duration_seconds = max(0, int((last_log.timestamp - first_log.timestamp).total_seconds()))
+
+    return {
+        "id": f"session:{first_log.id or 'x'}:{last_log.id or 'y'}",
+        "timestamp": last_log.timestamp.isoformat() if last_log.timestamp else None,
+        "first_timestamp": first_log.timestamp.isoformat() if first_log.timestamp else None,
+        "camera_id": int(last_log.device_id) if last_log.device_id is not None and len(camera_ids) == 1 else None,
+        "camera_name": _format_camera_label(camera_names),
+        "camera_names": camera_names,
+        "camera_mac": camera_macs[0] if len(camera_macs) == 1 else None,
+        "camera_macs": camera_macs,
+        "camera_count": len(camera_ids),
+        "raw_event_count": len(ordered_logs),
+        "duration_seconds": duration_seconds,
+        "snapshot_url": snapshot_log.snapshot_url,
+        "status": str(last_log.status or ""),
+    }
+
+
+def _summarize_attendance_logs(logs: list[AttendanceLog]) -> dict[str, Any]:
+    sessions = [
+        _build_attendance_session_payload(session_logs)
+        for session_logs in build_attendance_sessions(logs)
+    ]
+    camera_ids = {
+        int(log.device_id)
+        for log in logs
+        if log.device_id is not None
+    }
+    return {
+        "sessions": list(reversed(sessions)),
+        "session_count": len(sessions),
+        "camera_count": len(camera_ids),
+        "raw_event_count": len(logs),
+    }
+
+
+def _find_recent_attendance_duplicate(
+    db: Session,
+    *,
+    event_time: datetime,
+    person_id: Optional[str],
+    employee_id: Optional[int],
+    organization_id: Optional[int],
+    exact_device_id: Optional[int] = None,
+    exact_window_seconds: int = 8,
+    flood_window_seconds: int = ATTENDANCE_FLOOD_GUARD_SECONDS,
+) -> Optional[int]:
+    identity_filters = []
+    safe_person_id = str(person_id or "").strip()
+    if safe_person_id:
+        identity_filters.append(func.coalesce(func.nullif(func.trim(AttendanceLog.person_id), ""), "") == safe_person_id)
+    if employee_id is not None:
+        identity_filters.append(AttendanceLog.employee_id == int(employee_id))
+    if not identity_filters:
+        return None
+
+    event_epoch = int(event_time.timestamp())
+    order_distance = func.abs(func.strftime("%s", AttendanceLog.timestamp) - event_epoch)
+
+    if exact_device_id is not None:
+        exact_match = (
+            db.query(AttendanceLog.id)
+            .filter(
+                AttendanceLog.device_id == int(exact_device_id),
+                or_(*identity_filters),
+                func.abs(func.strftime("%s", AttendanceLog.timestamp) - event_epoch) <= max(1, int(exact_window_seconds)),
+            )
+            .order_by(order_distance.asc(), AttendanceLog.id.desc())
+            .first()
+        )
+        if exact_match is not None:
+            return int(exact_match[0])
+
+    flood_query = db.query(AttendanceLog.id).filter(
+        or_(*identity_filters),
+        func.abs(func.strftime("%s", AttendanceLog.timestamp) - event_epoch) <= max(1, int(flood_window_seconds)),
+    )
+    if organization_id is not None:
+        flood_query = flood_query.outerjoin(Device, Device.id == AttendanceLog.device_id).filter(
+            Device.organization_id == int(organization_id)
+        )
+
+    flood_match = flood_query.order_by(order_distance.asc(), AttendanceLog.id.desc()).first()
+    if flood_match is None:
+        return None
+    return int(flood_match[0])
+
+
 def _build_today_status_items(
     db: Session,
     *,
@@ -3081,21 +3192,8 @@ def _build_today_status_items(
             continue
 
         events = []
-        camera_ids: set[int] = set()
-        for log in sorted(emp_logs, key=lambda x: (x.timestamp or datetime.min, x.id or 0), reverse=True):
-            if log.device_id is not None:
-                camera_ids.add(int(log.device_id))
-            events.append(
-                {
-                    "id": log.id,
-                    "timestamp": log.timestamp.isoformat() if log.timestamp else None,
-                    "camera_id": log.device_id,
-                    "camera_name": log.device.name if log.device else None,
-                    "camera_mac": log.camera_mac,
-                    "snapshot_url": log.snapshot_url,
-                    "status": log.status,
-                }
-            )
+        session_summary = _summarize_attendance_logs(emp_logs)
+        events = list(session_summary.get("sessions") or [])
 
         base_url = normalize_public_web_base_url(get_public_web_base_url())
         employee_image_url = None
@@ -3114,8 +3212,9 @@ def _build_today_status_items(
                 "organization_name": emp.organization.name if emp.organization else None,
                 "first_timestamp": first_seen.isoformat() if first_seen else None,
                 "latest_timestamp": last_seen.isoformat() if last_seen else None,
-                "visit_count": len(emp_logs),
-                "camera_count": len(camera_ids),
+                "visit_count": int(session_summary.get("session_count") or 0),
+                "raw_event_count": int(session_summary.get("raw_event_count") or len(emp_logs)),
+                "camera_count": int(session_summary.get("camera_count") or 0),
                 "status": "kelmagan" if not emp_logs else ("kech" if is_late else "aniqlandi"),
                 "events": events,
                 "is_late": is_late,
@@ -3463,24 +3562,9 @@ def get_attendance_groups(
             )
 
         event_logs = detail_query.order_by(AttendanceLog.timestamp.desc(), AttendanceLog.id.desc()).all()
-        events = []
-        camera_ids: set[int] = set()
-        for log in event_logs:
-            if log.device_id is not None:
-                camera_ids.add(int(log.device_id))
-            events.append(
-                {
-                    "id": log.id,
-                    "timestamp": log.timestamp.isoformat() if log.timestamp else None,
-                    "camera_id": log.device_id,
-                    "camera_name": log.device.name if log.device else None,
-                    "camera_mac": log.camera_mac,
-                    "snapshot_url": log.snapshot_url,
-                    "status": log.status,
-                }
-            )
-
-        camera_count = len(camera_ids) if camera_ids else int(row.camera_count or 0)
+        session_summary = _summarize_attendance_logs(event_logs)
+        events = list(session_summary.get("sessions") or [])
+        camera_count = int(session_summary.get("camera_count") or row.camera_count or 0)
         
         # Tashkilot nomini olamiz
         org_name = None
@@ -3503,7 +3587,8 @@ def get_attendance_groups(
                 "organization_name": org_name,
                 "first_timestamp": row.first_timestamp.isoformat() if row.first_timestamp else None,
                 "latest_timestamp": row.latest_timestamp.isoformat() if row.latest_timestamp else None,
-                "visit_count": int(row.visit_count or 0),
+                "visit_count": int(session_summary.get("session_count") or 0),
+                "raw_event_count": int(session_summary.get("raw_event_count") or row.visit_count or 0),
                 "camera_count": camera_count,
                 "status": row.status,
                 "late_minutes": max(0, late_minutes),
@@ -3938,232 +4023,6 @@ def export_attendance_groups_pdf(
     )
 
 
-# ── GET /api/isup-devices — ISUP orqali ulangan kameralar ──────
-def _sync_attendance_for_camera(
-    cam: Device,
-    db: Session,
-    *,
-    backfill_hours: int,
-    max_events: int,
-    sync_date: Optional[str] = None,
-) -> dict[str, Any]:
-    try:
-        target_id, _, source = _resolve_online_command_target(cam)
-    except HTTPException as exc:
-        return {
-            "camera_id": cam.id,
-            "camera_name": cam.name,
-            "ok": False,
-            "fetched": 0,
-            "inserted": 0,
-            "duplicates": 0,
-            "error": str(exc.detail),
-        }
-
-    start_dt: Optional[datetime] = None
-    end_dt: Optional[datetime] = None
-    if sync_date:
-        try:
-            day = datetime.strptime(str(sync_date).strip(), "%Y-%m-%d")
-            start_dt = day.replace(hour=0, minute=0, second=0, microsecond=0)
-            end_dt = start_dt + timedelta(days=1)
-        except Exception:
-            return {
-                "camera_id": cam.id,
-                "camera_name": cam.name,
-                "ok": False,
-                "fetched": 0,
-                "inserted": 0,
-                "duplicates": 0,
-                "error": "sync_date noto'g'ri formatda. Kutilgan format: YYYY-MM-DD",
-            }
-
-    cmd_params: dict[str, Any] = {
-        "hours": max(1, min(int(backfill_hours), 24 * 30)),
-        "limit": max(1, min(int(max_events), 2000)),
-        "max_results": 10,
-    }
-    if start_dt is not None and end_dt is not None:
-        cmd_params["start_time"] = start_dt.isoformat()
-        cmd_params["end_time"] = end_dt.isoformat()
-
-    try:
-        resp = _send_isup_command_or_raise(
-            target_id,
-            "get_attendance_events",
-            cmd_params,
-            timeout=180.0,
-        )
-    except HTTPException as exc:
-        return {
-            "camera_id": cam.id,
-            "camera_name": cam.name,
-            "ok": False,
-            "fetched": 0,
-            "inserted": 0,
-            "duplicates": 0,
-            "error": str(exc.detail),
-        }
-
-    rows = resp.get("events", []) if isinstance(resp, dict) else []
-    if not isinstance(rows, list):
-        rows = []
-
-    inserted = 0
-    duplicates = 0
-    attendance_items: list[dict[str, Any]] = []
-    for row in rows:
-        if not isinstance(row, dict):
-            continue
-        person_id = str(row.get("person_id") or "").strip() or None
-        person_name = str(row.get("person_name") or "").strip() or None
-        snapshot_url = str(row.get("snapshot_url") or "").strip() or None
-        ts = _parse_event_dt(row.get("timestamp"))
-        if start_dt is not None and end_dt is not None:
-            if not (start_dt <= ts < end_dt):
-                continue
-
-        employee = None
-        if person_id:
-            employee = db.query(Employee).filter(Employee.personal_id == person_id).first()
-            if employee is None and person_id.isdigit():
-                employee = db.query(Employee).filter(Employee.id == int(person_id)).first()
-
-        organization = cam.organization or (employee.organization if employee and employee.organization else None)
-        attendance_items.append(
-            {
-                "id": f"{cam.id}-{int(ts.timestamp()) if ts else 0}-{person_id or 'unknown'}",
-                "timestamp": ts.isoformat() if ts else None,
-                "employee_id": employee.id if employee else None,
-                "employee_name": f"{employee.first_name} {employee.last_name}".strip() if employee else (person_name or "Noma'lum"),
-                "personal_id": person_id,
-                "person_name": person_name,
-                "camera_id": cam.id,
-                "camera_name": cam.name,
-                "camera_mac": cam.mac_address,
-                "organization_id": organization.id if organization else cam.organization_id,
-                "organization_name": organization.name if organization else None,
-                "snapshot_url": snapshot_url,
-                "status": "aniqlandi" if employee else "noma'lum",
-                "inserted": True,
-            }
-        )
-
-        existing_q = db.query(AttendanceLog.id).filter(
-            AttendanceLog.device_id == cam.id,
-            AttendanceLog.timestamp >= ts - timedelta(seconds=2),
-            AttendanceLog.timestamp <= ts + timedelta(seconds=2),
-        )
-        if person_id:
-            existing_q = existing_q.filter(AttendanceLog.person_id == person_id)
-        existing = existing_q.first()
-        if existing:
-            attendance_items[-1]["inserted"] = False
-            duplicates += 1
-            continue
-
-        db.add(
-            AttendanceLog(
-                employee_id=employee.id if employee else None,
-                device_id=cam.id,
-                camera_mac=cam.mac_address,
-                person_id=person_id,
-                person_name=person_name,
-                snapshot_url=snapshot_url,
-                timestamp=ts,
-                status="aniqlandi" if employee else "noma'lum",
-            )
-        )
-        inserted += 1
-
-    cam.is_online = True
-    cam.last_seen_at = now_tashkent()
-    
-    # Filter only newly inserted records so UI renders fast and skips duplicates
-    new_attendance_items = [item for item in attendance_items if item.get("inserted")]
-    
-    return {
-        "camera_id": cam.id,
-        "camera_name": cam.name,
-        "ok": True,
-        "isup_source": source,
-        "target_device_id": target_id,
-        "sync_date": sync_date,
-        "fetched": len(rows),
-        "inserted": inserted,
-        "duplicates": duplicates,
-        "attendance_items": new_attendance_items,
-    }
-
-@router.post("/api/attendance/sync")
-def sync_attendance(
-    request: Request,
-    camera_id: Optional[int] = None,
-    organization_id: Optional[int] = None,
-    sync_date: Optional[str] = None,
-    backfill_hours: int = 168,
-    max_events: int = 600,
-    db: Session = Depends(get_db),
-):
-    scope = _resolve_attendance_org_scope(request, db)
-    allowed_org_ids = [int(x) for x in (scope.get("allowed_org_ids") or [])]
-    if not allowed_org_ids:
-        raise HTTPException(status_code=403, detail="Sinxronlash uchun ruxsat etilgan tashkilot topilmadi")
-
-    if organization_id is not None and int(organization_id) not in set(allowed_org_ids):
-        raise HTTPException(status_code=403, detail="Ushbu tashkilot uchun sinxronlashga ruxsat yo'q")
-
-    target_org_ids = [int(organization_id)] if organization_id is not None else allowed_org_ids
-
-    cams_q = db.query(Device).filter(Device.organization_id.in_(target_org_ids)).order_by(Device.id)
-    if camera_id is not None:
-        cams_q = cams_q.filter(Device.id == camera_id)
-    cameras = cams_q.all()
-    if not cameras:
-        raise HTTPException(status_code=404, detail="Kamera topilmadi yoki ruxsat yo'q")
-
-    rows: list[dict[str, Any]] = []
-    attendance_items: list[dict[str, Any]] = []
-    fetched = 0
-    inserted = 0
-    duplicates = 0
-    for cam in cameras:
-        result = _sync_attendance_for_camera(
-            cam,
-            db,
-            backfill_hours=backfill_hours,
-            max_events=max_events,
-            sync_date=sync_date,
-        )
-        rows.append(result)
-        attendance_items.extend(result.get("attendance_items") or [])
-        fetched += int(result.get("fetched") or 0)
-        inserted += int(result.get("inserted") or 0)
-        duplicates += int(result.get("duplicates") or 0)
-
-    db.commit()
-    attendance_items.sort(
-        key=lambda item: (
-            str(item.get("timestamp") or ""),
-            int(item.get("camera_id") or 0),
-            str(item.get("personal_id") or ""),
-            str(item.get("id") or ""),
-        ),
-        reverse=True,
-    )
-    return {
-        "ok": True,
-        "camera_count": len(cameras),
-        "sync_date": sync_date,
-        "fetched": fetched,
-        "inserted": inserted,
-        "duplicates": duplicates,
-        "rows": rows,
-        "attendance_items": attendance_items,
-        "message": f"Davomat sinxronlandi: {inserted} yangi, {duplicates} dublikat.",
-    }
-
-
 @router.get("/api/isup-devices")
 def get_isup_devices(db: Session = Depends(get_db)):
     """
@@ -4386,7 +4245,7 @@ os.makedirs(_HIK_SNAP_DIR, exist_ok=True)
 
 
 def _hik_store_snapshot_bytes(raw: bytes, *, ext: str = "jpg") -> Optional[str]:
-    if not raw:
+    if not _hik_is_valid_image_bytes(raw):
         return None
     safe_ext = str(ext or "jpg").strip().lower().lstrip(".")
     if safe_ext not in {"jpg", "jpeg", "png", "gif", "bmp", "webp"}:
@@ -4466,6 +4325,19 @@ def _hik_is_image_bytes(raw: bytes) -> bool:
     )
 
 
+def _hik_is_valid_image_bytes(raw: bytes) -> bool:
+    if not _hik_is_image_bytes(raw):
+        return False
+    if raw.startswith(b"\xff\xd8\xff") and b"\xff\xd9" not in raw[-4096:]:
+        return False
+    try:
+        with Image.open(BytesIO(raw)) as img:
+            img.verify()
+        return True
+    except Exception:
+        return False
+
+
 def _hik_guess_image_ext(raw: bytes, filename: str = "") -> str:
     ext = str(filename or "").rsplit(".", 1)[-1].lower() if "." in str(filename or "") else ""
     if ext in {"jpg", "jpeg", "png", "gif", "bmp", "webp"}:
@@ -4491,18 +4363,176 @@ def _hik_decode_base64_image(value: Any) -> Optional[bytes]:
         raw = base64.b64decode(text, validate=False)
     except Exception:
         return None
-    return raw if _hik_is_image_bytes(raw) else None
+    return raw if _hik_is_valid_image_bytes(raw) else None
+
+
+def _hik_snapshot_candidate_urls(camera_ip: str) -> list[str]:
+    raw = str(camera_ip or "").strip()
+    if not raw:
+        return []
+
+    parsed = urlsplit(raw if "://" in raw else f"http://{raw}")
+    host = str(parsed.hostname or "").strip()
+    if not host:
+        return []
+
+    schemes_ports: list[tuple[str, int]] = []
+    if parsed.scheme and parsed.scheme in {"http", "https"}:
+        schemes_ports.append((parsed.scheme, parsed.port or (443 if parsed.scheme == "https" else 80)))
+    else:
+        schemes_ports.extend([("http", 80), ("https", 443)])
+
+    paths = (
+        "/ISAPI/Streaming/channels/1/picture",
+        "/ISAPI/Streaming/channels/101/picture",
+        "/ISAPI/Streaming/picture",
+    )
+    urls: list[str] = []
+    for scheme, port in schemes_ports:
+        default_port = 443 if scheme == "https" else 80
+        base = f"{scheme}://{host}" if port == default_port else f"{scheme}://{host}:{port}"
+        for path in paths:
+            urls.append(f"{base}{path}")
+    return urls
+
+
+def _hik_try_fetch_snapshot_from_camera(camera_ip: str, username: str, password: str) -> Optional[str]:
+    safe_ip = str(camera_ip or "").strip()
+    safe_user = str(username or "").strip()
+    safe_pass = str(password or "").strip()
+    if not safe_ip or not safe_user or not safe_pass:
+        return None
+
+    auth_options = [httpx.DigestAuth(safe_user, safe_pass), httpx.BasicAuth(safe_user, safe_pass)]
+    candidate_urls = _hik_snapshot_candidate_urls(safe_ip)
+    if not candidate_urls:
+        return None
+
+    for auth in auth_options:
+        try:
+            with httpx.Client(timeout=8.0, verify=False, follow_redirects=True, trust_env=False, auth=auth) as client:
+                for url in candidate_urls:
+                    try:
+                        response = client.get(url)
+                    except Exception:
+                        continue
+                    if response.status_code >= 400:
+                        continue
+                    raw = bytes(response.content or b"")
+                    if not _hik_is_valid_image_bytes(raw):
+                        continue
+                    return _hik_store_snapshot_bytes(raw, ext=_hik_guess_image_ext(raw))
+        except Exception:
+            continue
+    return None
+
+
+def _hik_update_log_snapshot_and_state(log_id: int, snapshot_url: str) -> bool:
+    safe_snapshot_url = str(snapshot_url or "").strip()
+    if log_id <= 0 or not safe_snapshot_url:
+        return False
+
+    db = SessionLocal()
+    try:
+        log = db.query(AttendanceLog).filter(AttendanceLog.id == int(log_id)).first()
+        if log is None:
+            return False
+
+        current_snapshot = str(log.snapshot_url or "").strip()
+        if current_snapshot.startswith("/static/"):
+            return True
+
+        log.snapshot_url = safe_snapshot_url
+        photo_path = resolve_snapshot_path(safe_snapshot_url)
+        psychological_profile = detect_psychological_profile(photo_path)
+        psychological_state_key = str(psychological_profile.get("state_key") or "")
+        psychological_state_confidence = psychological_profile.get("confidence")
+        emotion_scores = dict(psychological_profile.get("emotion_scores") or {})
+        log.psychological_state_key = psychological_state_key or None
+        log.psychological_state_confidence = psychological_state_confidence
+        log.emotion_scores_json = psychological_profile.get("emotion_scores_json") or None
+
+        if log.employee_id:
+            upsert_daily_psychological_state(
+                db,
+                employee_id=int(log.employee_id),
+                state_key=psychological_state_key,
+                confidence=psychological_state_confidence,
+                emotion_scores=emotion_scores,
+                timestamp=normalize_timestamp_tashkent(log.timestamp),
+                note=f"hik_event_snapshot_backfill:{log.camera_mac or '-'}",
+                source="external_system",
+            )
+
+        db.commit()
+        return True
+    except Exception as exc:
+        db.rollback()
+        print(f"[HIK-EVENT] snapshot backfill DB xato: {exc}")
+        return False
+    finally:
+        db.close()
+
+
+def _hik_backfill_snapshot_task(
+    *,
+    log_id: int,
+    isup_device_id: Optional[str],
+    camera_ip: Optional[str],
+    username: Optional[str],
+    password: Optional[str],
+) -> None:
+    try:
+        time.sleep(1.5)
+        snapshot_url: Optional[str] = None
+
+        target_device_id = str(isup_device_id or "").strip()
+        if target_device_id and redis_ok():
+            try:
+                response = send_command_and_wait(
+                    target_device_id,
+                    "capture_snapshot",
+                    {
+                        "camera_ip": str(camera_ip or "").strip() or None,
+                        "allow_http_fallback": True,
+                        "username": str(username or "").strip() or None,
+                        "password": str(password or "").strip() or None,
+                    },
+                    timeout=15.0,
+                )
+                if isinstance(response, dict) and response.get("ok") and response.get("snapshot_url"):
+                    snapshot_url = str(response.get("snapshot_url") or "").strip() or None
+            except Exception as exc:
+                print(f"[HIK-EVENT] ISUP snapshot backfill xato: {exc}")
+
+        if not snapshot_url:
+            snapshot_url = _hik_try_fetch_snapshot_from_camera(
+                str(camera_ip or "").strip(),
+                str(username or "").strip(),
+                str(password or "").strip(),
+            )
+
+        if snapshot_url:
+            _hik_update_log_snapshot_and_state(int(log_id), snapshot_url)
+    except Exception as exc:
+        print(f"[HIK-EVENT] snapshot backfill task xato: {exc}")
 
 @router.post("/api/v1/httppost/")
 @router.post("/api/v1/httppost")
 @router.post("/api/hik-event")
-async def hik_event_webhook(request: Request, db: Session = Depends(get_db)):
+async def hik_event_webhook(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
     """
     Hikvision DS-K kameralarining HTTP push notification endpointi.
     Kamera sozlamalari:
       Configuration → Network → Advanced Settings → HTTP Listening
       yoki Event → Basic Event → Alarm Linkage → HTTP Push
-    URL: https://example.com/api/v1/httppost/
+      Server/IP: 94.141.85.147
+      Port: 8000
+      URL: /api/v1/httppost/
     """
     # ── RAW LOGGER: Kamera yuborayotgan haqiqiy so'rovni qayd qilamiz ──
     try:
@@ -4571,7 +4601,7 @@ async def hik_event_webhook(request: Request, db: Session = Depends(get_db)):
                     if not content.strip():
                         continue
                     
-                    if _hik_is_image_bytes(content):
+                    if _hik_is_valid_image_bytes(content):
                         image_bytes = content
                         image_ext = _hik_guess_image_ext(content)
                     else:
@@ -4585,7 +4615,7 @@ async def hik_event_webhook(request: Request, db: Session = Depends(get_db)):
                 for key, val in form.items():
                     if hasattr(val, "read"):
                         raw = await val.read()
-                        if _hik_is_image_bytes(raw):
+                        if _hik_is_valid_image_bytes(raw):
                             image_bytes = raw
                             image_ext = _hik_guess_image_ext(raw)
                         else:
@@ -4597,7 +4627,7 @@ async def hik_event_webhook(request: Request, db: Session = Depends(get_db)):
             except Exception:
                 pass
     else:
-        if body and _hik_is_image_bytes(body):
+        if body and _hik_is_valid_image_bytes(body):
             image_bytes = body
             image_ext = _hik_guess_image_ext(body)
         else:
@@ -4623,7 +4653,11 @@ async def hik_event_webhook(request: Request, db: Session = Depends(get_db)):
     person_name_val: Optional[str] = None
     camera_serial: Optional[str] = None
     camera_mac: Optional[str] = None
+    camera_ip_val: Optional[str] = None
     event_time_str: Optional[str] = None
+    event_type_val: Optional[str] = None
+    sub_event_type_val: Optional[str] = None
+    verify_mode_val: Optional[str] = None
     wellbeing_note_uz_val: Optional[str] = None
     wellbeing_note_ru_val: Optional[str] = None
     wellbeing_note_source_val: Optional[str] = None
@@ -4674,6 +4708,14 @@ async def hik_event_webhook(request: Request, db: Session = Depends(get_db)):
         or xml_tags.get("macAddress")
         or xml_tags.get("mac")
     )
+    camera_ip_val = (
+        _hik_find_first_value(json_payload, {"ipAddress", "ipv4Address", "deviceIP", "deviceIp"})
+        or xml_tags.get("ipAddress")
+        or xml_tags.get("ipv4Address")
+        or xml_tags.get("deviceIP")
+        or xml_tags.get("deviceIp")
+        or ""
+    ).strip() or None
     event_time_str = (
         _hik_find_first_value(json_payload, {"eventTime", "dateTime", "localTime", "time", "timestamp"})
         or xml_tags.get("eventTime")
@@ -4681,6 +4723,23 @@ async def hik_event_webhook(request: Request, db: Session = Depends(get_db)):
         or xml_tags.get("localTime")
         or xml_tags.get("time")
         or xml_tags.get("timestamp")
+        or ""
+    ).strip() or None
+    event_type_val = (
+        _hik_find_first_value(json_payload, {"eventType"})
+        or xml_tags.get("eventType")
+        or ""
+    ).strip() or None
+    sub_event_type_val = (
+        _hik_find_first_value(json_payload, {"subEventType", "minorEventType"})
+        or xml_tags.get("subEventType")
+        or xml_tags.get("minorEventType")
+        or ""
+    ).strip() or None
+    verify_mode_val = (
+        _hik_find_first_value(json_payload, {"currentVerifyMode", "verifyMode"})
+        or xml_tags.get("currentVerifyMode")
+        or xml_tags.get("verifyMode")
         or ""
     ).strip() or None
     wellbeing_note_uz_val = (
@@ -4751,6 +4810,27 @@ async def hik_event_webhook(request: Request, db: Session = Depends(get_db)):
     # Timestamp
     ts_event = _parse_event_dt(event_time_str)
 
+    ignore_invalid_followup = (
+        str(event_type_val or "").strip() == "AccessControllerEvent"
+        and str(sub_event_type_val or "").strip() in {"21", "22", "1036"}
+        and str(verify_mode_val or "").strip().lower() == "invalid"
+        and not person_id_val
+        and not person_name_val
+        and image_bytes is None
+        and not snapshot_url
+    )
+    ignore_noise_event = (
+        str(event_type_val or "").strip().lower() == "heartbeat"
+        or (
+            str(event_type_val or "").strip() == "AccessControllerEvent"
+            and str(sub_event_type_val or "").strip() in {"21", "22", "1036"}
+            and not person_id_val
+            and not person_name_val
+            and image_bytes is None
+            and not snapshot_url
+        )
+    )
+
     # Xodimni topamiz
     emp: Optional[Employee] = None
     if person_id_val:
@@ -4776,25 +4856,48 @@ async def hik_event_webhook(request: Request, db: Session = Depends(get_db)):
             _camera_event_debug(f"[HIK-EVENT] Rasm saqlandi: {snap_url}")
         except Exception as exc:
             _camera_event_debug(f"[HIK-EVENT] Rasm saqlash xatosi: {exc}")
+    needs_snapshot_backfill = not str(snap_url or "").strip().startswith("/static/")
 
-    # Dedup: 8s oyna
-    from sqlalchemy import text as _sqlt
     is_dup = False
     existing_log_id: Optional[int] = None
-    if device and person_id_val:
-        ts_sql = ts_event.strftime("%Y-%m-%d %H:%M:%S")
-        dup = db.execute(
-            _sqlt("SELECT id FROM attendance_logs WHERE device_id=:did AND person_id=:pid AND ABS(strftime('%s',timestamp)-strftime('%s',:ts))<=8 LIMIT 1"),
-            {"did": device.id, "pid": person_id_val, "ts": ts_sql}
-        ).first()
-        if dup is not None:
-            existing_log_id = int(dup[0])
-            is_dup = True
+    if device and (person_id_val or (emp is not None and emp.id is not None)):
+        existing_log_id = _find_recent_attendance_duplicate(
+            db,
+            event_time=ts_event,
+            person_id=person_id_val,
+            employee_id=int(emp.id) if emp is not None and emp.id is not None else None,
+            organization_id=int(device.organization_id) if device.organization_id is not None else None,
+            exact_device_id=int(device.id) if device.id is not None else None,
+        )
+        is_dup = existing_log_id is not None
 
     log_id: Optional[int] = None
     if device:
         device.is_online = True
         device.last_seen_at = now_tashkent()
+
+    # Hikvision ayrim qurilmalarda haqiqiy 75/76 eventdan keyin bo'sh 21/22 invalid
+    # follow-up event yuboradi. Uni attendance sifatida saqlamaymiz.
+    if ignore_invalid_followup or ignore_noise_event:
+        db.commit()
+        _camera_event_debug(
+            f"[HIK-EVENT] Ignored non-attendance event: device={device.id if device else None}, "
+            f"serial={camera_serial}, eventType={event_type_val}, subEventType={sub_event_type_val}, ts={ts_event.isoformat()}"
+        )
+        return {
+            "ok": True,
+            "ignored": True,
+            "reason": "non_attendance_event",
+            "device_id": device.id if device else None,
+            "payload_format": payload_format,
+            "has_image": image_bytes is not None,
+            "snapshot_url": snap_url,
+            "person_id": person_id_val,
+            "person_name": person_name_val,
+            "timestamp": ts_event.isoformat(),
+            "sub_event_type": sub_event_type_val,
+            "verify_mode": verify_mode_val,
+        }
 
     if not is_dup:
         psychological_profile = detect_psychological_profile(resolve_snapshot_path(snap_url))
@@ -4862,12 +4965,23 @@ async def hik_event_webhook(request: Request, db: Session = Depends(get_db)):
     else:
         log_id = existing_log_id
         if existing_log_id and snap_url:
+            from sqlalchemy import text as _sqlt
             db.execute(
                 _sqlt("UPDATE attendance_logs SET snapshot_url=:snap WHERE id=:log_id AND (snapshot_url IS NULL OR snapshot_url='')"),
                 {"snap": snap_url, "log_id": existing_log_id},
             )
         db.commit()
         _camera_event_debug(f"[HIK-EVENT] Duplicate event: log_id={existing_log_id}, person={person_id_val}/{person_name_val}, snap={snap_url}")
+
+    if log_id and needs_snapshot_backfill:
+        background_tasks.add_task(
+            _hik_backfill_snapshot_task,
+            log_id=int(log_id),
+            isup_device_id=(device.isup_device_id if device else camera_serial),
+            camera_ip=camera_ip_val,
+            username=(device.username if device else None),
+            password=(device.password if device else None),
+        )
 
     return {
         "ok": True,
@@ -4877,4 +4991,5 @@ async def hik_event_webhook(request: Request, db: Session = Depends(get_db)):
         "payload_format": payload_format,
         "has_image": image_bytes is not None,
         "snapshot_url": snap_url,
+        "snapshot_pending": bool(log_id and needs_snapshot_backfill),
     }

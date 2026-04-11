@@ -84,7 +84,7 @@
                             <span class="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full shrink-0">{{ notifs.total }}</span>
                             {% endif %}
                         </a>
-                    {% elif item.key == 'attendance' or item.key == 'sync_attendance' %}
+                    {% elif item.key == 'attendance' %}
                         {{ nav_link(item.href, item.title, item.icon, True) }}
                     {% else %}
                         {{ nav_link(item.href, item.title, item.icon) }}

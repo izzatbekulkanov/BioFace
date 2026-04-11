@@ -1,5 +1,6 @@
 from collections import defaultdict
 from datetime import datetime, timedelta
+from urllib.parse import urlsplit
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -56,15 +57,17 @@ MENU_TITLES = {
         "dashboard": "Boshqaruv Paneli",
         "devices": "Kameralar Ro'yxati",
         "commands": "Kameraga Buyruqlar",
+        "staff": "Hodimlar",
+        "students": "O'quvchi Talabalar",
+        "shifts": "Smenalar",
         "employees": "Xodimlar Ro'yxati",
         "attendance": "Davomat",
-        "sync_attendance": "Sinxron Davomat",
         "psychological_portrait": "Psixologik Portret",
         "reports": "Kechikish Hisoboti",
         "settings": "Sozlamalar",
         "about": "Tizim Haqida",
         "group_cameras": "Kameralar",
-        "group_employees": "Xodimlar",
+        "group_employees": "Asosiy bo'lim",
         "group_management": "Tashkilotlar",
         "users": "Tizim Foydalanuvchilari",
         "user_approvals": "Tasdiqlash Navbati",
@@ -78,14 +81,16 @@ MENU_TITLES = {
         "dashboard": "Управление",
         "devices": "Список камер",
         "commands": "Команды",
+        "staff": "Сотрудники",
+        "students": "Ученики и студенты",
+        "shifts": "Смены",
         "employees": "Сотрудники",
         "reports": "Опоздания",
-        "sync_attendance": "Синхронная посещаемость",
         "psychological_portrait": "Психологический портрет",
         "settings": "Настройки",
         "about": "О системе",
         "group_cameras": "Камеры",
-        "group_employees": "Персонал",
+        "group_employees": "Основной раздел",
         "group_management": "Организации",
         "users": "Системные пользователи",
         "user_approvals": "Очередь подтверждения",
@@ -105,9 +110,10 @@ DEFAULT_MENU_STRUCTURE = [
     {"type": "link", "key": "devices", "href": "/devices", "icon": '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>'},
     {"type": "link", "key": "commands", "href": "/commands", "icon": '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>'},
     {"type": "group", "key": "group_employees"},
-    {"type": "link", "key": "employees", "href": "/employees", "icon": '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>'},
+    {"type": "link", "key": "staff", "href": "/staff", "icon": '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>'},
+    {"type": "link", "key": "students", "href": "/students", "icon": '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422A12.083 12.083 0 0112 20.055a12.083 12.083 0 01-6.16-9.477L12 14zm0 0v6"/>'},
+    {"type": "link", "key": "shifts", "href": "/shifts", "icon": '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>'},
     {"type": "link", "key": "attendance", "href": "/attendance", "icon": '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10m-11 8h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v10a2 2 0 002 2z"/>'},
-    {"type": "link", "key": "sync_attendance", "href": "/attendance-sync", "icon": '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356-2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0A8.003 8.003 0 015.03 15m14.389 0H15"/>'},
     {"type": "link", "key": "psychological_portrait", "href": "/psixologik-portret", "icon": '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5h16M4 12h10M4 19h16M18 10l3 2-3 2v-4zM18 17l3 2-3 2v-4z"/>'},
     {"type": "link", "key": "reports", "href": "/reports", "icon": '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>'},
     {"type": "group", "key": "group_management"},
@@ -413,13 +419,15 @@ def get_menus_dict(request: Request) -> dict:
         "devices": "Kameralar Ro'yxati" if lang == "uz" else "Список камер",
         "events": "Kamera Hodisalari" if lang == "uz" else "События",
         "commands": "Kameraga Buyruqlar" if lang == "uz" else "Команды",
+        "staff": "Hodimlar" if lang == "uz" else "Сотрудники",
+        "students": "O'quvchi Talabalar" if lang == "uz" else "Ученики и студенты",
+        "shifts": "Smenalar" if lang == "uz" else "Смены",
         "employees": "Xodimlar Ro'yxati" if lang == "uz" else "Сотрудники",
-        "sync_attendance": "Sinxron Davomat" if lang == "uz" else "Синхронная посещаемость",
         "reports": "Kechikish Hisoboti" if lang == "uz" else "Опоздания",
         "settings": "Sozlamalar" if lang == "uz" else "Настройки",
         "about": "Tizim Haqida" if lang == "uz" else "О системе",
         "group_cameras": "Kameralar" if lang == "uz" else "Камеры",
-        "group_employees": "Xodimlar" if lang == "uz" else "Персонал",
+        "group_employees": "Asosiy bo'lim" if lang == "uz" else "Основной раздел",
         "group_management": "Tashkilotlar" if lang == "uz" else "Организации",
         "users": "Tizim Foydalanuvchilari" if lang == "uz" else "Системные пользователи",
         "isup_server": "ISUP Server" if lang == "uz" else "ISUP Сервер",
@@ -443,8 +451,10 @@ def get_menus_dict(request: Request) -> dict:
             "devices": "Kameralar Ro'yxati",
             "events": "Kamera Hodisalari",
             "commands": "Kameraga Buyruqlar",
+            "staff": "Hodimlar",
+            "students": "O'quvchi Talabalar",
+            "shifts": "Smenalar",
             "employees": "Xodimlar Ro'yxati",
-            "sync_attendance": "Sinxron Davomat",
             "reports": "Kechikish Hisoboti",
             "user_approvals": "Tasdiqlash Navbati",
             "settings": "Sozlamalar",
@@ -452,7 +462,7 @@ def get_menus_dict(request: Request) -> dict:
             "isup_server": "ISUP Server",
             "middleware_logs": "Tizim Loglari",
             "group_cameras": "Kameralar",
-            "group_employees": "Xodimlar",
+            "group_employees": "Asosiy bo'lim",
             "users": "Tizim Foydalanuvchilari",
         }
         fallback_ru_map = {
@@ -460,8 +470,10 @@ def get_menus_dict(request: Request) -> dict:
             "devices": "Список камер",
             "events": "События",
             "commands": "Команды",
+            "staff": "Сотрудники",
+            "students": "Ученики и студенты",
+            "shifts": "Смены",
             "employees": "Сотрудники",
-            "sync_attendance": "Синхронная посещаемость",
             "reports": "Опоздания",
             "user_approvals": "Очередь подтверждения",
             "settings": "Настройки",
@@ -469,7 +481,7 @@ def get_menus_dict(request: Request) -> dict:
             "isup_server": "ISUP Сервер",
             "middleware_logs": "Системные Логи",
             "group_cameras": "Камеры",
-            "group_employees": "Персонал",
+            "group_employees": "Основной раздел",
             "users": "Системные пользователи",
         }
         fallback_uz = fallback_uz_map.get(key, "Tashkilotlar")
@@ -585,6 +597,134 @@ def _resolve_camera_page_scope(request: Request, db: Session) -> dict[str, objec
         "is_super_admin": False,
         "allowed_org_ids": allowed_org_ids,
         "organizations": organizations,
+    }
+
+
+def _build_employee_page_config(view_mode: str, menus: dict, lang: str) -> dict[str, str]:
+    safe_mode = str(view_mode or "all").strip().lower() or "all"
+    is_ru = lang == "ru"
+    if safe_mode == "staff":
+        return {
+            "employee_view_mode": "staff",
+            "page_title": menus.get("staff", "Сотрудники" if is_ru else "Hodimlar"),
+            "employee_heading_title": "Сотрудники" if is_ru else "Hodimlar",
+            "employee_heading_description": "Список сотрудников и преподавателей." if is_ru else "Hodim va o'qituvchilar ro'yxati.",
+            "employee_add_url": "/employees/add?kind=staff",
+            "employee_add_label": "Добавить сотрудника" if is_ru else "Yangi hodim",
+            "employee_default_type_filter": "staff",
+            "employee_import_default_type": "hodim",
+        }
+    if safe_mode == "students":
+        return {
+            "employee_view_mode": "students",
+            "page_title": menus.get("students", "Ученики и студенты" if is_ru else "O'quvchi Talabalar"),
+            "employee_heading_title": "Ученики и студенты" if is_ru else "O'quvchi talabalar",
+            "employee_heading_description": "Список учеников и студентов." if is_ru else "O'quvchi va talabalar ro'yxati.",
+            "employee_add_url": "/employees/add?kind=student",
+            "employee_add_label": "Добавить ученика" if is_ru else "Yangi o'quvchi",
+            "employee_default_type_filter": "oquvchi",
+            "employee_import_default_type": "oquvchi",
+        }
+    return {
+        "employee_view_mode": "all",
+        "page_title": menus.get("employees", "Сотрудники" if is_ru else "Xodimlar Ro'yxati"),
+        "employee_heading_title": "Пользователи" if is_ru else "Foydalanuvchilar",
+        "employee_heading_description": "Все сотрудники, преподаватели и учащиеся." if is_ru else "Barcha hodim, o'qituvchi va o'quvchilar ro'yxati.",
+        "employee_add_url": "/employees/add",
+        "employee_add_label": "Добавить пользователя" if is_ru else "Yangi foydalanuvchi",
+        "employee_default_type_filter": "all",
+        "employee_import_default_type": "hodim",
+    }
+
+
+def _build_shifts_page_payload(request: Request, db: Session, lang: str) -> tuple[list[Organization], list[dict], dict[str, int]]:
+    is_super_admin = _request_is_super_admin(request)
+    organizations_query = db.query(Organization).order_by(Organization.name.asc(), Organization.id.asc())
+    if not is_super_admin:
+        allowed_org_ids = _resolve_allowed_org_ids(request, db)
+        if not allowed_org_ids:
+            return [], [], {
+                "total_employees": 0,
+                "custom_shift_count": 0,
+                "default_shift_count": 0,
+                "organization_count": 0,
+            }
+        organizations_query = organizations_query.filter(Organization.id.in_(allowed_org_ids))
+
+    organizations = []
+    for org in organizations_query.all():
+        status = str(org.subscription_status.value if hasattr(org.subscription_status, "value") else org.subscription_status or "").strip().lower()
+        if status == "expired":
+            continue
+        organizations.append(org)
+
+    active_org_ids = [int(org.id) for org in organizations if getattr(org, "id", None) is not None]
+    if not active_org_ids:
+        return organizations, [], {
+            "total_employees": 0,
+            "custom_shift_count": 0,
+            "default_shift_count": 0,
+            "organization_count": len(organizations),
+        }
+
+    employees = (
+        db.query(Employee)
+        .filter(Employee.organization_id.in_(active_org_ids))
+        .order_by(
+            func.lower(func.coalesce(Employee.first_name, "")).asc(),
+            func.lower(func.coalesce(Employee.last_name, "")).asc(),
+            Employee.id.asc(),
+        )
+        .all()
+    )
+
+    type_labels = {
+        "oquvchi": "Ученик" if lang == "ru" else "O'quvchi",
+        "oqituvchi": "Преподаватель" if lang == "ru" else "O'qituvchi",
+        "hodim": "Сотрудник" if lang == "ru" else "Hodim",
+    }
+    rows: list[dict] = []
+    custom_shift_count = 0
+    default_shift_count = 0
+    for emp in employees:
+        org = emp.organization
+        org_start = str(org.default_start_time or "09:00") if org else "09:00"
+        org_end = str(org.default_end_time or "18:00") if org else "18:00"
+        start_time = str(emp.start_time or org_start or "09:00")
+        end_time = str(emp.end_time or org_end or "18:00")
+        is_custom = bool(str(emp.start_time or "").strip() or str(emp.end_time or "").strip())
+        if is_custom:
+            custom_shift_count += 1
+        else:
+            default_shift_count += 1
+
+        full_name = " ".join(
+            part for part in [emp.first_name or "", emp.middle_name or "", emp.last_name or ""] if str(part).strip()
+        ).strip()
+        employee_type_key = str(emp.employee_type or "").strip().lower()
+        rows.append({
+            "id": int(emp.id),
+            "full_name": full_name,
+            "personal_id": str(emp.personal_id or ""),
+            "employee_type": employee_type_key,
+            "employee_type_label": type_labels.get(employee_type_key, "Не указан" if lang == "ru" else "Tanlanmagan"),
+            "organization_id": int(org.id) if org and org.id is not None else None,
+            "organization_name": str(org.name or "") if org else "",
+            "department": str(emp.department or ""),
+            "position": str(emp.position or ""),
+            "start_time": start_time,
+            "end_time": end_time,
+            "default_start_time": org_start,
+            "default_end_time": org_end,
+            "shift_source": "custom" if is_custom else "organization",
+            "shift_source_label": "Персональная" if is_custom and lang == "ru" else ("Shaxsiy" if is_custom else ("Организация" if lang == "ru" else "Tashkilot")),
+        })
+
+    return organizations, rows, {
+        "total_employees": len(rows),
+        "custom_shift_count": custom_shift_count,
+        "default_shift_count": default_shift_count,
+        "organization_count": len(organizations),
     }
 
 
@@ -1127,6 +1267,13 @@ def camera_guide_page(request: Request, db: Session = Depends(get_db)):
     t = get_translations(lang)
     base_url = _resolve_public_web_base(request)
     bind_host = get_isup_public_host()
+    webhook_base_url = base_url.rstrip("/")
+    webhook_parts = urlsplit(webhook_base_url)
+    webhook_host = str(webhook_parts.hostname or bind_host).strip()
+    webhook_port = str(
+        webhook_parts.port
+        or (443 if webhook_parts.scheme == "https" else 80)
+    )
     isup_guide = {
         "bind_host": bind_host,
         "server_host": bind_host,
@@ -1135,6 +1282,11 @@ def camera_guide_page(request: Request, db: Session = Depends(get_db)):
         "picture_port": ISUP_PICTURE_PORT,
         "api_port": ISUP_API_PORT,
         "isup_key": ISUP_KEY,
+        "webhook_base_url": webhook_base_url,
+        "webhook_host": webhook_host,
+        "webhook_port": webhook_port,
+        "webhook_path": "/api/v1/httppost/",
+        "webhook_url": f"{webhook_base_url}/api/v1/httppost/",
         "health_url": f"{base_url}/api/isup-health",
         "process_url": f"{base_url}/api/isup/process",
         "devices_url": f"{base_url}/api/isup-devices",
@@ -1252,31 +1404,52 @@ def attendance_page(request: Request, db: Session = Depends(get_db)):
         "notifs": get_notifications(request, db),
     })
 
-@router.get("/attendance-sync")
-def sync_attendance_page(request: Request, db: Session = Depends(get_db)):
+def _render_employee_page(request: Request, db: Session, *, view_mode: str):
     menus = get_menus_dict(request)
     lang = request.cookies.get("lang", "uz")
     t = get_translations(lang)
-    return templates.TemplateResponse(request=request, name="sync_attendance.html", context={
+    page_cfg = _build_employee_page_config(view_mode, menus, lang)
+    return templates.TemplateResponse(request=request, name="employees.html", context={
         "request": request,
-        "page_title": menus.get("sync_attendance", "Sinxron Davomat"),
+        "page_title": page_cfg["page_title"],
         "menus": menus,
         "t": t,
         "lang": lang,
         "notifs": get_notifications(request, db),
+        **page_cfg,
     })
+
+
+@router.get("/staff")
+def staff_page(request: Request, db: Session = Depends(get_db)):
+    return _render_employee_page(request, db, view_mode="staff")
+
+
+@router.get("/students")
+def students_page(request: Request, db: Session = Depends(get_db)):
+    return _render_employee_page(request, db, view_mode="students")
+
 
 @router.get("/employees")
 def employees_page(request: Request, db: Session = Depends(get_db)):
+    return _render_employee_page(request, db, view_mode="all")
+
+
+@router.get("/shifts")
+def shifts_page(request: Request, db: Session = Depends(get_db)):
     menus = get_menus_dict(request)
     lang = request.cookies.get("lang", "uz")
     t = get_translations(lang)
-    return templates.TemplateResponse(request=request, name="employees.html", context={
+    organizations, shift_rows, shift_stats = _build_shifts_page_payload(request, db, lang)
+    return templates.TemplateResponse(request=request, name="shifts.html", context={
         "request": request,
-        "page_title": menus.get("employees"),
+        "page_title": menus.get("shifts", "Смены" if lang == "ru" else "Smenalar"),
         "menus": menus,
         "t": t,
         "lang": lang,
+        "organizations": organizations,
+        "shift_rows": shift_rows,
+        "shift_stats": shift_stats,
         "notifs": get_notifications(request, db),
     })
 
@@ -1301,7 +1474,19 @@ def add_employee_page(request: Request, db: Session = Depends(get_db)):
     menus = get_menus_dict(request)
     lang = request.cookies.get("lang", "uz")
     t = get_translations(lang)
-    page_title = "Добавить сотрудника" if lang == "ru" else "Xodim qo'shish"
+    form_kind = str(request.query_params.get("kind") or "").strip().lower()
+    if form_kind == "student":
+        page_title = "Добавить ученика" if lang == "ru" else "O'quvchi qo'shish"
+        employee_form_title = "Добавить ученика или студента" if lang == "ru" else "Yangi o'quvchi yoki talaba qo'shish"
+        employee_form_description = "Заполните данные для нового ученика или студента." if lang == "ru" else "Yangi o'quvchi yoki talaba uchun ma'lumotlarni to'ldiring."
+        default_employee_type = "oquvchi"
+        return_to_list_url = "/students"
+    else:
+        page_title = "Добавить сотрудника" if lang == "ru" else "Xodim qo'shish"
+        employee_form_title = "Добавить сотрудника" if lang == "ru" else "Yangi hodim qo'shish"
+        employee_form_description = "Заполните данные для нового сотрудника." if lang == "ru" else "Yangi hodim uchun ma'lumotlarni to'ldiring."
+        default_employee_type = "hodim" if form_kind == "staff" else ""
+        return_to_list_url = "/staff" if form_kind == "staff" else "/employees"
     allowed_org_ids = _resolve_allowed_org_ids(request, db)
     organizations = (
         db.query(Organization).filter(Organization.id.in_(allowed_org_ids)).order_by(Organization.name).all()
@@ -1319,6 +1504,10 @@ def add_employee_page(request: Request, db: Session = Depends(get_db)):
         "default_organization_id": default_organization_id,
         "single_organization_mode": len(organizations) == 1,
         "cameras": db.query(Device).order_by(Device.name).all(),
+        "employee_form_title": employee_form_title,
+        "employee_form_description": employee_form_description,
+        "default_employee_type": default_employee_type,
+        "return_to_list_url": return_to_list_url,
         "notifs": get_notifications(request, db),
     })
 

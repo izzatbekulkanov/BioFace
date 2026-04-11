@@ -23,7 +23,14 @@ from urllib.parse import urlsplit
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
-from time_utils import normalize_timestamp_tashkent, now_tashkent
+from attendance_utils import ATTENDANCE_FLOOD_GUARD_SECONDS
+from time_utils import (
+    TASHKENT_POSIX_TZ,
+    build_tashkent_time_xml,
+    normalize_timestamp_tashkent,
+    now_tashkent,
+    tashkent_localtime_text,
+)
 
 try:
     import httpx
@@ -1265,6 +1272,7 @@ class RedisCommandBridge:
                 "status_code": int(response.status_code),
                 "json": parsed_json,
                 "text": text,
+                "raw_bytes": bytes(response.content or b""),
                 "error": reason if reason else (None if ok else f"HTTP {response.status_code}"),
                 "camera_ip": conn["host"],
                 "camera_http_port": conn["port"],
@@ -1278,6 +1286,7 @@ class RedisCommandBridge:
                 "status_code": None,
                 "json": None,
                 "text": "",
+                "raw_bytes": b"",
                 "error": str(exc),
             }
 
@@ -1662,196 +1671,6 @@ class RedisCommandBridge:
 
         return rows, total_matches
 
-    def _cmd_get_attendance_events(self, target_device_id: str, state: DeviceState, params: dict[str, Any]) -> dict[str, Any]:
-        # DS-K1T34x qurilmalarda AcsEvent qidiruv maxResults > 15 bo'lsa bo'sh javob qaytarishi mumkin.
-        page_size = max(1, min(self._safe_int(params.get("max_results"), 10), 15))
-        limit = max(1, min(self._safe_int(params.get("limit"), 500), 2000))
-        offset = max(0, self._safe_int(params.get("searchResultPosition"), 0))
-
-        now_local = datetime.now().astimezone()
-        hours = max(1, min(self._safe_int(params.get("hours"), 72), 24 * 30))
-        start_dt = now_local - timedelta(hours=hours)
-        end_dt = now_local
-
-        user_start = self._parse_dt_any(params.get("start_time"))
-        user_end = self._parse_dt_any(params.get("end_time"))
-        if user_start is not None:
-            start_dt = user_start.astimezone()
-        if user_end is not None:
-            end_dt = user_end.astimezone()
-
-        start_time = self._as_isapi_time(start_dt)
-        end_time = self._as_isapi_time(end_dt)
-
-        events: list[dict[str, Any]] = []
-        total_matches = 0
-        transport = "isup_sdk_ptxml"
-        status_code: Optional[int] = None
-        attempts: list[dict[str, Any]] = []
-        explicit_major = params.get("major") is not None
-        explicit_minor = params.get("minor") is not None
-        if explicit_major or explicit_minor:
-            profiles = [
-                {
-                    "major": self._safe_int(params.get("major"), 5) if explicit_major else None,
-                    "minor": self._safe_int(params.get("minor"), 75) if explicit_minor else None,
-                    "label": "custom",
-                }
-            ]
-        else:
-            profiles = [
-                {"major": 5, "minor": 75, "label": "strict_5_75"},
-                {"major": 5, "minor": None, "label": "major_5_any_minor"},
-                {"major": None, "minor": None, "label": "broad_any"},
-            ]
-
-        last_error: Optional[str] = None
-        for profile in profiles:
-            if len(events) >= limit:
-                break
-
-            profile_offset = offset
-            search_id = str(int(time.time() * 1000))
-            profile_rows_total = 0
-            profile_error: Optional[str] = None
-
-            while len(events) < limit:
-                cond = {
-                    "searchID": search_id,
-                    "searchResultPosition": profile_offset,
-                    "maxResults": page_size,
-                    "startTime": start_time,
-                    "endTime": end_time,
-                    "picEnable": True,
-                }
-                if profile.get("major") is not None:
-                    cond["major"] = int(profile["major"])
-                if profile.get("minor") is not None:
-                    cond["minor"] = int(profile["minor"])
-
-                req = {"AcsEventCond": cond}
-
-                response = self._request_camera(
-                    target_device_id,
-                    state,
-                    "POST",
-                    "/ISAPI/AccessControl/AcsEvent?format=json",
-                    params,
-                    json_body=req,
-                )
-                transport = str(response.get("transport") or transport)
-                status_code = response.get("status_code")
-                if not response.get("ok"):
-                    profile_error = str(response.get("error") or "Davomat eventlari olinmadi")
-                    last_error = profile_error
-                    break
-
-                payload = response.get("json")
-                rows, page_total = self._extract_attendance_rows(payload)
-                total_matches = max(total_matches, page_total)
-                if not rows:
-                    break
-
-                profile_rows_total += len(rows)
-
-                for row in rows:
-                    if len(events) >= limit:
-                        break
-
-                sources = [row]
-                for nested_key in ("EmployeeInfo", "UserInfo", "AcsEventInfo", "FaceInfo"):
-                    nested = row.get(nested_key)
-                    if isinstance(nested, dict):
-                        sources.append(nested)
-
-                def _pick(*keys: str) -> str:
-                    for src in sources:
-                        for key in keys:
-                            if key not in src:
-                                continue
-                            val = src.get(key)
-                            if isinstance(val, dict):
-                                for dict_key in ("value", "employeeNo", "name", "id", "userID", "employeeNoString"):
-                                    nested_val = val.get(dict_key)
-                                    text = str(nested_val or "").strip()
-                                    if text:
-                                        return text
-                                continue
-                            text = str(val or "").strip()
-                            if text:
-                                return text
-                    return ""
-
-                event_time_raw = _pick("dateTime", "time", "eventTime", "currentTime", "occurTime")
-                event_dt = self._parse_dt_any(event_time_raw)
-                event_time_iso = iso_utc(event_dt) if event_dt is not None else None
-
-                major = self._safe_int(_pick("major"), 0)
-                minor = self._safe_int(_pick("minor"), 0)
-                person_id = _pick(
-                    "employeeNoString",
-                    "employeeNo",
-                    "personID",
-                    "personId",
-                    "userID",
-                    "userId",
-                    "cardNo",
-                )
-                person_name = _pick("name", "employeeName", "personName", "userName")
-                snapshot_url = _pick("pictureURL", "snapPicURL", "faceURL", "snapshotUrl")
-
-                events.append(
-                    {
-                        "person_id": person_id or None,
-                        "person_name": person_name or None,
-                        "timestamp": event_time_iso,
-                        "snapshot_url": snapshot_url or None,
-                        "major": major,
-                        "minor": minor,
-                        "raw": row,
-                    }
-                )
-
-                profile_offset += len(rows)
-                if len(rows) < page_size:
-                    break
-                if total_matches > 0 and profile_offset >= total_matches:
-                    break
-
-            attempts.append(
-                {
-                    "label": profile.get("label"),
-                    "major": profile.get("major"),
-                    "minor": profile.get("minor"),
-                    "rows": profile_rows_total,
-                    "error": profile_error,
-                }
-            )
-            if profile_rows_total > 0:
-                break
-
-        if not events and last_error:
-            return {
-                "ok": False,
-                "error": last_error,
-                "transport": transport,
-                "status_code": status_code,
-                "attempts": attempts,
-            }
-
-        return {
-            "ok": True,
-            "events": events,
-            "count": len(events),
-            "total_matches": max(total_matches, len(events)),
-            "start_time": start_time,
-            "end_time": end_time,
-            "attempts": attempts,
-            "transport": transport,
-            "status_code": status_code,
-            "message": f"{len(events)} ta davomat eventi olindi.",
-        }
-
     @staticmethod
     def _is_image_bytes(raw: bytes) -> bool:
         return bool(
@@ -1865,6 +1684,21 @@ class RedisCommandBridge:
                 or (raw.startswith(b"RIFF") and raw[8:12] == b"WEBP")
             )
         )
+
+    @staticmethod
+    def _is_valid_image_bytes(raw: bytes) -> bool:
+        if not RedisCommandBridge._is_image_bytes(raw):
+            return False
+        if raw.startswith(b"\xff\xd8\xff") and b"\xff\xd9" not in raw[-4096:]:
+            return False
+        if Image is None:
+            return True
+        try:
+            with Image.open(BytesIO(raw)) as img:
+                img.verify()
+            return True
+        except Exception:
+            return False
 
     @staticmethod
     def _guess_image_mime(raw: bytes) -> str:
@@ -1891,7 +1725,7 @@ class RedisCommandBridge:
             raw = base64.b64decode(text, validate=False)
         except Exception:
             return None
-        return raw if self._is_image_bytes(raw) else None
+        return raw if self._is_valid_image_bytes(raw) else None
 
     def _download_face_url_bytes(
         self,
@@ -1930,7 +1764,7 @@ class RedisCommandBridge:
                         response = client.get(http_url)
                     if int(response.status_code) < 400:
                         raw = bytes(response.content or b"")
-                        if self._is_image_bytes(raw):
+                        if self._is_valid_image_bytes(raw):
                             return raw
                         dec = self._decode_image_b64(response.text)
                         if dec:
@@ -1947,7 +1781,7 @@ class RedisCommandBridge:
             
         isup_resp = self._request_camera(target_device_id, state, "GET", isapi_path, params)
         raw_b = isup_resp.get("raw_bytes")
-        if isinstance(raw_b, bytes) and self._is_image_bytes(raw_b):
+        if isinstance(raw_b, bytes) and self._is_valid_image_bytes(raw_b):
             return raw_b
             
         return None
@@ -3296,6 +3130,87 @@ class RedisCommandBridge:
             "message": f"ISAPI {method} {path} bajarildi.",
         }
 
+    @staticmethod
+    def _guess_image_ext_from_bytes(raw: bytes) -> str:
+        if raw.startswith(b"\x89PNG\r\n\x1a\n"):
+            return "png"
+        if raw.startswith(b"GIF87a") or raw.startswith(b"GIF89a"):
+            return "gif"
+        if raw.startswith(b"BM"):
+            return "bmp"
+        if raw.startswith(b"RIFF") and raw[8:12] == b"WEBP":
+            return "webp"
+        return "jpg"
+
+    def _store_snapshot_bytes(self, target_device_id: str, raw_bytes: bytes, *, prefix: str = "snap") -> Optional[str]:
+        if not self._is_valid_image_bytes(raw_bytes):
+            return None
+        safe_device_id = re.sub(r"[^A-Za-z0-9_.-]+", "_", str(target_device_id or "device")) or "device"
+        ext = self._guess_image_ext_from_bytes(raw_bytes)
+        ts_str = utc_now().strftime("%Y%m%d_%H%M%S_%f")
+        img_name = f"{prefix}_{safe_device_id}_{ts_str}.{ext}"
+        img_path = self.runtime.picture_dir / img_name
+        img_path.write_bytes(raw_bytes)
+        rel = img_path.relative_to(Path(__file__).resolve().parent)
+        return "/" + rel.as_posix()
+
+    def _cmd_capture_snapshot(self, target_device_id: str, state: DeviceState, params: dict[str, Any]) -> dict[str, Any]:
+        """Modeldan qat'i nazar joriy snapshotni olib, lokal fayl sifatida saqlaydi."""
+        snapshot_paths = (
+            "/ISAPI/Streaming/channels/1/picture",
+            "/ISAPI/Streaming/channels/101/picture",
+            "/ISAPI/Streaming/picture",
+        )
+        request_params = dict(params or {})
+        request_params.setdefault("allow_http_fallback", True)
+        attempts: list[dict[str, Any]] = []
+
+        for snap_path in snapshot_paths:
+            response = self._request_camera(
+                target_device_id,
+                state,
+                "GET",
+                snap_path,
+                request_params,
+            )
+            raw_bytes = response.get("raw_bytes") or b""
+            if isinstance(raw_bytes, str):
+                raw_bytes = raw_bytes.encode("utf-8", errors="ignore")
+            if isinstance(raw_bytes, bytes) and self._is_valid_image_bytes(raw_bytes):
+                snapshot_url = self._store_snapshot_bytes(target_device_id, raw_bytes, prefix="event")
+                if snapshot_url:
+                    self.registry.bump_picture()
+                    return {
+                        "ok": True,
+                        "snapshot_url": snapshot_url,
+                        "path": snap_path,
+                        "transport": response.get("transport") or "isup_sdk_ptxml",
+                        "status_code": response.get("status_code"),
+                        "camera_ip": response.get("camera_ip") or state.ip,
+                        "camera_http_port": response.get("camera_http_port"),
+                        "message": f"Snapshot olindi: {snap_path}",
+                    }
+
+            attempts.append(
+                {
+                    "path": snap_path,
+                    "transport": response.get("transport"),
+                    "status_code": response.get("status_code"),
+                    "error": response.get("error"),
+                }
+            )
+
+        summary = "; ".join(
+            f"{item.get('path')}={item.get('error') or item.get('status_code') or 'empty'}"
+            for item in attempts
+        )
+        return {
+            "ok": False,
+            "error": summary or "Snapshot endpointlardan rasm olinmadi",
+            "attempts": attempts,
+            "message": "Kamera snapshot qaytarmadi.",
+        }
+
     def _cmd_get_alarm_server(self, target_device_id: str, state: DeviceState, params: dict[str, Any]) -> dict[str, Any]:
         """Kameradagi HTTP notification (EHome/Webhook) sozlamalarini o'qish."""
         response = self._request_camera(
@@ -3455,10 +3370,30 @@ class RedisCommandBridge:
                 "response": response_text[:300],
                 "steps": resp.get("steps"),
                 "transport": "isup_sdk_ptxml",
-                "message": "EHome alarm/picture va webhook event notification yangilandi.",
+                "message": "ISUP register saqlandi, legacy alarm host disable qilindi va webhook event notification yangilandi.",
             }
         except Exception as exc:
             return {"ok": False, "error": str(exc)}
+
+    def _cmd_set_tashkent_timezone(self, target_device_id: str, state: DeviceState, params: dict[str, Any]) -> dict[str, Any]:
+        login_id = state.login_id
+        if login_id is None:
+            return {"ok": False, "error": "login_id mavjud emas"}
+        force = self._parse_bool(params.get("force"), True)
+        result = self.runtime.sync_device_time(
+            int(login_id),
+            force=force,
+            reason="manual_command",
+        )
+        if result.get("ok"):
+            return result
+        return {
+            "ok": False,
+            "error": result.get("error") or "Kamera vaqtini sinxronlab bo'lmadi",
+            "steps": result.get("steps"),
+            "transport": result.get("transport") or "isup_sdk_ptxml",
+            "message": result.get("message") or "Kamera vaqtini Asia/Tashkent ga sinxronlash muvaffaqiyatsiz tugadi.",
+        }
 
     def _dispatch(self, target_device_id: str, raw_data: Any) -> dict[str, Any]:
         command_raw, params, request_id = self._parse_command(raw_data)
@@ -3516,7 +3451,6 @@ class RedisCommandBridge:
             "get_device_snapshot": self._cmd_get_device_snapshot,
             "get_face_count": self._cmd_get_face_count,
             "get_users": self._cmd_get_users,
-            "get_attendance_events": self._cmd_get_attendance_events,
             "get_face_records": self._cmd_get_face_records,
             "get_face_image": self._cmd_get_face_image,
             "sync_faces": self._cmd_sync_faces,
@@ -3530,6 +3464,8 @@ class RedisCommandBridge:
             "raw_post": self._cmd_raw_isapi,
             "get_alarm_server": self._cmd_get_alarm_server,
             "set_alarm_server": self._cmd_set_alarm_server,
+            "set_tashkent_timezone": self._cmd_set_tashkent_timezone,
+            "capture_snapshot": self._cmd_capture_snapshot,
         }
 
         handler = handlers.get(command)
@@ -3624,8 +3560,8 @@ class HikvisionSdkRuntime:
         self._snap_lock = _threading.Lock()
         self._snapshot_index_path = self.picture_dir / "_employee_snapshot_index.json"
         self._snapshot_index_lock = _threading.Lock()
-        self._attendance_sync_cursor: dict[str, datetime] = {}
-        self._attendance_sync_lock = _threading.Lock()
+        self._time_sync_lock = _threading.Lock()
+        self._last_time_sync_by_device: dict[str, float] = {}
 
         # Keep callback references to avoid GC.
         self._cms_cb = DEVICE_REGISTER_CB(self._on_device_register)
@@ -3633,6 +3569,40 @@ class HikvisionSdkRuntime:
         self._ss_storage_cb = EHOME_SS_STORAGE_CB(self._on_ss_storage)
         self._ss_msg_cb = EHOME_SS_MSG_CB(self._on_ss_msg)
         self._ss_rw_cb = EHOME_SS_RW_CB(self._on_ss_rw)
+
+    @staticmethod
+    def _safe_int(value: Any, default: int = 0) -> int:
+        try:
+            return int(value)
+        except Exception:
+            return int(default)
+
+    def _find_state_by_login_id(self, login_id: int) -> Optional[DeviceState]:
+        safe_login_id = self._safe_int(login_id, -1)
+        if safe_login_id < 0:
+            return None
+        for state in self.registry.all():
+            if int(state.login_id) == safe_login_id:
+                return state
+        return None
+
+    def _time_sync_due(self, device_id: str, *, min_interval_seconds: int = 900, force: bool = False) -> bool:
+        if force:
+            return True
+        safe_device_id = str(device_id or "").strip()
+        if not safe_device_id:
+            return True
+        now_ts = time.time()
+        with self._time_sync_lock:
+            last_sync = float(self._last_time_sync_by_device.get(safe_device_id) or 0.0)
+        return (now_ts - last_sync) >= max(30, int(min_interval_seconds))
+
+    def _mark_time_sync(self, device_id: str) -> None:
+        safe_device_id = str(device_id or "").strip()
+        if not safe_device_id:
+            return
+        with self._time_sync_lock:
+            self._last_time_sync_by_device[safe_device_id] = time.time()
 
     @staticmethod
     def _notification_error_reason(response_text: str) -> Optional[str]:
@@ -3675,6 +3645,146 @@ class HikvisionSdkRuntime:
         if sub_status and sub_status.lower() not in {"ok", "success", "completed"}:
             return f"subStatusCode={sub_status}"
         return None
+
+    def _time_sync_request(
+        self,
+        *,
+        login_id: int,
+        method: str,
+        path: str,
+        body: str | bytes | None,
+        label: str,
+    ) -> dict[str, Any]:
+        try:
+            response = self.isapi_passthrough(
+                login_id=login_id,
+                method=method,
+                request_path=path,
+                body=body,
+            )
+            response_text = str(response.get("text") or "")
+            response_error = self._notification_error_reason(response_text)
+            return {
+                "label": label,
+                "method": method,
+                "path": path,
+                "ok": response_error is None,
+                "error": response_error,
+                "response": response_text[:400],
+            }
+        except Exception as exc:
+            return {
+                "label": label,
+                "method": method,
+                "path": path,
+                "ok": False,
+                "error": str(exc),
+                "response": "",
+            }
+
+    def sync_device_time(
+        self,
+        login_id: int,
+        *,
+        force: bool = False,
+        reason: str = "manual",
+    ) -> dict[str, Any]:
+        state = self._find_state_by_login_id(login_id)
+        if state is None:
+            return {
+                "ok": False,
+                "error": "Qurilma login sessiyasi topilmadi",
+                "message": "Kamera bilan faol ISUP sessiya topilmadi.",
+            }
+
+        if not self._time_sync_due(state.device_id, force=force):
+            return {
+                "ok": True,
+                "skipped": True,
+                "device_id": state.device_id,
+                "local_time": tashkent_localtime_text(),
+                "time_zone": TASHKENT_POSIX_TZ,
+                "message": "Kamera vaqti yaqinda sinxronlangan, hozircha qayta yuborilmadi.",
+            }
+
+        local_time = tashkent_localtime_text()
+        plans = [
+            {
+                "name": "system_time_xml",
+                "steps": [
+                    ("PUT", "/ISAPI/System/time", build_tashkent_time_xml(include_namespace=True), "system_time_xml"),
+                ],
+            },
+            {
+                "name": "system_time_xml_plain",
+                "steps": [
+                    ("PUT", "/ISAPI/System/time", build_tashkent_time_xml(include_namespace=False), "system_time_xml_plain"),
+                ],
+            },
+            {
+                "name": "separate_time_zone_and_local_time",
+                "steps": [
+                    ("PUT", "/ISAPI/System/time/timeZone", TASHKENT_POSIX_TZ, "time_zone"),
+                    ("PUT", "/ISAPI/System/time/localTime", local_time, "local_time"),
+                ],
+            },
+        ]
+
+        attempts: list[dict[str, Any]] = []
+        for plan in plans:
+            plan_steps: list[dict[str, Any]] = []
+            plan_ok = True
+            for method, path, body, label in plan["steps"]:
+                current = self._time_sync_request(
+                    login_id=login_id,
+                    method=method,
+                    path=path,
+                    body=body,
+                    label=label,
+                )
+                plan_steps.append(current)
+                if not current.get("ok"):
+                    plan_ok = False
+                    break
+
+            attempts.append(
+                {
+                    "name": str(plan["name"]),
+                    "ok": plan_ok,
+                    "steps": plan_steps,
+                }
+            )
+            if plan_ok:
+                self._mark_time_sync(state.device_id)
+                return {
+                    "ok": True,
+                    "device_id": state.device_id,
+                    "camera_ip": state.ip,
+                    "plan": str(plan["name"]),
+                    "steps": attempts,
+                    "local_time": local_time,
+                    "time_zone": TASHKENT_POSIX_TZ,
+                    "transport": "isup_sdk_ptxml",
+                    "message": f"Kamera vaqti Asia/Tashkent ga sinxronlandi ({reason}).",
+                }
+
+        last_error = ""
+        if attempts:
+            last_plan = attempts[-1]
+            last_steps = last_plan.get("steps") or []
+            if last_steps:
+                last_error = str(last_steps[-1].get("error") or "")
+        return {
+            "ok": False,
+            "device_id": state.device_id,
+            "camera_ip": state.ip,
+            "local_time": local_time,
+            "time_zone": TASHKENT_POSIX_TZ,
+            "steps": attempts,
+            "transport": "isup_sdk_ptxml",
+            "error": last_error or "Kamera vaqtini sinxronlab bo'lmadi",
+            "message": "Kamera vaqtini Asia/Tashkent ga sinxronlash muvaffaqiyatsiz tugadi.",
+        }
 
     def _build_ehome_notification_xml(self) -> Optional[str]:
         host = str(self.public_host or "").strip()
@@ -3810,6 +3920,24 @@ class HikvisionSdkRuntime:
 
     def _disable_ehome_notification_config(self, login_id: int) -> dict[str, Any]:
         path = "/ISAPI/Event/notification/httpHosts/1"
+        disabled_resp = self.isapi_passthrough(
+            login_id=login_id,
+            method="PUT",
+            request_path=path,
+            body=self._build_ehome_disabled_notification_xml().encode("utf-8"),
+        )
+        disabled_text = str(disabled_resp.get("text") or "")
+        disabled_error = self._notification_error_reason(disabled_text)
+        if disabled_error is None:
+            return {
+                "ok": True,
+                "method": "PUT",
+                "path": path,
+                "response": disabled_text[:400],
+                "host": "0.0.0.0",
+                "port": 0,
+            }
+
         delete_error: Optional[str] = None
         delete_text = ""
         try:
@@ -3820,31 +3948,18 @@ class HikvisionSdkRuntime:
             )
             delete_text = str(delete_resp.get("text") or "")
             delete_error = self._notification_error_reason(delete_text)
-            if delete_error is None:
-                return {
-                    "ok": True,
-                    "method": "DELETE",
-                    "path": path,
-                    "response": delete_text[:400],
-                }
         except Exception as exc:
             delete_error = str(exc)
 
-        fallback_resp = self.isapi_passthrough(
-            login_id=login_id,
-            method="PUT",
-            request_path=path,
-            body=self._build_ehome_disabled_notification_xml().encode("utf-8"),
-        )
-        fallback_text = str(fallback_resp.get("text") or "")
-        fallback_error = self._notification_error_reason(fallback_text)
         return {
-            "ok": fallback_error is None,
-            "method": "PUT",
+            "ok": delete_error is None,
+            "method": "DELETE" if delete_error is None else "PUT",
             "path": path,
-            "error": fallback_error or delete_error,
-            "response": fallback_text[:400],
-            "fallback_from": delete_error,
+            "error": delete_error or disabled_error,
+            "response": (delete_text or disabled_text)[:400],
+            "host": "0.0.0.0",
+            "port": 0,
+            "fallback_from": disabled_error,
         }
 
     def _upsert_ehome_notification_config(self, login_id: int) -> dict[str, Any]:
@@ -3879,20 +3994,23 @@ class HikvisionSdkRuntime:
             "port": int(self.alarm_port or 7661),
         }
 
-    def _build_webhook_notification_xml(self) -> tuple[Optional[str], Optional[str]]:
+    def _build_webhook_notification_xml(self) -> tuple[Optional[str], Optional[str], Optional[str]]:
         public_base = str(self.camera_event_push_base_url or "").strip().rstrip("/")
         if not public_base:
-            return None, None
+            return None, None, None
 
         parsed = urlsplit(public_base)
         host = (parsed.hostname or "").strip()
         if not host:
-            return None, None
+            return None, None, None
 
         scheme = (parsed.scheme or "https").lower()
         protocol = "HTTP" if scheme == "http" else "HTTPS"
         port = parsed.port or (443 if protocol == "HTTPS" else 80)
-        webhook_url = f"{public_base}/api/v1/httppost/"
+        base_path = str(parsed.path or "").strip()
+        normalized_base_path = f"/{base_path.strip('/')}" if base_path.strip("/") else ""
+        webhook_path = f"{normalized_base_path}/api/v1/httppost/"
+        webhook_url = f"{scheme}://{parsed.netloc}{webhook_path}"
         try:
             ipaddress.ip_address(host)
             addressing_xml = (
@@ -3908,7 +4026,7 @@ class HikvisionSdkRuntime:
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
             "<HttpHostNotification version=\"2.0\" xmlns=\"http://www.isapi.org/ver20/XMLSchema\">"
             "<id>2</id>"
-            f"<url>{webhook_url}</url>"
+            f"<url>{webhook_path}</url>"
             f"<protocolType>{protocol}</protocolType>"
             "<parameterFormatType>JSON</parameterFormatType>"
             f"{addressing_xml}"
@@ -3930,7 +4048,7 @@ class HikvisionSdkRuntime:
             "</SubscribeEvent>"
             "</HttpHostNotification>"
         )
-        return xml_body, webhook_url
+        return xml_body, webhook_url, webhook_path
 
     def push_event_notification_config(self, login_id: int) -> dict[str, Any]:
         steps: list[dict[str, Any]] = []
@@ -3957,7 +4075,7 @@ class HikvisionSdkRuntime:
                 "steps": steps,
             }
 
-        ehome_resp = self._upsert_ehome_notification_config(login_id)
+        ehome_resp = self._disable_ehome_notification_config(login_id)
         steps.append(
             {
                 "name": "ehome",
@@ -3973,12 +4091,12 @@ class HikvisionSdkRuntime:
         if not ehome_resp.get("ok"):
             return {
                 "ok": False,
-                "error": ehome_resp.get("error") or "EHome notification yozilmadi",
+                "error": ehome_resp.get("error") or "Legacy EHome alarm host o'chirilmadi",
                 "text": str(ehome_resp.get("response") or ""),
                 "steps": steps,
             }
 
-        xml_body, webhook_url = self._build_webhook_notification_xml()
+        xml_body, webhook_url, webhook_path = self._build_webhook_notification_xml()
         if xml_body:
             wh_resp = self.isapi_passthrough(
                 login_id=login_id,
@@ -3994,6 +4112,7 @@ class HikvisionSdkRuntime:
                     "path": "/ISAPI/Event/notification/httpHosts/2",
                     "ok": wh_error is None,
                     "url": webhook_url,
+                    "path_value": webhook_path,
                     "error": wh_error,
                     "response": wh_text[:400],
                 }
@@ -4024,6 +4143,7 @@ class HikvisionSdkRuntime:
             "text": summary,
             "steps": steps,
             "webhook_url": webhook_url,
+            "webhook_path": webhook_path,
         }
 
     def _load_dlls(self) -> None:
@@ -4225,19 +4345,16 @@ class HikvisionSdkRuntime:
             f"[ISUP SDK] listeners started: register={self.register_port}, "
             f"alarm={self.alarm_port}, picture={self.picture_port}, api={self.api_port}"
         )
-        # Background thread: barcha online kameralarda real-time event konfiguratsiyasini
-        # (EHome alarm + ixtiyoriy HTTP/HTTPS webhook) bir xil holatda ushlab turadi.
+        # Background thread: barcha online kameralarda register/webhook konfiguratsiyasini
+        # bir xil holatda ushlab turadi va legacy alarm http hostni disable qiladi.
         import threading as _thrd
         self._server_info_pusher = _thrd.Thread(
             target=self._periodic_server_info_push,
             daemon=True,
         )
         self._server_info_pusher.start()
-        self._attendance_fallback_thread = _thrd.Thread(
-            target=self._periodic_attendance_delta_sync,
-            daemon=True,
-        )
-        self._attendance_fallback_thread.start()
+        # Attendance faqat HTTP webhook push orqali olinadi.
+        self._attendance_fallback_thread = None
 
     def _schedule_webhook_only_sync(self, login_id: Optional[int], delay_seconds: float = 1.5) -> None:
         if login_id is None:
@@ -4246,17 +4363,21 @@ class HikvisionSdkRuntime:
         def _runner() -> None:
             try:
                 time.sleep(max(0.1, float(delay_seconds or 0.1)))
+                self.sync_device_time(int(login_id), force=False, reason="device_online")
+            except Exception as exc:
+                print(f"[ISUP SDK] auto time sync xato: {exc}")
+            try:
                 self.push_event_notification_config(int(login_id))
-            except Exception:
-                pass
+            except Exception as exc:
+                print(f"[ISUP SDK] auto webhook sync xato: {exc}")
 
         Thread(target=_runner, daemon=True).start()
 
     def _periodic_server_info_push(self) -> None:
         """
         Background thread: har 60 soniyada barcha online kameralarga
-        EHome alarm/picture va HTTP/HTTPS webhook konfiguratsiyasini qayta yozadi.
-        Bu ENUM_DEV_ON callback kelmasa ham ishlaydi.
+        register/webhook konfiguratsiyasini qayta yozadi va legacy alarm hostni
+        disable holatda ushlab turadi. Bu ENUM_DEV_ON callback kelmasa ham ishlaydi.
         """
         import time as _time
         _time.sleep(8)  # Birinchi push ni biroz kechiktirish
@@ -4267,6 +4388,10 @@ class HikvisionSdkRuntime:
                     if not state.online or state.login_id is None:
                         continue
                     online_device_ids.append(state.device_id)
+                    try:
+                        self.sync_device_time(state.login_id, force=False, reason="periodic")
+                    except Exception:
+                        pass
                     try:
                         self.push_event_notification_config(state.login_id)
                     except Exception:
@@ -4880,46 +5005,6 @@ class HikvisionSdkRuntime:
                 return state
         return None
 
-    def _get_delta_sync_cursor(self, state: "DeviceState") -> Optional[datetime]:
-        device_key = str(state.device_id or "").strip()
-        if not device_key:
-            return None
-        with self._attendance_sync_lock:
-            cached = self._attendance_sync_cursor.get(device_key)
-        if cached is not None:
-            return cached
-
-        try:
-            with self._db_connect() as conn:
-                row = conn.execute(
-                    """
-                    SELECT MAX(l.timestamp)
-                    FROM attendance_logs l
-                    JOIN devices d ON d.id = l.device_id
-                    WHERE lower(COALESCE(d.isup_device_id, '')) = lower(?)
-                       OR lower(COALESCE(d.name, '')) = lower(?)
-                       OR lower(COALESCE(d.mac_address, '')) = lower(?)
-                    """,
-                    (device_key, device_key, device_key),
-                ).fetchone()
-        except Exception:
-            row = None
-
-        seeded = self._parse_alarm_timestamp(row[0]) if row and row[0] else None
-        with self._attendance_sync_lock:
-            if seeded is not None:
-                self._attendance_sync_cursor[device_key] = seeded
-            return self._attendance_sync_cursor.get(device_key)
-
-    def _set_delta_sync_cursor(self, state: "DeviceState", value: Optional[datetime]) -> None:
-        device_key = str(state.device_id or "").strip()
-        if not device_key or value is None:
-            return
-        with self._attendance_sync_lock:
-            prev = self._attendance_sync_cursor.get(device_key)
-            if prev is None or value > prev:
-                self._attendance_sync_cursor[device_key] = value
-
     def _log_isup_alarm_request(
         self,
         *,
@@ -4967,237 +5052,6 @@ class HikvisionSdkRuntime:
                 conn.commit()
         except Exception:
             return
-
-    def _ingest_delta_sync_event(self, state: "DeviceState", row: dict[str, Any]) -> Optional[int]:
-        if not isinstance(row, dict):
-            return None
-
-        person_id = str(row.get("person_id") or "").strip()
-        person_name = str(row.get("person_name") or "").strip()
-        snapshot_url = str(row.get("snapshot_url") or "").strip() or None
-        event_dt = self._parse_alarm_timestamp(row.get("timestamp"))
-        event_time_sql = event_dt.strftime("%Y-%m-%d %H:%M:%S")
-        serial = str(state.serial or state.device_id or "").strip()
-        client_ip = str(state.ip or "").strip()
-
-        with self._db_connect() as conn:
-            device_row = conn.execute(
-                """
-                SELECT id, name, mac_address, isup_device_id
-                FROM devices
-                WHERE lower(COALESCE(isup_device_id, '')) = lower(?)
-                   OR lower(COALESCE(name, '')) = lower(?)
-                   OR lower(COALESCE(mac_address, '')) = lower(?)
-                LIMIT 1
-                """,
-                (state.device_id, state.device_id, state.device_id),
-            ).fetchone()
-            if device_row is None and serial:
-                device_row = conn.execute(
-                    """
-                    SELECT id, name, mac_address, isup_device_id
-                    FROM devices
-                    WHERE lower(COALESCE(isup_device_id, '')) = lower(?)
-                       OR lower(COALESCE(name, '')) = lower(?)
-                    LIMIT 1
-                    """,
-                    (serial, serial),
-                ).fetchone()
-
-            employee_row: Optional[sqlite3.Row] = None
-            if person_id:
-                employee_row = conn.execute(
-                    """
-                    SELECT id, first_name, last_name, personal_id
-                    FROM employees
-                    WHERE trim(COALESCE(personal_id, '')) = ?
-                    LIMIT 1
-                    """,
-                    (person_id,),
-                ).fetchone()
-                if employee_row is None and person_id.isdigit():
-                    employee_row = conn.execute(
-                        """
-                        SELECT id, first_name, last_name, personal_id
-                        FROM employees
-                        WHERE id = ?
-                        LIMIT 1
-                        """,
-                        (int(person_id),),
-                    ).fetchone()
-
-            if employee_row is not None and not person_name:
-                first = str(employee_row["first_name"] or "").strip()
-                last = str(employee_row["last_name"] or "").strip()
-                person_name = f"{first} {last}".strip()
-
-            device_id = int(device_row["id"]) if device_row is not None else None
-            camera_mac = str(device_row["mac_address"] or "").strip() if device_row is not None else None
-
-            dedupe = conn.execute(
-                """
-                SELECT id
-                FROM attendance_logs
-                WHERE COALESCE(device_id, -1) = COALESCE(?, -1)
-                  AND COALESCE(person_id, '') = COALESCE(?, '')
-                  AND ABS(strftime('%s', timestamp) - strftime('%s', ?)) <= 8
-                ORDER BY id DESC
-                LIMIT 1
-                """,
-                (device_id, person_id or None, event_time_sql),
-            ).fetchone()
-
-            inserted_log_id: Optional[int] = None
-            inserted_new = False
-            if dedupe is None:
-                status = "aniqlandi" if employee_row is not None else "noma'lum"
-                cur = conn.execute(
-                    """
-                    INSERT INTO attendance_logs
-                    (employee_id, device_id, camera_mac, person_id, person_name, snapshot_url, timestamp, status)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        int(employee_row["id"]) if employee_row is not None else None,
-                        device_id,
-                        camera_mac,
-                        person_id or None,
-                        person_name or None,
-                        snapshot_url,
-                        event_time_sql,
-                        status,
-                    ),
-                )
-                inserted_log_id = cur.lastrowid
-                inserted_new = True
-            else:
-                inserted_log_id = int(dedupe["id"])
-
-            if device_row is not None:
-                conn.execute(
-                    """
-                    UPDATE devices
-                    SET is_online = 1, last_seen_at = ?
-                    WHERE id = ?
-                    """,
-                    (now_tashkent().isoformat(), int(device_row["id"])),
-                )
-
-            if inserted_log_id and snapshot_url:
-                self._attach_snapshot_to_log_and_employee(
-                    conn,
-                    log_id=inserted_log_id,
-                    snapshot_url=snapshot_url,
-                )
-
-            conn.commit()
-
-        if inserted_log_id and inserted_new:
-            self._publish_alarm_event_to_redis(
-                source="isup_delta_sync",
-                log_id=inserted_log_id,
-                timestamp=event_time_sql,
-                device_row=device_row,
-                camera_mac=camera_mac,
-                person_id=person_id,
-                person_name=person_name,
-                status=("aniqlandi" if employee_row is not None else "noma'lum"),
-                snapshot_url=snapshot_url,
-            )
-            self._log_isup_alarm_request(
-                client_ip=client_ip or camera_mac,
-                status_code=200,
-                serial=serial,
-                person_id=person_id,
-                person_name=person_name,
-                device_id=int(device_row["id"]) if device_row is not None else None,
-                snapshot_url=snapshot_url,
-                method="ISUP-SYNC",
-                url="/isup/delta-sync",
-                content_type="application/json",
-                user_agent="hikvision-isup-delta-sync",
-            )
-            if not snapshot_url:
-                import threading as _thrd
-                _thrd.Thread(
-                    target=self._fetch_device_snapshot_async,
-                    args=(state.device_id, inserted_log_id),
-                    daemon=True,
-                ).start()
-            self.registry.add_trace(
-                "attendance_sync",
-                {
-                    "serial": serial or None,
-                    "person_id": person_id or None,
-                    "device_id": int(device_row["id"]) if device_row is not None else None,
-                    "log_id": int(inserted_log_id),
-                },
-            )
-        return inserted_log_id
-
-    def _periodic_attendance_delta_sync(self) -> None:
-        import time as _time
-        _time.sleep(12)
-        while True:
-            try:
-                for state in self.registry.all():
-                    if not state.online or state.login_id is None:
-                        continue
-                    cursor_dt = self._get_delta_sync_cursor(state)
-                    threshold = (
-                        cursor_dt - timedelta(seconds=2)
-                        if isinstance(cursor_dt, datetime)
-                        else now_tashkent() - timedelta(minutes=2)
-                    )
-                    try:
-                        result = self.command_bridge._cmd_get_attendance_events(
-                            state.device_id,
-                            state,
-                            {"hours": 1, "limit": 40, "max_results": 10},
-                        )
-                    except Exception:
-                        continue
-                    if not isinstance(result, dict) or not result.get("ok"):
-                        self.registry.add_trace(
-                            "attendance_sync_poll",
-                            {
-                                "device_id": state.device_id,
-                                "ok": False,
-                                "error": str(result.get("error") if isinstance(result, dict) else "unknown"),
-                            },
-                        )
-                        continue
-                    rows = result.get("events") or []
-                    if not isinstance(rows, list):
-                        continue
-                    self.registry.add_trace(
-                        "attendance_sync_poll",
-                        {
-                            "device_id": state.device_id,
-                            "ok": True,
-                            "rows": len(rows),
-                            "cursor": cursor_dt.isoformat() if isinstance(cursor_dt, datetime) else None,
-                            "threshold": threshold.isoformat() if isinstance(threshold, datetime) else None,
-                        },
-                    )
-                    newest_dt = cursor_dt
-                    sortable: list[tuple[datetime, dict[str, Any]]] = []
-                    for row in rows:
-                        if not isinstance(row, dict):
-                            continue
-                        row_dt = self._parse_alarm_timestamp(row.get("timestamp"))
-                        sortable.append((row_dt, row))
-                    sortable.sort(key=lambda item: item[0])
-                    for row_dt, row in sortable:
-                        if row_dt < threshold:
-                            continue
-                        self._ingest_delta_sync_event(state, row)
-                        if newest_dt is None or row_dt > newest_dt:
-                            newest_dt = row_dt
-                    self._set_delta_sync_cursor(state, newest_dt)
-            except Exception as exc:
-                print(f"[ISUP SDK] attendance delta sync xato: {exc}")
-            _time.sleep(5)
 
     def _on_alarm_message(self, handle: int, alarm_msg_ptr: Any, p_user: int) -> bool:
         try:
@@ -5388,20 +5242,74 @@ class HikvisionSdkRuntime:
                 if device_row is not None and not camera_mac:
                     camera_mac = str(device_row["mac_address"] or "").strip() or None
 
-                dedupe = conn.execute(
-                    """
-                    SELECT id
-                    FROM attendance_logs
-                    WHERE COALESCE(device_id, -1) = COALESCE(?, -1)
-                      AND COALESCE(person_id, '') = COALESCE(?, '')
-                      AND ABS(strftime('%s', timestamp) - strftime('%s', ?)) <= 8
-                    ORDER BY id DESC
-                    LIMIT 1
-                    """,
-                    (device_id, person_id or None, event_time_sql),
-                ).fetchone()
+                dedupe = None
+                identity_params: list[Any] = []
+                identity_clauses: list[str] = []
+                if person_id:
+                    identity_clauses.append("COALESCE(person_id, '') = COALESCE(?, '')")
+                    identity_params.append(person_id)
+                if employee_row is not None:
+                    identity_clauses.append("employee_id = ?")
+                    identity_params.append(int(employee_row["id"]))
+
+                if identity_clauses:
+                    exact_params: list[Any] = []
+                    exact_clauses: list[str] = []
+                    if device_id is not None:
+                        exact_clauses.append("COALESCE(device_id, -1) = COALESCE(?, -1)")
+                        exact_params.append(device_id)
+                    exact_clauses.append("(" + " OR ".join(identity_clauses) + ")")
+                    exact_params.extend(identity_params)
+                    exact_clauses.append("ABS(strftime('%s', timestamp) - strftime('%s', ?)) <= 8")
+                    exact_params.append(event_time_sql)
+
+                    dedupe = conn.execute(
+                        f"""
+                        SELECT id
+                        FROM attendance_logs
+                        WHERE {" AND ".join(exact_clauses)}
+                        ORDER BY ABS(strftime('%s', timestamp) - strftime('%s', ?)) ASC, id DESC
+                        LIMIT 1
+                        """,
+                        tuple(exact_params + [event_time_sql]),
+                    ).fetchone()
+
+                    if dedupe is None:
+                        flood_clauses = [
+                            "(" + " OR ".join(identity_clauses) + ")",
+                            "ABS(strftime('%s', timestamp) - strftime('%s', ?)) <= ?",
+                        ]
+                        flood_params: list[Any] = list(identity_params)
+                        flood_params.append(event_time_sql)
+                        flood_params.append(int(ATTENDANCE_FLOOD_GUARD_SECONDS))
+                        if device_row is not None and device_row["id"] is not None:
+                            flood_clauses.append(
+                                """
+                                EXISTS (
+                                    SELECT 1
+                                    FROM devices d2
+                                    WHERE d2.id = attendance_logs.device_id
+                                      AND d2.organization_id = (
+                                          SELECT organization_id FROM devices WHERE id = ?
+                                      )
+                                )
+                                """
+                            )
+                            flood_params.append(int(device_row["id"]))
+
+                        dedupe = conn.execute(
+                            f"""
+                            SELECT id
+                            FROM attendance_logs
+                            WHERE {" AND ".join(flood_clauses)}
+                            ORDER BY ABS(strftime('%s', timestamp) - strftime('%s', ?)) ASC, id DESC
+                            LIMIT 1
+                            """,
+                            tuple(flood_params + [event_time_sql]),
+                        ).fetchone()
 
                 inserted_log_id: Optional[int] = None
+                inserted_new_log = False
                 if dedupe is None:
                     status = "aniqlandi" if employee_row is not None else "noma'lum"
                     cur = conn.execute(
@@ -5422,6 +5330,7 @@ class HikvisionSdkRuntime:
                         ),
                     )
                     inserted_log_id = cur.lastrowid
+                    inserted_new_log = True
                 else:
                     inserted_log_id = int(dedupe["id"])
 
@@ -5444,7 +5353,7 @@ class HikvisionSdkRuntime:
 
                 conn.commit()
 
-            if inserted_log_id:
+            if inserted_log_id and inserted_new_log:
                 self._publish_alarm_event_to_redis(
                     source="isup_alarm",
                     log_id=inserted_log_id,
@@ -5609,13 +5518,8 @@ class HikvisionSdkRuntime:
                             out_size=4 * 1024 * 1024,
                         )
                         raw_bytes = sdk_result.get("raw_bytes") or b""
-                        if len(raw_bytes) >= 1000 and raw_bytes[:2] == b"\xff\xd8":
-                            ts_str = utc_now().strftime("%Y%m%d_%H%M%S_%f")
-                            img_name = f"snap_{device_id}_{ts_str}.jpg"
-                            img_path = self.picture_dir / img_name
-                            img_path.write_bytes(raw_bytes)
-                            rel = img_path.relative_to(Path(__file__).resolve().parent)
-                            snap_url = "/" + rel.as_posix()
+                        snap_url = self.command_bridge._store_snapshot_bytes(device_id, raw_bytes, prefix="snap")
+                        if snap_url:
                             with self._db_connect() as conn:
                                 self._attach_snapshot_to_log_and_employee(
                                     conn,
@@ -5653,13 +5557,8 @@ class HikvisionSdkRuntime:
                 req.add_header("User-Agent", "BioFace/1.0")
                 with _req.urlopen(req, timeout=4) as resp:
                     img_data = resp.read()
-                    if len(img_data) >= 1000 and img_data[:2] == b"\xff\xd8":
-                        ts_str = utc_now().strftime("%Y%m%d_%H%M%S_%f")
-                        img_name = f"snap_{device_id}_{ts_str}.jpg"
-                        img_path = self.picture_dir / img_name
-                        img_path.write_bytes(img_data)
-                        rel = img_path.relative_to(Path(__file__).resolve().parent)
-                        snap_url = "/" + rel.as_posix()
+                    snap_url = self.command_bridge._store_snapshot_bytes(device_id, img_data, prefix="snap")
+                    if snap_url:
                         with self._db_connect() as conn:
                             self._attach_snapshot_to_log_and_employee(
                                 conn,

@@ -235,20 +235,27 @@
                 <div class="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950">
                     <label class="mb-2 block text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">Command test</label>
                     <div class="grid gap-3 md:grid-cols-[1fr,180px,auto]">
-                        <select id="helper-camera-id" class="rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white">
+                        <div>
+                            <label for="helper-camera-id" class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Kamera</label>
+                            <select id="helper-camera-id" class="w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white">
                             <option value="">Kamerani tanlang</option>
                             {% for cam in cameras %}
                             <option value="{{ cam.id }}">{{ cam.name }} {% if cam.isup_device_id %}({{ cam.isup_device_id }}){% endif %}</option>
                             {% endfor %}
-                        </select>
-                        <select id="helper-command" class="rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white">
+                            </select>
+                        </div>
+                        <div>
+                            <label for="helper-command" class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Buyruq</label>
+                            <select id="helper-command" class="w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white">
                             <option value="ping">ping</option>
                             <option value="get_info">get_info</option>
                             <option value="sync_faces">sync_faces</option>
                             <option value="get_face_count">get_face_count</option>
                             <option value="reboot">reboot</option>
                             <option value="get_alarm_server">get_alarm_server</option>
-                        </select>
+                            <option value="set_tashkent_timezone">set_tashkent_timezone</option>
+                            </select>
+                        </div>
                         <button type="button" onclick="sendHelperCommand()" class="inline-flex items-center justify-center rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700">
                             Yuborish
                         </button>

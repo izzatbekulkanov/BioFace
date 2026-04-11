@@ -296,6 +296,13 @@ def _apply_employee_list_filters(
     if raw_type and raw_type != "all":
         if raw_type == "none":
             query = query.filter(func.trim(func.coalesce(Employee.employee_type, "")) == "")
+        elif raw_type == "staff":
+            normalized_employee_type = func.lower(func.trim(func.coalesce(Employee.employee_type, "")))
+            query = query.filter(
+                normalized_employee_type.in_(["", "hodim", "oqituvchi"])
+            )
+        elif raw_type == "students":
+            query = query.filter(func.lower(func.coalesce(Employee.employee_type, "")) == "oquvchi")
         elif raw_type in {"oquvchi", "oqituvchi", "hodim"}:
             query = query.filter(func.lower(func.coalesce(Employee.employee_type, "")) == raw_type)
         else:

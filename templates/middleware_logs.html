@@ -197,7 +197,9 @@
 
     function fmt(iso) {
         if (!iso) return '—';
-        return new Date(iso).toLocaleString('ru-RU');
+        var dt = new Date(iso);
+        if (Number.isNaN(dt.getTime())) return iso;
+        return dt.toLocaleString('uz-UZ', { timeZone: 'Asia/Tashkent' });
     }
 
     // ─── Load stats + chart + IP select ───

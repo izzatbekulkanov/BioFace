@@ -3,7 +3,8 @@
 {% block content %}
 <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
     <div>
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Foydalanuvchilar</h2>
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{{ employee_heading_title or "Foydalanuvchilar" }}</h2>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ employee_heading_description or "Barcha foydalanuvchilar ro'yxati." }}</p>
         <p id="employees-count-text" class="mt-1 text-sm text-gray-500 dark:text-gray-400">Yuklanmoqda...</p>
     </div>
     <div class="flex items-center gap-2">
@@ -19,9 +20,9 @@
             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
             Davomatdan saqlash
         </button>
-        <a href="/employees/add" class="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-700">
+        <a href="{{ employee_add_url or '/employees/add' }}" class="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-700">
             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-            Yangi foydalanuvchi
+            {{ employee_add_label or "Yangi foydalanuvchi" }}
         </a>
     </div>
 </div>
@@ -105,6 +106,7 @@
             <label for="employees-type-filter" class="sr-only">Xodim turi</label>
             <select id="employees-type-filter" class="w-40 appearance-none cursor-pointer rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 pr-10 text-sm text-gray-900 outline-none transition hover:border-gray-400 hover:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:hover:border-gray-500 dark:hover:bg-gray-700 dark:focus:ring-blue-900/40" style="background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M6 9l6 6 6-6'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;">
                 <option value="all">Tur: barchasi</option>
+                <option value="staff">Hodim / O'qituvchi</option>
                 <option value="oquvchi">O'quvchi</option>
                 <option value="oqituvchi">O'qituvchi</option>
                 <option value="hodim">Xodim</option>
@@ -153,10 +155,13 @@
 </div>
 
 <script>
+const EMPLOYEE_VIEW_MODE = {{ (employee_view_mode or "all")|tojson }};
+const DEFAULT_EMPLOYEE_TYPE_FILTER = {{ (employee_default_type_filter or "all")|tojson }};
+const DEFAULT_IMPORT_EMPLOYEE_TYPE = {{ (employee_import_default_type or "hodim")|tojson }};
 const EMPLOYEES_IMPORT_JOB_STORAGE_KEY = 'employees_import_job_id';
 const EMPLOYEES_IMPORT_JOB_VERSION_KEY = 'employees_import_job_version';
 const EMPLOYEES_IMPORT_JOB_VERSION = 'face-only-v2';
-const EMPLOYEES_FILTER_STATE_STORAGE_KEY = 'employees_filter_state_v1';
+const EMPLOYEES_FILTER_STATE_STORAGE_KEY = `employees_filter_state_v2:${EMPLOYEE_VIEW_MODE}`;
 
 const employeesState = {
     items: [],
@@ -357,6 +362,12 @@ function restoreEmployeesFilterState() {
     return true;
 }
 
+function applyDefaultEmployeeTypeFilter() {
+    const typeSel = document.getElementById("employees-type-filter");
+    if (!typeSel) return;
+    setSelectValueIfAvailable(typeSel, DEFAULT_EMPLOYEE_TYPE_FILTER, "all");
+}
+
 function buildEmployeesSearchParams(page = 1) {
     const filters = getActiveFilters();
     const params = new URLSearchParams();
@@ -465,6 +476,12 @@ async function openEmployeesImportModal(triggerBtn = null) {
         const orgSel = body.querySelector('#camera-import-org');
         const camSel = body.querySelector('#camera-import-camera');
         const countEl = body.querySelector('#camera-import-count');
+        const employeeTypeSel = body.querySelector('#import-employee-type');
+        if (employeeTypeSel) {
+            employeeTypeSel.value = ['oquvchi', 'oqituvchi', 'hodim'].includes(DEFAULT_IMPORT_EMPLOYEE_TYPE)
+                ? DEFAULT_IMPORT_EMPLOYEE_TYPE
+                : 'hodim';
+        }
 
         function renderOrgOptions() {
             orgSel.innerHTML = '<option value="">Tashkilotni tanlang</option>';
@@ -708,6 +725,12 @@ async function importFromAttendanceToDb() {
         const orgSel = body.querySelector('#attendance-import-org');
         const camSel = body.querySelector('#attendance-import-camera');
         const countEl = body.querySelector('#attendance-import-count');
+        const attendanceTypeSel = body.querySelector('#attendance-import-type');
+        if (attendanceTypeSel) {
+            attendanceTypeSel.value = ['oquvchi', 'oqituvchi', 'hodim'].includes(DEFAULT_IMPORT_EMPLOYEE_TYPE)
+                ? DEFAULT_IMPORT_EMPLOYEE_TYPE
+                : 'hodim';
+        }
 
         function renderOrgOptions() {
             orgSel.innerHTML = '<option value="all">Barcha tashkilotlar</option>';
@@ -1284,7 +1307,10 @@ async function loadEmployees() {
             cameras: Array.isArray(metaRes.cameras) ? metaRes.cameras : [],
         };
         renderFilters();
-        restoreEmployeesFilterState();
+        const restored = restoreEmployeesFilterState();
+        if (!restored) {
+            applyDefaultEmployeeTypeFilter();
+        }
         await loadEmployeesPage(employeesState.page || 1);
     } catch (e) {
         console.error(e);
@@ -1351,7 +1377,7 @@ document.getElementById("employees-reset-filter").addEventListener("click", () =
     document.getElementById("employees-dept-filter").value = "all";
     document.getElementById("employees-pos-filter").value = "all";
     document.getElementById("employees-camera-filter").value = "all";
-    document.getElementById("employees-type-filter").value = "all";
+    applyDefaultEmployeeTypeFilter();
     refreshDeptPosFilters();
     refreshCameraFilter();
     applyFilters();

@@ -27,22 +27,28 @@ MENU_PERMISSION_METADATA = [
         "descriptions": {"uz": "Kameraga yuboriladigan buyruqlar", "ru": "Команды, отправляемые на камеры"},
     },
     {
-        "key": "employees",
+        "key": "staff",
         "group": "employees",
-        "titles": {"uz": "Xodimlar", "ru": "Сотрудники"},
-        "descriptions": {"uz": "Xodimlar kartalari va ma'lumotlari", "ru": "Карточки и данные сотрудников"},
+        "titles": {"uz": "Hodimlar", "ru": "Сотрудники"},
+        "descriptions": {"uz": "Hodim va o'qituvchilar kartalari va ma'lumotlari", "ru": "Карточки и данные сотрудников и преподавателей"},
+    },
+    {
+        "key": "students",
+        "group": "employees",
+        "titles": {"uz": "O'quvchi talabalar", "ru": "Ученики и студенты"},
+        "descriptions": {"uz": "O'quvchi va talabalar ro'yxati", "ru": "Список учеников и студентов"},
+    },
+    {
+        "key": "shifts",
+        "group": "employees",
+        "titles": {"uz": "Smenalar", "ru": "Смены"},
+        "descriptions": {"uz": "Ish va o'qish vaqt smenalari", "ru": "Смены и рабочее время"},
     },
     {
         "key": "attendance",
         "group": "employees",
         "titles": {"uz": "Davomat", "ru": "Посещаемость"},
         "descriptions": {"uz": "Jonli va saqlangan davomat yozuvlari", "ru": "Живая и сохраненная посещаемость"},
-    },
-    {
-        "key": "sync_attendance",
-        "group": "employees",
-        "titles": {"uz": "Sinxron davomat", "ru": "Синхронная посещаемость"},
-        "descriptions": {"uz": "Kameradan davomatni qo'lda sinxronlash", "ru": "Ручная синхронизация посещаемости с камер"},
     },
     {
         "key": "psychological_portrait",
@@ -115,20 +121,24 @@ MENU_PERMISSION_METADATA = [
 PERMISSION_GROUP_TITLES = {
     "general": {"uz": "Umumiy", "ru": "Общее"},
     "cameras": {"uz": "Kameralar", "ru": "Камеры"},
-    "employees": {"uz": "Xodimlar", "ru": "Сотрудники"},
+    "employees": {"uz": "Asosiy bo'lim", "ru": "Основной раздел"},
     "management": {"uz": "Boshqaruv", "ru": "Управление"},
     "system": {"uz": "Tizim", "ru": "Система"},
 }
 
 MENU_PERMISSION_KEYS = [item["key"] for item in MENU_PERMISSION_METADATA]
 ALL_MENU_PERMISSIONS = tuple(MENU_PERMISSION_KEYS)
+MENU_PERMISSION_ALIASES = {
+    "employees": ("staff", "students", "shifts"),
+}
 LIMITED_ADMIN_DEFAULTS = (
     "dashboard",
     "devices",
     "commands",
-    "employees",
+    "staff",
+    "students",
+    "shifts",
     "attendance",
-    "sync_attendance",
     "psychological_portrait",
     "reports",
     "user_approvals",
@@ -145,17 +155,22 @@ ROLE_DEFAULT_MENU_KEYS = {
     UserRole.korxona_admin: LIMITED_ADMIN_DEFAULTS,
 }
 
-_PATH_RULES: list[tuple[re.Pattern[str], str]] = [
+_EMPLOYEE_MENU_KEYS = ("staff", "students", "shifts")
+
+
+_PATH_RULES: list[tuple[re.Pattern[str], str | tuple[str, ...]]] = [
     (re.compile(r"^/api/cameras/\d+/command(?:/|$)"), "commands"),
     (re.compile(r"^/api/dashboard(?:/|$)"), "dashboard"),
     (re.compile(r"^/$"), "dashboard"),
     (re.compile(r"^/devices(?:/|$)"), "devices"),
     (re.compile(r"^/api/cameras(?:/|$)"), "devices"),
     (re.compile(r"^/commands(?:/|$)"), "commands"),
-    (re.compile(r"^/employees(?:/|$)"), "employees"),
-    (re.compile(r"^/api/employees(?:/|$)"), "employees"),
+    (re.compile(r"^/staff(?:/|$)"), "staff"),
+    (re.compile(r"^/students(?:/|$)"), "students"),
+    (re.compile(r"^/shifts(?:/|$)"), "shifts"),
+    (re.compile(r"^/employees(?:/|$)"), _EMPLOYEE_MENU_KEYS),
+    (re.compile(r"^/api/employees(?:/|$)"), _EMPLOYEE_MENU_KEYS),
     (re.compile(r"^/attendance(?:/|$)"), "attendance"),
-    (re.compile(r"^/attendance-sync(?:/|$)"), "sync_attendance"),
     (re.compile(r"^/psixologik-portret(?:/|$)"), "psychological_portrait"),
     (re.compile(r"^/reports(?:/|$)"), "reports"),
     (re.compile(r"^/organizations(?:/|$)"), "organizations"),
@@ -230,10 +245,14 @@ def normalize_menu_permissions(values: Iterable[Any]) -> list[str]:
     seen: set[str] = set()
     for item in values:
         key = str(item or "").strip()
-        if not key or key not in MENU_PERMISSION_KEYS or key in seen:
+        if not key:
             continue
-        seen.add(key)
-        result.append(key)
+        expanded = MENU_PERMISSION_ALIASES.get(key, (key,))
+        for normalized_key in expanded:
+            if normalized_key not in MENU_PERMISSION_KEYS or normalized_key in seen:
+                continue
+            seen.add(normalized_key)
+            result.append(normalized_key)
     return result
 
 
@@ -246,14 +265,16 @@ def resolve_user_menu_permissions(*, role: Any, stored_permissions: Any) -> list
     return get_role_default_menu_permissions(role)
 
 
-def user_has_menu_access(menu_permissions: Iterable[Any], menu_key: str | None) -> bool:
+def user_has_menu_access(menu_permissions: Iterable[Any], menu_key: str | tuple[str, ...] | list[str] | set[str] | None) -> bool:
     if not menu_key:
         return True
     allowed = set(normalize_menu_permissions(menu_permissions))
-    return menu_key in allowed
+    if isinstance(menu_key, (tuple, list, set)):
+        return any(str(item or "").strip() in allowed for item in menu_key)
+    return str(menu_key or "").strip() in allowed
 
 
-def resolve_menu_key_for_path(path: str) -> str | None:
+def resolve_menu_key_for_path(path: str) -> str | tuple[str, ...] | None:
     normalized = str(path or "").strip() or "/"
     for pattern, menu_key in _PATH_RULES:
         if pattern.match(normalized):

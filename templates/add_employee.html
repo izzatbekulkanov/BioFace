@@ -3,8 +3,8 @@
 {% block content %}
 <div class="mb-6 flex flex-col justify-between items-start gap-4">
     <div>
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{% if lang == "ru" %}Добавить сотрудника{% else %}Yangi xodim qo'shish{% endif %}</h2>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{% if lang == "ru" %}Заполните данные для нового сотрудника.{% else %}Yangi xodim uchun ma'lumotlarni to'ldiring.{% endif %}</p>
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{{ employee_form_title or ("Добавить сотрудника" if lang == "ru" else "Yangi xodim qo'shish") }}</h2>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ employee_form_description or ("Заполните данные для нового сотрудника." if lang == "ru" else "Yangi xodim uchun ma'lumotlarni to'ldiring.") }}</p>
     </div>
 </div>
 
@@ -29,10 +29,10 @@
                 <div>
                     <label for="employeeType" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Xodim turi</label>
                     <select id="employeeType" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 pr-10 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                        <option value="">Tanlanmagan</option>
-                        <option value="oquvchi">O'quvchi</option>
-                        <option value="oqituvchi">O'qituvchi</option>
-                        <option value="hodim">Xodim</option>
+                        <option value="" {% if not default_employee_type %}selected{% endif %}>Tanlanmagan</option>
+                        <option value="oquvchi" {% if default_employee_type == 'oquvchi' %}selected{% endif %}>O'quvchi</option>
+                        <option value="oqituvchi" {% if default_employee_type == 'oqituvchi' %}selected{% endif %}>O'qituvchi</option>
+                        <option value="hodim" {% if default_employee_type == 'hodim' %}selected{% endif %}>Xodim</option>
                     </select>
                 </div>
                 <div>
@@ -131,7 +131,7 @@
         <div id="formError" class="hidden mb-4 p-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400" role="alert"></div>
 
         <div class="flex items-center gap-4 mt-8 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <a href="/employees" class="text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 dark:focus:ring-gray-700">
+            <a href="{{ return_to_list_url or '/employees' }}" class="text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 dark:focus:ring-gray-700">
                 {% if lang == "ru" %}Отмена{% else %}Bekor qilish{% endif %}
             </a>
             <button type="submit" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-6 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 flex items-center gap-2">
@@ -501,7 +501,7 @@ async function saveNewEmployee(event) {
             }
         }
 
-        window.location.href = '/employees';
+        window.location.href = {{ (return_to_list_url or '/employees')|tojson }};
     } catch(e) {
         setFormError(e.message);
     } finally {

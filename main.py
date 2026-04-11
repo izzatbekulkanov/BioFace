@@ -12,6 +12,7 @@ import models
 from database import engine, ensure_schema, SessionLocal
 from models import RequestLog
 from routers import auth, pages, webhook, cameras, employees, settings, organizations, users, system_monitor
+from time_utils import now_tashkent
 
 # Jadvallarni yaratish
 models.Base.metadata.create_all(bind=engine)
@@ -73,7 +74,9 @@ async def log_requests(request, call_next):
         "/api/isup-traces",
         "/api/dashboard",
         "/api/telegram/process",
-        "/api/events"
+        "/api/events",
+        "/api/v1/httppost",
+        "/api/hik-event",
     )
     if not path.startswith(ignored_prefixes):
         db = SessionLocal()
@@ -86,6 +89,7 @@ async def log_requests(request, call_next):
                 user_agent=user_agent[:512],
                 status_code=0,
                 response_time_ms=0,
+                created_at=now_tashkent(),
             )
             db.add(log_entry)
             db.commit()

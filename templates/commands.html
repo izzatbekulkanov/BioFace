@@ -96,8 +96,8 @@
                         <input type="radio" name="cmd" value="get_today_attendance_count" class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800">
                     </div>
                     <div>
-                        <div class="font-medium text-sm text-gray-900 dark:text-white group-has-[:checked]:text-blue-700 dark:group-has-[:checked]:text-blue-400">{% if lang == "ru" %}Количество посещений за сегодня{% else %}Bugungi attendance soni{% endif %}</div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{% if lang == "ru" %}Показывает количество сегодняшних записей{% else %}Bugungi kirishlar sonini ko'rsatadi{% endif %}</div>
+                        <div class="font-medium text-sm text-gray-900 dark:text-white group-has-[:checked]:text-blue-700 dark:group-has-[:checked]:text-blue-400">{% if lang == "ru" %}Количество посещений за сегодня (из базы){% else %}Bugungi attendance soni (bazadan){% endif %}</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{% if lang == "ru" %}Показывает записи, полученные через HTTP push{% else %}HTTP push orqali kelgan yozuvlarni ko'rsatadi{% endif %}</div>
                     </div>
                 </label>
 
@@ -138,6 +138,16 @@
                     <div>
                         <div class="font-medium text-sm text-gray-900 dark:text-white group-has-[:checked]:text-blue-700 dark:group-has-[:checked]:text-blue-400">{% if lang == "ru" %}Настройки Webhook/Event{% else %}Webhook/Event sozlamalari{% endif %}</div>
                         <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{% if lang == "ru" %}Показать куда камера отправляет события{% else %}Kamera hodisalarni qayerga yuborishini ko'rish{% endif %}</div>
+                    </div>
+                </label>
+
+                <label class="flex items-start gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/10 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/20 transition group">
+                    <div class="flex items-center h-5">
+                        <input type="radio" name="cmd" value="set_tashkent_timezone" class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800">
+                    </div>
+                    <div>
+                        <div class="font-medium text-sm text-gray-900 dark:text-white group-has-[:checked]:text-blue-700 dark:group-has-[:checked]:text-blue-400">{% if lang == "ru" %}Синхронизировать время камеры{% else %}Kamera vaqtini sinxronlash{% endif %}</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{% if lang == "ru" %}Устанавливает Asia/Tashkent и текущее локальное время{% else %}Asia/Tashkent va joriy mahalliy vaqtni o'rnatadi{% endif %}</div>
                     </div>
                 </label>
             </div>

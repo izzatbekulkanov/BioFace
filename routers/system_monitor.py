@@ -14,7 +14,7 @@ from isup_manager import (
     stop_isup_server,
 )
 from redis_monitor import get_recent_camera_events, get_redis_snapshot, get_redis_status_summary
-from time_utils import now_tashkent
+from time_utils import TASHKENT_TZ, normalize_timestamp_tashkent, now_tashkent
 
 
 router = APIRouter()
@@ -228,6 +228,7 @@ def get_middleware_logs(
 
     data = []
     for l in logs:
+        normalized_created_at = normalize_timestamp_tashkent(l.created_at)
         data.append({
             "id": l.id,
             "method": l.method,
@@ -238,7 +239,7 @@ def get_middleware_logs(
             "status_code": l.status_code,
             "response_time_ms": l.response_time_ms,
             "details": getattr(l, "details", None),
-            "created_at": l.created_at.isoformat() if l.created_at else None,
+            "created_at": normalized_created_at.replace(tzinfo=TASHKENT_TZ).isoformat() if normalized_created_at else None,
         })
 
     return {

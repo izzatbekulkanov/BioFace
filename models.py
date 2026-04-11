@@ -4,6 +4,7 @@ from sqlalchemy import CheckConstraint, Column, Integer, String, Boolean, DateTi
 from sqlalchemy.orm import relationship
 
 from database import Base
+from time_utils import now_tashkent
 
 
 def utc_now() -> datetime:
@@ -252,5 +253,5 @@ class RequestLog(Base):
     user_agent = Column(String, nullable=True)
     status_code = Column(Integer, index=True)
     response_time_ms = Column(Integer)
-    created_at = Column(DateTime, default=utc_now, index=True)
+    created_at = Column(DateTime, default=now_tashkent, index=True)
     details = Column(String, nullable=True)

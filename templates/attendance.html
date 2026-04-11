@@ -436,6 +436,47 @@ function getDateFilterParts() {
     };
 }
 
+function getTashkentTodayParts() {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Tashkent",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+    }).formatToParts(new Date());
+    const lookup = {};
+    for (const part of parts) {
+        if (part.type !== "literal") {
+            lookup[part.type] = part.value;
+        }
+    }
+    return {
+        year: lookup.year || String(new Date().getFullYear()),
+        month: lookup.month || String(new Date().getMonth() + 1).padStart(2, "0"),
+        day: lookup.day || String(new Date().getDate()).padStart(2, "0"),
+    };
+}
+
+function setDateFiltersToToday() {
+    const today = getTashkentTodayParts();
+    document.getElementById("filter-year").value = today.year;
+    document.getElementById("filter-month").value = today.month;
+    document.getElementById("filter-day").innerHTML = `<option value="all">Barcha kunlar</option><option value="${today.day}" selected>${today.day}</option>`;
+}
+
+function syncDateFilterMode() {
+    const todayStatusVal = document.getElementById("filter-today-status").value || "all";
+    const lockToToday = todayStatusVal !== "all";
+    const yearSel = document.getElementById("filter-year");
+    const monthSel = document.getElementById("filter-month");
+    const daySel = document.getElementById("filter-day");
+    yearSel.disabled = lockToToday;
+    monthSel.disabled = lockToToday;
+    daySel.disabled = lockToToday;
+    if (lockToToday) {
+        setDateFiltersToToday();
+    }
+}
+
 function refreshDayOptions(availableDays = []) {
     const daySel = document.getElementById("filter-day");
     const prevDay = daySel.value || "all";
@@ -452,8 +493,8 @@ function refreshDayOptions(availableDays = []) {
 function initDateSelectors() {
     const yearSel = document.getElementById("filter-year");
     const monthSel = document.getElementById("filter-month");
-    const now = new Date();
-    const currentYear = now.getFullYear();
+    const today = getTashkentTodayParts();
+    const currentYear = Number(today.year) || new Date().getFullYear();
     const years = [];
     for (let y = currentYear + 1; y >= currentYear - 8; y -= 1) {
         years.push(y);
@@ -470,16 +511,9 @@ function initDateSelectors() {
         monthSel.insertAdjacentHTML("beforeend", `<option value="${mm}">${monthNames[m - 1]}</option>`);
     }
 
-    const today = new Date();
-    const todayYear = String(today.getFullYear());
-    const todayMonth = String(today.getMonth() + 1).padStart(2, "0");
-    const todayDay = String(today.getDate()).padStart(2, "0");
-
-    yearSel.value = todayYear;
-    monthSel.value = todayMonth;
-
-    const daySel = document.getElementById("filter-day");
-    daySel.innerHTML = `<option value="all">Barcha kunlar</option><option value="${todayDay}" selected>${todayDay}</option>`;
+    yearSel.value = today.year;
+    monthSel.value = today.month;
+    setDateFiltersToToday();
 }
 
 function setStatsZero() {
@@ -664,9 +698,10 @@ function buildDetailRow(group) {
                     ${infoBadge(esc(shortText(ev.camera_name || ev.camera_mac || 'Noma\'lum kamera', 28)), "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200", ev.camera_name || ev.camera_mac || 'Noma\'lum kamera')}
                 </div>
                 <div class="mt-1 flex flex-wrap items-center gap-1.5">
-                    ${infoBadge(`Kelgan vaqti: ${esc(formatTime(ev.timestamp, false))}`, "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300")}
-                    ${infoBadge(`Kamera ID: ${esc(ev.camera_id || '-')}`, "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300")}
-                    ${infoBadge(`MAC: ${esc(shortText(ev.camera_mac || '-', 24))}`, "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300", ev.camera_mac || '-')}
+                    ${infoBadge(`Oxirgi vaqt: ${esc(formatTime(ev.timestamp, false))}`, "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300")}
+                    ${infoBadge(`Birinchi vaqt: ${esc(formatTime(ev.first_timestamp, false))}`, "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300")}
+                    ${infoBadge(`${esc(ev.camera_count || 0)} kamera`, "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300")}
+                    ${infoBadge(`${esc(ev.raw_event_count || 0)} signal`, "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300")}
                 </div>
             </div>
             <div>${statusBadge(ev.status, ev.late_minutes || 0)}</div>
@@ -685,7 +720,8 @@ function buildDetailRow(group) {
                                 ${infoBadge(`Tashkilot: ${esc(group.organization_name || '-')}`)}
                                 ${infoBadge(`Xodim: ${esc(group.employee_name || 'Noma\'lum')}`)}
                                 ${infoBadge(`${esc(group.camera_count || 0)} kamera`, "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300")}
-                                ${infoBadge(`${esc(group.visit_count || 0)} o'tish`, "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300")}
+                                ${infoBadge(`${esc(group.visit_count || 0)} seans`, "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300")}
+                                ${infoBadge(`${esc(group.raw_event_count || 0)} signal`, "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300")}
                             </div>
                         </div>
                         <button type="button" class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300" data-collapse="${esc(group.group_id)}">Yopish</button>
@@ -751,7 +787,7 @@ function renderAttendanceTable(items) {
                 <td class="px-4 py-3">
                     <button type="button" class="inline-flex items-center gap-2 rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" data-toggle-group="${esc(group.group_id)}">
                         <span>${group.camera_count} kamera</span>
-                        <span class="rounded-full bg-white px-2 py-0.5 text-[11px] font-bold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">${group.visit_count} o'tish</span>
+                        <span class="rounded-full bg-white px-2 py-0.5 text-[11px] font-bold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">${group.visit_count} seans</span>
                     </button>
                 </td>
                 <td class="px-4 py-3">
@@ -823,9 +859,11 @@ function buildAttendanceGroupQuery() {
     if (camVal && camVal !== "all") q.set("camera_id", String(camVal));
     if (todayStatusVal && todayStatusVal !== "all") q.set("today_status", todayStatusVal);
     if (personalIdVal) q.set("personal_id", personalIdVal);
-    if (yearVal && yearVal !== "all") q.set("year", String(yearVal));
-    if (monthVal && monthVal !== "all") q.set("month", String(monthVal));
-    if (dayVal && dayVal !== "all") q.set("day", String(dayVal));
+    if (!todayStatusVal || todayStatusVal === "all") {
+        if (yearVal && yearVal !== "all") q.set("year", String(yearVal));
+        if (monthVal && monthVal !== "all") q.set("month", String(monthVal));
+        if (dayVal && dayVal !== "all") q.set("day", String(dayVal));
+    }
     return q;
 }
 
@@ -890,7 +928,8 @@ async function loadAttendance(options = {}) {
           }
          const yearVal = document.getElementById("filter-year").value;
          const monthVal = document.getElementById("filter-month").value;
-         const canShowRealDays = yearVal && yearVal !== "all" && monthVal && monthVal !== "all";
+         const todayStatusVal = document.getElementById("filter-today-status").value || "all";
+         const canShowRealDays = todayStatusVal === "all" && yearVal && yearVal !== "all" && monthVal && monthVal !== "all";
          refreshDayOptions(canShowRealDays && Array.isArray(data.available_days) ? data.available_days : []);
          renderAttendanceTable(pageState.items);
           if (!silent) {
@@ -933,7 +972,7 @@ async function handleSourceFilterChange() {
 
 document.getElementById("filter-org").addEventListener("change", handleSourceFilterChange);
 document.getElementById("filter-camera").addEventListener("change", handleSourceFilterChange);
-document.getElementById("filter-today-status").addEventListener("change", handleSourceFilterChange);
+document.getElementById("filter-today-status").addEventListener("change", async () => { syncDateFilterMode(); await handleSourceFilterChange(); });
 document.getElementById("filter-personal-id").addEventListener("input", async () => { clearTimeout(pageState.personalIdTimer); pageState.personalIdTimer = setTimeout(() => handleSourceFilterChange(), 300); });
 document.getElementById("filter-year").addEventListener("change", async () => { refreshDayOptions([]); document.getElementById("filter-day").value = "all"; await handleSourceFilterChange(); });
 document.getElementById("filter-month").addEventListener("change", async () => { refreshDayOptions([]); document.getElementById("filter-day").value = "all"; await handleSourceFilterChange(); });
@@ -949,17 +988,12 @@ document.getElementById("btn-export-excel").addEventListener("click", () => trig
 document.getElementById("btn-export-pdf").addEventListener("click", () => triggerExport("pdf"));
 document.getElementById("btn-clear-filters").addEventListener("click", async () => {
     clearTimeout(pageState.personalIdTimer);
-    const today = new Date();
-    const todayYear = String(today.getFullYear());
-    const todayMonth = String(today.getMonth() + 1).padStart(2, "0");
-    const todayDay = String(today.getDate()).padStart(2, "0");
     document.getElementById("filter-org").value = "";
     document.getElementById("filter-camera").value = "";
     document.getElementById("filter-today-status").value = "came";
     document.getElementById("filter-personal-id").value = "";
-    document.getElementById("filter-year").value = todayYear;
-    document.getElementById("filter-month").value = todayMonth;
-    document.getElementById("filter-day").innerHTML = `<option value="all">Barcha kunlar</option><option value="${todayDay}" selected>${todayDay}</option>`;
+    setDateFiltersToToday();
+    syncDateFilterMode();
     pageState.pagination.page = 1;
     await loadAttendance();
 });
@@ -968,6 +1002,7 @@ async function initPage() {
     updateRealtimeIndicator("reconnecting", "Realtime: tayyorlanmoqda");
     await loadFilterData();
     initDateSelectors();
+    syncDateFilterMode();
     pageState.pagination.pageSize = getPageSize();
     renderWaitingState("Davomat yozuvlari yuklanmoqda...");
     setSyncStatus("Bazada saqlangan yozuvlar yuklanadi.");

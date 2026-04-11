@@ -1,28 +1,26 @@
 #!/usr/bin/env pwsh
-# ═══════════════════════════════════════════════════════
-#  BioFace — Mahalliy ishga tushirish skripti
-#  Uvicorn + ISUP (hikvision_sdk) + Tailwind
-# ═══════════════════════════════════════════════════════
+# BioFace local development launcher
+# Starts Tailwind watcher, ISUP helper, and FastAPI.
 
-# Hikvision SDK mode — DS-K, DS-2DE kameralar uchun
+$ErrorActionPreference = "Continue"
+$PYTHON = ".\.venv\Scripts\python.exe"
+
+# Hikvision SDK mode for DS-K / DS-2DE devices
 $env:ISUP_IMPLEMENTATION_MODE = "hikvision_sdk"
 
-Write-Host "🎨 Tailwind CSS watcher ishga tushirilmoqda..." -ForegroundColor Cyan
-Start-Process powershell -ArgumentList "-NoExit -Command `"tailwindcss -i ./src/input.css -o ./static/css/output.css --watch`""
+Write-Host "Tailwind CSS watcher ishga tushirilmoqda..." -ForegroundColor Cyan
+if (Get-Command tailwindcss -ErrorAction SilentlyContinue) {
+    Start-Process powershell -ArgumentList @(
+        "-NoExit",
+        "-Command",
+        "tailwindcss -i ./src/input.css -o ./static/css/output.css --watch"
+    )
+} else {
+    Write-Host "  [WARN] tailwindcss topilmadi, watcher o'tkazib yuborildi." -ForegroundColor Yellow
+}
 
-Write-Host "📡 ISUP Server (hikvision_sdk mode) ishga tushirilmoqda..." -ForegroundColor Yellow
-.\.venv\Scripts\python.exe -c "
-from isup_manager import get_process_status, start_isup_server
-s = get_process_status()
-if s['running']:
-    print('  ISUP server allaqachon ishlamoqda (PID:', s.get('pid', '?'), ')')
-else:
-    r = start_isup_server()
-    if r['running']:
-        print('  ISUP server ishga tushdi (PID:', r.get('pid', '?'), ')')
-    else:
-        print('  ISUP server ishga tushmadi!')
-"
+Write-Host "ISUP Server (hikvision_sdk mode) ishga tushirilmoqda..." -ForegroundColor Yellow
+& $PYTHON "_start_isup.py"
 
-Write-Host "🚀 FastAPI Uvicorn ishga tushirilmoqda..." -ForegroundColor Green
-.\.venv\Scripts\python.exe -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload --reload-dir . --timeout-graceful-shutdown 3
+Write-Host "FastAPI Uvicorn ishga tushirilmoqda..." -ForegroundColor Green
+& $PYTHON -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload --reload-dir . --timeout-graceful-shutdown 3
