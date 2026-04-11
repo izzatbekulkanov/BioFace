@@ -4,7 +4,7 @@ from urllib.parse import urlsplit
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import func, or_
+from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
 from access_control import (
     build_permission_groups,
@@ -29,9 +29,11 @@ from models import (
 )
 from organization_types import get_organization_type_choices, get_organization_type_label
 from routers.cameras_parts.psychology_utils import (
+    PROFILELESS_STATES,
     aggregate_emotion_scores,
     build_psychological_profile,
     deserialize_emotion_scores,
+    resolve_snapshot_path,
     state_labels,
 )
 from time_utils import now_tashkent, today_tashkent_range
@@ -1714,6 +1716,18 @@ def psychological_portrait_page(request: Request, db: Session = Depends(get_db))
                 return key
         return "undetermined"
 
+    invalid_state_keys = tuple(sorted(PROFILELESS_STATES))
+
+    def _apply_valid_portrait_filters(query):
+        return query.filter(
+            EmployeePsychologicalState.state_key.isnot(None),
+            EmployeePsychologicalState.state_key != "",
+            EmployeePsychologicalState.state_key.notin_(invalid_state_keys),
+            EmployeePsychologicalState.emotion_scores_json.isnot(None),
+            EmployeePsychologicalState.emotion_scores_json != "",
+            EmployeePsychologicalState.confidence.isnot(None),
+        )
+
     def _apply_date(query):
         q = query
         if selected_year != "all":
@@ -1755,11 +1769,56 @@ def psychological_portrait_page(request: Request, db: Session = Depends(get_db))
         position_q = position_q.filter(Position.department_id == int(selected_department_id))
     position_choices = position_q.order_by(Position.name.asc()).all()
 
-    states_base = db.query(EmployeePsychologicalState)
+    valid_snapshot_dates = db.query(
+        AttendanceLog.employee_id.label("employee_id"),
+        func.date(AttendanceLog.timestamp).label("state_date"),
+        func.max(AttendanceLog.id).label("latest_log_id"),
+    )
+    if scoped_employee_ids:
+        valid_snapshot_dates = valid_snapshot_dates.filter(AttendanceLog.employee_id.in_(scoped_employee_ids))
+    else:
+        valid_snapshot_dates = valid_snapshot_dates.filter(AttendanceLog.id == -1)
+    valid_snapshot_dates = (
+        valid_snapshot_dates
+        .filter(
+            AttendanceLog.employee_id.isnot(None),
+            AttendanceLog.snapshot_url.isnot(None),
+            AttendanceLog.snapshot_url != "",
+            AttendanceLog.psychological_state_key.isnot(None),
+            AttendanceLog.psychological_state_key != "",
+            AttendanceLog.psychological_state_key.notin_(invalid_state_keys),
+            AttendanceLog.emotion_scores_json.isnot(None),
+            AttendanceLog.emotion_scores_json != "",
+        )
+        .group_by(AttendanceLog.employee_id, func.date(AttendanceLog.timestamp))
+        .subquery()
+    )
+    valid_snapshots = (
+        db.query(
+            AttendanceLog.id.label("attendance_log_id"),
+            AttendanceLog.employee_id.label("employee_id"),
+            func.date(AttendanceLog.timestamp).label("state_date"),
+            AttendanceLog.snapshot_url.label("snapshot_url"),
+        )
+        .join(valid_snapshot_dates, AttendanceLog.id == valid_snapshot_dates.c.latest_log_id)
+        .subquery()
+    )
+
+    states_base = (
+        db.query(EmployeePsychologicalState)
+        .join(
+            valid_snapshots,
+            and_(
+                valid_snapshots.c.employee_id == EmployeePsychologicalState.employee_id,
+                valid_snapshots.c.state_date == EmployeePsychologicalState.state_date,
+            ),
+        )
+    )
     if scoped_employee_ids:
         states_base = states_base.filter(EmployeePsychologicalState.employee_id.in_(scoped_employee_ids))
     else:
         states_base = states_base.filter(EmployeePsychologicalState.id == -1)
+    states_base = _apply_valid_portrait_filters(states_base)
 
     filtered_states = _apply_date(states_base)
 
@@ -1773,11 +1832,31 @@ def psychological_portrait_page(request: Request, db: Session = Depends(get_db))
         day_base = day_base.filter(func.substr(EmployeePsychologicalState.state_date, 6, 2) == selected_month)
     days = [str(r.d or "").strip() for r in day_base.with_entities(func.substr(EmployeePsychologicalState.state_date, 9, 2).label("d")).distinct().order_by(func.substr(EmployeePsychologicalState.state_date, 9, 2).asc()).all() if str(r.d or "").strip()]
 
-    filtered_state_rows = (
+    public_base_url = normalize_public_web_base_url(get_public_web_base_url())
+
+    def _absolute_asset_url(value: str | None) -> str | None:
+        text = str(value or "").strip()
+        if not text:
+            return None
+        if text.startswith("http://") or text.startswith("https://"):
+            if resolve_snapshot_path(text) is None:
+                return None
+            return text
+        if text.startswith("/"):
+            if resolve_snapshot_path(text) is None:
+                return None
+            return f"{public_base_url}{text}"
+        if resolve_snapshot_path(text) is None:
+            return None
+        return text
+
+    filtered_state_pairs = (
         filtered_states
+        .with_entities(EmployeePsychologicalState, valid_snapshots.c.snapshot_url)
         .order_by(EmployeePsychologicalState.assessed_at.desc(), EmployeePsychologicalState.id.desc())
         .all()
     )
+    filtered_state_rows = [row for row, snapshot_url in filtered_state_pairs if _absolute_asset_url(snapshot_url)]
     selected_total = len(filtered_state_rows)
     selected_employees = len({int(row.employee_id) for row in filtered_state_rows if row.employee_id is not None})
     selected_coverage = round((selected_employees / total_employees) * 100) if total_employees else 0
@@ -1826,13 +1905,21 @@ def psychological_portrait_page(request: Request, db: Session = Depends(get_db))
         )
 
     recent_rows_query = (
-        db.query(EmployeePsychologicalState, Employee)
+        db.query(EmployeePsychologicalState, Employee, valid_snapshots.c.snapshot_url)
         .join(Employee, Employee.id == EmployeePsychologicalState.employee_id)
+        .join(
+            valid_snapshots,
+            and_(
+                valid_snapshots.c.employee_id == EmployeePsychologicalState.employee_id,
+                valid_snapshots.c.state_date == EmployeePsychologicalState.state_date,
+            ),
+        )
     )
     if scoped_employee_ids:
         recent_rows_query = recent_rows_query.filter(EmployeePsychologicalState.employee_id.in_(scoped_employee_ids))
     else:
         recent_rows_query = recent_rows_query.filter(EmployeePsychologicalState.id == -1)
+    recent_rows_query = _apply_valid_portrait_filters(recent_rows_query)
 
     recent_rows_query = _apply_date(recent_rows_query)
     if table_search:
@@ -1850,30 +1937,13 @@ def psychological_portrait_page(request: Request, db: Session = Depends(get_db))
     if selected_position_id != "all" and selected_position_id.isdigit():
         recent_rows_query = recent_rows_query.filter(Employee.position_id == int(selected_position_id))
 
-    table_total = recent_rows_query.count()
-    total_pages = max(1, (table_total + page_size - 1) // page_size)
-    current_page = min(current_page, total_pages)
     recent_rows = (
         recent_rows_query
         .order_by(EmployeePsychologicalState.assessed_at.desc(), EmployeePsychologicalState.id.desc())
-        .offset((current_page - 1) * page_size)
-        .limit(page_size)
         .all()
     )
-    recent_states = []
-    public_base_url = normalize_public_web_base_url(get_public_web_base_url())
-
-    def _absolute_asset_url(value: str | None) -> str | None:
-        text = str(value or "").strip()
-        if not text:
-            return None
-        if text.startswith("http://") or text.startswith("https://"):
-            return text
-        if text.startswith("/"):
-            return f"{public_base_url}{text}"
-        return text
-
-    for state, emp in recent_rows:
+    recent_states_all = []
+    for state, emp, snapshot_url in recent_rows:
         inferred_state_key = _infer_state_key(state)
         emotion_scores = deserialize_emotion_scores(state.emotion_scores_json)
         if not emotion_scores and inferred_state_key != "undetermined":
@@ -1883,29 +1953,17 @@ def psychological_portrait_page(request: Request, db: Session = Depends(get_db))
             confidence=state.confidence,
             emotion_scores=emotion_scores,
         )
-        image_log_query = (
-            db.query(AttendanceLog.snapshot_url)
-            .filter(
-                AttendanceLog.employee_id == emp.id,
-                AttendanceLog.snapshot_url.isnot(None),
-                AttendanceLog.snapshot_url != "",
-            )
-        )
-        if state.state_date:
-            image_log_query = image_log_query.filter(func.date(AttendanceLog.timestamp) == state.state_date)
-        image_log = image_log_query.order_by(AttendanceLog.timestamp.desc(), AttendanceLog.id.desc()).first()
-        source_image_url = _absolute_asset_url(image_log[0] if image_log else None)
-        fallback_image_url = _absolute_asset_url(emp.image_url)
-        recent_states.append(
+        source_image_url = _absolute_asset_url(snapshot_url)
+        if not source_image_url:
+            continue
+        recent_states_all.append(
             {
                 "employee_id": int(emp.id),
                 "employee_name": " ".join(part for part in [emp.first_name, emp.last_name, emp.middle_name] if part and str(part).strip()).strip() or "-",
-                "row_no": ((current_page - 1) * page_size) + len(recent_states) + 1,
                 "personal_id": str(emp.personal_id or ""),
                 "department": str((emp.department_ref.name if emp.department_ref else emp.department) or "-"),
                 "position": str((emp.position_ref.name if emp.position_ref else emp.position) or "-"),
                 "source_image_url": source_image_url,
-                "fallback_image_url": fallback_image_url,
                 "state": str(state.state_ru or profile.get("state_ru") or "-") if lang == "ru" else str(state.state_uz or profile.get("state_uz") or "-"),
                 "state_date": str(state.state_date or ""),
                 "state_key": inferred_state_key,
@@ -1917,6 +1975,16 @@ def psychological_portrait_page(request: Request, db: Session = Depends(get_db))
                 "top_emotions": profile.get("top_emotions_ru") if lang == "ru" else profile.get("top_emotions_uz"),
             }
         )
+
+    table_total = len(recent_states_all)
+    total_pages = max(1, (table_total + page_size - 1) // page_size)
+    current_page = min(current_page, total_pages)
+    start_idx = (current_page - 1) * page_size
+    page_rows = recent_states_all[start_idx:start_idx + page_size]
+    recent_states = []
+    for idx, row in enumerate(page_rows, start=1):
+        row["row_no"] = start_idx + idx
+        recent_states.append(row)
 
     portrait_score = selected_coverage if total_employees else 0
     if portrait_score >= 75:

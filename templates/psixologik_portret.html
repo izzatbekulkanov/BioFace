@@ -48,7 +48,7 @@
         <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
                 <h2 class="text-base font-bold text-gray-900 dark:text-white">{{ 'Filtr va tez talqin' if lang == 'uz' else 'Фильтр и быстрая интерпретация' }}</h2>
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ 'Yil/oy/kun tanlang. Natijalar pastdagi grafiklar va jadvalda darhol ko‘rinadi.' if lang == 'uz' else 'Выберите год/месяц/день. Результаты сразу отразятся в графиках и таблице ниже.' }}</p>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ 'Yil/oy/kun tanlang. Faqat rasmi mavjud va AI tomonidan muvaffaqiyatli tahlil qilingan yozuvlar ko‘rsatiladi.' if lang == 'uz' else 'Выберите год/месяц/день. Показываются только записи с реальным снимком и успешным анализом ИИ.' }}</p>
             </div>
             <div class="text-xs text-amber-600 dark:text-amber-300">{{ 'Eslatma: bu tibbiy tashxis emas.' if lang == 'uz' else 'Важно: это не медицинский диагноз.' }}</div>
         </div>
@@ -138,7 +138,7 @@
         <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
                 <h2 class="text-lg font-bold text-gray-900 dark:text-white">{{ 'Xodimlar holatlari jadvali' if lang == 'uz' else 'Таблица состояний сотрудников' }}</h2>
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ 'Yaqin yozuvlar: xulosa rasmi, xodim maʼlumoti, holat va profil bitta qatorda.' if lang == 'uz' else 'Последние записи: снимок, данные сотрудника, состояние и профиль в одной строке.' }}</p>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ 'Faqat haqiqiy snapshot va muvaffaqiyatli AI tahlili bor yozuvlar ko‘rsatiladi.' if lang == 'uz' else 'Показываются только записи с реальным снимком и успешным анализом ИИ.' }}</p>
             </div>
             <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">{{ summary.average_profile_text or ('Aniqlanmadi' if lang == 'uz' else 'Не определено') }}</span>
         </div>
@@ -164,11 +164,23 @@
                         <tr class="align-top hover:bg-gray-50/70 dark:hover:bg-gray-800/60">
                             <td class="px-4 py-3 text-gray-500 dark:text-gray-400">{{ row.row_no }}</td>
                             <td class="px-4 py-3">
-                                {% set image_url = row.source_image_url or row.fallback_image_url %}
+                                {% set image_url = row.source_image_url %}
                                 {% if image_url %}
-                                <a href="{{ image_url }}" target="_blank" rel="noopener" class="block h-14 w-14 overflow-hidden rounded-xl border border-gray-200 bg-gray-100 shadow-sm transition hover:scale-[1.02] dark:border-gray-700 dark:bg-gray-800">
+                                <button
+                                    type="button"
+                                    data-psych-image-trigger
+                                    data-image-url="{{ image_url }}"
+                                    data-image-title="{{ row.employee_name }}"
+                                    data-image-state="{{ row.state }}"
+                                    data-image-date="{{ row.state_date }}"
+                                    class="group relative block h-14 w-14 overflow-hidden rounded-xl border border-gray-200 bg-gray-100 shadow-sm transition hover:scale-[1.02] dark:border-gray-700 dark:bg-gray-800"
+                                    aria-label="{{ 'Rasmni ochish' if lang == 'uz' else 'Открыть снимок' }}"
+                                >
                                     <img src="{{ image_url }}" alt="{{ row.employee_name }}" class="h-full w-full object-cover">
-                                </a>
+                                    <span class="pointer-events-none absolute inset-0 flex items-end justify-end bg-gradient-to-t from-black/35 via-transparent to-transparent p-1.5 opacity-0 transition group-hover:opacity-100">
+                                        <span class="rounded-full bg-white/90 px-1.5 py-1 text-[10px] font-semibold text-slate-700 shadow-sm">{{ 'Ko‘rish' if lang == 'uz' else 'Открыть' }}</span>
+                                    </span>
+                                </button>
                                 {% else %}
                                 <span class="inline-flex h-14 w-14 items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50 text-[10px] font-semibold text-gray-400 dark:border-gray-700 dark:bg-gray-800">{{ 'Yo‘q' if lang == 'uz' else 'Нет' }}</span>
                                 {% endif %}
@@ -217,4 +229,151 @@
         </div>
     </section>
 </div>
+<script>
+    (function () {
+        const MIN_SCALE = 0.75;
+        const MAX_SCALE = 3;
+        const SCALE_STEP = 0.25;
+
+        function clampScale(value) {
+            return Math.min(MAX_SCALE, Math.max(MIN_SCALE, value));
+        }
+
+        function updateScale(imageEl, labelEl, scale) {
+            const safeScale = clampScale(scale);
+            imageEl.style.transform = `scale(${safeScale})`;
+            labelEl.textContent = `${Math.round(safeScale * 100)}%`;
+            return safeScale;
+        }
+
+        function buildImagePreview(trigger) {
+            const imageUrl = String(trigger.getAttribute("data-image-url") || "").trim();
+            const employeeName = String(trigger.getAttribute("data-image-title") || "").trim() || "Preview";
+            const stateText = String(trigger.getAttribute("data-image-state") || "").trim();
+            const dateText = String(trigger.getAttribute("data-image-date") || "").trim();
+
+            const wrapper = document.createElement("div");
+            wrapper.className = "space-y-3";
+
+            const meta = document.createElement("div");
+            meta.className = "flex flex-wrap items-center gap-2";
+            const nameBadge = document.createElement("span");
+            nameBadge.className = "inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200";
+            nameBadge.textContent = employeeName;
+            meta.appendChild(nameBadge);
+
+            if (stateText) {
+                const stateBadge = document.createElement("span");
+                stateBadge.className = "inline-flex items-center rounded-full bg-violet-100 px-2.5 py-1 text-xs font-semibold text-violet-700 dark:bg-violet-900/30 dark:text-violet-300";
+                stateBadge.textContent = stateText;
+                meta.appendChild(stateBadge);
+            }
+
+            if (dateText) {
+                const dateBadge = document.createElement("span");
+                dateBadge.className = "inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-200";
+                dateBadge.textContent = dateText;
+                meta.appendChild(dateBadge);
+            }
+
+            const controls = document.createElement("div");
+            controls.className = "flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-800/70";
+
+            const left = document.createElement("div");
+            left.className = "text-xs text-gray-500 dark:text-gray-400";
+            left.textContent = "{{ 'Rasm asl nisbatda saqlanadi' if lang == 'uz' else 'Снимок сохраняет исходные пропорции' }}";
+
+            const right = document.createElement("div");
+            right.className = "flex items-center gap-2";
+
+            const zoomOutBtn = document.createElement("button");
+            zoomOutBtn.type = "button";
+            zoomOutBtn.className = "rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-700";
+            zoomOutBtn.textContent = "−";
+
+            const scaleLabel = document.createElement("span");
+            scaleLabel.className = "min-w-[4.5rem] rounded-xl bg-slate-900 px-2.5 py-1.5 text-center text-xs font-semibold text-white dark:bg-slate-100 dark:text-slate-900";
+
+            const zoomInBtn = document.createElement("button");
+            zoomInBtn.type = "button";
+            zoomInBtn.className = "rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-700";
+            zoomInBtn.textContent = "+";
+
+            const fitBtn = document.createElement("button");
+            fitBtn.type = "button";
+            fitBtn.className = "rounded-xl border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-200 dark:hover:bg-blue-900/40";
+            fitBtn.textContent = "{{ 'Moslash' if lang == 'uz' else 'Сброс' }}";
+
+            right.appendChild(zoomOutBtn);
+            right.appendChild(scaleLabel);
+            right.appendChild(zoomInBtn);
+            right.appendChild(fitBtn);
+            controls.appendChild(left);
+            controls.appendChild(right);
+
+            const viewport = document.createElement("div");
+            viewport.className = "flex max-h-[72vh] min-h-[18rem] items-center justify-center overflow-auto rounded-2xl bg-slate-950 p-3";
+
+            const imageEl = document.createElement("img");
+            imageEl.src = imageUrl;
+            imageEl.alt = employeeName;
+            imageEl.className = "max-h-[66vh] max-w-full select-none object-contain transition-transform duration-150 ease-out";
+            imageEl.draggable = false;
+            imageEl.loading = "eager";
+            imageEl.decoding = "async";
+
+            viewport.appendChild(imageEl);
+            wrapper.appendChild(meta);
+            wrapper.appendChild(controls);
+            wrapper.appendChild(viewport);
+
+            let currentScale = updateScale(imageEl, scaleLabel, 1);
+
+            zoomOutBtn.addEventListener("click", function () {
+                currentScale = updateScale(imageEl, scaleLabel, currentScale - SCALE_STEP);
+            });
+
+            zoomInBtn.addEventListener("click", function () {
+                currentScale = updateScale(imageEl, scaleLabel, currentScale + SCALE_STEP);
+            });
+
+            fitBtn.addEventListener("click", function () {
+                currentScale = updateScale(imageEl, scaleLabel, 1);
+                viewport.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+            });
+
+            imageEl.addEventListener("dblclick", function () {
+                currentScale = updateScale(imageEl, scaleLabel, currentScale >= 1.5 ? 1 : 2);
+            });
+
+            return {
+                title: employeeName,
+                bodyNode: wrapper,
+            };
+        }
+
+        document.addEventListener("click", function (event) {
+            const trigger = event.target.closest("[data-psych-image-trigger]");
+            if (!trigger) {
+                return;
+            }
+            event.preventDefault();
+
+            if (!window.AppModal || typeof window.AppModal.open !== "function") {
+                const fallbackUrl = String(trigger.getAttribute("data-image-url") || "").trim();
+                if (fallbackUrl) {
+                    window.open(fallbackUrl, "_blank", "noopener");
+                }
+                return;
+            }
+
+            const preview = buildImagePreview(trigger);
+            window.AppModal.open({
+                title: preview.title,
+                bodyNode: preview.bodyNode,
+                size: "2xl",
+            });
+        });
+    })();
+</script>
 {% endblock %}
