@@ -1,18 +1,18 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+<div class="animate-fade-in mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
     <div>
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ page_title }}</h1>
         <p id="approvals-count-text" class="mt-1 text-sm text-gray-500 dark:text-gray-400">Yuklanmoqda...</p>
     </div>
-    <a href="/users" class="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800">
-        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+    <a href="/users" class="inline-flex items-center gap-2 card-standard px-4 py-2.5 text-sm font-semibold text-gray-700  transition hover:-translate-y-0.5 hover:bg-gray-50  dark:text-gray-200 dark:hover:bg-gray-800">
+        <i class="fa-solid fa-chevron-left"></i>
         {{ t.users_title if t and t.get('users_title') else 'Foydalanuvchilar ro\'yxati' }}
     </a>
 </div>
 
-<div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+<div class="overflow-hidden card-standard  ">
     <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse">
             <thead>
@@ -362,10 +362,7 @@ function openApprovalModal(id) {
         <div class="flex justify-end gap-2 border-t border-gray-100 pt-3 dark:border-gray-800">
             <button type="button" id="approval-cancel" class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800">Bekor qilish</button>
             <button type="button" id="approval-submit" class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60">
-                <svg id="approval-submit-spinner" class="hidden h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-                </svg>
+                <i id="approval-submit-spinner" class="fa-solid fa-circle-notch hidden animate-spin"></i>
                 Tasdiqlash
             </button>
         </div>

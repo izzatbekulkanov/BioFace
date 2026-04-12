@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="mb-6 flex flex-col justify-between items-start gap-4">
+<div class="animate-fade-in mb-6 flex flex-col justify-between items-start gap-4">
     <div>
         <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{{ employee_form_title or ("Добавить сотрудника" if lang == "ru" else "Yangi xodim qo'shish") }}</h2>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ employee_form_description or ("Заполните данные для нового сотрудника." if lang == "ru" else "Yangi xodim uchun ma'lumotlarni to'ldiring.") }}</p>
@@ -90,9 +90,7 @@
                             <p class="text-sm font-semibold text-gray-800 dark:text-gray-100">{% if lang == 'ru' %}Перетащите фото или выберите файл{% else %}Rasmni tashlang yoki fayl tanlang{% endif %}</p>
                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">JPG, PNG, WEBP. Yuz aniq ko'rinadigan rasm tavsiya etiladi.</p>
                             <button type="button" id="emp-btn-open-file" class="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                                </svg>
+                                <i class="fa-solid fa-plus"></i>
                                 {% if lang == 'ru' %}Выбрать{% else %}Tanlash{% endif %}
                             </button>
                         </div>
@@ -136,7 +134,7 @@
                 {% if lang == "ru" %}Отмена{% else %}Bekor qilish{% endif %}
             </a>
             <button type="submit" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-6 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 flex items-center gap-2">
-                <svg id="saveSpinner" class="hidden w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                <i id="saveSpinner" class="fa-solid fa-circle-notch hidden animate-spin"></i>
                 Saqlash
             </button>
         </div>

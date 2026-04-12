@@ -62,7 +62,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(value ? 'Bildirishnomalar yoqildi' : 'Bildirishnomalar o\'chirildi'),
-        backgroundColor: const Color(0xFF2B5DE4),
+        backgroundColor: const Color(0xFF2563EB),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         margin: const EdgeInsets.only(bottom: 80, left: 20, right: 20),
@@ -92,7 +92,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               contentPadding: EdgeInsets.zero,
               title: Text(lang, style: TextStyle(fontWeight: lang == _currentLanguage ? FontWeight.bold : FontWeight.w500)),
               trailing: lang == _currentLanguage 
-                  ? const Icon(Icons.check_circle, color: Color(0xFF2B5DE4))
+                  ? const Icon(Icons.check_circle, color: Color(0xFF2563EB))
                   : null,
               onTap: () => Navigator.pop(ctx, lang),
             )),

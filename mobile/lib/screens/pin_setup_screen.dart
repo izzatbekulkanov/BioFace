@@ -115,7 +115,7 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
                         shape: BoxShape.circle,
                         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 20, offset: const Offset(0, 10))],
                       ),
-                      child: const Icon(Icons.shield_rounded, size: 36, color: Color(0xFF2B5DE4)),
+                      child: const Icon(Icons.shield_rounded, size: 36, color: Color(0xFF2563EB)),
                     ),
                     const SizedBox(height: 14),
                     AnimatedSwitcher(
@@ -182,9 +182,9 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
                                     shape: BoxShape.circle,
                                     color: _isError
                                         ? const Color(0xFFEF476F)
-                                        : (filled ? const Color(0xFF2B5DE4) : const Color(0xFFE8EEFF)),
+                                        : (filled ? const Color(0xFF2563EB) : const Color(0xFFE8EEFF)),
                                     boxShadow: filled && !_isError
-                                        ? [BoxShadow(color: const Color(0xFF2B5DE4).withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))]
+                                        ? [BoxShadow(color: const Color(0xFF2563EB).withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))]
                                         : null,
                                   ),
                                 );
@@ -235,7 +235,7 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
             if (key == 'del') {
               return _KeyButton(
                 onTap: _onDelete,
-                child: const Icon(Icons.backspace_outlined, size: 22, color: Color(0xFF2B5DE4)),
+                child: const Icon(Icons.backspace_outlined, size: 22, color: Color(0xFF2563EB)),
               );
             }
             if (key.isEmpty) return const SizedBox(width: 70, height: 70);
@@ -261,7 +261,7 @@ class _StepDot extends StatelessWidget {
       width: active ? 28 : 10,
       height: 10,
       decoration: BoxDecoration(
-        color: done ? const Color(0xFF48CAE4) : (active ? const Color(0xFF2B5DE4) : Colors.grey.shade300),
+        color: done ? const Color(0xFF48CAE4) : (active ? const Color(0xFF2563EB) : Colors.grey.shade300),
         borderRadius: BorderRadius.circular(5),
       ),
     );

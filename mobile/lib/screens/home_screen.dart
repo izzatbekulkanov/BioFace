@@ -113,7 +113,7 @@ class _FloatingNavBar extends StatelessWidget {
                     ),
                     decoration: isActive
                         ? BoxDecoration(
-                            color: const Color(0xFF2B5DE4),
+                            color: const Color(0xFF2563EB),
                             borderRadius: BorderRadius.circular(24),
                           )
                         : null,
@@ -195,7 +195,7 @@ class _DashboardTabState extends State<_DashboardTab> {
     if (_isLoading) {
       return const Scaffold(
         backgroundColor: Color(0xFFF0F4FD),
-        body: Center(child: CircularProgressIndicator(color: Color(0xFF2B5DE4))),
+        body: Center(child: CircularProgressIndicator(color: Color(0xFF2563EB))),
       );
     }
     if (_error != null) {
@@ -212,7 +212,7 @@ class _DashboardTabState extends State<_DashboardTab> {
               icon: const Icon(Icons.refresh),
               label: const Text('Qayta urinish'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2B5DE4),
+                backgroundColor: const Color(0xFF2563EB),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
@@ -243,7 +243,7 @@ class _DashboardTabState extends State<_DashboardTab> {
       psychIcon = Icons.sentiment_very_satisfied_rounded;
     } else if (presentPct >= 0.75) {
       psychLabel = 'Jamoaviy ruh: Yaxshi';
-      psychColor = const Color(0xFF2B5DE4);
+      psychColor = const Color(0xFF2563EB);
       psychIcon = Icons.sentiment_satisfied_rounded;
     } else if (presentPct >= 0.50) {
       psychLabel = 'Jamoaviy ruh: O\'rtacha';
@@ -258,7 +258,7 @@ class _DashboardTabState extends State<_DashboardTab> {
     return Scaffold(
       backgroundColor: const Color(0xFFF0F4FD),
       body: RefreshIndicator(
-        color: const Color(0xFF2B5DE4),
+        color: const Color(0xFF2563EB),
         backgroundColor: Colors.white,
         onRefresh: _loadAll,
         child: CustomScrollView(
@@ -377,7 +377,7 @@ class _DashboardTabState extends State<_DashboardTab> {
                       label: 'Jami xodim',
                       value: '$totalEmps',
                       icon: Icons.groups_rounded,
-                      color: const Color(0xFF2B5DE4),
+                      color: const Color(0xFF2563EB),
                     ),
                     const SizedBox(width: 12),
                     _StatMiniCard(
@@ -480,10 +480,10 @@ class _DashboardTabState extends State<_DashboardTab> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF2B5DE4).withOpacity(0.1),
+                        color: const Color(0xFF2563EB).withOpacity(0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Text('${orgCards.length} ta', style: const TextStyle(color: Color(0xFF2B5DE4), fontWeight: FontWeight.w700, fontSize: 13)),
+                      child: Text('${orgCards.length} ta', style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.w700, fontSize: 13)),
                     )
                   ],
                 ),
@@ -577,7 +577,7 @@ class _UserBubble extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
               child: Center(
-                child: Text(initials, style: const TextStyle(color: Color(0xFF2B5DE4), fontWeight: FontWeight.bold, fontSize: 12)),
+                child: Text(initials, style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold, fontSize: 12)),
               ),
             ),
             const SizedBox(width: 8),
@@ -645,13 +645,13 @@ class _UserInfoDialog extends StatelessWidget {
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(color: const Color(0xFF2B5DE4).withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(color: const Color(0xFF2563EB).withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.shield_rounded, color: Color(0xFF2B5DE4), size: 16),
+                  const Icon(Icons.shield_rounded, color: Color(0xFF2563EB), size: 16),
                   const SizedBox(width: 6),
-                  Text(_roleLabel(role), style: const TextStyle(color: Color(0xFF2B5DE4), fontWeight: FontWeight.w700, fontSize: 14)),
+                  Text(_roleLabel(role), style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.w700, fontSize: 14)),
                 ],
               ),
             ),
@@ -665,7 +665,7 @@ class _UserInfoDialog extends StatelessWidget {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
-                child: const Text('Yopish', style: TextStyle(color: Color(0xFF2B5DE4), fontWeight: FontWeight.w700)),
+                child: const Text('Yopish', style: TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.w700)),
               ),
             ),
           ],
@@ -745,7 +745,7 @@ class _OrgCard extends StatelessWidget {
                     color: const Color(0xFFF0F4FD),
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: const Icon(Icons.business_rounded, color: Color(0xFF2B5DE4), size: 22),
+                  child: const Icon(Icons.business_rounded, color: Color(0xFF2563EB), size: 22),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -810,7 +810,7 @@ class _OrgCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(color: const Color(0xFFF0F4FD), borderRadius: BorderRadius.circular(8)),
-                    child: Text('$activeCams/$totalCams online', style: const TextStyle(fontSize: 11, color: Color(0xFF2B5DE4), fontWeight: FontWeight.w700)),
+                    child: Text('$activeCams/$totalCams online', style: const TextStyle(fontSize: 11, color: Color(0xFF2563EB), fontWeight: FontWeight.w700)),
                   ),
                 ],
               ),

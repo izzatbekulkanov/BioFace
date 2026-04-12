@@ -84,7 +84,7 @@ class AttendanceScreen extends StatelessWidget {
                         ),
                         indicatorSize: TabBarIndicatorSize.tab,
                         dividerColor: Colors.transparent,
-                        labelColor: Color(0xFF2B5DE4),
+                        labelColor: Color(0xFF2563EB),
                         unselectedLabelColor: Colors.white,
                         labelStyle: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                         unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
@@ -182,7 +182,7 @@ class _EmployeeListState extends State<_EmployeeList> with AutomaticKeepAliveCli
     super.build(context);
 
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF2B5DE4)));
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF2563EB)));
     }
 
     if (_error != null) {
@@ -210,7 +210,7 @@ class _EmployeeListState extends State<_EmployeeList> with AutomaticKeepAliveCli
                 icon: const Icon(Icons.refresh_rounded),
                 label: const Text('Qayta urinish'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2B5DE4),
+                  backgroundColor: const Color(0xFF2563EB),
                   foregroundColor: Colors.white,
                   elevation: 0,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -269,7 +269,7 @@ class _EmployeeListState extends State<_EmployeeList> with AutomaticKeepAliveCli
     final int absent = empSummary['did_not_come'] ?? 0;
 
     return RefreshIndicator(
-      color: const Color(0xFF2B5DE4),
+      color: const Color(0xFF2563EB),
       backgroundColor: Colors.white,
       onRefresh: _fetchData,
       child: CustomScrollView(
@@ -306,7 +306,7 @@ class _EmployeeListState extends State<_EmployeeList> with AutomaticKeepAliveCli
                           ),
                           child: Text(
                             'Jami: $total ta',
-                            style: const TextStyle(color: Color(0xFF2B5DE4), fontSize: 13, fontWeight: FontWeight.w700),
+                            style: const TextStyle(color: Color(0xFF2563EB), fontSize: 13, fontWeight: FontWeight.w700),
                           ),
                         )
                     ],
@@ -483,7 +483,7 @@ class _EmployeeCard extends StatelessWidget {
                                 child: Text(
                                   avatarText,
                                   style: const TextStyle(
-                                    color: Color(0xFF2B5DE4),
+                                    color: Color(0xFF2563EB),
                                     fontWeight: FontWeight.bold,
                                     fontSize: 22,
                                   ),
@@ -556,7 +556,7 @@ class _EmployeeCard extends StatelessWidget {
                     icon: Icons.work_outline_rounded,
                     isUnfilled: position == null || position.toString().isEmpty,
                     unfillLabel: 'Lavozim kiritilmagan',
-                    color: const Color(0xFF2B5DE4),
+                    color: const Color(0xFF2563EB),
                   ),
                   _buildInfoBadge(
                     label: department ?? '',
@@ -601,7 +601,7 @@ class _EmployeeCard extends StatelessWidget {
                         ),
                         child: Text(
                           '$visitCount marta',
-                          style: const TextStyle(color: Color(0xFF2B5DE4), fontSize: 12, fontWeight: FontWeight.w700),
+                          style: const TextStyle(color: Color(0xFF2563EB), fontSize: 12, fontWeight: FontWeight.w700),
                         ),
                       )
                     ]
@@ -692,7 +692,7 @@ class _EmployeeCard extends StatelessWidget {
     required IconData icon,
     bool isUnfilled = false,
     String unfillLabel = 'Kiritilmagan',
-    Color color = const Color(0xFF2B5DE4),
+    Color color = const Color(0xFF2563EB),
   }) {
     final showLabel = isUnfilled ? unfillLabel : label;
     final effectiveColor = isUnfilled ? Colors.grey.shade400 : color;
@@ -736,13 +736,13 @@ class _EmployeeCard extends StatelessWidget {
     }
 
     String label = employeeType;
-    Color color = const Color(0xFF2B5DE4);
+    Color color = const Color(0xFF2563EB);
     IconData icon = Icons.badge_rounded;
 
     switch (employeeType.toLowerCase()) {
       case 'employee':
         label = 'Xodim';
-        color = const Color(0xFF2B5DE4);
+        color = const Color(0xFF2563EB);
         icon = Icons.person_rounded;
         break;
       case 'student':

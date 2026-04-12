@@ -8,6 +8,15 @@
     --ui-line-height: 1.3;
     --ui-main-max-width: 2360px;
     --ui-sidebar-width: 16.5rem;
+
+    /* BioFace Premium Design Tokens */
+    --brand-primary: #2563eb;       /* Primary Blue 600 */
+    --brand-primary-hover: #1d4ed8; /* Blue 700 */
+    --brand-gradient: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    --brand-radius-btn: 0.85rem;
+    --brand-radius-card: 1.25rem;
+    
+    --font-premium-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
 }
 
 /* Full-system scale (rem-based classes follow html font-size) */
@@ -17,6 +26,11 @@ html {
 
 body {
     line-height: var(--ui-line-height);
+    font-family: var(--font-premium-sans) !important;
+}
+
+h1, h2, h3, h4, h5, h6, .font-heading {
+    letter-spacing: -0.02em;
 }
 
 /* Scale presets */
@@ -704,3 +718,172 @@ body.ui-density-compact footer {
     }
 }
 
+/* --- GLOBAL UNIFIED COMPONENTS --- */
+
+.card-standard {
+    border-radius: var(--brand-radius-card);
+    border: 1px solid rgb(226 232 240);
+    background-color: rgb(255 255 255);
+    padding: 1.25rem;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.dark .card-standard {
+    border-color: rgb(30 41 59);
+    background-color: rgb(15 23 42 / 0.8);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
+}
+.card-standard:hover {
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.08);
+}
+.dark .card-standard:hover {
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.6), 0 8px 10px -6px rgb(0 0 0 / 0.6);
+}
+
+.btn-brand {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--brand-radius-btn);
+    background: var(--brand-gradient);
+    color: rgb(255 255 255);
+    font-weight: 500;
+    transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2), 0 2px 4px -2px rgba(37, 99, 235, 0.2);
+    border: none;
+}
+.btn-brand:hover {
+    opacity: 0.95;
+    transform: translateY(-1px);
+    box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3), 0 4px 6px -4px rgba(37, 99, 235, 0.3);
+}
+
+.form-input {
+    border-radius: var(--brand-radius-btn);
+    border: 1px solid rgb(226 232 240);
+    background-color: rgb(248 250 252);
+    color: rgb(15 23 42);
+    transition: all 0.2s ease;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+}
+.form-input:focus {
+    border-color: var(--brand-primary);
+    background-color: rgb(255 255 255);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+.dark .form-input {
+    border-color: rgb(51 65 85);
+    background-color: rgb(30 41 59);
+    color: rgb(241 245 249);
+}
+.dark .form-input:focus {
+    border-color: var(--brand-primary);
+    background-color: rgb(15 23 42);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+}
+
+/* --- TABLES & EMPTY STATES --- */
+.table-standard {
+    width: 100%;
+    text-align: left;
+    font-size: 0.875rem;
+    color: rgb(100 116 139);
+    border-collapse: collapse;
+}
+.dark .table-standard {
+    color: rgb(148 163 184);
+}
+.table-standard thead {
+    background-color: rgb(248 250 252);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgb(71 85 105);
+}
+.dark .table-standard thead {
+    background-color: rgb(30 41 59);
+    color: rgb(203 213 225);
+}
+.table-standard th {
+    padding: 1rem 1.5rem;
+    font-weight: 600;
+}
+.table-standard tbody tr {
+    border-bottom: 1px solid rgb(241 245 249);
+    transition: background-color 0.15s ease;
+}
+.dark .table-standard tbody tr {
+    border-bottom-color: rgb(30 41 59);
+}
+.table-standard tbody tr:hover {
+    background-color: rgb(248 250 252);
+}
+.dark .table-standard tbody tr:hover {
+    background-color: rgb(15 23 42 / 0.7);
+}
+.table-standard td {
+    padding: 1rem 1.5rem;
+    color: rgb(15 23 42);
+}
+.dark .table-standard td {
+    color: rgb(248 250 252);
+}
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 2rem;
+    text-align: center;
+    border: 2px dashed rgb(226 232 240);
+    border-radius: var(--brand-radius-card);
+    background-color: rgb(248 250 252 / 0.5);
+    margin: 1rem 0;
+}
+.dark .empty-state {
+    border-color: rgb(51 65 85);
+    background-color: rgb(15 23 42 / 0.4);
+}
+.empty-state-icon {
+    width: 4rem;
+    height: 4rem;
+    color: rgb(148 163 184);
+    margin-bottom: 1rem;
+    background: rgb(241 245 249);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.dark .empty-state-icon {
+    color: rgb(100 116 139);
+    background: rgb(30 41 59);
+}
+.empty-state-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: rgb(15 23 42);
+    margin-bottom: 0.5rem;
+}
+.dark .empty-state-title {
+    color: rgb(241 245 249);
+}
+.empty-state-desc {
+    font-size: 0.875rem;
+    color: rgb(100 116 139);
+    max-width: 24rem;
+}
+
+/* --- FLUID PAGE TRANSITIONS --- */
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+    animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

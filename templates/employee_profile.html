@@ -62,7 +62,7 @@
                 {{ t.edit }}
             </a>
             <a href="/employees" class="inline-flex items-center rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800">
-                <svg class="mr-1.5 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                <i class="fa-solid fa-chevron-left mr-1.5"></i>
                 {{ t.employees_title }}
             </a>
         </div>
@@ -143,8 +143,8 @@
             <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <h2 class="text-base font-bold text-gray-900 dark:text-white">Kalendar (davomat)</h2>
                 <div class="grid grid-cols-2 gap-2">
-                    <select id="cal-year" class="rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40"></select>
-                    <select id="cal-month" class="rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40"></select>
+                    <select id="cal-year" class="form-input"></select>
+                    <select id="cal-month" class="form-input"></select>
                 </div>
             </div>
 
@@ -199,7 +199,7 @@
             </div>
             <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
                 <table class="min-w-full text-sm">
-                    <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500 dark:bg-gray-800 dark:text-gray-300">
+                    <thead>
                         <tr>
                             <th class="px-3 py-2">Kamera</th>
                             <th class="px-3 py-2">Xodim ma'lumoti</th>
@@ -222,7 +222,7 @@
             </div>
             <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
                 <table class="min-w-full text-sm">
-                    <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500 dark:bg-gray-800 dark:text-gray-300">
+                    <thead>
                         <tr>
                             <th class="px-3 py-2">Davr</th>
                             <th class="px-3 py-2">Kech qolgan kun</th>
@@ -246,7 +246,7 @@
         <div id="psychology-average-wrap" class="mb-4 flex flex-wrap gap-2"></div>
         <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
             <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500 dark:bg-gray-800 dark:text-gray-300">
+                <thead>
                     <tr>
                         <th class="px-3 py-2">Sana</th>
                         <th class="px-3 py-2">Dominant holat</th>
@@ -260,14 +260,14 @@
         </div>
     </section>
 
-    <section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+    <section class="overflow-hidden card-standard  ">
         <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4 dark:border-gray-800">
             <h2 class="text-base font-bold text-gray-900 dark:text-white">So'nggi davomat loglari</h2>
             <span id="logs-total" class="text-xs text-gray-500 dark:text-gray-400">0 ta</span>
         </div>
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500 dark:bg-gray-800 dark:text-gray-300">
+                <thead>
                     <tr>
                         <th class="px-4 py-3">Sana</th>
                         <th class="px-4 py-3">Vaqt</th>
@@ -823,20 +823,20 @@ function buildTelegramContactsModal() {
         <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-300">
             Telegram observer kontaktlarini shu yerdan boshqaring. Har bir aktiv kontakt smena o'tib ketib kelinmasa neytral bildirishnoma oladi.
         </div>
-        <form id="telegramContactForm" class="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+        <form id="telegramContactForm" class="grid gap-3 card-standard p-4  ">
             <input type="hidden" id="telegramContactId" value="">
             <div>
                 <label class="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100">Telegram chat ID</label>
-                <input id="telegramChatId" type="text" class="block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white" placeholder="Masalan: 123456789">
+                <input id="telegramChatId" type="text" class="block w-full card-standard px-4 py-3 text-sm text-slate-900  focus:border-emerald-500 focus:ring-emerald-500  dark:text-white" placeholder="Masalan: 123456789">
             </div>
             <div class="grid gap-3 sm:grid-cols-2">
                 <div>
                     <label class="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100">Label</label>
-                    <input id="telegramContactLabel" type="text" class="block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white" placeholder="Masalan: Direktor">
+                    <input id="telegramContactLabel" type="text" class="block w-full card-standard px-4 py-3 text-sm text-slate-900  focus:border-emerald-500 focus:ring-emerald-500  dark:text-white" placeholder="Masalan: Direktor">
                 </div>
                 <div>
                     <label class="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100">Til</label>
-                    <select id="telegramContactLanguage" class="block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                    <select id="telegramContactLanguage" class="block w-full card-standard px-4 py-3 text-sm text-slate-900  focus:border-emerald-500 focus:ring-emerald-500  dark:text-white">
                         <option value="uz">O'zbekcha</option>
                         <option value="ru">Русский</option>
                     </select>
@@ -894,7 +894,7 @@ function renderTelegramContactsList(modalRoot, items) {
         return;
     }
     listEl.innerHTML = items.map((item) => `
-        <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+        <div class="card-standard p-4  ">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div class="min-w-0">
                     <div class="flex flex-wrap items-center gap-2">

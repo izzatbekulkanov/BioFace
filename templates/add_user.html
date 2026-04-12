@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="w-full max-w-7xl mx-auto">
+<div class="animate-fade-in w-full max-w-7xl mx-auto">
     <div class="mb-6 flex items-center justify-between">
         <div>
             <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t.add_user }}</h1>
@@ -38,10 +38,7 @@
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Username (login nomi) <span class="text-red-500">*</span></label>
                     <div class="relative">
                         <input type="text" id="inp-username" autocomplete="username" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 pr-10 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 placeholder-gray-400">
-                        <svg id="username-check-spinner" class="absolute right-3 top-1/2 hidden h-4 w-4 -translate-y-1/2 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-                        </svg>
+                        <i id="username-check-spinner" class="fa-solid fa-circle-notch absolute right-3 top-1/2 hidden -translate-y-1/2 animate-spin text-blue-500"></i>
                     </div>
                     <p id="username-hint" class="mt-1 text-xs text-gray-500 dark:text-gray-400">Username tizimda yagona bo'lishi kerak.</p>
                 </div>
@@ -51,10 +48,7 @@
                     <div class="relative">
                         <input type="password" id="inp-password" placeholder="Parol kiriting" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 pr-11 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 placeholder-gray-400">
                         <button type="button" id="toggle-password" class="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-blue-600 transition" aria-label="Parolni ko'rsatish yoki yashirish">
-                            <svg class="w-5 h-5 icon-eye" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                            </svg>
+                            <i class="fa-solid fa-eye icon-eye"></i>
                             <svg class="w-5 h-5 icon-eye-off hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.287-3.95M9.88 9.88a3 3 0 104.24 4.24M6.1 6.1A9.954 9.954 0 0112 5c4.478 0 8.268 2.943 9.542 7a9.97 9.97 0 01-4.133 5.105M3 3l18 18"/>
                             </svg>
@@ -68,10 +62,7 @@
                     <div class="relative">
                         <input type="password" id="inp-password-confirm" placeholder="Parolni qayta kiriting" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 pr-11 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 placeholder-gray-400">
                         <button type="button" id="toggle-password-confirm" class="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-blue-600 transition" aria-label="Parol tasdig'ini ko'rsatish yoki yashirish">
-                            <svg class="w-5 h-5 icon-eye" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                            </svg>
+                            <i class="fa-solid fa-eye icon-eye"></i>
                             <svg class="w-5 h-5 icon-eye-off hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.287-3.95M9.88 9.88a3 3 0 104.24 4.24M6.1 6.1A9.954 9.954 0 0112 5c4.478 0 8.268 2.943 9.542 7a9.97 9.97 0 01-4.133 5.105M3 3l18 18"/>
                             </svg>
@@ -119,7 +110,7 @@
                     <div id="inp-orgs-wrap" class="relative">
                         <button type="button" id="inp-orgs-toggle" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-left outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 inline-flex items-center justify-between gap-2">
                             <span id="inp-orgs-summary" class="truncate text-gray-500 dark:text-gray-400">Tashkilot tanlang...</span>
-                            <svg class="h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                            <i class="fa-solid fa-chevron-down text-gray-500"></i>
                         </button>
                         <div id="inp-orgs-dropdown" class="absolute z-20 mt-1 hidden w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg">
                             <div class="p-2 border-b border-gray-200 dark:border-gray-800">
@@ -176,9 +167,7 @@
                                 <p class="text-sm font-semibold text-gray-800 dark:text-gray-100">Rasmni shu yerga tashlang yoki tanlang</p>
                                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">JPG, PNG, WEBP. Tavsiya: kvadrat yoki portret rasm.</p>
                                 <button type="button" id="btn-open-file" class="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                                    </svg>
+                                    <i class="fa-solid fa-plus"></i>
                                     Rasm tanlash
                                 </button>
                             </div>
@@ -202,7 +191,7 @@
 
             <div class="pt-4 mt-6 border-t border-gray-100 dark:border-gray-800 flex justify-end">
                 <button onclick="saveUser()" class="px-6 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl flex items-center gap-2 transition shadow-sm">
-                    <svg id="save-spinner" class="w-4 h-4 hidden animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke-width="4" class="opacity-25"/><path d="M4 12a8 8 0 018-8v8H4z" class="opacity-75" fill="currentColor"/></svg>
+                    <i id="save-spinner" class="fa-solid fa-circle-notch hidden animate-spin"></i>
                     {{ t.save }}
                 </button>
             </div>

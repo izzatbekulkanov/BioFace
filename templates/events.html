@@ -1,18 +1,18 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="mb-6">
+<div class="animate-fade-in mb-6">
     <h1 class="mb-4 text-2xl font-bold text-gray-900 dark:text-white">{{ t.events_title }}</h1>
     <div class="grid grid-cols-2 gap-4 md:grid-cols-3">
-        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <div class="card-standard p-4  ">
             <p class="mb-1 text-xs text-gray-500 dark:text-gray-400">{% if lang == "ru" %}Всего событий{% else %}Jami hodisalar{% endif %}</p>
             <p class="text-xl font-bold text-gray-900 dark:text-white" id="stat-total">0</p>
         </div>
-        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <div class="card-standard p-4  ">
             <p class="mb-1 text-xs text-emerald-500">{% if lang == "ru" %}Распознанные{% else %}Tizimda mavjud{% endif %}</p>
             <p class="text-xl font-bold text-emerald-600 dark:text-emerald-400" id="stat-known">0</p>
         </div>
-        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <div class="card-standard p-4  ">
             <p class="mb-1 text-xs text-red-500">{% if lang == "ru" %}Неизвестные{% else %}Noma'lum shaxslar{% endif %}</p>
             <p class="text-xl font-bold text-red-600 dark:text-red-400" id="stat-unknown">0</p>
         </div>
@@ -23,13 +23,13 @@
     <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
         <div>
             <label for="events-org-filter" class="mb-1 block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Tashkilot</label>
-            <select id="events-org-filter" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
+            <select id="events-org-filter" class="w-full form-input">
                 <option value="all">Barcha tashkilotlar</option>
             </select>
         </div>
         <div>
             <label for="events-camera-filter" class="mb-1 block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Kamera</label>
-            <select id="events-camera-filter" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
+            <select id="events-camera-filter" class="w-full form-input">
                 <option value="all">Barcha kameralar</option>
             </select>
         </div>
@@ -41,12 +41,12 @@
     </div>
 </div>
 
-<div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+<div class="overflow-hidden card-standard  ">
     <div class="flex flex-col items-center justify-between gap-4 border-b border-gray-100 bg-gray-50/50 px-6 py-4 dark:border-gray-800 dark:bg-gray-800/20 sm:flex-row">
         <h3 class="font-bold text-gray-900 dark:text-white">{% if lang == "ru" %}Последние события{% else %}Oxirgi hodisalar{% endif %}</h3>
         <div class="flex items-center gap-3">
             <button onclick="eventsState.lastId=0; loadEvents();" class="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                <i class="fa-solid fa-rotate-right"></i>
                 Yangilash
             </button>
             <span id="live-indicator" style="opacity:0.6;transition:opacity 0.3s;" class="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
@@ -56,8 +56,8 @@
     </div>
 
     <div class="overflow-x-auto">
-        <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
-            <thead class="border-b border-gray-100 bg-gray-50 text-xs uppercase text-gray-700 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-300">
+        <table class="table-standard">
+            <thead>
                 <tr>
                     <th class="px-6 py-4 font-semibold">#</th>
                     <th class="px-6 py-4 font-semibold">{{ t.time }}</th>

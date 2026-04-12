@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="space-y-4">
-    <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+<div class="animate-fade-in space-y-4">
+    <section class="card-standard p-5  ">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div class="min-w-0">
                 <div class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
@@ -22,29 +22,29 @@
     </section>
 
     <section class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <article class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+        <article class="card-standard p-4  ">
             <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ 'Qamrov darajasi' if lang == 'uz' else 'Уровень покрытия' }}</p>
             <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ summary.portrait_score }}%</p>
             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ summary.portrait_level }}</p>
         </article>
-        <article class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+        <article class="card-standard p-4  ">
             <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ 'Qayd qilingan xodimlar' if lang == 'uz' else 'Отмеченные сотрудники' }}</p>
             <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ summary.selected_employees }} <span class="text-sm font-medium text-gray-500 dark:text-gray-400">/ {{ portrait_stats[0].value if portrait_stats else 0 }}</span></p>
             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ 'Tanlangan davr bo‘yicha' if lang == 'uz' else 'За выбранный период' }}</p>
         </article>
-        <article class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+        <article class="card-standard p-4  ">
             <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ 'Jami yozuvlar' if lang == 'uz' else 'Всего записей' }}</p>
             <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ summary.selected_total }}</p>
             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ summary.selected_period_label }}</p>
         </article>
-        <article class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+        <article class="card-standard p-4  ">
             <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ 'O‘rtacha profil' if lang == 'uz' else 'Средний профиль' }}</p>
             <p class="mt-1 line-clamp-2 text-sm font-semibold text-gray-900 dark:text-white">{{ summary.average_profile_text or ('Aniqlanmadi' if lang == 'uz' else 'Не определено') }}</p>
             <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ 'Top emotsiyalar asosida' if lang == 'uz' else 'На основе топ эмоций' }}</p>
         </article>
     </section>
 
-    <section class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+    <section class="card-standard p-4  ">
         <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
                 <h2 class="text-base font-bold text-gray-900 dark:text-white">{{ 'Filtr va tez talqin' if lang == 'uz' else 'Фильтр и быстрая интерпретация' }}</h2>
@@ -97,7 +97,7 @@
     </section>
 
     <section class="grid gap-4 xl:grid-cols-2">
-        <article class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+        <article class="card-standard p-5  ">
             <div class="flex items-center justify-between gap-3">
                 <h3 class="text-sm font-bold text-gray-900 dark:text-white">{{ 'Holatlar ulushi' if lang == 'uz' else 'Доля состояний' }}</h3>
                 <span class="text-xs text-gray-500 dark:text-gray-400">{{ summary.selected_period_label }}</span>
@@ -119,7 +119,7 @@
             </div>
         </article>
 
-        <article class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+        <article class="card-standard p-5  ">
             <div class="flex items-center justify-between gap-3">
                 <h3 class="text-sm font-bold text-gray-900 dark:text-white">{{ 'AI asosidagi yozma izoh' if lang == 'uz' else 'Пояснение ИИ' }}</h3>
                 <span class="text-xs text-gray-500 dark:text-gray-400">{{ 'kuzatuv' if lang == 'uz' else 'наблюдение' }}</span>
@@ -134,7 +134,7 @@
         </article>
     </section>
 
-    <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+    <section class="card-standard p-5  ">
         <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
                 <h2 class="text-lg font-bold text-gray-900 dark:text-white">{{ 'Xodimlar holatlari jadvali' if lang == 'uz' else 'Таблица состояний сотрудников' }}</h2>
@@ -146,7 +146,7 @@
         <div class="mt-4 overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
             <div class="max-h-[32rem] overflow-auto">
                 <table class="min-w-full divide-y divide-gray-200 text-left text-sm dark:divide-gray-800">
-                    <thead class="sticky top-0 bg-gray-50 text-xs uppercase tracking-wider text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                    <thead>
                         <tr>
                             <th class="px-4 py-3">#</th>
                             <th class="px-4 py-3">{{ 'Xulosa rasmi' if lang == 'uz' else 'Снимок' }}</th>

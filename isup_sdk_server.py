@@ -10,6 +10,7 @@ import os
 import re
 import socket
 import sqlite3
+import sys
 import time
 import xml.etree.ElementTree as ET
 from io import BytesIO
@@ -65,8 +66,10 @@ except Exception:  # pragma: no cover - runtime dependency check
     normalize_public_web_base_url = None
 
 
-if os.name != "nt":
-    raise RuntimeError("isup_sdk_server.py faqat Windows muhitida ishlaydi.")
+if sys.platform not in ["win32", "linux", "linux2", "darwin"]:
+    raise RuntimeError("isup_sdk_server.py faqat Windows, Linux yoki Mac muhitida ishlaydi.")
+
+FUNCTYPE = ctypes.WINFUNCTYPE if sys.platform == "win32" else ctypes.CFUNCTYPE
 
 
 # Hikvision ISUP constants (from HCISUPPublic/HCISUPCMS/HCISUPAlarm headers)
@@ -366,7 +369,7 @@ class NET_EHOME_ISAPI_PASSTHROUGH_PARAM(ctypes.Structure):
     ]
 
 
-DEVICE_REGISTER_CB = ctypes.WINFUNCTYPE(
+DEVICE_REGISTER_CB = FUNCTYPE(
     BOOL,
     LONG,
     DWORD,
@@ -376,13 +379,13 @@ DEVICE_REGISTER_CB = ctypes.WINFUNCTYPE(
     DWORD,
     ctypes.c_void_p,
 )
-EHOME_MSG_CB = ctypes.WINFUNCTYPE(
+EHOME_MSG_CB = FUNCTYPE(
     BOOL,
     LONG,
     ctypes.c_void_p,
     ctypes.c_void_p,
 )
-EHOME_SS_MSG_CB = ctypes.WINFUNCTYPE(
+EHOME_SS_MSG_CB = FUNCTYPE(
     BOOL,
     LONG,
     ctypes.c_int32,
@@ -392,7 +395,7 @@ EHOME_SS_MSG_CB = ctypes.WINFUNCTYPE(
     DWORD,
     ctypes.c_void_p,
 )
-EHOME_SS_STORAGE_CB = ctypes.WINFUNCTYPE(
+EHOME_SS_STORAGE_CB = FUNCTYPE(
     BOOL,
     LONG,
     ctypes.c_char_p,
@@ -401,7 +404,7 @@ EHOME_SS_STORAGE_CB = ctypes.WINFUNCTYPE(
     ctypes.c_void_p,
     ctypes.c_void_p,
 )
-EHOME_SS_RW_CB = ctypes.WINFUNCTYPE(
+EHOME_SS_RW_CB = FUNCTYPE(
     BOOL,
     LONG,
     BYTE,
@@ -4158,9 +4161,14 @@ class HikvisionSdkRuntime:
 
         os.chdir(self.sdk_dir)
 
-        self._cms = ctypes.WinDLL(str(self.sdk_dir / "HCISUPCMS.dll"))
-        self._alarm = ctypes.WinDLL(str(self.sdk_dir / "HCISUPAlarm.dll"))
-        self._ss = ctypes.WinDLL(str(self.sdk_dir / "HCISUPSS.dll"))
+        if sys.platform == "win32":
+            self._cms = ctypes.WinDLL(str(self.sdk_dir / "HCISUPCMS.dll"))
+            self._alarm = ctypes.WinDLL(str(self.sdk_dir / "HCISUPAlarm.dll"))
+            self._ss = ctypes.WinDLL(str(self.sdk_dir / "HCISUPSS.dll"))
+        else:
+            self._cms = ctypes.CDLL(str(self.sdk_dir / "libHCISUPCMS.so"))
+            self._alarm = ctypes.CDLL(str(self.sdk_dir / "libHCISUPAlarm.so"))
+            self._ss = ctypes.CDLL(str(self.sdk_dir / "libHCISUPSS.so"))
 
         self._configure_signatures()
         self._configure_sdk_init_cfg()
@@ -4217,8 +4225,12 @@ class HikvisionSdkRuntime:
         return ctypes.create_string_buffer(encoded + b"\x00")
 
     def _configure_sdk_init_cfg(self) -> None:
-        libeay_path = str((self.sdk_dir / "libeay32.dll").resolve())
-        ssleay_path = str((self.sdk_dir / "ssleay32.dll").resolve())
+        if sys.platform == "win32":
+            libeay_path = str((self.sdk_dir / "libeay32.dll").resolve())
+            ssleay_path = str((self.sdk_dir / "ssleay32.dll").resolve())
+        else:
+            libeay_path = str((self.sdk_dir / "libcrypto.so").resolve())
+            ssleay_path = str((self.sdk_dir / "libssl.so").resolve())
 
         cms_libeay = self._ansi_buffer(libeay_path)
         cms_ssleay = self._ansi_buffer(ssleay_path)

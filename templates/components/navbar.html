@@ -50,44 +50,29 @@
                 type="button"
                 class="rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 sm:hidden"
             >
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                <i class="fa-solid fa-bars"></i>
             </button>
             <h1 class="hidden truncate text-base font-semibold text-gray-900 dark:text-white sm:block">{{ page_title }}</h1>
         </div>
 
         <div class="ml-auto flex shrink-0 items-center justify-end gap-1.5">
             <div id="service-status-bar" class="flex max-w-full items-center gap-1.5">
-                <span data-service-root="telegram" class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-600 shadow-sm transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700/70" title="Telegram">
-                    <span data-service-icon-wrap class="relative flex h-6 w-6 items-center justify-center rounded-md bg-slate-100 text-slate-500 dark:bg-gray-700/70 dark:text-gray-200">
-                    <svg data-service-icon class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 4L3 11.5l7 2.2M21 4l-4.8 16-6.2-6.3M21 4L10 13.7"/>
-                    </svg>
-                    <span data-service-dot class="absolute right-1 top-1 h-2 w-2 rounded-full bg-slate-400"></span>
+                <span data-service-root="telegram" class="inline-flex items-center rounded-full border border-gray-200 bg-white p-1 text-[0.8rem] shadow-sm transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700/70" title="Telegram">
+                    <span data-service-icon-wrap class="relative flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 dark:bg-gray-700/70">
+                        <img data-service-icon src="/static/img/telegram.svg" class="h-4 w-4" alt="Telegram">
                     </span>
-                    <span class="hidden text-xs font-medium md:inline">Telegram</span>
-                    <span data-service-text class="hidden rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 lg:inline-flex dark:bg-gray-700 dark:text-gray-300">{% if lang == 'ru' %}Проверка{% else %}Tekshiruv{% endif %}</span>
                 </span>
-                <span data-service-root="isup" class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-600 shadow-sm transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700/70" title="ISUP">
-                    <span data-service-icon-wrap class="relative flex h-6 w-6 items-center justify-center rounded-md bg-slate-100 text-slate-500 dark:bg-gray-700/70 dark:text-gray-200">
-                    <svg data-service-icon class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 7h12a2 2 0 012 2v7a2 2 0 01-2 2H6a2 2 0 01-2-2V9a2 2 0 012-2z"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V5h8v2M8 12h.01M12 12h.01M16 12h.01"/>
-                    </svg>
-                    <span data-service-dot class="absolute right-1 top-1 h-2 w-2 rounded-full bg-slate-400"></span>
+                
+                <span data-service-root="isup" class="inline-flex items-center rounded-full border border-gray-200 bg-white p-1 text-[0.8rem] shadow-sm transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700/70" title="ISUP">
+                    <span data-service-icon-wrap class="relative flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 dark:bg-gray-700/70">
+                        <img data-service-icon src="/static/img/isup.svg" class="h-4 w-4 grayscale opacity-80 dark:invert dark:grayscale-0 dark:brightness-200" alt="ISUP">
                     </span>
-                    <span class="hidden text-xs font-medium md:inline">ISUP</span>
-                    <span data-service-text class="hidden rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 lg:inline-flex dark:bg-gray-700 dark:text-gray-300">{% if lang == 'ru' %}Проверка{% else %}Tekshiruv{% endif %}</span>
                 </span>
-                <span data-service-root="redis" class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-600 shadow-sm transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700/70" title="Redis">
-                    <span data-service-icon-wrap class="relative flex h-6 w-6 items-center justify-center rounded-md bg-slate-100 text-slate-500 dark:bg-gray-700/70 dark:text-gray-200">
-                    <svg data-service-icon class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 7c0 1.7 3.1 3 7 3s7-1.3 7-3-3.1-3-7-3-7 1.3-7 3z"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 7v5c0 1.7 3.1 3 7 3s7-1.3 7-3V7M5 12v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5"/>
-                    </svg>
-                    <span data-service-dot class="absolute right-1 top-1 h-2 w-2 rounded-full bg-slate-400"></span>
+                
+                <span data-service-root="redis" class="inline-flex items-center rounded-full border border-gray-200 bg-white p-1 text-[0.8rem] shadow-sm transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700/70" title="Redis">
+                    <span data-service-icon-wrap class="relative flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 dark:bg-gray-700/70">
+                        <img data-service-icon src="/static/img/redis.svg" class="h-4 w-4 grayscale opacity-80 dark:invert dark:grayscale-0 dark:brightness-200" alt="Redis">
                     </span>
-                    <span class="hidden text-xs font-medium md:inline">Redis</span>
-                    <span data-service-text class="hidden rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 lg:inline-flex dark:bg-gray-700 dark:text-gray-300">{% if lang == 'ru' %}Проверка{% else %}Tekshiruv{% endif %}</span>
                 </span>
             </div>
 
@@ -99,7 +84,7 @@
                 >
                     <span>{% if lang == 'ru' %}RU{% else %}UZ{% endif %}</span>
                     <span class="hidden text-xs font-medium sm:inline">{% if lang == 'ru' %}Russkiy{% else %}O'zbekcha{% endif %}</span>
-                    <svg class="h-3 w-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    <i class="fa-solid fa-chevron-down text-gray-400"></i>
                 </button>
                 <div id="lang-drop" class="absolute right-0 z-50 mt-2 hidden w-36 rounded-xl border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800">
                     <a href="javascript:void(0)" onclick="setLang('uz')" class="flex items-center gap-2 px-4 py-2 text-sm {% if lang == 'uz' %}bg-blue-50 font-semibold text-blue-600 dark:bg-blue-900/30 dark:text-blue-400{% else %}text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700{% endif %}">UZ O'zbekcha</a>
@@ -112,12 +97,8 @@
                 title="Kun/Tun rejimi"
                 class="rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
             >
-                <svg id="icon-sun" class="hidden h-5 w-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z"/>
-                </svg>
-                <svg id="icon-moon" class="h-5 w-5 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
-                </svg>
+                <i id="icon-sun" class="fa-solid fa-sun hidden text-[1.15rem] text-yellow-400 drop-shadow-sm"></i>
+                <i id="icon-moon" class="fa-solid fa-moon text-[1.15rem] text-slate-600 dark:text-slate-300"></i>
             </button>
 
             <div class="relative shrink-0">
@@ -126,7 +107,7 @@
                     data-dropdown-toggle="notif-drop"
                     class="relative rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
                 >
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                    <i class="fa-solid fa-bell text-[1.15rem]"></i>
                     {% if notifs and notifs.total > 0 %}
                     <span class="absolute right-1.5 top-1.5 h-2 w-2 rounded-full border-2 border-white bg-red-500 dark:border-gray-900"></span>
                     {% endif %}
@@ -140,7 +121,7 @@
                         {% if notifs.late > 0 %}
                         <div class="flex items-start gap-3">
                             <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-500 dark:bg-amber-900/40">
-                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                <i class="fa-solid fa-clock-rotate-left"></i>
                             </div>
                             <div>
                                 <p class="text-sm text-gray-800 dark:text-gray-200">{% if lang == 'ru' %}Segodnya opozdali <strong class="text-amber-600 dark:text-amber-400">{{ notifs.late }} sotrudnikov</strong>.{% else %}Bugun <strong class="text-amber-600 dark:text-amber-400">{{ notifs.late }} ta xodim</strong> kech keldi.{% endif %}</p>
@@ -150,7 +131,7 @@
                         {% if notifs.absent > 0 %}
                         <div class="flex items-start gap-3">
                             <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-500 dark:bg-red-900/40">
-                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                <i class="fa-solid fa-triangle-exclamation"></i>
                             </div>
                             <div>
                                 <p class="text-sm text-gray-800 dark:text-gray-200">{% if lang == 'ru' %}<strong class="text-red-600 dark:text-red-400">{{ notifs.absent }} sotrudnikov</strong> eshche ne pribili.{% else %}<strong class="text-red-600 dark:text-red-400">{{ notifs.absent }} ta xodim</strong> vaqtigacha kelmadi.{% endif %}</p>
@@ -178,9 +159,7 @@
                     class="hidden relative rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
                     title="Kamera ogohlantirishlari"
                 >
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                    </svg>
+                    <i class="fa-solid fa-camera-cctv text-[1.15rem]"></i>
                     <span id="camera-alert-badge" class="absolute right-1 top-1 hidden min-w-4 rounded-full border-2 border-white bg-red-500 px-1 text-[10px] font-bold leading-3 text-white dark:border-gray-900">0</span>
                 </button>
                 <div id="camera-alert-drop" class="absolute right-0 top-full z-50 mt-2 hidden w-80 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800">
@@ -210,7 +189,7 @@
                     <div class="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-xs font-bold text-white shadow-sm">{{ nav_user_initial }}</div>
                     {% endif %}
                     <span class="hidden text-sm font-medium text-gray-800 dark:text-gray-200 md:block">{{ nav_user_name }}</span>
-                    <svg class="hidden h-3 w-3 text-gray-400 md:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    <i class="fa-solid fa-chevron-down hidden text-gray-400"></i>
                 </button>
                 <div id="user-drop" class="absolute right-0 top-full z-50 mt-2 hidden w-52 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
                     <div class="bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3">
@@ -221,13 +200,13 @@
                     <div class="py-1">
                         {% if nav_is_super_admin %}
                         <a href="/settings" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700">
-                            <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            <i class="fa-solid fa-eye text-gray-400"></i>
                             {{ t.settings_menu }}
                         </a>
                         <div class="my-1 border-t border-gray-100 dark:border-gray-700"></div>
                         {% endif %}
                         <a href="/logout" class="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                            <i class="fa-solid fa-right-from-bracket"></i>
                             {{ t.logout }}
                         </a>
                     </div>
@@ -280,32 +259,27 @@
         const cameraAlertEmpty = document.getElementById("camera-alert-empty");
 
         const rootClassMap = {
-            loading: "inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-600 shadow-sm transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700/70",
-            online: "inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50/80 px-2 py-1.5 text-sm text-emerald-700 shadow-sm transition hover:bg-emerald-100/70 dark:border-emerald-900/60 dark:bg-emerald-900/20 dark:text-emerald-300 dark:hover:bg-emerald-900/30",
-            offline: "inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50/80 px-2 py-1.5 text-sm text-rose-700 shadow-sm transition hover:bg-rose-100/70 dark:border-rose-900/60 dark:bg-rose-900/20 dark:text-rose-300 dark:hover:bg-rose-900/30",
-            error: "inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50/80 px-2 py-1.5 text-sm text-amber-700 shadow-sm transition hover:bg-amber-100/70 dark:border-amber-900/60 dark:bg-amber-900/20 dark:text-amber-300 dark:hover:bg-amber-900/30",
+            loading: "inline-flex items-center rounded-full border border-gray-200 bg-white p-1 text-[0.8rem] shadow-sm transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700/70",
+            online: "inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50/80 p-1 text-[0.8rem] shadow-sm transition hover:bg-emerald-100/70 dark:border-emerald-900/60 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/30",
+            offline: "inline-flex items-center rounded-full border border-rose-200 bg-rose-50/80 p-1 text-[0.8rem] shadow-sm transition hover:bg-rose-100/70 dark:border-rose-900/60 dark:bg-rose-900/20 dark:hover:bg-rose-900/30",
+            error: "inline-flex items-center rounded-full border border-amber-200 bg-amber-50/80 p-1 text-[0.8rem] shadow-sm transition hover:bg-amber-100/70 dark:border-amber-900/60 dark:bg-amber-900/20 dark:hover:bg-amber-900/30",
         };
 
         const iconWrapClassMap = {
-            loading: "relative flex h-6 w-6 items-center justify-center rounded-md bg-slate-100 text-slate-500 dark:bg-gray-700/70 dark:text-gray-200",
-            online: "relative flex h-6 w-6 items-center justify-center rounded-md bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
-            offline: "relative flex h-6 w-6 items-center justify-center rounded-md bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
-            error: "relative flex h-6 w-6 items-center justify-center rounded-md bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+            loading: "relative flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-slate-500 dark:bg-gray-700/70 dark:text-gray-200",
+            online: "relative flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
+            offline: "relative flex h-5 w-5 items-center justify-center rounded-full bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
+            error: "relative flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
         };
 
         const dotClassMap = {
-            loading: "absolute right-1 top-1 h-2 w-2 rounded-full bg-slate-400 animate-pulse",
-            online: "absolute right-1 top-1 h-2 w-2 rounded-full bg-emerald-500 animate-pulse",
-            offline: "absolute right-1 top-1 h-2 w-2 rounded-full bg-rose-500",
-            error: "absolute right-1 top-1 h-2 w-2 rounded-full bg-amber-500 animate-pulse",
+            loading: "absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-slate-400 animate-pulse",
+            online: "absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse",
+            offline: "absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-rose-500",
+            error: "absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse",
         };
 
-        const textClassMap = {
-            loading: "hidden rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 lg:inline-flex dark:bg-gray-700 dark:text-gray-300",
-            online: "hidden rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-700 lg:inline-flex dark:bg-emerald-900/30 dark:text-emerald-300",
-            offline: "hidden rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-rose-700 lg:inline-flex dark:bg-rose-900/30 dark:text-rose-300",
-            error: "hidden rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-700 lg:inline-flex dark:bg-amber-900/30 dark:text-amber-300",
-        };
+        const textClassMap = {};
 
         function getIndicator(key) {
             const root = document.querySelector(`[data-service-root="${key}"]`);
@@ -315,7 +289,6 @@
             return {
                 root,
                 iconWrap: root.querySelector("[data-service-icon-wrap]"),
-                dot: root.querySelector("[data-service-dot]"),
                 text: root.querySelector("[data-service-text]"),
             };
         }
@@ -330,9 +303,6 @@
             indicator.root.className = rootClassMap[safeState];
             if (indicator.iconWrap) {
                 indicator.iconWrap.className = iconWrapClassMap[safeState];
-            }
-            if (indicator.dot) {
-                indicator.dot.className = dotClassMap[safeState];
             }
             if (indicator.text) {
                 indicator.text.className = textClassMap[safeState];

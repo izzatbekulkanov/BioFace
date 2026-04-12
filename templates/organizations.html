@@ -1,21 +1,19 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="space-y-4">
+<div class="animate-fade-in space-y-4">
     <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
             <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{% if lang == "ru" %}Организации{% else %}Tashkilotlar{% endif %}</h1>
             <p id="organizations-count" class="mt-1 text-sm text-gray-500 dark:text-gray-400">{% if lang == "ru" %}Управление организациями{% else %}Tashkilotlarni boshqarish{% endif %}</p>
         </div>
         <a href="/organizations/add" class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700">
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-            </svg>
+            <i class="fa-solid fa-plus"></i>
             {% if lang == "ru" %}Добавить{% else %}Yangi tashkilot{% endif %}
         </a>
     </div>
 
-    <section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+    <section class="overflow-hidden card-standard  ">
         <div class="border-b border-gray-100 px-4 py-4 dark:border-gray-800">
             <div class="overflow-x-auto">
                 <div class="flex min-w-max items-end gap-3">
@@ -23,9 +21,7 @@
                         <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">Qidiruv</span>
                         <span class="flex overflow-hidden rounded-xl border border-gray-200 bg-gray-50 shadow-sm dark:border-gray-700 dark:bg-gray-800">
                             <span class="flex w-11 shrink-0 items-center justify-center border-r border-gray-200 text-gray-400 dark:border-gray-700">
-                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                                </svg>
+                                <i class="fa-solid fa-magnifying-glass"></i>
                             </span>
                             <input id="organizations-search" type="text" placeholder="Tashkilot nomi yoki turi bo'yicha qidiruv" class="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:text-white">
                         </span>
@@ -48,11 +44,9 @@
                         </select>
                     </label>
 
-                    <div class="grid w-[15rem] grid-cols-2 overflow-hidden rounded-xl border border-gray-300 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                    <div class="grid w-[15rem] grid-cols-2 overflow-hidden card-standard  ">
                         <button id="organizations-apply" type="button" class="inline-flex items-center justify-center gap-2 border-r border-gray-300 px-4 py-2.5 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 dark:border-gray-700 dark:text-blue-300 dark:hover:bg-blue-900/20">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                            </svg>
+                            <i class="fa-solid fa-check"></i>
                             Qo'llash
                         </button>
                         <button id="organizations-reset" type="button" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700">
@@ -76,7 +70,7 @@
         </div>
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 text-left text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500 dark:bg-gray-800/80 dark:text-gray-300">
+                <thead>
                     <tr>
                         <th class="w-16 px-4 py-3 text-center">T/r</th>
                         <th class="px-4 py-3">Tashkilot</th>

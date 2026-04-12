@@ -4,24 +4,43 @@ from pathlib import Path
 from system_config import BASE_DIR, HIKVISION_SDK_DIR, ISUP_IMPLEMENTATION_MODE
 
 
-# Real Hikvision ISUP runtime DLL set used by the local SDK bridge.
-REQUIRED_SDK_DLLS = (
-    "HCISUPCMS.dll",
-    "HCISUPAlarm.dll",
-    "HCISUPSS.dll",
-    "HCISUPStream.dll",
-    "HCNetUtils.dll",
-    "hpr.dll",
-    "libeay32.dll",
-    "ssleay32.dll",
-)
+import sys
 
-OPTIONAL_SDK_DLLS = (
-    "PlayCtrl.dll",
-    "sqlite3.dll",
-    "zlib1.dll",
-    "OpenAL32.dll",
-)
+IS_WIN = sys.platform == "win32"
+
+if IS_WIN:
+    REQUIRED_SDK_DLLS = (
+        "HCISUPCMS.dll",
+        "HCISUPAlarm.dll",
+        "HCISUPSS.dll",
+        "HCISUPStream.dll",
+        "HCNetUtils.dll",
+        "hpr.dll",
+        "libeay32.dll",
+        "ssleay32.dll",
+    )
+    OPTIONAL_SDK_DLLS = (
+        "PlayCtrl.dll",
+        "sqlite3.dll",
+        "zlib1.dll",
+        "OpenAL32.dll",
+    )
+else:
+    REQUIRED_SDK_DLLS = (
+        "libHCISUPCMS.so",
+        "libHCISUPAlarm.so",
+        "libHCISUPSS.so",
+        "libHCISUPStream.so",
+        "libHCNetUtils.so",
+        "libhpr.so",
+        "libcrypto.so",
+        "libssl.so",
+    )
+    OPTIONAL_SDK_DLLS = (
+        "libPlayCtrl.so",
+        "libsqlite3.so",
+        "libz.so",
+    )
 
 BUNDLED_RUNTIME_DIR = (
     BASE_DIR

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="space-y-6">
+<div class="animate-fade-in space-y-6">
     <div class="flex flex-col gap-3">
         <p class="text-xs font-semibold uppercase tracking-widest text-blue-600 dark:text-blue-400">ISUP Integration</p>
         <div>
@@ -83,7 +83,7 @@
     </section>
 
     <div class="grid grid-cols-1 gap-6 xl:grid-cols-[1.3fr,1fr]">
-        <section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <section class="overflow-hidden card-standard  ">
             <div class="border-b border-gray-100 px-5 py-4 dark:border-gray-800">
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
                     {% if lang == 'ru' %}ISUP endpoint'lar{% else %}ISUP endpointlar{% endif %}
@@ -93,8 +93,8 @@
                 </p>
             </div>
             <div class="overflow-x-auto">
-                <table class="min-w-full text-left text-sm">
-                    <thead class="bg-gray-50 text-xs uppercase tracking-widest text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                <table class="table-standard">
+                    <thead>
                         <tr>
                             <th class="px-5 py-3">Method</th>
                             <th class="px-5 py-3">Endpoint</th>
@@ -143,7 +143,7 @@
         </section>
 
         <section class="space-y-6">
-            <article class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <article class="overflow-hidden card-standard  ">
                 <div class="border-b border-gray-100 px-5 py-4 dark:border-gray-800">
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Command payload</h2>
                     <p class="text-sm text-gray-500 dark:text-gray-400">ISUP buyruq yuborish uchun namunaviy JSON</p>
@@ -164,7 +164,7 @@
                 </div>
             </article>
 
-            <article class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <article class="overflow-hidden card-standard  ">
                 <div class="border-b border-gray-100 px-5 py-4 dark:border-gray-800">
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Local kameralar</h2>
                     <p class="text-sm text-gray-500 dark:text-gray-400">DB ga saqlangan qurilmalar va ularning ISUP identifikatori</p>
@@ -208,7 +208,7 @@
     </div>
 
     <div class="grid grid-cols-1 gap-6 xl:grid-cols-[1fr,1.2fr]">
-        <section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <section class="overflow-hidden card-standard  ">
             <div class="border-b border-gray-100 px-5 py-4 dark:border-gray-800">
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Quick test</h2>
                 <p class="text-sm text-gray-500 dark:text-gray-400">ISUP va Redis endpointlarni shu sahifadan tekshirish mumkin</p>
@@ -264,7 +264,7 @@
             </div>
         </section>
 
-        <section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <section class="overflow-hidden card-standard  ">
             <div class="border-b border-gray-100 px-5 py-4 dark:border-gray-800">
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Natija</h2>
                 <p class="text-sm text-gray-500 dark:text-gray-400">Endpoint yoki command natijasi shu yerda ko'rinadi</p>

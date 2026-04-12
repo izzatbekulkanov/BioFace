@@ -91,7 +91,7 @@ class _EmployeeProfileScreenState extends State<EmployeeProfileScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF0F4FD),
       body: _isLoading && _calendarData == null
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF2B5DE4)))
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF2563EB)))
           : Stack(
               children: [
                 // Top Blue Background Region matches "Sleep" screen header
@@ -151,7 +151,7 @@ class _EmployeeProfileScreenState extends State<EmployeeProfileScreen> {
                               child: (imageUrl == null || imageUrl.toString().isEmpty)
                                   ? Text(
                                       name.isNotEmpty ? name[0].toUpperCase() : '?',
-                                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF2B5DE4)),
+                                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
                                     )
                                   : null,
                             ),
@@ -175,7 +175,7 @@ class _EmployeeProfileScreenState extends State<EmployeeProfileScreen> {
                           ),
                           child: RefreshIndicator(
                             onRefresh: () => _fetchCalendarData(_focusedDay.year, _focusedDay.month),
-                            color: const Color(0xFF2B5DE4),
+                            color: const Color(0xFF2563EB),
                             backgroundColor: Colors.white,
                             child: SingleChildScrollView(
                               physics: const AlwaysScrollableScrollPhysics(),
@@ -218,8 +218,8 @@ class _EmployeeProfileScreenState extends State<EmployeeProfileScreen> {
                                         titleCentered: true,
                                         formatButtonVisible: false,
                                         titleTextStyle: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF131722)),
-                                        leftChevronIcon: Icon(Icons.chevron_left, color: Color(0xFF2B5DE4)),
-                                        rightChevronIcon: Icon(Icons.chevron_right, color: Color(0xFF2B5DE4)),
+                                        leftChevronIcon: Icon(Icons.chevron_left, color: Color(0xFF2563EB)),
+                                        rightChevronIcon: Icon(Icons.chevron_right, color: Color(0xFF2563EB)),
                                       ),
                                       daysOfWeekStyle: DaysOfWeekStyle(
                                         weekdayStyle: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.w600),
@@ -227,15 +227,15 @@ class _EmployeeProfileScreenState extends State<EmployeeProfileScreen> {
                                       ),
                                       calendarStyle: CalendarStyle(
                                         selectedDecoration: const BoxDecoration(
-                                          color: Color(0xFF2B5DE4),
+                                          color: Color(0xFF2563EB),
                                           shape: BoxShape.circle,
                                           boxShadow: [BoxShadow(color: Color(0x662B5DE4), blurRadius: 8, offset: Offset(0, 4))],
                                         ),
                                         todayDecoration: BoxDecoration(
-                                          color: const Color(0xFF2B5DE4).withValues(alpha:0.15),
+                                          color: const Color(0xFF2563EB).withValues(alpha:0.15),
                                           shape: BoxShape.circle,
                                         ),
-                                        todayTextStyle: const TextStyle(color: Color(0xFF2B5DE4), fontWeight: FontWeight.bold),
+                                        todayTextStyle: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold),
                                       ),
                                       calendarBuilders: CalendarBuilders(
                                         markerBuilder: (context, day, events) {
@@ -419,7 +419,7 @@ class _EmployeeProfileScreenState extends State<EmployeeProfileScreen> {
                 children: cameras.map((c) => Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(color: const Color(0xFFF0F4FD), borderRadius: BorderRadius.circular(12)),
-                  child: Text(c.toString(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF2B5DE4))),
+                  child: Text(c.toString(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF2563EB))),
                 )).toList(),
               )
             ]

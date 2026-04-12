@@ -1,33 +1,33 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="mb-6 flex flex-col justify-between items-start gap-4">
+<div class="animate-fade-in mb-6 flex flex-col justify-between items-start gap-4">
     <div>
         <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Yangi Kamera Qo'shish</h2>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Sistemaga yangi qurilmani ro'yxatdan o'tkazing</p>
     </div>
 </div>
 
-<div class="bg-white border border-gray-200 rounded-xl shadow-sm dark:bg-gray-800 dark:border-gray-700 max-w-2xl mx-auto overflow-hidden">
+<div class="bg-white border border-gray-200 rounded-2xl shadow-sm dark:bg-gray-900 dark:border-gray-800 w-full overflow-hidden">
     
     <!-- STEP 1: FORM -->
     <div id="add-step-1" class="flex flex-col">
         <div class="p-6 md:p-8 space-y-6">
             <div>
-                <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Kamera Nomi <span class="text-red-500">*</span></label>
+                <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2"><i class="fa-solid fa-video text-gray-400 mr-2"></i>Kamera Nomi <span class="text-red-500">*</span></label>
                 <input id="inp-name" type="text" placeholder="Masalan: Asosiy kirish"
                     class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition">
             </div>
             
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
-                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">MAC Manzili</label>
+                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2"><i class="fa-solid fa-network-wired text-gray-400 mr-2"></i>MAC Manzili</label>
                     <p class="text-xs text-gray-500 dark:text-gray-400 mb-2 border-l-2 border-blue-500 pl-2">Ixtiyoriy. Masalan: AA:BB:CC:11:22:33</p>
                     <input id="inp-mac" type="text" placeholder="Masalan: AA:BB:CC:11:22:33"
                         class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-mono rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition uppercase">
                 </div>
                 <div>
-                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Seriya Raqami</label>
+                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2"><i class="fa-solid fa-barcode text-gray-400 mr-2"></i>Seriya Raqami</label>
                     <p class="text-xs text-gray-500 dark:text-gray-400 mb-2 border-l-2 border-violet-500 pl-2">Ixtiyoriy. ISUP yoki qurilma yorlig'idagi serial.</p>
                     <input id="inp-serial" type="text" placeholder="Masalan: DS3B24123456"
                         class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-mono rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition">
@@ -36,7 +36,7 @@
             
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
-                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Model (Limit uchun)</label>
+                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2"><i class="fa-solid fa-layer-group text-gray-400 mr-2"></i>Model (Limit uchun)</label>
                     <input id="inp-model" list="camera-model-suggestions" type="text" placeholder="Masalan: DS-K1T343"
                         class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition">
                     <datalist id="camera-model-suggestions">
@@ -56,7 +56,7 @@
                     </div>
                 </div>
                 <div>
-                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Tashkilot</label>
+                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2"><i class="fa-solid fa-building text-gray-400 mr-2"></i>Tashkilot</label>
                     <select id="inp-org" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition">
                         <option value="">Tanlang...</option>
                         {% for org in organizations %}
@@ -69,12 +69,12 @@
             <!-- Auth Fields -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-4">
                 <div>
-                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Kamera Logini</label>
+                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2"><i class="fa-solid fa-user text-gray-400 mr-2"></i>Kamera Logini</label>
                     <input id="inp-username" type="text" placeholder="admin (ixtiyoriy)"
                         class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition">
                 </div>
                 <div>
-                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Kamera Paroli</label>
+                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2"><i class="fa-solid fa-key text-gray-400 mr-2"></i>Kamera Paroli</label>
                     <input id="inp-password" type="password" placeholder="Ixtiyoriy"
                         class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition">
                 </div>
@@ -82,14 +82,14 @@
 
             <!-- ISUP Auth Field -->
             <div class="mt-4">
-                <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">ISUP Paroli (Maxfiy) <span class="text-red-500">*</span></label>
+                <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2"><i class="fa-solid fa-shield-halved text-gray-400 mr-2"></i>ISUP Paroli (Maxfiy) <span class="text-red-500">*</span></label>
                 <p class="text-xs text-gray-500 dark:text-gray-400 mb-2 border-l-2 border-amber-500 pl-2">Kameraga o'rnatiladigan ISUP parolini kiriting. Odatda bu avtomatik o'rnatiladi.</p>
                 <input id="inp-isup-key" type="text" value="facex2024"
                     class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-mono rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition">
             </div>
 
             <div class="mt-4">
-                <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">ISUP Device ID (ixtiyoriy)</label>
+                <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2"><i class="fa-solid fa-id-badge text-gray-400 mr-2"></i>ISUP Device ID (ixtiyoriy)</label>
                 <p class="text-xs text-gray-500 dark:text-gray-400 mb-2 border-l-2 border-indigo-500 pl-2">Kameradagi ISUP "Device ID" bilan bir xil bo'lsin (masalan: CAM1111). Bo'sh qoldirilsa online/offline webhook orqali aniqlanadi.</p>
                 <input id="inp-isup-device-id" type="text" placeholder="Masalan: CAM1111"
                     class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-mono rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition">
@@ -101,7 +101,7 @@
         <div class="px-6 py-5 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row gap-3 justify-end items-center">
             <a href="/devices" class="w-full sm:w-auto text-center px-6 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition">Bekor qilish</a>
             <button onclick="saveCamera()" class="w-full sm:w-auto justify-center px-6 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition flex items-center gap-2">
-                <svg id="save-spinner" class="w-4 h-4 hidden animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                <i id="save-spinner" class="fa-solid fa-circle-notch hidden animate-spin"></i>
                 Saqlash va Ulanish
             </button>
         </div>
@@ -111,7 +111,7 @@
     <div id="add-step-2" class="hidden">
         <div class="px-6 py-12 text-center">
             <div class="w-20 h-20 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-6">
-                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                <i class="fa-solid fa-check"></i>
             </div>
             <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-3">Kamera Muvaffaqiyatli Qo'shildi!</h3>
             <p class="text-base text-gray-500 dark:text-gray-400 mb-8 max-w-lg mx-auto">Endi kameradagi <strong class="text-gray-700 dark:text-gray-200">HTTP Listening</strong> maydonlarini alohida to'ldiring. URL maydoniga to'liq <code>http://...</code> emas, faqat path kiriting.</p>
@@ -123,7 +123,7 @@
                         <input id="webhook-host" type="text" readonly value="94.141.85.147"
                             class="w-full bg-gray-50 dark:bg-gray-900 border-2 border-emerald-500/30 text-emerald-700 dark:text-emerald-400 font-mono text-sm text-center rounded-xl p-4 pr-16 outline-none shadow-sm">
                         <button onclick="copyField('webhook-host')" class="absolute right-3 top-9 p-2.5 text-gray-400 hover:text-emerald-600 dark:text-gray-500 dark:hover:text-emerald-400 transition bg-white dark:bg-gray-800 rounded-lg shadow-sm" title="Nusxa olish">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                            <i class="fa-regular fa-copy text-lg"></i>
                         </button>
                     </div>
                     <div class="relative group">
@@ -131,7 +131,7 @@
                         <input id="webhook-port" type="text" readonly value="8000"
                             class="w-full bg-gray-50 dark:bg-gray-900 border-2 border-emerald-500/30 text-emerald-700 dark:text-emerald-400 font-mono text-sm text-center rounded-xl p-4 pr-16 outline-none shadow-sm">
                         <button onclick="copyField('webhook-port')" class="absolute right-3 top-9 p-2.5 text-gray-400 hover:text-emerald-600 dark:text-gray-500 dark:hover:text-emerald-400 transition bg-white dark:bg-gray-800 rounded-lg shadow-sm" title="Nusxa olish">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                            <i class="fa-regular fa-copy text-lg"></i>
                         </button>
                     </div>
                 </div>
@@ -140,7 +140,7 @@
                     <input id="webhook-url" type="text" readonly value="/api/v1/httppost/"
                         class="w-full bg-gray-50 dark:bg-gray-900 border-2 border-emerald-500/30 text-emerald-700 dark:text-emerald-400 font-mono text-sm sm:text-base text-center rounded-xl p-4 pr-16 outline-none shadow-sm">
                     <button onclick="copyField('webhook-url')" class="absolute right-3 top-9 p-2.5 text-gray-400 hover:text-emerald-600 dark:text-gray-500 dark:hover:text-emerald-400 transition bg-white dark:bg-gray-800 rounded-lg shadow-sm" title="Nusxa olish">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                        <i class="fa-regular fa-copy text-lg"></i>
                     </button>
                 </div>
             </div>

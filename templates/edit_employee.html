@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="mb-6 flex flex-col justify-between items-start gap-4">
+<div class="animate-fade-in mb-6 flex flex-col justify-between items-start gap-4">
     <div>
         <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{% if lang == "ru" %}Редактировать сотрудника{% else %}Xodimni Tahrirlash{% endif %}</h2>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{% if lang == "ru" %}Изменение данных сотрудника{% else %}Mavjud xodim ma'lumotlarini o'zgartirish{% endif %}</p>
@@ -137,9 +137,7 @@
                             <div class="min-w-0">
                                 <p class="text-sm font-semibold text-gray-800 dark:text-gray-100">{% if lang == 'ru' %}Перетащите фото или выберите файл{% else %}Rasmni tashlang yoki fayl tanlang{% endif %}</p>
                                 <button type="button" id="emp-btn-open-file" class="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                                    </svg>
+                                    <i class="fa-solid fa-plus"></i>
                                     {% if lang == 'ru' %}Выбрать{% else %}Tanlash{% endif %}
                                 </button>
                             </div>
@@ -182,7 +180,7 @@
                 {% if lang == "ru" %}Отмена{% else %}Bekor qilish{% endif %}
             </a>
             <button id="btnSaveLocal" type="submit" class="text-white bg-amber-600 hover:bg-amber-700 focus:ring-4 focus:outline-none focus:ring-amber-300 font-medium rounded-lg text-sm w-full sm:w-auto px-6 py-2.5 text-center flex items-center gap-2">
-                <svg id="saveSpinner" class="hidden w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                <i id="saveSpinner" class="fa-solid fa-circle-notch hidden animate-spin"></i>
                 {% if lang == "ru" %}Сохранить{% else %}Saqlash{% endif %}
             </button>
         </div>
@@ -666,7 +664,7 @@ function renderCameraStatusList(cameras) {
         const selectedPill = cameraPillHtml(isSelected ? 'Tanlangan' : 'Tanlanmagan', isSelected ? 'blue' : 'slate');
         const linkedPill = cameraPillHtml(isLinked ? 'Birikkan' : 'Yangi', isLinked ? 'amber' : 'slate');
         return `
-            <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-700 dark:bg-slate-800/90">
+            <div class="card-standard px-4 py-3  /90">
                 <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
                     <div class="min-w-0">
                         <div class="flex flex-wrap items-center gap-2">
