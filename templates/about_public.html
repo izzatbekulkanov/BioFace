@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="uz" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ app_name|default('BioFace') }} — Tizim haqida</title>
+    {% if favicon_url %}
+    <link rel="icon" href="{{ favicon_url }}" />
+    {% endif %}
+    <link href="/static/fontawesome/css/all.min.css" rel="stylesheet">
+    <link href="/static/fontawesome/css/duotone.min.css" rel="stylesheet">
+    <link href="/static/css/output.css?v=20260317c" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* ── INTRO FULLSCREEN OVERLAY ── */
+        #intro-overlay {
+            position: fixed; inset: 0; z-index: 9999;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(18px) saturate(0.6);
+            -webkit-backdrop-filter: blur(18px) saturate(0.6);
+            transition: opacity 0.7s ease;
+        }
+        #intro-overlay.fade-out { opacity: 0; pointer-events: none; }
+
+        /* Video wrapper — chetlari gradient */
+        #intro-video-wrap {
+            position: relative;
+            width: min(92vw, 1100px);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow:
+                0 0 0 1px rgba(96,165,250,0.20),
+                0 40px 80px rgba(0,0,0,0.60),
+                0 0 120px rgba(37,99,235,0.15);
+        }
+        #intro-video {
+            width: 100%; display: block;
+            border-radius: 20px;
+        }
+        /* Cinematic vignette — to'rt tomondan qora gradient */
+        #intro-video-wrap::after {
+            content: '';
+            position: absolute; inset: 0;
+            border-radius: 20px;
+            pointer-events: none;
+            background:
+                linear-gradient(to right,  rgba(0,0,0,0.55) 0%, transparent 18%, transparent 82%, rgba(0,0,0,0.55) 100%),
+                linear-gradient(to bottom, rgba(0,0,0,0.60) 0%, transparent 18%, transparent 80%, rgba(0,0,0,0.72) 100%);
+        }
+        #intro-skip {
+            position: absolute; bottom: 28px; right: 24px; z-index: 10;
+            background: rgba(0,0,0,0.45);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(255,255,255,0.22);
+            color: #fff; font-size: 13px; font-weight: 700;
+            padding: 9px 20px; border-radius: 11px; cursor: pointer;
+            display: inline-flex; align-items: center; gap: 7px;
+            transition: background 0.18s, transform 0.18s, border-color 0.18s;
+            font-family: inherit;
+            animation: skipAppear 0.5s 1.2s both;
+            letter-spacing: 0.2px;
+        }
+        #intro-skip:hover {
+            background: rgba(255,255,255,0.14);
+            border-color: rgba(255,255,255,0.40);
+            transform: translateY(-2px);
+        }
+        @keyframes skipAppear { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
+
+        /* Progress bar */
+        #intro-progress-wrap {
+            position: absolute; bottom: 0; left: 0; right: 0; height: 3px; z-index: 10;
+            background: rgba(255,255,255,0.10);
+            border-radius: 0 0 20px 20px;
+        }
+        #intro-progress-bar {
+            height: 100%; width: 0%;
+            background: linear-gradient(90deg, #93c5fd, #2563eb);
+            border-radius: 0 0 0 20px;
+            transition: width 0.25s linear;
+        }
+
+
+        :root {
+            --brand-1: #1d4ed8;
+            --brand-2: #2563eb;
+            --brand-3: #60a5fa;
+            --surface: #f3f6fa;
+            --ink: #0f172a;
+            --muted: #64748b;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; min-height: 100vh;
+            font-family: "Plus Jakarta Sans", "Trebuchet MS", "Segoe UI", sans-serif;
+            background:
+                radial-gradient(85rem 40rem at -10% -20%, #dbeafe 0%, transparent 45%),
+                radial-gradient(70rem 40rem at 120% 120%, #ede9fe 0%, transparent 42%),
+                var(--surface);
+            color: var(--ink);
+        }
+        .app-wrap { min-height: 100vh; display: flex; flex-direction: column; }
+
+        /* ── HEADER ── */
+        .site-header {
+            position: sticky; top: 0; z-index: 20;
+            backdrop-filter: blur(8px);
+            background: rgba(243,246,250,0.88);
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .site-inner {
+            width: 100%; max-width: 1140px; margin: 0 auto;
+            padding: 10px 16px;
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+        }
+        .brand-top { display: inline-flex; align-items: center; gap: 10px; }
+        .brand-top-logo { width: 44px; height: 44px; overflow: hidden; display: grid; place-items: center; flex-shrink: 0; }
+        .brand-top-logo img { width: 100%; height: 100%; object-fit: contain; }
+        .brand-top-title { font-size: 15px; font-weight: 700; color: #0f172a; white-space: nowrap; }
+        .nav-links { display: inline-flex; align-items: center; gap: 10px; font-size: 13px; color: #475569; }
+        .nav-links a {
+            color: inherit; text-decoration: none; padding: 6px 10px;
+            border-radius: 8px; display: inline-flex; align-items: center; gap: 5px;
+            transition: background 0.15s, color 0.15s;
+        }
+        .nav-links a:hover { background: #e2e8f0; color: #0f172a; }
+        .nav-links a.active { background: var(--brand-2); color: #fff !important; }
+        .lang { display: inline-flex; border: 1px solid #cbd5e1; border-radius: 999px; padding: 2px; background: #f8fafc; gap: 2px; flex-shrink: 0; }
+        .lang button { border: 0; border-radius: 999px; padding: 5px 10px; font-size: 11px; font-weight: 700; color: #475569; background: transparent; cursor: pointer; }
+        .lang button.active { background: var(--brand-2); color: #fff; }
+        .back-btn {
+            display: inline-flex; align-items: center; gap: 6px; text-decoration: none;
+            color: #475569; font-size: 13px; font-weight: 600;
+            padding: 6px 12px; border-radius: 8px; border: 1px solid #e2e8f0;
+            background: #fff; transition: all 0.15s; white-space: nowrap;
+        }
+        .back-btn:hover { border-color: #94a3b8; color: #0f172a; transform: translateX(-2px); }
+
+        /* ── PAGE ── */
+        .page { flex: 1; padding: 48px 16px 80px; }
+        .container { width: 100%; max-width: 1000px; margin: 0 auto; }
+
+        /* ── HERO ── */
+        .hero { text-align: center; margin-bottom: 64px; }
+        .hero-logo {
+            width: 80px; height: 80px; margin: 0 auto 20px;
+            background: linear-gradient(135deg, var(--brand-1), #4f46e5);
+            border-radius: 22px; display: grid; place-items: center;
+            font-size: 32px; font-weight: 800; color: #fff;
+            box-shadow: 0 16px 36px rgba(37,99,235,0.30);
+            transition: transform 0.3s;
+        }
+        .hero-logo:hover { transform: scale(1.05) rotate(-2deg); }
+        .hero-badge {
+            display: inline-flex; align-items: center; gap: 7px;
+            background: linear-gradient(135deg, #eff6ff, #dbeafe);
+            border: 1px solid #bfdbfe; border-radius: 999px;
+            padding: 5px 14px; font-size: 12px; font-weight: 700;
+            color: #1d4ed8; margin-bottom: 14px; letter-spacing: 0.3px;
+        }
+        .hero h1 {
+            margin: 0 0 14px; font-size: 44px; font-weight: 800; line-height: 1.1;
+            background: linear-gradient(135deg, #0f172a 0%, var(--brand-1) 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .hero p { margin: 0 auto; max-width: 560px; font-size: 16px; color: var(--muted); line-height: 1.65; }
+
+        /* ── SECTION TITLE ── */
+        .section-title {
+            font-size: 26px; font-weight: 800; text-align: center;
+            color: #0f172a; margin: 0 0 28px;
+        }
+
+        /* ── CARD ── */
+        .glass-card {
+            background: rgba(255,255,255,0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(226,232,240,0.8);
+            border-radius: 20px;
+            box-shadow: 0 6px 28px rgba(15,23,42,0.07);
+            padding: 28px 30px;
+            margin-bottom: 28px;
+        }
+        .glass-card h2 { font-size: 22px; font-weight: 700; color: #0f172a; margin: 0 0 14px; }
+        .glass-card p, .glass-card li { font-size: 15px; color: #475569; line-height: 1.7; }
+        .glass-card ul { padding-left: 20px; margin: 10px 0; }
+        .glass-card ul li { margin-bottom: 8px; }
+        .glass-card strong { color: #0f172a; }
+
+        /* How it works */
+        .how-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 10px; }
+        .step {
+            text-align: center; padding: 20px 12px;
+            background: linear-gradient(135deg, #f8fafc, #eff6ff);
+            border: 1px solid #e2e8f0; border-radius: 16px;
+            position: relative; transition: transform 0.2s;
+        }
+        .step:hover { transform: translateY(-3px); }
+        .step-num {
+            width: 38px; height: 38px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--brand-3), var(--brand-1));
+            color: #fff; font-size: 16px; font-weight: 800;
+            display: grid; place-items: center; margin: 0 auto 10px;
+            box-shadow: 0 6px 16px rgba(37,99,235,0.22);
+        }
+        .step-icon { font-size: 22px; margin-bottom: 8px; }
+        .step-title { font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 6px; }
+        .step-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+        /* Problems grid */
+        .problems-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .prob-card {
+            padding: 22px; border-radius: 16px; border: 1px solid;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .prob-card:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(15,23,42,0.10); }
+        .prob-card.red  { background: #fff5f5; border-color: #fecaca; }
+        .prob-card.orange { background: #fffbeb; border-color: #fde68a; }
+        .prob-card.blue  { background: #eff6ff; border-color: #bfdbfe; }
+        .prob-card.purple { background: #f5f3ff; border-color: #ddd6fe; }
+        .prob-icon {
+            width: 46px; height: 46px; border-radius: 12px;
+            display: grid; place-items: center; font-size: 20px; margin-bottom: 12px;
+        }
+        .prob-card.red    .prob-icon { background: #fecaca; color: #b91c1c; }
+        .prob-card.orange .prob-icon { background: #fde68a; color: #b45309; }
+        .prob-card.blue   .prob-icon { background: #bfdbfe; color: #1d4ed8; }
+        .prob-card.purple .prob-icon { background: #ddd6fe; color: #6d28d9; }
+        .prob-title { font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 8px; }
+        .prob-desc { font-size: 13px; color: var(--muted); line-height: 1.55; }
+
+        /* Audience */
+        .audience-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; }
+        .aud-card {
+            text-align: center; padding: 24px 16px;
+            background: rgba(255,255,255,0.80); border: 1px solid #e2e8f0;
+            border-radius: 18px; transition: transform 0.2s;
+        }
+        .aud-card:hover { transform: translateY(-3px); }
+        .aud-icon { font-size: 32px; margin-bottom: 12px; line-height: 1; display: block; }
+        .aud-title { font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 8px; }
+        .aud-desc { font-size: 13px; color: var(--muted); line-height: 1.55; }
+
+        /* Author */
+        .author-card {
+            background: linear-gradient(135deg, rgba(37,99,235,0.06) 0%, rgba(79,70,229,0.06) 100%);
+            border: 1px solid #c7d2fe; border-radius: 20px;
+            padding: 28px 30px; display: flex; align-items: center; gap: 24px;
+        }
+        .author-avatar {
+            width: 72px; height: 72px; flex-shrink: 0; border-radius: 50%;
+            background: linear-gradient(135deg, var(--brand-3), var(--brand-1));
+            display: grid; place-items: center;
+            font-size: 24px; font-weight: 800; color: #fff;
+            box-shadow: 0 8px 20px rgba(37,99,235,0.25);
+        }
+        .author-name { font-size: 18px; font-weight: 700; color: #0f172a; margin: 0 0 6px; }
+        .author-desc { font-size: 14px; color: var(--muted); line-height: 1.6; margin: 0; }
+
+        /* CTA */
+        .cta-bar {
+            text-align: center; margin-top: 40px; padding: 36px;
+            background: linear-gradient(135deg, var(--brand-1), #4f46e5);
+            border-radius: 20px; box-shadow: 0 16px 40px rgba(37,99,235,0.28);
+            color: #fff;
+        }
+        .cta-bar h3 { font-size: 22px; font-weight: 800; margin: 0 0 10px; }
+        .cta-bar p { margin: 0 0 20px; opacity: 0.88; font-size: 14px; }
+        .cta-btns { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+        .cta-btn {
+            display: inline-flex; align-items: center; gap: 7px;
+            padding: 11px 22px; border-radius: 11px; font-size: 14px;
+            font-weight: 700; text-decoration: none; transition: all 0.16s;
+        }
+        .cta-btn.white { background: #fff; color: var(--brand-1); box-shadow: 0 6px 18px rgba(0,0,0,0.1); }
+        .cta-btn.white:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0,0,0,0.15); }
+        .cta-btn.outline { background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.4); }
+        .cta-btn.outline:hover { background: rgba(255,255,255,0.20); transform: translateY(-2px); }
+
+        /* FOOTER */
+        .site-footer { border-top: 1px solid #e2e8f0; background: rgba(255,255,255,0.72); backdrop-filter: blur(8px); }
+        .site-footer .site-inner { padding-top: 10px; padding-bottom: 10px; }
+        .footer-text { font-size: 12px; color: #64748b; }
+        .footer-links { display: inline-flex; gap: 10px; font-size: 12px; }
+        .footer-links a { color: #475569; text-decoration: none; }
+        .footer-links a:hover { text-decoration: underline; }
+
+        /* Animations */
+        @keyframes fadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:none; } }
+        .fade-up { animation: fadeUp 0.45s ease both; }
+        .d1{animation-delay:.05s} .d2{animation-delay:.10s} .d3{animation-delay:.15s}
+        .d4{animation-delay:.20s} .d5{animation-delay:.25s} .d6{animation-delay:.30s}
+
+        /* VIDEO PLAYER */
+        .video-section {
+            margin-bottom: 36px;
+        }
+        .video-label {
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            margin-bottom: 16px; font-size: 13px; font-weight: 700;
+            color: var(--muted); letter-spacing: 0.4px; text-transform: uppercase;
+        }
+        .video-label span { width: 40px; height: 1px; background: #cbd5e1; }
+        .video-wrapper {
+            position: relative; border-radius: 24px; overflow: hidden;
+            background: #020d1f;
+            box-shadow:
+                0 0 0 1px rgba(96,165,250,0.25),
+                0 0 0 4px rgba(37,99,235,0.10),
+                0 28px 60px rgba(15,23,42,0.28),
+                0 0 80px rgba(37,99,235,0.08);
+            cursor: pointer;
+            aspect-ratio: 16/9;
+            max-height: 540px;
+        }
+        .video-wrapper video {
+            width: 100%; height: 100%; display: block;
+            object-fit: cover; border-radius: 24px;
+        }
+        /* Glow border animation */
+        .video-wrapper::before {
+            content: '';
+            position: absolute; inset: 0; border-radius: 24px; z-index: 2;
+            background: linear-gradient(135deg,
+                rgba(96,165,250,0.10) 0%,
+                transparent 40%,
+                transparent 60%,
+                rgba(79,70,229,0.10) 100%);
+            pointer-events: none;
+        }
+        /* Custom overlay - play button */
+        .video-overlay {
+            position: absolute; inset: 0; z-index: 5;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(2,13,31,0.45);
+            transition: opacity 0.3s;
+            border-radius: 24px;
+        }
+        .video-overlay.hidden-overlay { opacity: 0; pointer-events: none; }
+        .play-btn {
+            width: 76px; height: 76px; border-radius: 50%;
+            background: linear-gradient(135deg, rgba(96,165,250,0.95), rgba(29,78,216,0.95));
+            display: grid; place-items: center;
+            box-shadow: 0 0 0 12px rgba(96,165,250,0.18), 0 16px 36px rgba(37,99,235,0.40);
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer; border: 0; color: #fff; font-size: 28px;
+            animation: playPulse 2.5s infinite;
+        }
+        .play-btn:hover {
+            transform: scale(1.10);
+            box-shadow: 0 0 0 16px rgba(96,165,250,0.14), 0 20px 44px rgba(37,99,235,0.50);
+        }
+        @keyframes playPulse {
+            0%,100% { box-shadow: 0 0 0 12px rgba(96,165,250,0.18), 0 16px 36px rgba(37,99,235,0.40); }
+            50%      { box-shadow: 0 0 0 20px rgba(96,165,250,0.08), 0 16px 36px rgba(37,99,235,0.40); }
+        }
+        /* Controls bar */
+        .video-controls {
+            position: absolute; bottom: 0; left: 0; right: 0; z-index: 10;
+            padding: 20px 18px 14px;
+            background: linear-gradient(to top, rgba(2,13,31,0.88) 0%, transparent 100%);
+            display: flex; align-items: center; gap: 10px;
+            opacity: 0; transition: opacity 0.25s;
+            border-radius: 0 0 24px 24px;
+        }
+        .video-wrapper:hover .video-controls { opacity: 1; }
+        .vc-btn {
+            background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 8px; width: 34px; height: 34px;
+            display: grid; place-items: center; cursor: pointer;
+            color: #fff; font-size: 13px; flex-shrink: 0;
+            transition: background 0.15s;
+        }
+        .vc-btn:hover { background: rgba(255,255,255,0.22); }
+        .vc-progress {
+            flex: 1; height: 4px; background: rgba(255,255,255,0.18);
+            border-radius: 999px; cursor: pointer; position: relative; overflow: hidden;
+        }
+        .vc-bar {
+            height: 100%; width: 0%; background: linear-gradient(90deg, var(--brand-3), var(--brand-1));
+            border-radius: 999px; transition: width 0.1s linear;
+            pointer-events: none;
+        }
+        .vc-time { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.75); white-space: nowrap; }
+        /* Badge on video */
+        .video-badge {
+            position: absolute; top: 14px; left: 14px; z-index: 8;
+            background: rgba(2,13,31,0.72); backdrop-filter: blur(8px);
+            border: 1px solid rgba(96,165,250,0.30);
+            border-radius: 8px; padding: 5px 10px;
+            font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.90);
+            display: flex; align-items: center; gap: 5px;
+        }
+        .vbadge-dot { width: 6px; height: 6px; border-radius: 50%; background: #ef4444; animation: blink 1.5s infinite; }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+        /* ─── RESPONSIVE ─── */
+
+        /* Tablet: ≤ 860px */
+        @media(max-width: 860px) {
+            .how-steps { grid-template-columns: repeat(2, 1fr); }
+            .problems-grid { grid-template-columns: 1fr; }
+            .audience-grid { grid-template-columns: 1fr 1fr; }
+            .hero h1 { font-size: 32px; }
+            #intro-video-wrap { width: 95vw; }
+        }
+
+        /* Large mobile: ≤ 640px */
+        @media(max-width: 640px) {
+            .nav-links { gap: 6px; font-size: 12px; }
+            .nav-links a { padding: 5px 8px; }
+            .back-btn { padding: 5px 10px; font-size: 12px; }
+            .hero h1 { font-size: 26px; }
+            .hero p { font-size: 14px; }
+            .hero { margin-bottom: 36px; }
+            .section-title { font-size: 20px; margin-bottom: 18px; }
+            .glass-card h2 { font-size: 18px; }
+            .audience-grid { grid-template-columns: 1fr; }
+            .author-card { flex-direction: column; text-align: center; gap: 14px; }
+            .author-avatar { width: 58px; height: 58px; font-size: 20px; }
+        }
+
+        /* Mobile: ≤ 540px */
+        @media(max-width: 540px) {
+            .site-inner { padding: 8px 12px; gap: 8px; }
+            .nav-links { display: none; }
+            .brand-top-title { display: none; }
+            .brand-top-logo { width: 38px; height: 38px; }
+
+            .page { padding: 20px 10px 50px; }
+            .hero h1 { font-size: 22px; }
+            .hero-logo { width: 60px; height: 60px; font-size: 22px; }
+            .glass-card { padding: 18px 14px; margin-bottom: 18px; }
+            .how-steps { grid-template-columns: 1fr 1fr; gap: 10px; }
+            .step { padding: 14px 8px; }
+            .step-num { width: 32px; height: 32px; font-size: 13px; }
+            .step-title { font-size: 12px; }
+            .step-desc { font-size: 11px; }
+            .problems-grid { gap: 10px; }
+            .prob-card { padding: 16px; }
+            .prob-icon { width: 38px; height: 38px; font-size: 16px; }
+            .prob-title { font-size: 13px; }
+            .prob-desc { font-size: 12px; }
+            .aud-card { padding: 18px 12px; }
+            .play-btn { width: 52px; height: 52px; font-size: 20px; }
+            .cta-bar { padding: 24px 16px; }
+            .cta-bar h3 { font-size: 18px; }
+            .cta-btns { flex-direction: column; align-items: stretch; }
+            .cta-btn { justify-content: center; }
+            .site-footer .site-inner { flex-direction: column; gap: 6px; text-align: center; }
+            .footer-links { justify-content: center; }
+
+            /* Intro overlay mobile */
+            #intro-video-wrap { width: 98vw; border-radius: 14px; }
+            #intro-skip { bottom: 16px; right: 12px; font-size: 12px; padding: 7px 14px; }
+        }
+
+        /* Extra small: ≤ 400px */
+        @media(max-width: 400px) {
+            .hero h1 { font-size: 19px; }
+            .how-steps { grid-template-columns: 1fr 1fr; }
+            .lang { display: none; }
+            #intro-video-wrap { border-radius: 10px; }
+            .step-desc { display: none; }
+        }
+
+    </style>
+</head>
+<body>
+<!-- ─── INTRO FULLSCREEN OVERLAY ─── -->
+<div id="intro-overlay">
+    <div id="intro-video-wrap">
+        <video id="intro-video" src="/static/video_intro.mp4" autoplay muted playsinline></video>
+        <button id="intro-skip" onclick="skipIntro()">
+            <i class="fa-solid fa-forward-step"></i>
+            {% if lang == 'ru' %}Пропустить{% else %}O'tkazib yuborish{% endif %}
+        </button>
+        <div id="intro-progress-wrap">
+            <div id="intro-progress-bar"></div>
+        </div>
+    </div>
+</div>
+{% set app_title = app_name|default("BioFace") %}
+{% set lang = lang|default("uz") %}
+{% if lang == "ru" %}
+  {% set nav_about = "О системе" %}
+  {% set nav_contact = "Контакт" %}
+  {% set back_text = "Назад ко входу" %}
+  {% set footer_text = "Все права защищены." %}
+  {% set hero_badge = "О системе" %}
+  {% set hero_title = "Что такое BioFace?" %}
+  {% set hero_desc = "BioFace — умная система учёта посещаемости на базе распознавания лиц. Никаких карточек, бумаг и ручных журналов." %}
+{% else %}
+  {% set nav_about = "Tizim haqida" %}
+  {% set nav_contact = "Bog'lanish" %}
+  {% set back_text = "Kirishga qaytish" %}
+  {% set footer_text = "Barcha huquqlar himoyalangan." %}
+  {% set hero_badge = "Tizim haqida" %}
+  {% set hero_title = "BioFace nima?" %}
+  {% set hero_desc = "BioFace — yuz tanish texnologiyasiga asoslangan aqlli davomat boshqaruvi tizimi. Hech qanday kartochka, qog'oz va qo'l ishi yo'q." %}
+{% endif %}
+
+<div class="app-wrap">
+    <!-- HEADER -->
+    <header class="site-header">
+        <div class="site-inner">
+            <div style="display:flex;align-items:center;gap:14px;">
+                <a href="/login" class="back-btn">
+                    <i class="fa-solid fa-arrow-left"></i> {{ back_text }}
+                </a>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;">
+                <nav class="nav-links">
+                    <a href="/about" class="active"><i class="fa-solid fa-circle-info"></i> {{ nav_about }}</a>
+                    <a href="/contact"><i class="fa-solid fa-headset"></i> {{ nav_contact }}</a>
+                </nav>
+                <div class="lang">
+                    <button type="button" class="{% if lang != 'ru' %}active{% endif %}" onclick="setLang('uz')">UZ</button>
+                    <button type="button" class="{% if lang == 'ru' %}active{% endif %}" onclick="setLang('ru')">RU</button>
+                </div>
+                <div class="brand-top">
+                    <div class="brand-top-logo">
+                        {% if logo_url %}
+                        <img src="{{ logo_url }}" alt="{{ app_title }} logo">
+                        {% else %}
+                        <i class="fa-solid fa-eye" style="font-size:22px;color:#334155;"></i>
+                        {% endif %}
+                    </div>
+                    <div class="brand-top-title">{{ app_title }}</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN -->
+    <main class="page">
+        <div class="container">
+
+            <!-- HERO -->
+            <div class="hero fade-up">
+                <div class="hero-logo">BF</div>
+                <div class="hero-badge"><i class="fa-solid fa-microchip"></i> {{ hero_badge }}</div>
+                <h1>{{ hero_title }}</h1>
+                <p>{{ hero_desc }}</p>
+            </div>
+
+            <!-- VIDEO SECTION -->
+            <div class="video-section fade-up d1">
+                <div class="video-label">
+                    <span></span>
+                    <i class="fa-solid fa-circle-play" style="color:#2563eb;"></i>
+                    {% if lang == 'ru' %}Демо видео{% else %}Demo video{% endif %}
+                    <span></span>
+                </div>
+                <div class="video-wrapper" id="vw" onclick="togglePlay()">
+                    <!-- Badge -->
+                    <div class="video-badge">
+                        <span class="vbadge-dot"></span>
+                        {% if lang == 'ru' %}Демонстрация системы{% else %}Tizim namoyishi{% endif %}
+                    </div>
+                    <!-- Video -->
+                    <video id="main-video" preload="metadata" playsinline>
+                        <source src="/static/video_robot.mp4" type="video/mp4">
+                    </video>
+                    <!-- Overlay / Play button -->
+                    <div class="video-overlay" id="voverlay">
+                        <button class="play-btn" id="vplay-btn" onclick="event.stopPropagation(); togglePlay()">
+                            <i class="fa-solid fa-play" id="vplay-icon"></i>
+                        </button>
+                    </div>
+                    <!-- Controls -->
+                    <div class="video-controls" onclick="event.stopPropagation()">
+                        <button class="vc-btn" onclick="togglePlay()" title="Play/Pause">
+                            <i class="fa-solid fa-play" id="vc-play-icon"></i>
+                        </button>
+                        <div class="vc-progress" id="vc-progress" onclick="seekVideo(event)">
+                            <div class="vc-bar" id="vc-bar"></div>
+                        </div>
+                        <span class="vc-time" id="vc-time">0:00</span>
+                        <button class="vc-btn" onclick="toggleMute()" title="Mute">
+                            <i class="fa-solid fa-volume-high" id="vc-mute-icon"></i>
+                        </button>
+                        <button class="vc-btn" onclick="toggleFullscreen()" title="Fullscreen">
+                            <i class="fa-solid fa-expand"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- HOW IT WORKS -->
+            <div class="glass-card fade-up d2">
+                {% if lang == 'ru' %}
+                <h2><i class="fa-solid fa-gears" style="color:#2563eb;margin-right:8px;"></i>Как это работает?</h2>
+                <div class="how-steps">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <div class="step-icon"><i class="fa-solid fa-camera-cctv" style="color:#2563eb;"></i></div>
+                        <div class="step-title">Сотрудник подходит</div>
+                        <div class="step-desc">Работник подходит к терминалу у входа — никаких карточек и РIN-кодов.</div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <div class="step-icon"><i class="fa-solid fa-face-viewfinder" style="color:#059669;"></i></div>
+                        <div class="step-title">Распознавание лица</div>
+                        <div class="step-desc">Система сканирует лицо и за доли секунды находит его в базе данных.</div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">3</div>
+                        <div class="step-icon"><i class="fa-solid fa-door-open" style="color:#d97706;"></i></div>
+                        <div class="step-title">Доступ разрешён</div>
+                        <div class="step-desc">Если сотрудник зарегистрирован — дверь открывается автоматически.</div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">4</div>
+                        <div class="step-icon"><i class="fa-solid fa-chart-bar" style="color:#7c3aed;"></i></div>
+                        <div class="step-title">Данные сохранены</div>
+                        <div class="step-desc">Время прихода фиксируется и отображается в панели управления.</div>
+                    </div>
+                </div>
+                {% else %}
+                <h2><i class="fa-solid fa-gears" style="color:#2563eb;margin-right:8px;"></i>Qanday ishlaydi?</h2>
+                <div class="how-steps">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <div class="step-icon"><i class="fa-solid fa-camera-cctv" style="color:#2563eb;"></i></div>
+                        <div class="step-title">Xodim yaqinlashadi</div>
+                        <div class="step-desc">Xodim kirish terminaliga yaqinlashadi — kartochka yoki PIN kerak emas.</div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <div class="step-icon"><i class="fa-solid fa-face-viewfinder" style="color:#059669;"></i></div>
+                        <div class="step-title">Yuz taniladi</div>
+                        <div class="step-desc">Tizim yuzni skanerlaydi va millisekundlar ichida bazadan topadi.</div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">3</div>
+                        <div class="step-icon"><i class="fa-solid fa-door-open" style="color:#d97706;"></i></div>
+                        <div class="step-title">Kirish ochiladi</div>
+                        <div class="step-desc">Xodim ro'yxatda bo'lsa — eshik avtomatik ochiladi.</div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">4</div>
+                        <div class="step-icon"><i class="fa-solid fa-chart-bar" style="color:#7c3aed;"></i></div>
+                        <div class="step-title">Ma'lumot saqlandi</div>
+                        <div class="step-desc">Kelish vaqti qayd etiladi va boshqaruv paneliga uzatiladi.</div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- PROBLEMS SOLVED -->
+            <div class="fade-up d3" style="margin-bottom:28px;">
+                {% if lang == 'ru' %}
+                <h2 class="section-title">Какие проблемы мы решаем?</h2>
+                <div class="problems-grid">
+                    <div class="prob-card red">
+                        <div class="prob-icon"><i class="fa-solid fa-book-open"></i></div>
+                        <div class="prob-title">«Запись в журнал» осталась в прошлом</div>
+                        <div class="prob-desc">Охранник не пишет вручную. Каждый вход фиксируется автоматически с точным временем и фото.</div>
+                    </div>
+                    <div class="prob-card orange">
+                        <div class="prob-icon"><i class="fa-solid fa-key"></i></div>
+                        <div class="prob-title">Никакого мошенничества с карточками</div>
+                        <div class="prob-desc">Лицо — ваша карточка. Передать лицо кому-то другому невозможно.</div>
+                    </div>
+                    <div class="prob-card blue">
+                        <div class="prob-icon"><i class="fa-solid fa-file-invoice"></i></div>
+                        <div class="prob-title">Автоматический расчёт зарплаты</div>
+                        <div class="prob-desc">Отчёты бухгалтерии — в один клик. Опоздания, неявки, переработки — всё автоматически.</div>
+                    </div>
+                    <div class="prob-card purple">
+                        <div class="prob-icon"><i class="fa-solid fa-network-wired"></i></div>
+                        <div class="prob-title">Многофилиальное управление</div>
+                        <div class="prob-desc">Несколько офисов — единая система. Управляйте всеми филиалами централизованно.</div>
+                    </div>
+                </div>
+                {% else %}
+                <h2 class="section-title">Qaysi muammolarni hal qilamiz?</h2>
+                <div class="problems-grid">
+                    <div class="prob-card red">
+                        <div class="prob-icon"><i class="fa-solid fa-book-open"></i></div>
+                        <div class="prob-title">"Jurnalga yozib qo'yish" o'tmishda qoldi</div>
+                        <div class="prob-desc">Qorovul qo'lda yozmaydi. Har bir kirish aniq vaqt va rasm bilan avtomatik qayd etiladi.</div>
+                    </div>
+                    <div class="prob-card orange">
+                        <div class="prob-icon"><i class="fa-solid fa-key"></i></div>
+                        <div class="prob-title">Kartochka bilan qalloblik yo'q</div>
+                        <div class="prob-desc">Yuz — sizning kartochkangiz. Yuzni boshqaga berib bo'lmaydi.</div>
+                    </div>
+                    <div class="prob-card blue">
+                        <div class="prob-icon"><i class="fa-solid fa-file-invoice"></i></div>
+                        <div class="prob-title">Oylik avtomatik hisoblanadi</div>
+                        <div class="prob-desc">Buxgalteriya uchun hisobotlar— bir tugmada. Kechikish, kelmaslik, qo'shimcha ish — hammasi avtomatik.</div>
+                    </div>
+                    <div class="prob-card purple">
+                        <div class="prob-icon"><i class="fa-solid fa-network-wired"></i></div>
+                        <div class="prob-title">Ko'p filialli boshqaruv</div>
+                        <div class="prob-desc">Bir nechta ofis — yagona tizim. Hammasini markazdan boshqarish mumkin.</div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- AUDIENCE -->
+            <div class="glass-card fade-up d4">
+                {% if lang == 'ru' %}
+                <h2><i class="fa-solid fa-users" style="color:#2563eb;margin-right:8px;"></i>Кому больше всего поможет?</h2>
+                <div class="audience-grid">
+                    <div class="aud-card">
+                        <div class="aud-icon"><i class="fa-solid fa-user-tie" style="color:#2563eb;"></i></div>
+                        <div class="aud-title">Руководителям</div>
+                        <div class="aud-desc">Контролируйте дисциплину дистанционно, через телефон. Повышайте эффективность без лишних усилий.</div>
+                    </div>
+                    <div class="aud-card">
+                        <div class="aud-icon"><i class="fa-solid fa-calculator" style="color:#059669;"></i></div>
+                        <div class="aud-title">Бухгалтерия и HR</div>
+                        <div class="aud-desc">Точные данные о рабочем времени — без ручного подсчёта. Excel и PDF в один клик.</div>
+                    </div>
+                    <div class="aud-card">
+                        <div class="aud-icon"><i class="fa-solid fa-shield-halved" style="color:#7c3aed;"></i></div>
+                        <div class="aud-title">Служба безопасности</div>
+                        <div class="aud-desc">Полный контроль доступа. Посторонние не войдут — система мгновенно уведомит.</div>
+                    </div>
+                </div>
+                {% else %}
+                <h2><i class="fa-solid fa-users" style="color:#2563eb;margin-right:8px;"></i>Kimlarga eng ko'p foyda keltiradi?</h2>
+                <div class="audience-grid">
+                    <div class="aud-card">
+                        <div class="aud-icon"><i class="fa-solid fa-user-tie" style="color:#2563eb;"></i></div>
+                        <div class="aud-title">Rahbarlar</div>
+                        <div class="aud-desc">Ish tartibini masofadan telefon orqali nazorat qiling. Samaradorlikni oshiring.</div>
+                    </div>
+                    <div class="aud-card">
+                        <div class="aud-icon"><i class="fa-solid fa-calculator" style="color:#059669;"></i></div>
+                        <div class="aud-title">Buxgalteriya va HR</div>
+                        <div class="aud-desc">Aniq ish vaqti ma'lumotlari — qo'lda hisoblash shart emas. Excel va PDF — bir tugmada.</div>
+                    </div>
+                    <div class="aud-card">
+                        <div class="aud-icon"><i class="fa-solid fa-shield-halved" style="color:#7c3aed;"></i></div>
+                        <div class="aud-title">Xavfsizlik bo'limi</div>
+                        <div class="aud-desc">To'liq kirish nazorati. Begonalar kira olmaydi — tizim darhol xabardor qiladi.</div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- AUTHOR -->
+            <div class="fade-up d5" style="margin-bottom:28px;">
+                <div class="author-card">
+                    <div class="author-avatar">IU</div>
+                    <div>
+                        <p class="author-name">Loyiha muallifi: Izzatbek Ulkanov</p>
+                        <p class="author-desc">
+                            {% if lang == 'ru' %}
+                            Система разработана с нуля для предпринимателей, школ и офисов Узбекистана. Без дорогих серверов и лишних затрат — на мощном стеке FastAPI + Hikvision ISUP SDK.
+                            {% else %}
+                            Ushbu tizim O'zbekistondagi tadbirkorlar, maktablar va ofislar uchun noldan loyihalashtirildi. Qimmat serverlar va ortiqcha xarajatlarsiz — kuchli FastAPI + Hikvision ISUP SDK asosida.
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CTA -->
+            <div class="cta-bar fade-up d6">
+                {% if lang == 'ru' %}
+                <h3>Готовы начать?</h3>
+                <p>Войдите в систему или свяжитесь с нами для получения демо.</p>
+                <div class="cta-btns">
+                    <a href="/login" class="cta-btn white"><i class="fa-solid fa-arrow-right-to-bracket"></i> Войти в систему</a>
+                    <a href="/contact" class="cta-btn outline"><i class="fa-solid fa-headset"></i> Связаться с нами</a>
+                </div>
+                {% else %}
+                <h3>Boshlashga tayyormisiz?</h3>
+                <p>Tizimga kiring yoki demo uchun biz bilan bog'laning.</p>
+                <div class="cta-btns">
+                    <a href="/login" class="cta-btn white"><i class="fa-solid fa-arrow-right-to-bracket"></i> Tizimga kirish</a>
+                    <a href="/contact" class="cta-btn outline"><i class="fa-solid fa-headset"></i> Bog'lanish</a>
+                </div>
+                {% endif %}
+            </div>
+
+        </div>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="site-footer">
+        <div class="site-inner">
+            <div class="footer-text">&copy; 2026 {{ app_title }}. {{ footer_text }}</div>
+            <div class="footer-links">
+                <a href="/about">{{ nav_about }}</a>
+                <a href="/contact">{{ nav_contact }}</a>
+            </div>
+        </div>
+    </footer>
+</div>
+
+<script>
+async function setLang(code) {
+    await fetch(`/api/set_language?lang=${code}`);
+    window.location.reload();
+}
+
+// ── INTRO VIDEO ──
+(function() {
+    const overlay = document.getElementById('intro-overlay');
+    const iv = document.getElementById('intro-video');
+    const bar = document.getElementById('intro-progress-bar');
+
+    // Ovoz chiqmasligi uchun reinforced
+    iv.muted = true;
+    iv.volume = 0;
+
+    window.skipIntro = function() {
+        iv.pause();
+        overlay.classList.add('fade-out');
+        setTimeout(() => overlay.style.display = 'none', 720);
+    };
+
+    iv.addEventListener('timeupdate', () => {
+        if (iv.duration) {
+            bar.style.width = (iv.currentTime / iv.duration * 100) + '%';
+        }
+    });
+
+    iv.addEventListener('ended', () => window.skipIntro());
+    iv.addEventListener('error', () => { overlay.style.display = 'none'; });
+
+    // Klaviatura: Escape yoki Space bilan o'tkazib yuborish
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' || e.key === ' ') window.skipIntro();
+    });
+
+    // Overlay chakana fonga bosish bilan ham skip (video wrap tashqarisiga)
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) window.skipIntro();
+    });
+})();
+
+// ── VIDEO PLAYER ──
+const vid = document.getElementById('main-video');
+const voverlay = document.getElementById('voverlay');
+const vplayIcon = document.getElementById('vplay-icon');
+const vcPlayIcon = document.getElementById('vc-play-icon');
+const vcBar = document.getElementById('vc-bar');
+const vcTime = document.getElementById('vc-time');
+const vcMuteIcon = document.getElementById('vc-mute-icon');
+
+function fmtTime(s) {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${sec.toString().padStart(2,'0')}`;
+}
+
+function togglePlay() {
+    if (vid.paused) {
+        vid.play();
+        voverlay.classList.add('hidden-overlay');
+        vplayIcon.className = 'fa-solid fa-pause';
+        vcPlayIcon.className = 'fa-solid fa-pause';
+    } else {
+        vid.pause();
+        voverlay.classList.remove('hidden-overlay');
+        vplayIcon.className = 'fa-solid fa-play';
+        vcPlayIcon.className = 'fa-solid fa-play';
+    }
+}
+
+vid.addEventListener('timeupdate', () => {
+    if (vid.duration) {
+        vcBar.style.width = (vid.currentTime / vid.duration * 100) + '%';
+        vcTime.textContent = fmtTime(vid.currentTime) + ' / ' + fmtTime(vid.duration);
+    }
+});
+
+vid.addEventListener('ended', () => {
+    voverlay.classList.remove('hidden-overlay');
+    vplayIcon.className = 'fa-solid fa-play';
+    vcPlayIcon.className = 'fa-solid fa-play';
+    vcBar.style.width = '0%';
+});
+
+vid.addEventListener('loadedmetadata', () => {
+    vcTime.textContent = '0:00 / ' + fmtTime(vid.duration);
+});
+
+function seekVideo(e) {
+    const rect = document.getElementById('vc-progress').getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    vid.currentTime = ratio * vid.duration;
+}
+
+function toggleMute() {
+    vid.muted = !vid.muted;
+    vcMuteIcon.className = vid.muted ? 'fa-solid fa-volume-xmark' : 'fa-solid fa-volume-high';
+}
+
+function toggleFullscreen() {
+    const wrapper = document.getElementById('vw');
+    if (!document.fullscreenElement) {
+        wrapper.requestFullscreen && wrapper.requestFullscreen();
+    } else {
+        document.exitFullscreen && document.exitFullscreen();
+    }
+}
+</script>
+</body>
+</html>

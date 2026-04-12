@@ -11,22 +11,30 @@
     <div class="grid gap-4 md:grid-cols-3">
         <div>
             <label for="inpOrg" class="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100">{{ t.organization }}</label>
-            <select
-                id="inpOrg"
-                class="block w-full card-standard px-4 py-3 pr-10 text-sm text-slate-900  focus:border-blue-500 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500  dark:text-white dark:disabled:bg-slate-800 dark:disabled:text-slate-500"
-                onchange="filterCamerasByOrg()"
-                {% if single_organization_mode %}disabled{% endif %}
-            >
-                <option value="">-- Tashkilot tanlanmagan --</option>
-                {% for org in organizations %}
-                <option value="{{ org.id }}" {% if org_assignment_selected_org_id == org.id %}selected{% endif %}>{{ org.name }}</option>
-                {% endfor %}
-            </select>
+            <div class="employee-assignment-shell">
+                <span class="employee-assignment-icon" aria-hidden="true">
+                    <i class="fa-solid fa-building"></i>
+                </span>
+                <select
+                    id="inpOrg"
+                    class="employee-assignment-select"
+                    onchange="filterCamerasByOrg()"
+                    {% if single_organization_mode %}disabled{% endif %}
+                >
+                    <option value="">-- Tashkilot tanlanmagan --</option>
+                    {% for org in organizations %}
+                    <option value="{{ org.id }}" {% if org_assignment_selected_org_id == org.id %}selected{% endif %}>{{ org.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
             <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ org_assignment_org_help }}</p>
         </div>
         <div>
             <label for="departmentSearch" class="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100">{{ t.department }}</label>
-            <div class="overflow-visible card-standard  ">
+            <div class="employee-assignment-shell employee-assignment-shell-search overflow-visible">
+                <span class="employee-assignment-icon" aria-hidden="true">
+                    <i class="fa-solid fa-diagram-project"></i>
+                </span>
                 <div class="flex items-stretch">
                     <div class="relative min-w-0 flex-1">
                         <input type="hidden" id="departmentId" value="{{ org_assignment_department_id }}">
@@ -36,14 +44,14 @@
                             value="{{ org_assignment_department_name }}"
                             autocomplete="off"
                             placeholder="Bo'limni qidiring yoki tanlang"
-                            class="block w-full border-0 bg-transparent px-4 py-3 text-sm text-slate-900 focus:ring-0 disabled:cursor-not-allowed disabled:text-slate-400 dark:text-white dark:disabled:text-slate-500"
+                            class="employee-assignment-search-input"
                         >
-                        <div id="departmentDropdown" class="hidden absolute left-2 right-2 top-full z-30 mt-2 max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800"></div>
+                        <div id="departmentDropdown" class="employee-assignment-dropdown hidden absolute left-0 right-0 top-full z-30 mt-2 max-h-56 overflow-y-auto"></div>
                     </div>
                     <button
                         type="button"
                         id="addDepartmentBtn"
-                        class="cursor-pointer inline-flex w-12 shrink-0 items-center justify-center border-l border-slate-200 bg-slate-50 text-slate-600 transition hover:bg-blue-50 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-blue-900/30 dark:hover:text-blue-300"
+                        class="employee-assignment-action"
                         aria-label="Bo'lim qo'shish"
                     >
                         <i class="fa-solid fa-plus"></i>
@@ -54,7 +62,10 @@
         </div>
         <div>
             <label for="positionSearch" class="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100">{{ t.position }}</label>
-            <div class="overflow-visible card-standard  ">
+            <div class="employee-assignment-shell employee-assignment-shell-search overflow-visible">
+                <span class="employee-assignment-icon" aria-hidden="true">
+                    <i class="fa-solid fa-briefcase"></i>
+                </span>
                 <div class="flex items-stretch">
                     <div class="relative min-w-0 flex-1">
                         <input type="hidden" id="positionId" value="{{ org_assignment_position_id }}">
@@ -64,14 +75,14 @@
                             value="{{ org_assignment_position_name }}"
                             autocomplete="off"
                             placeholder="Lavozimni qidiring yoki tanlang"
-                            class="block w-full border-0 bg-transparent px-4 py-3 text-sm text-slate-900 focus:ring-0 disabled:cursor-not-allowed disabled:text-slate-400 dark:text-white dark:disabled:text-slate-500"
+                            class="employee-assignment-search-input"
                         >
-                        <div id="positionDropdown" class="hidden absolute left-2 right-2 top-full z-30 mt-2 max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800"></div>
+                        <div id="positionDropdown" class="employee-assignment-dropdown hidden absolute left-0 right-0 top-full z-30 mt-2 max-h-56 overflow-y-auto"></div>
                     </div>
                     <button
                         type="button"
                         id="addPositionBtn"
-                        class="cursor-pointer inline-flex w-12 shrink-0 items-center justify-center border-l border-slate-200 bg-slate-50 text-slate-600 transition hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-blue-900/30 dark:hover:text-blue-300 dark:disabled:bg-slate-800 dark:disabled:text-slate-600"
+                        class="employee-assignment-action"
                         aria-label="Lavozim qo'shish"
                     >
                         <i class="fa-solid fa-plus"></i>

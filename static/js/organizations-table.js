@@ -30,6 +30,12 @@
             .replaceAll("'", "&#39;");
     }
 
+    function initialsFromName(value) {
+        const safe = String(value || "").trim();
+        if (!safe) return "?";
+        return safe.split(/\s+/).slice(0, 2).map((item) => item[0]).join("").toUpperCase();
+    }
+
     function notify(kind, message, options) {
         if (window.AppNotify && typeof window.AppNotify[kind] === "function") {
             window.AppNotify[kind](message, options || {});
@@ -82,7 +88,7 @@
     }
 
     function renderCountLine() {
-        $("organizations-count").textContent = `${state.filtered.length} filter natija / ${state.all.length} jami tashkilot`;
+        $("organizations-count").textContent = `${state.filtered.length} ta ko'rinmoqda / ${state.all.length} jami tashkilot`;
     }
 
     function renderTypeOptions() {
@@ -132,8 +138,8 @@
             const button = document.createElement("button");
             button.type = "button";
             button.className = item === state.page
-                ? "inline-flex h-9 min-w-[2.25rem] items-center justify-center rounded-xl bg-blue-600 px-3 text-sm font-semibold text-white shadow-sm"
-                : "inline-flex h-9 min-w-[2.25rem] items-center justify-center rounded-xl border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700";
+                ? "inline-flex h-9 min-w-[2.25rem] items-center justify-center rounded-2xl bg-slate-900 px-3 text-sm font-semibold text-white shadow-sm dark:bg-white dark:text-slate-900"
+                : "inline-flex h-9 min-w-[2.25rem] items-center justify-center rounded-2xl border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700";
             button.textContent = String(item);
             button.addEventListener("click", () => {
                 state.page = Number(item);
@@ -146,37 +152,44 @@
     function rowMarkup(org, absoluteIndex) {
         const status = statusMeta(org.subscription_status);
         return `
-            <tr class="hover:bg-gray-50/80 dark:hover:bg-gray-800/40">
+            <tr class="align-top transition hover:bg-gray-50/80 dark:hover:bg-gray-800/40">
                 <td class="px-4 py-3 text-center text-sm font-semibold text-gray-500 dark:text-gray-400">${absoluteIndex}</td>
                 <td class="px-4 py-3">
-                    <div class="min-w-[14rem]">
-                        <div class="font-semibold text-gray-900 dark:text-white">${escapeHtml(org.name || "-")}</div>
+                    <div class="flex min-w-[14rem] items-center gap-3">
+                        <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-100 text-sm font-bold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                            ${escapeHtml(initialsFromName(org.name))}
+                        </div>
+                        <div class="min-w-0">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <div class="truncate font-semibold text-gray-900 dark:text-white">${escapeHtml(org.name || "-")}</div>
+                                <span class="inline-flex rounded-full bg-slate-900 px-2.5 py-1 text-[11px] font-semibold text-white dark:bg-white dark:text-slate-900">ID ${Number(org.id || 0)}</span>
+                            </div>
+                            <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">Ro'yxatdagi premium karta</div>
+                        </div>
                     </div>
                 </td>
-                <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-200">${escapeHtml(org.organization_type_label || "-")}</td>
+                <td class="px-4 py-3">
+                    <span class="inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-200">${escapeHtml(org.organization_type_label || "-")}</span>
+                </td>
                 <td class="px-4 py-3">
                     <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${status.className}">${status.label}</span>
                 </td>
-                <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-200">${escapeHtml(workTime(org))}</td>
+                <td class="px-4 py-3">
+                    <span class="inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">${escapeHtml(workTime(org))}</span>
+                </td>
                 <td class="px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white">${Number(org.employees_count || 0)}</td>
                 <td class="px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white">${Number(org.devices_count || 0)}</td>
                 <td class="px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white">${Number(org.users_count || 0)}</td>
                 <td class="px-4 py-3">
                     <div class="flex justify-end gap-2">
-                        <a href="/organization-info?id=${encodeURIComponent(org.id)}" class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-700 transition hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-300" title="Kirish">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
+                        <a href="/organization-info?id=${encodeURIComponent(org.id)}" class="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 text-blue-700 transition hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-300" title="Kirish">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i>
                         </a>
-                        <a href="/organizations/${encodeURIComponent(org.id)}/edit" class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-amber-200 bg-amber-50 text-amber-700 transition hover:bg-amber-100 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-300" title="Tahrirlash">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-                            </svg>
+                        <a href="/organizations/${encodeURIComponent(org.id)}/edit" class="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 text-amber-700 transition hover:bg-amber-100 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-300" title="Tahrirlash">
+                            <i class="fa-solid fa-pen-to-square"></i>
                         </a>
-                        <button type="button" data-delete-id="${Number(org.id)}" data-delete-name="${escapeHtml(org.name || "Tashkilot")}" class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100 dark:border-rose-900/40 dark:bg-rose-900/20 dark:text-rose-300" title="O'chirish">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                            </svg>
+                        <button type="button" data-delete-id="${Number(org.id)}" data-delete-name="${escapeHtml(org.name || "Tashkilot")}" class="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100 dark:border-rose-900/40 dark:bg-rose-900/20 dark:text-rose-300" title="O'chirish">
+                            <i class="fa-solid fa-trash"></i>
                         </button>
                     </div>
                 </td>
@@ -198,7 +211,13 @@
             $("organizations-table-body").innerHTML = `
                 <tr>
                     <td colspan="9" class="px-4 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
-                        Qidiruvga mos tashkilot topilmadi.
+                        <div class="mx-auto max-w-sm space-y-2">
+                            <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400 dark:bg-gray-800">
+                                <i class="fa-solid fa-buildings text-lg"></i>
+                            </div>
+                            <div class="font-semibold text-gray-700 dark:text-gray-200">Qidiruvga mos tashkilot topilmadi.</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">Filterlarni yengillashtiring yoki qidiruv matnini o'zgartiring.</div>
+                        </div>
                     </td>
                 </tr>
             `;

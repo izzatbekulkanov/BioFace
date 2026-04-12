@@ -1,57 +1,180 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="animate-fade-in mb-6 flex flex-col justify-between items-start gap-4">
-    <div>
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{% if lang == "ru" %}Редактировать сотрудника{% else %}Xodimni Tahrirlash{% endif %}</h2>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{% if lang == "ru" %}Изменение данных сотрудника{% else %}Mavjud xodim ma'lumotlarini o'zgartirish{% endif %}</p>
-    </div>
-</div>
+{% set employee_type_key = (emp.employee_type or "")|trim|lower %}
+{% if employee_type_key == "oquvchi" %}
+    {% set employee_type_label = "O'quvchi" %}
+{% elif employee_type_key == "oqituvchi" %}
+    {% set employee_type_label = "O'qituvchi" %}
+{% elif employee_type_key == "hodim" %}
+    {% set employee_type_label = "Hodim" %}
+{% else %}
+    {% set employee_type_label = "Tanlanmagan" %}
+{% endif %}
+{% set employee_full_name = (emp.first_name or "") ~ " " ~ (emp.last_name or "") %}
+{% set organization_name = emp.organization.name if emp.organization else "Tashkilot biriktirilmagan" %}
+<div class="employee-page employee-editor-page animate-fade-in space-y-6">
+    <section class="employee-hero employee-editor-hero">
+        <div class="employee-hero-backdrop" aria-hidden="true">
+            <span class="employee-hero-orb orb-one"></span>
+            <span class="employee-hero-orb orb-two"></span>
+        </div>
+        <div class="employee-hero-grid">
+            <div class="min-w-0">
+                <div class="employee-hero-pills">
+                    <span class="employee-hero-pill">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                        {% if lang == "ru" %}Edit Console{% else %}Edit Console{% endif %}
+                    </span>
+                    <span class="employee-hero-pill is-muted">{{ employee_type_label }}</span>
+                    <span class="employee-profile-hero-state {% if emp.has_access %}is-active{% else %}is-inactive{% endif %}">
+                        <i class="fa-solid {% if emp.has_access %}fa-circle-check{% else %}fa-ban{% endif %}"></i>
+                        {% if emp.has_access %}Faol{% else %}Nofaol{% endif %}
+                    </span>
+                </div>
 
-<div class="bg-white border border-gray-200 rounded-xl shadow-sm dark:bg-gray-800 dark:border-gray-700 p-6 md:p-8">
-    <form id="editEmployeeForm" onsubmit="saveEditedEmployee(event, 'local')">
-        <input type="hidden" id="empId" value="{{ emp.id }}">
-        
-        <div class="grid gap-6 mb-6 grid-cols-1 md:grid-cols-2">
-            <div class="col-span-1 md:col-span-2 grid gap-6 grid-cols-1 md:grid-cols-3">
-                <div>
-                    <label for="firstName" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{{ t.first_name }} <span class="text-red-500">*</span></label>
-                    <input type="text" id="firstName" value="{{ emp.first_name }}" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" required>
-                </div>
-                <div>
-                    <label for="lastName" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{{ t.last_name }} <span class="text-red-500">*</span></label>
-                    <input type="text" id="lastName" value="{{ emp.last_name }}" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" required>
-                </div>
-                <div>
-                    <label for="middleName" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Otasining ismi</label>
-                    <input type="text" id="middleName" value="{{ emp.middle_name or '' }}" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
+                <div class="employee-profile-identity employee-editor-identity">
+                    <div class="employee-profile-avatar">
+                        {% if emp.image_url %}
+                        <img src="{{ emp.image_url }}" alt="{{ emp.first_name }}" class="employee-profile-avatar-image">
+                        {% else %}
+                        <div class="employee-profile-avatar-fallback">
+                            {{ (emp.first_name or "X")[0] }}{{ (emp.last_name or "X")[0] }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="min-w-0">
+                        <h1 class="employee-hero-title">{{ employee_full_name.strip() }}{% if emp.middle_name %} {{ emp.middle_name }}{% endif %}</h1>
+                        <p class="employee-profile-subtitle">
+                            {{ organization_name }}
+                            {% if emp.department %} · {{ emp.department }}{% endif %}
+                            {% if emp.position %} · {{ emp.position }}{% endif %}
+                        </p>
+                        <div class="employee-profile-chip-list">
+                            <span class="employee-profile-chip">
+                                <i class="fa-solid fa-hashtag"></i>
+                                ID: {{ emp.id }}
+                            </span>
+                            <span class="employee-profile-chip">
+                                <i class="fa-solid fa-id-badge"></i>
+                                Shaxsiy ID: {{ emp.personal_id or "-" }}
+                            </span>
+                            <span class="employee-profile-chip">
+                                <i class="fa-solid fa-camera-cctv"></i>
+                                {{ (linked_camera_ids or [])|length }} ta kamera
+                            </span>
+                        </div>
+                        <div class="employee-hero-counter">{% if lang == "ru" %}Изменения сохраняются локально и в связях камер{% else %}O'zgarishlar lokal baza va kamera birikmalariga saqlanadi{% endif %}</div>
+                    </div>
                 </div>
             </div>
-            <div class="col-span-1 md:col-span-2 grid gap-4 grid-cols-1 md:grid-cols-2">
+
+            <aside class="employee-profile-side-card employee-editor-side-card">
                 <div>
-                    <label for="employeeType" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Xodim turi</label>
-                    <select id="employeeType" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 pr-10 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <p class="employee-profile-side-kicker">{% if lang == "ru" %}Управление{% else %}Boshqaruv{% endif %}</p>
+                    <h2 class="employee-profile-side-title">{% if lang == "ru" %}Редактирование профиля{% else %}Profil tahriri{% endif %}</h2>
+                    <p class="employee-profile-side-text">{% if lang == "ru" %}Анкета, организационная привязка, камеры и персональное время редактируются в одной форме.{% else %}Anketa, tashkiliy birikma, kameralar va shaxsiy vaqt bitta formadan boshqariladi.{% endif %}</p>
+                </div>
+
+                <div class="employee-profile-side-list">
+                    <div class="employee-profile-side-row">
+                        <span>{% if lang == "ru" %}Тип{% else %}Tur{% endif %}</span>
+                        <strong>{{ employee_type_label }}</strong>
+                    </div>
+                    <div class="employee-profile-side-row">
+                        <span>{% if lang == "ru" %}Организация{% else %}Tashkilot{% endif %}</span>
+                        <strong>{{ organization_name }}</strong>
+                    </div>
+                    <div class="employee-profile-side-row">
+                        <span>{% if lang == "ru" %}Камеры{% else %}Kameralar{% endif %}</span>
+                        <strong>{{ (linked_camera_ids or [])|length }} ta</strong>
+                    </div>
+                </div>
+
+                <div class="employee-hero-actions">
+                    <a href="/employees/{{ emp.id }}" class="employee-action-btn is-indigo">
+                        <i class="fa-solid fa-address-card"></i>
+                        {% if lang == "ru" %}Профиль{% else %}Profil{% endif %}
+                    </a>
+                    <a href="/employees" class="employee-action-btn is-soft">
+                        <i class="fa-solid fa-chevron-left"></i>
+                        {% if lang == "ru" %}К списку{% else %}Ro'yxatga qaytish{% endif %}
+                    </a>
+                </div>
+            </aside>
+        </div>
+    </section>
+
+    <section class="employee-panel employee-editor-shell">
+        <form id="editEmployeeForm" class="employee-editor-form" onsubmit="saveEditedEmployee(event, 'local')">
+        <input type="hidden" id="empId" value="{{ emp.id }}">
+
+        <div class="employee-panel-head">
+            <div>
+                <p class="employee-panel-kicker">{% if lang == "ru" %}Форма редактирования{% else %}Tahrirlash formasi{% endif %}</p>
+                <h2 class="employee-panel-title">{% if lang == "ru" %}Данные сотрудника{% else %}Foydalanuvchi ma'lumotlari{% endif %}</h2>
+                <p class="camera-panel-text">{% if lang == "ru" %}Имя, тип, персональный ID, организация, камеры и график редактируются здесь.{% else %}Ism, tur, shaxsiy ID, tashkilot, kameralar va ish grafigi shu yerda tahrirlanadi.{% endif %}</p>
+            </div>
+        </div>
+
+        <div class="employee-editor-grid">
+            <section class="employee-editor-section employee-editor-section-full">
+                <div class="employee-editor-section-head">
+                    <div>
+                        <p class="employee-panel-kicker">{% if lang == "ru" %}Анкета{% else %}Anketa{% endif %}</p>
+                        <h3 class="employee-panel-title">{% if lang == "ru" %}Основная информация{% else %}Asosiy ma'lumotlar{% endif %}</h3>
+                    </div>
+                </div>
+                <div class="employee-editor-fields employee-editor-fields-3">
+                    <label class="employee-editor-field">
+                        <span class="employee-editor-label">{{ t.first_name }} <span class="text-red-500">*</span></span>
+                        <input type="text" id="firstName" value="{{ emp.first_name }}" class="employee-editor-input" required>
+                    </label>
+                    <label class="employee-editor-field">
+                        <span class="employee-editor-label">{{ t.last_name }} <span class="text-red-500">*</span></span>
+                        <input type="text" id="lastName" value="{{ emp.last_name }}" class="employee-editor-input" required>
+                    </label>
+                    <label class="employee-editor-field">
+                        <span class="employee-editor-label">Otasining ismi</span>
+                        <input type="text" id="middleName" value="{{ emp.middle_name or '' }}" class="employee-editor-input">
+                    </label>
+                </div>
+            </section>
+
+            <section class="employee-editor-section employee-editor-section-full">
+                <div class="employee-editor-section-head">
+                    <div>
+                        <p class="employee-panel-kicker">{% if lang == "ru" %}Классификация{% else %}Klassifikatsiya{% endif %}</p>
+                        <h3 class="employee-panel-title">{% if lang == "ru" %}Тип и персональный ID{% else %}Tur va shaxsiy ID{% endif %}</h3>
+                    </div>
+                </div>
+                <div class="employee-editor-fields employee-editor-fields-2">
+                    <label class="employee-editor-field">
+                        <span class="employee-editor-label">Xodim turi</span>
+                        <select id="employeeType" class="employee-editor-input employee-editor-select">
                         <option value="" {% if not emp.employee_type %}selected{% endif %}>Tanlanmagan</option>
                         <option value="oquvchi" {% if emp.employee_type == 'oquvchi' %}selected{% endif %}>O'quvchi</option>
                         <option value="oqituvchi" {% if emp.employee_type == 'oqituvchi' %}selected{% endif %}>O'qituvchi</option>
                         <option value="hodim" {% if emp.employee_type == 'hodim' %}selected{% endif %}>Xodim</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="personalId" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Shaxsiy tabel / ID</label>
-                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-                        <input type="text" id="personalId" value="{{ emp.personal_id or '' }}" maxlength="32" inputmode="numeric" autocomplete="off" readonly placeholder="Kamera ID yoki 7 xonali ID" class="bg-gray-50 font-mono border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
-                        <button type="button" id="btnGeneratePersonalId" onclick="generatePersonalId()" class="shrink-0 px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition">
-                            Generatsiya
-                        </button>
-                    </div>
-                    <label class="mt-2 inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                        <input type="checkbox" id="manualPersonalId" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" onchange="toggleManualPersonalId()">
-                        Qo'lda kiritish
+                        </select>
                     </label>
-                    <p id="personalIdHint" class="text-xs text-gray-500 mt-1">Mavjud kamera ID saqlanadi. Istasangiz yangi 7 xonali ID generatsiya qilishingiz mumkin.</p>
+                    <div class="employee-editor-field">
+                        <span class="employee-editor-label">Shaxsiy tabel / ID</span>
+                        <div class="employee-editor-inline">
+                            <input type="text" id="personalId" value="{{ emp.personal_id or '' }}" maxlength="32" inputmode="numeric" autocomplete="off" readonly placeholder="Kamera ID yoki 7 xonali ID" class="employee-editor-input employee-editor-input-mono">
+                            <button type="button" id="btnGeneratePersonalId" onclick="generatePersonalId()" class="employee-editor-mini-btn">
+                            Generatsiya
+                            </button>
+                        </div>
+                        <label class="employee-editor-toggle">
+                            <input type="checkbox" id="manualPersonalId" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" onchange="toggleManualPersonalId()">
+                            Qo'lda kiritish
+                        </label>
+                        <p id="personalIdHint" class="employee-editor-hint">Mavjud kamera ID saqlanadi. Istasangiz yangi 7 xonali ID generatsiya qilishingiz mumkin.</p>
+                    </div>
                 </div>
-            </div>
+            </section>
+
             {% set org_assignment_title = "Tashkiliy birikma" %}
             {% set org_assignment_description = "Tashkilot, bo'lim va shu bo'limga bog'liq lavozimni aniq tanlang." %}
             {% set org_assignment_badge = "Tashkilot avtomatik cheklangan" %}
@@ -66,19 +189,18 @@
             {% include "employees/partials/org_assignment_fields.html" %}
             {% include "employees/partials/schedule_fields.html" %}
 
-            <div class="col-span-1 md:col-span-2">
-                <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <section class="employee-editor-section employee-editor-section-full">
+                <div class="employee-editor-section-head">
                     <div>
-                        <label class="block text-sm font-medium text-gray-900 dark:text-white">Kamera birikmasi va real holat</label>
-                        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                            Yuqorida qaysi kameralarga biriktirishni tanlang. Pastda esa tanlangan va avvaldan birikkan kameralar bo'yicha aniq holat chiqadi.
-                        </p>
+                        <p class="employee-panel-kicker">{% if lang == "ru" %}Камеры{% else %}Kameralar{% endif %}</p>
+                        <h3 class="employee-panel-title">Kamera birikmasi va real holat</h3>
+                        <p class="camera-panel-text">Yuqorida qaysi kameralarga biriktirishni tanlang. Pastda esa tanlangan va avvaldan birikkan kameralar bo'yicha aniq holat chiqadi.</p>
                     </div>
                     <button
                         id="refreshCameraStatusBtn"
                         type="button"
                         onclick="forceRefreshCameraStatuses()"
-                        class="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-700"
+                        class="employee-editor-mini-btn employee-editor-mini-btn-secondary"
                     >
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 4v5h.582m14.835 2A8.001 8.001 0 005.582 9m0 0H9m11 11v-5h-.581m0 0A8.003 8.003 0 0118.418 15M15 15h4" />
@@ -86,18 +208,18 @@
                         Qayta tekshirish
                     </button>
                 </div>
-                <div id="cameraStatusSummary" class="mt-4 flex flex-wrap gap-2">
+                <div id="cameraStatusSummary" class="employee-editor-status-summary">
                     <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                         Kamera holati tayyorlanmoqda...
                     </div>
                 </div>
-                <div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/40">
+                <div class="employee-editor-camera-shell">
                     <div id="cam-list" class="flex flex-wrap gap-2">
                         <div class="rounded-xl border border-dashed border-slate-300 bg-white/80 px-4 py-3 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-300">
                             Kameralar yuklanmoqda...
                         </div>
                     </div>
-                    <div class="mt-4 border-t border-slate-200 pt-4 dark:border-slate-700">
+                    <div class="employee-editor-status-list-wrap">
                         <div class="mb-2 flex items-center justify-between gap-3">
                             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Tekshirilgan kamera holati</p>
                             <p class="text-xs text-slate-500 dark:text-slate-400">Tanlangan va avvaldan birikkan kameralar</p>
@@ -109,82 +231,104 @@
                         </div>
                     </div>
                 </div>
-                <p id="cameraStatusLegend" class="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                <p id="cameraStatusLegend" class="employee-editor-hint">
                     Kamera tanlash yuqorida, aniq status esa pastdagi ixcham ro'yxatda ko'rsatiladi.
                 </p>
-            </div>
+            </section>
             
-
-            <div class="col-span-1 md:col-span-2 flex flex-col sm:flex-row gap-6">
-                {% if emp.image_url %}
-                <div class="flex-shrink-0 relative group">
-                    <img src="{{ emp.image_url }}" class="w-24 h-24 sm:w-32 sm:h-32 rounded-xl object-cover bg-gray-100 border border-gray-200 dark:border-gray-600" alt="Avatar">
-                    <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center">
-                        <span class="text-white text-xs text-center px-2">Joriy rasm</span>
+            <section class="employee-editor-section employee-editor-section-full">
+                <div class="employee-editor-section-head">
+                    <div>
+                        <p class="employee-panel-kicker">{% if lang == "ru" %}Фотография{% else %}Fotografiya{% endif %}</p>
+                        <h3 class="employee-panel-title">{% if lang == "ru" %}Фото профиля{% else %}Profil rasmi{% endif %}</h3>
+                        <p class="camera-panel-text">{% if lang == "ru" %}Текущее фото можно заменить или удалить выбор нового файла.{% else %}Mavjud rasmni saqlab qolish, almashtirish yoki yangi fayl tanlash mumkin.{% endif %}</p>
                     </div>
                 </div>
-                {% endif %}
-                <div class="flex-1">
-                    <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{% if lang == 'ru' %}Сменить фото (Необязательно){% else %}Rasmni almashtirish (Ixtiyoriy){% endif %}</label>
+                <div class="employee-editor-image-grid">
+                    {% if emp.image_url %}
+                    <div class="employee-editor-current-photo">
+                        <img src="{{ emp.image_url }}" class="employee-editor-current-photo-image" alt="Avatar">
+                        <div class="employee-editor-current-photo-overlay">
+                            <span>Joriy rasm</span>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="employee-editor-current-photo is-empty">
+                        <div class="employee-editor-current-photo-fallback">
+                            <i class="fa-solid fa-user"></i>
+                        </div>
+                        <p class="employee-editor-current-photo-text">Rasm biriktirilmagan</p>
+                    </div>
+                    {% endif %}
+                    <div class="min-w-0">
+                        <label class="employee-editor-label">{% if lang == 'ru' %}Сменить фото (Необязательно){% else %}Rasmni almashtirish (Ixtiyoriy){% endif %}</label>
                     <input class="hidden" id="image" type="file" accept="image/*">
-                    <div id="emp-image-dropzone" class="relative rounded-2xl border-2 border-dashed border-blue-300/80 dark:border-blue-700/60 bg-gradient-to-br from-blue-50 via-indigo-50 to-sky-50 dark:from-gray-900 dark:via-gray-900 dark:to-blue-950/20 p-4 transition-all cursor-pointer hover:shadow-md hover:border-blue-400 dark:hover:border-blue-600">
+                        <div id="emp-image-dropzone" class="employee-editor-dropzone">
                         <div id="emp-upload-empty" class="flex items-center gap-3">
-                            <div class="w-12 h-12 rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-blue-100 dark:border-gray-700 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                                <div class="employee-editor-dropzone-icon">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M12 13v8m0-8l-3 3m3-3l3 3"/>
                                 </svg>
                             </div>
                             <div class="min-w-0">
                                 <p class="text-sm font-semibold text-gray-800 dark:text-gray-100">{% if lang == 'ru' %}Перетащите фото или выберите файл{% else %}Rasmni tashlang yoki fayl tanlang{% endif %}</p>
-                                <button type="button" id="emp-btn-open-file" class="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition">
+                                    <p class="employee-editor-hint">{% if lang == 'ru' %}JPG, PNG, WEBP. Четкое фото лица дает лучший результат.{% else %}JPG, PNG, WEBP. Yuz aniq ko'ringan rasm tavsiya etiladi.{% endif %}</p>
+                                <button type="button" id="emp-btn-open-file" class="employee-editor-mini-btn mt-2">
                                     <i class="fa-solid fa-plus"></i>
                                     {% if lang == 'ru' %}Выбрать{% else %}Tanlash{% endif %}
                                 </button>
                             </div>
                         </div>
                         <div id="emp-upload-preview" class="hidden items-center gap-3">
-                            <img id="emp-upload-preview-img" src="" alt="Preview" class="w-16 h-16 rounded-xl object-cover ring-2 ring-white dark:ring-gray-800 shadow-md">
+                                <img id="emp-upload-preview-img" src="" alt="Preview" class="employee-editor-preview-image">
                             <div class="min-w-0 flex-1">
                                 <p id="emp-upload-file-name" class="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate"></p>
                                 <p id="emp-upload-file-size" class="text-xs text-gray-500 dark:text-gray-400 mt-1"></p>
-                                <div class="mt-2 flex items-center gap-2">
-                                    <button type="button" id="emp-btn-change-file" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition">{% if lang == 'ru' %}Заменить{% else %}Almashtirish{% endif %}</button>
-                                    <button type="button" id="emp-btn-remove-file" class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200 text-xs font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition">{% if lang == 'ru' %}Удалить{% else %}O'chirish {% endif %}</button>
+                                    <div class="mt-2 flex items-center gap-2">
+                                        <button type="button" id="emp-btn-change-file" class="employee-editor-mini-btn">{% if lang == 'ru' %}Заменить{% else %}Almashtirish{% endif %}</button>
+                                        <button type="button" id="emp-btn-remove-file" class="employee-editor-mini-btn employee-editor-mini-btn-secondary">{% if lang == 'ru' %}Удалить{% else %}O'chirish {% endif %}</button>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
+                </div>
+            </section>
             
-            <div class="col-span-1 md:col-span-2 mt-4">
-                <h4 class="text-base font-medium text-gray-900 dark:text-white mb-2 pb-2 border-b border-gray-200 dark:border-gray-700">{% if lang == "ru" %}Персональное рабочее время (по желанию){% else %}Shaxsiy Ish Vaqti (Ixtiyoriy){% endif %}</h4>
-                
-                <div class="grid gap-6 grid-cols-1 sm:grid-cols-2">
+            <section class="employee-editor-section employee-editor-section-full">
+                <div class="employee-editor-section-head">
                     <div>
-                        <label for="startTime" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Kelish (Masalan: 08:30)</label>
-                        <input type="time" id="startTime" value="{{ emp.start_time or '' }}" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
-                    </div>
-                    <div>
-                        <label for="endTime" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Ketish (Masalan: 17:30)</label>
-                        <input type="time" id="endTime" value="{{ emp.end_time or '' }}" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
+                        <p class="employee-panel-kicker">{% if lang == "ru" %}Персональное время{% else %}Shaxsiy vaqt{% endif %}</p>
+                        <h3 class="employee-panel-title">{% if lang == "ru" %}Личное рабочее время{% else %}Shaxsiy ish vaqti{% endif %}</h3>
+                        <p class="camera-panel-text">{% if lang == "ru" %}Укажите только если оно отличается от времени смены или организации.{% else %}Faqat smena yoki tashkilot standart vaqtidan farq qilsa to'ldiring.{% endif %}</p>
                     </div>
                 </div>
-            </div>
+                <div class="employee-editor-fields employee-editor-fields-2">
+                    <label class="employee-editor-field">
+                        <span class="employee-editor-label">Kelish (Masalan: 08:30)</span>
+                        <input type="time" id="startTime" value="{{ emp.start_time or '' }}" class="employee-editor-input">
+                    </label>
+                    <label class="employee-editor-field">
+                        <span class="employee-editor-label">Ketish (Masalan: 17:30)</span>
+                        <input type="time" id="endTime" value="{{ emp.end_time or '' }}" class="employee-editor-input">
+                    </label>
+                </div>
+            </section>
         </div>
 
-        <div id="formError" class="hidden mb-4 p-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400" role="alert"></div>
+        <div id="formError" class="employee-editor-error hidden" role="alert"></div>
 
-        <div class="flex items-center gap-4 mt-8 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <a href="/employees" class="text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 dark:focus:ring-gray-700">
+        <div class="employee-editor-actions">
+            <a href="/employees" class="employee-editor-btn employee-editor-btn-secondary">
                 {% if lang == "ru" %}Отмена{% else %}Bekor qilish{% endif %}
             </a>
-            <button id="btnSaveLocal" type="submit" class="text-white bg-amber-600 hover:bg-amber-700 focus:ring-4 focus:outline-none focus:ring-amber-300 font-medium rounded-lg text-sm w-full sm:w-auto px-6 py-2.5 text-center flex items-center gap-2">
+            <button id="btnSaveLocal" type="submit" class="employee-editor-btn employee-editor-btn-primary">
                 <i id="saveSpinner" class="fa-solid fa-circle-notch hidden animate-spin"></i>
                 {% if lang == "ru" %}Сохранить{% else %}Saqlash{% endif %}
             </button>
         </div>
-    </form>
+        </form>
+    </section>
 </div>
 
 <script src="/static/js/employees/org-assignment.js?v=20260409a"></script>
@@ -664,7 +808,7 @@ function renderCameraStatusList(cameras) {
         const selectedPill = cameraPillHtml(isSelected ? 'Tanlangan' : 'Tanlanmagan', isSelected ? 'blue' : 'slate');
         const linkedPill = cameraPillHtml(isLinked ? 'Birikkan' : 'Yangi', isLinked ? 'amber' : 'slate');
         return `
-            <div class="card-standard px-4 py-3  /90">
+            <div class="employee-editor-status-row">
                 <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
                     <div class="min-w-0">
                         <div class="flex flex-wrap items-center gap-2">
@@ -845,13 +989,13 @@ function setPersonalIdHint(message, tone = 'neutral') {
     const hint = document.getElementById('personalIdHint');
     hint.textContent = message;
     if (tone === 'success') {
-        hint.className = 'text-xs text-emerald-600 dark:text-emerald-400 mt-1';
+        hint.className = 'employee-editor-hint is-success';
     } else if (tone === 'error') {
-        hint.className = 'text-xs text-red-600 dark:text-red-400 mt-1';
+        hint.className = 'employee-editor-hint is-error';
     } else if (tone === 'warn') {
-        hint.className = 'text-xs text-amber-600 dark:text-amber-400 mt-1';
+        hint.className = 'employee-editor-hint is-warn';
     } else {
-        hint.className = 'text-xs text-gray-500 mt-1';
+        hint.className = 'employee-editor-hint';
     }
 }
 
@@ -995,14 +1139,22 @@ async function filterCamerasByOrg() {
         currentOrganizationCameras = [];
         cameraPresenceStatusMap = new Map();
         cameraStatusLoading = false;
-        camList.innerHTML = 'Avval tashkilotni tanlang...';
+        camList.innerHTML = `
+            <div class="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-3 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-300">
+                Avval tashkilotni tanlang...
+            </div>
+        `;
         selectedCameraIds = new Set();
         renderCameraStatusSummary([]);
         renderCameraStatusList([]);
         return;
     }
 
-    camList.innerHTML = '<span class="text-gray-400 text-xs animate-pulse">Yuklanmoqda...</span>';
+    camList.innerHTML = `
+        <div class="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-3 text-sm text-slate-500 animate-pulse dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-300">
+            Kameralar yuklanmoqda...
+        </div>
+    `;
     try {
         const res = await fetch('/api/cameras/by-org/' + orgId);
         const allCameras = await res.json();
@@ -1010,7 +1162,11 @@ async function filterCamerasByOrg() {
             currentOrganizationCameras = [];
             cameraPresenceStatusMap = new Map();
             cameraStatusLoading = false;
-            camList.innerHTML = '<span class="text-gray-400 text-xs">Bu tashkilotda kamera yo\'q</span>';
+            camList.innerHTML = `
+                <div class="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-3 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-300">
+                    Bu tashkilotda kamera yo'q
+                </div>
+            `;
             selectedCameraIds = new Set();
             renderCameraStatusSummary([]);
             renderCameraStatusList([]);
@@ -1033,7 +1189,11 @@ async function filterCamerasByOrg() {
         currentOrganizationCameras = [];
         cameraPresenceStatusMap = new Map();
         cameraStatusLoading = false;
-        camList.innerHTML = '<span class="text-red-400 text-xs">Kameralarni yuklashda xato</span>';
+        camList.innerHTML = `
+            <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300">
+                Kameralarni yuklashda xato
+            </div>
+        `;
         selectedCameraIds = new Set();
         renderCameraStatusSummary([]);
         renderCameraStatusList([]);

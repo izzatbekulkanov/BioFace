@@ -1,30 +1,38 @@
-<div class="col-span-1 md:col-span-2 card-standard p-4  ">
-    <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+<div class="col-span-1 md:col-span-2 employee-panel employee-schedule-panel">
+    <div class="employee-panel-head">
         <div class="min-w-0">
-            <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ "Smena birikmasi" if lang != "ru" else "Привязка к смене" }}</h3>
-            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            <p class="employee-panel-kicker">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+                {{ "Smena birikmasi" if lang != "ru" else "Привязка к смене" }}
+            </p>
+            <h3 class="employee-panel-title">{{ "Smena boshqaruvi" if lang != "ru" else "Управление сменой" }}</h3>
+            <p class="shift-panel-text">
                 {{ "Xodimni tayyor smenaga bog'lang. Pastdagi shaxsiy vaqt kiritilsa, u smenadan ustun turadi." if lang != "ru" else "Привяжите сотрудника к готовой смене. Если ниже указать персональное время, оно будет иметь приоритет над сменой." }}
             </p>
         </div>
-    </div>
-    <div class="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
-        <div>
-            <label for="scheduleId" class="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100">{{ "Smena" if lang != "ru" else "Смена" }}</label>
-            <select
-                id="scheduleId"
-                class="block w-full card-standard px-4 py-3 pr-10 text-sm text-slate-900  focus:border-blue-500 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500  dark:text-white dark:disabled:bg-slate-800 dark:disabled:text-slate-500"
-                data-selected-schedule-id="{{ schedule_selected_id or '' }}"
-            >
-                <option value="">{{ "-- Smena tanlanmagan --" if lang != "ru" else "-- Смена не выбрана --" }}</option>
-            </select>
-            <p id="scheduleHelp" class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ schedule_help or ("Avval tashkilotni tanlang." if lang != "ru" else "Сначала выберите организацию.") }}</p>
-        </div>
-        <a
-            href="/shifts"
-            class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-        >
+        <a href="/shifts" class="shift-mini-btn employee-schedule-link">
             <i class="fa-solid fa-clock-rotate-left"></i>
             {{ "Smenalarni boshqarish" if lang != "ru" else "Управление сменами" }}
         </a>
+    </div>
+    <div class="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(16rem,0.9fr)] md:items-end">
+        <div class="shift-modal-field">
+            <label for="scheduleId" class="shift-filter-label">{{ "Smena" if lang != "ru" else "Смена" }}</label>
+            <span class="shift-select-shell employee-schedule-select">
+                <i class="fa-solid fa-clock-rotate-left shift-select-icon"></i>
+                <select
+                    id="scheduleId"
+                    class="shift-select-control"
+                    data-selected-schedule-id="{{ schedule_selected_id or '' }}"
+                >
+                    <option value="">{{ "-- Smena tanlanmagan --" if lang != "ru" else "-- Смена не выбрана --" }}</option>
+                </select>
+            </span>
+            <p id="scheduleHelp" class="employee-schedule-help">{{ schedule_help or ("Avval tashkilotni tanlang." if lang != "ru" else "Сначала выберите организацию.") }}</p>
+        </div>
+        <div class="shift-inline-note employee-schedule-note">
+            <span class="shift-inline-note-icon"><i class="fa-solid fa-bolt"></i></span>
+            <span>{{ "Shaxsiy vaqt kiritilsa, u tayyor smenadan ustun turadi." if lang != "ru" else "Если указать персональное время, оно будет приоритетнее готовой смены." }}</span>
+        </div>
     </div>
 </div>

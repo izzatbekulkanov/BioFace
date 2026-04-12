@@ -1,230 +1,420 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="animate-fade-in space-y-4">
-    <section class="card-standard p-5  ">
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div class="min-w-0">
-                <div class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-                    {{ 'Psixologik monitoring' if lang == 'uz' else 'Психологический мониторинг' }}
+<div class="portrait-page animate-fade-in">
+    <section class="portrait-hero">
+        <div class="portrait-hero-grid">
+            <div class="portrait-hero-main">
+                <div class="portrait-chip">
+                    <i class="fa-solid fa-brain"></i>
+                    <span>{{ 'Psixologik monitoring' if lang == 'uz' else 'Психологический мониторинг' }}</span>
                 </div>
-                <h1 class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{{ page_title }}</h1>
-                <p class="mt-2 max-w-3xl text-sm text-gray-600 dark:text-gray-300">
-                    {{ 'BioFace inson yuzidagi mimika va rasm signalini sunʼiy intellekt asosida tahlil qilib, ehtimoliy psixologik holatni foizli emotsiya profili sifatida ko‘rsatadi. Bu sahifa xodimlar kayfiyati bo‘yicha kuzatuv va tahlil uchun mo‘ljallangan.' if lang == 'uz' else 'BioFace анализирует мимику и визуальные признаки лица с помощью ИИ и показывает вероятное психологическое состояние как процентный профиль эмоций. Страница предназначена для наблюдения и аналитики состояния сотрудников.' }}
-                </p>
+                <div class="portrait-hero-copy">
+                    <h1 class="portrait-title">{{ page_title }}</h1>
+                    <p class="portrait-subtitle">
+                        {{ 'BioFace yuz mimikasi va snapshot signalini AI bilan tahlil qilib, umumiy kayfiyat dinamikasi, dominant holatlar va emotsional profilni monitoring formatida ko‘rsatadi. Interfeys ixchamlashtirilgan: bir ekranda ko‘proq maʼlumot, kamroq shovqin.' if lang == 'uz' else 'BioFace анализирует мимику и визуальные сигналы снимков с помощью ИИ и показывает динамику настроения, доминирующие состояния и эмоциональный профиль в формате мониторинга. Интерфейс сделан компактнее: больше данных на одном экране, меньше визуального шума.' }}
+                    </p>
+                </div>
+
+                <div class="portrait-signal-grid">
+                    {% for signal in portrait_signals %}
+                    <article class="portrait-signal-card">
+                        <div class="portrait-signal-top">
+                            <span class="portrait-signal-label">{{ signal.title }}</span>
+                            <i class="fa-solid {% if loop.index0 == 0 %}fa-chart-pie{% elif loop.index0 == 1 %}fa-chart-line{% else %}fa-star{% endif %}"></i>
+                        </div>
+                        <div class="portrait-signal-value">
+                            {{ signal.value }}{% if loop.index0 == 0 %}%{% endif %}
+                        </div>
+                        <p class="portrait-signal-description">{{ signal.description }}</p>
+                    </article>
+                    {% endfor %}
+                </div>
+
+                <div class="portrait-state-chip-row">
+                    {% for item in portrait_state_categories %}
+                    <span class="portrait-state-chip">{{ item.uz if lang == 'uz' else item.ru }}</span>
+                    {% endfor %}
+                </div>
             </div>
-            <div class="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/70">
-                <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ 'Davr' if lang == 'uz' else 'Период' }}</p>
-                <p class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">{{ summary.selected_period_label }}</p>
-                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ 'Oxirgi yozuv' if lang == 'uz' else 'Последняя запись' }}: {{ summary.latest_activity or '-' }}</p>
-            </div>
-        </div>
-    </section>
 
-    <section class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <article class="card-standard p-4  ">
-            <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ 'Qamrov darajasi' if lang == 'uz' else 'Уровень покрытия' }}</p>
-            <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ summary.portrait_score }}%</p>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ summary.portrait_level }}</p>
-        </article>
-        <article class="card-standard p-4  ">
-            <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ 'Qayd qilingan xodimlar' if lang == 'uz' else 'Отмеченные сотрудники' }}</p>
-            <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ summary.selected_employees }} <span class="text-sm font-medium text-gray-500 dark:text-gray-400">/ {{ portrait_stats[0].value if portrait_stats else 0 }}</span></p>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ 'Tanlangan davr bo‘yicha' if lang == 'uz' else 'За выбранный период' }}</p>
-        </article>
-        <article class="card-standard p-4  ">
-            <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ 'Jami yozuvlar' if lang == 'uz' else 'Всего записей' }}</p>
-            <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ summary.selected_total }}</p>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ summary.selected_period_label }}</p>
-        </article>
-        <article class="card-standard p-4  ">
-            <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ 'O‘rtacha profil' if lang == 'uz' else 'Средний профиль' }}</p>
-            <p class="mt-1 line-clamp-2 text-sm font-semibold text-gray-900 dark:text-white">{{ summary.average_profile_text or ('Aniqlanmadi' if lang == 'uz' else 'Не определено') }}</p>
-            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ 'Top emotsiyalar asosida' if lang == 'uz' else 'На основе топ эмоций' }}</p>
-        </article>
-    </section>
-
-    <section class="card-standard p-4  ">
-        <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-                <h2 class="text-base font-bold text-gray-900 dark:text-white">{{ 'Filtr va tez talqin' if lang == 'uz' else 'Фильтр и быстрая интерпретация' }}</h2>
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ 'Yil/oy/kun tanlang. Faqat rasmi mavjud va AI tomonidan muvaffaqiyatli tahlil qilingan yozuvlar ko‘rsatiladi.' if lang == 'uz' else 'Выберите год/месяц/день. Показываются только записи с реальным снимком и успешным анализом ИИ.' }}</p>
-            </div>
-            <div class="text-xs text-amber-600 dark:text-amber-300">{{ 'Eslatma: bu tibbiy tashxis emas.' if lang == 'uz' else 'Важно: это не медицинский диагноз.' }}</div>
-        </div>
-
-        <form method="get" action="/psixologik-portret" class="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-6">
-            <label for="portraitSearch" class="sr-only">{{ 'Qidirish' if lang == 'uz' else 'Поиск' }}</label>
-            <input id="portraitSearch" name="q" value="{{ table_search }}" type="search" placeholder="{{ 'Ism, familiya yoki personal ID' if lang == 'uz' else 'Имя, фамилия или ID' }}" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:placeholder:text-gray-500 dark:focus:ring-blue-900/40 xl:col-span-2">
-            <label for="portraitDepartment" class="sr-only">{{ 'Bo‘lim' if lang == 'uz' else 'Отдел' }}</label>
-            <select id="portraitDepartment" name="department_id" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:focus:ring-blue-900/40">
-                <option value="all" {% if selected_department_id == 'all' %}selected{% endif %}>{{ 'Barcha bo‘limlar' if lang == 'uz' else 'Все отделы' }}</option>
-                {% for dep in department_choices %}
-                <option value="{{ dep.id }}" {% if selected_department_id|string == dep.id|string %}selected{% endif %}>{{ dep.name }}</option>
-                {% endfor %}
-            </select>
-            <label for="portraitPosition" class="sr-only">{{ 'Lavozim' if lang == 'uz' else 'Должность' }}</label>
-            <select id="portraitPosition" name="position_id" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:focus:ring-blue-900/40">
-                <option value="all" {% if selected_position_id == 'all' %}selected{% endif %}>{{ 'Barcha lavozimlar' if lang == 'uz' else 'Все должности' }}</option>
-                {% for pos in position_choices %}
-                <option value="{{ pos.id }}" {% if selected_position_id|string == pos.id|string %}selected{% endif %}>{{ pos.name }}</option>
-                {% endfor %}
-            </select>
-            <label for="portraitYear" class="sr-only">{{ 'Yil' if lang == 'uz' else 'Год' }}</label>
-            <select id="portraitYear" name="year" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:focus:ring-blue-900/40">
-                <option value="all" {% if selected_year == 'all' %}selected{% endif %}>{{ 'Barcha yillar' if lang == 'uz' else 'Все годы' }}</option>
-                {% for y in available_years %}<option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>{% endfor %}
-            </select>
-            <label for="portraitMonth" class="sr-only">{{ 'Oy' if lang == 'uz' else 'Месяц' }}</label>
-            <select id="portraitMonth" name="month" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:focus:ring-blue-900/40">
-                <option value="all" {% if selected_month == 'all' %}selected{% endif %}>{{ 'Barcha oylar' if lang == 'uz' else 'Все месяцы' }}</option>
-                {% for m in available_months %}<option value="{{ m }}" {% if selected_month == m %}selected{% endif %}>{{ m }}</option>{% endfor %}
-            </select>
-            <label for="portraitDay" class="sr-only">{{ 'Kun' if lang == 'uz' else 'День' }}</label>
-            <select id="portraitDay" name="day" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:focus:ring-blue-900/40">
-                <option value="all" {% if selected_day == 'all' %}selected{% endif %}>{{ 'Barcha kunlar' if lang == 'uz' else 'Все дни' }}</option>
-                {% for d in available_days %}<option value="{{ d }}" {% if selected_day == d %}selected{% endif %}>{{ d }}</option>{% endfor %}
-            </select>
-            <button type="submit" class="w-full rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">{{ 'Qo‘llash' if lang == 'uz' else 'Применить' }}</button>
-            <a href="/psixologik-portret" class="inline-flex w-full items-center justify-center rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">{{ 'Tozalash' if lang == 'uz' else 'Сброс' }}</a>
-        </form>
-
-        <div class="mt-3 flex flex-wrap gap-2">
-            {% for item in portrait_state_categories %}
-            <span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-200">{{ item.uz if lang == 'uz' else item.ru }}</span>
-            {% endfor %}
-        </div>
-    </section>
-
-    <section class="grid gap-4 xl:grid-cols-2">
-        <article class="card-standard p-5  ">
-            <div class="flex items-center justify-between gap-3">
-                <h3 class="text-sm font-bold text-gray-900 dark:text-white">{{ 'Holatlar ulushi' if lang == 'uz' else 'Доля состояний' }}</h3>
-                <span class="text-xs text-gray-500 dark:text-gray-400">{{ summary.selected_period_label }}</span>
-            </div>
-            <div class="mt-4 space-y-3">
-                {% for item in state_breakdown %}
-                <div>
-                    <div class="mb-1 flex items-center justify-between text-sm">
-                        <span class="font-medium text-gray-700 dark:text-gray-200">{{ item.label }}</span>
-                        <span class="text-xs text-gray-500 dark:text-gray-400">{{ item.percent }}% ({{ item.count }})</span>
+            <aside class="portrait-hero-side">
+                <div class="portrait-meta-card">
+                    <div class="portrait-meta-head">
+                        <span>{{ 'Davr' if lang == 'uz' else 'Период' }}</span>
+                        <i class="fa-solid fa-calendar"></i>
                     </div>
-                    <div class="h-2 rounded-full bg-gray-100 dark:bg-gray-800">
-                        <div class="h-2 rounded-full bg-indigo-500" style="width: {{ item.percent }}%"></div>
+                    <div class="portrait-meta-value">{{ summary.selected_period_label }}</div>
+                    <div class="portrait-meta-list">
+                        <div class="portrait-meta-item">
+                            <span>{{ 'Oxirgi yozuv' if lang == 'uz' else 'Последняя запись' }}</span>
+                            <strong>{{ summary.latest_activity or '-' }}</strong>
+                        </div>
+                        <div class="portrait-meta-item">
+                            <span>{{ 'Qamrov' if lang == 'uz' else 'Покрытие' }}</span>
+                            <strong>{{ summary.portrait_score }}%</strong>
+                        </div>
+                        <div class="portrait-meta-item">
+                            <span>{{ 'Holat' if lang == 'uz' else 'Статус' }}</span>
+                            <strong>{{ summary.portrait_level }}</strong>
+                        </div>
                     </div>
                 </div>
-                {% else %}
-                <p class="text-sm text-gray-500 dark:text-gray-400">{{ 'Maʼlumot yo‘q' if lang == 'uz' else 'Нет данных' }}</p>
-                {% endfor %}
-            </div>
-        </article>
 
-        <article class="card-standard p-5  ">
-            <div class="flex items-center justify-between gap-3">
-                <h3 class="text-sm font-bold text-gray-900 dark:text-white">{{ 'AI asosidagi yozma izoh' if lang == 'uz' else 'Пояснение ИИ' }}</h3>
-                <span class="text-xs text-gray-500 dark:text-gray-400">{{ 'kuzatuv' if lang == 'uz' else 'наблюдение' }}</span>
-            </div>
-            <div class="mt-4 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-blue-900 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-100">
-                {% if lang == 'uz' %}
-                    Ushbu dastur inson yuzidan olingan rasmni sunʼiy intellekt yordamida tahlil qiladi. Tizim yuz mimikasi va emotsional belgilar asosida xodimning ehtimoliy psixologik holatini foizlarda hisoblab, dominant holat va emotsiya profilini saqlaydi. Natija tibbiy tashxis emas, balki rahbar va mutaxassislar uchun monitoring ko‘rsatkichi hisoblanadi.
-                {% else %}
-                    Система анализирует изображение лица с помощью искусственного интеллекта. По мимике и эмоциональным признакам рассчитывается вероятное психологическое состояние сотрудника в процентах, сохраняется доминирующее состояние и профиль эмоций. Результат не является медицинским диагнозом и используется только как мониторинговый показатель.
-                {% endif %}
-            </div>
-        </article>
-    </section>
-
-    <section class="card-standard p-5  ">
-        <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-                <h2 class="text-lg font-bold text-gray-900 dark:text-white">{{ 'Xodimlar holatlari jadvali' if lang == 'uz' else 'Таблица состояний сотрудников' }}</h2>
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ 'Faqat haqiqiy snapshot va muvaffaqiyatli AI tahlili bor yozuvlar ko‘rsatiladi.' if lang == 'uz' else 'Показываются только записи с реальным снимком и успешным анализом ИИ.' }}</p>
-            </div>
-            <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">{{ summary.average_profile_text or ('Aniqlanmadi' if lang == 'uz' else 'Не определено') }}</span>
-        </div>
-
-        <div class="mt-4 overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
-            <div class="max-h-[32rem] overflow-auto">
-                <table class="min-w-full divide-y divide-gray-200 text-left text-sm dark:divide-gray-800">
-                    <thead>
-                        <tr>
-                            <th class="px-4 py-3">#</th>
-                            <th class="px-4 py-3">{{ 'Xulosa rasmi' if lang == 'uz' else 'Снимок' }}</th>
-                            <th class="px-4 py-3">{{ 'Ism familiya' if lang == 'uz' else 'ФИО' }}</th>
-                            <th class="px-4 py-3">Personal ID</th>
-                            <th class="px-4 py-3">{{ 'Bo‘lim' if lang == 'uz' else 'Отдел' }}</th>
-                            <th class="px-4 py-3">{{ 'Lavozim' if lang == 'uz' else 'Должность' }}</th>
-                            <th class="px-4 py-3">{{ 'Holat' if lang == 'uz' else 'Состояние' }}</th>
-                            <th class="px-4 py-3">{{ 'Profil' if lang == 'uz' else 'Профиль' }}</th>
-                            <th class="px-4 py-3">{{ 'Sana' if lang == 'uz' else 'Дата' }}</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100 bg-white dark:divide-gray-800 dark:bg-gray-900">
-                        {% for row in recent_states %}
-                        <tr class="align-top hover:bg-gray-50/70 dark:hover:bg-gray-800/60">
-                            <td class="px-4 py-3 text-gray-500 dark:text-gray-400">{{ row.row_no }}</td>
-                            <td class="px-4 py-3">
-                                {% set image_url = row.source_image_url %}
-                                {% if image_url %}
-                                <button
-                                    type="button"
-                                    data-psych-image-trigger
-                                    data-image-url="{{ image_url }}"
-                                    data-image-title="{{ row.employee_name }}"
-                                    data-image-state="{{ row.state }}"
-                                    data-image-date="{{ row.state_date }}"
-                                    class="group relative block h-14 w-14 overflow-hidden rounded-xl border border-gray-200 bg-gray-100 shadow-sm transition hover:scale-[1.02] dark:border-gray-700 dark:bg-gray-800"
-                                    aria-label="{{ 'Rasmni ochish' if lang == 'uz' else 'Открыть снимок' }}"
-                                >
-                                    <img src="{{ image_url }}" alt="{{ row.employee_name }}" class="h-full w-full object-cover">
-                                    <span class="pointer-events-none absolute inset-0 flex items-end justify-end bg-gradient-to-t from-black/35 via-transparent to-transparent p-1.5 opacity-0 transition group-hover:opacity-100">
-                                        <span class="rounded-full bg-white/90 px-1.5 py-1 text-[10px] font-semibold text-slate-700 shadow-sm">{{ 'Ko‘rish' if lang == 'uz' else 'Открыть' }}</span>
-                                    </span>
-                                </button>
-                                {% else %}
-                                <span class="inline-flex h-14 w-14 items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50 text-[10px] font-semibold text-gray-400 dark:border-gray-700 dark:bg-gray-800">{{ 'Yo‘q' if lang == 'uz' else 'Нет' }}</span>
-                                {% endif %}
-                            </td>
-                            <td class="px-4 py-3">
-                                {% if row.employee_id %}
-                                <a href="/employees/{{ row.employee_id }}" class="font-semibold text-blue-700 hover:underline dark:text-blue-300">{{ row.employee_name }}</a>
-                                {% else %}
-                                <span class="font-semibold text-gray-900 dark:text-white">{{ row.employee_name }}</span>
-                                {% endif %}
-                            </td>
-                            <td class="px-4 py-3 font-mono text-xs text-gray-700 dark:text-gray-200">{{ row.personal_id or '-' }}</td>
-                            <td class="px-4 py-3 text-gray-700 dark:text-gray-200">{{ row.department or '-' }}</td>
-                            <td class="px-4 py-3 text-gray-700 dark:text-gray-200">{{ row.position or '-' }}</td>
-                            <td class="px-4 py-3">
-                                <span class="inline-flex items-center rounded-full bg-violet-100 px-2.5 py-1 text-xs font-semibold text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">{{ row.state }}</span>
-                                {% if row.confidence_percent %}
-                                <div class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">{{ 'Aniqlik' if lang == 'uz' else 'Уверенность' }}: {{ row.confidence_percent }}%</div>
-                                {% endif %}
-                            </td>
-                            <td class="px-4 py-3">
-                                <div class="max-w-[28rem] text-xs leading-5 text-gray-600 dark:text-gray-300">{{ row.profile_text or '-' }}</div>
-                            </td>
-                            <td class="px-4 py-3">
-                                <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-1 text-[11px] font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-200">{{ row.state_date or '-' }}</span>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="9" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">{{ 'Hozircha holat yozuvlari yo‘q' if lang == 'uz' else 'Пока нет записей состояний' }}</td>
-                        </tr>
+                <div class="portrait-note-card">
+                    <div class="portrait-panel-head">
+                        <div>
+                            <p class="portrait-panel-kicker">{{ 'Muhim eslatmalar' if lang == 'uz' else 'Важные заметки' }}</p>
+                            <h2 class="portrait-panel-title">{{ 'Talqin va ehtiyotkorlik' if lang == 'uz' else 'Интерпретация и осторожность' }}</h2>
+                        </div>
+                        <span class="portrait-mini-badge">{{ 'AI monitoring' if lang == 'uz' else 'AI мониторинг' }}</span>
+                    </div>
+                    <div class="portrait-note-list">
+                        {% for note in portrait_notes %}
+                        <div class="portrait-note-item">
+                            <i class="fa-solid fa-circle-check"></i>
+                            <span>{{ note }}</span>
+                        </div>
                         {% endfor %}
-                    </tbody>
-                </table>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </section>
+
+    <section class="portrait-stat-grid">
+        {% for stat in portrait_stats %}
+        {% set stat_icon = 'fa-solid fa-chart-pie' %}
+        {% if stat.tone == 'blue' %}
+            {% set stat_icon = 'fa-solid fa-chart-column' %}
+        {% elif stat.tone == 'emerald' %}
+            {% set stat_icon = 'fa-solid fa-user-check' %}
+        {% elif stat.tone == 'violet' %}
+            {% set stat_icon = 'fa-solid fa-brain' %}
+        {% elif stat.tone == 'amber' %}
+            {% set stat_icon = 'fa-solid fa-clock' %}
+        {% elif stat.tone == 'red' %}
+            {% set stat_icon = 'fa-solid fa-triangle-exclamation' %}
+        {% elif stat.tone == 'slate' %}
+            {% set stat_icon = 'fa-solid fa-users' %}
+        {% endif %}
+        <article class="portrait-stat-card is-{{ stat.tone or 'slate' }}">
+            <div class="portrait-stat-icon">
+                <i class="{{ stat_icon }}"></i>
+            </div>
+            <div class="portrait-stat-body">
+                <p class="portrait-stat-kicker">{{ stat.label }}</p>
+                <div class="portrait-stat-value">{{ stat.value }}</div>
+                <p class="portrait-stat-hint">{{ stat.hint }}</p>
+            </div>
+        </article>
+        {% endfor %}
+    </section>
+
+    <section class="portrait-panel portrait-filter-panel">
+        <div class="portrait-panel-head">
+            <div>
+                <p class="portrait-panel-kicker">{{ 'Tez filter' if lang == 'uz' else 'Быстрый фильтр' }}</p>
+                <h2 class="portrait-panel-title">{{ 'Kuzatuv kesimi' if lang == 'uz' else 'Срез наблюдения' }}</h2>
+            </div>
+            <span class="portrait-panel-note">{{ 'Faqat AI muvaffaqiyatli tahlil qilgan snapshotlar ko‘rsatiladi' if lang == 'uz' else 'Показываются только снимки с успешным AI-анализом' }}</span>
+        </div>
+
+        <form method="get" action="/psixologik-portret" class="portrait-filter-grid">
+            <label class="portrait-field portrait-field-wide" for="portraitSearch">
+                <span class="portrait-field-label">{{ 'Qidiruv' if lang == 'uz' else 'Поиск' }}</span>
+                <span class="portrait-control-shell">
+                    <span class="portrait-control-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
+                    <input id="portraitSearch" name="q" value="{{ table_search }}" type="search" placeholder="{{ 'Ism, familiya yoki personal ID' if lang == 'uz' else 'Имя, фамилия или ID' }}" class="portrait-control">
+                </span>
+            </label>
+
+            <label class="portrait-field" for="portraitDepartment">
+                <span class="portrait-field-label">{{ 'Bo‘lim' if lang == 'uz' else 'Отдел' }}</span>
+                <span class="portrait-control-shell">
+                    <span class="portrait-control-icon"><i class="fa-solid fa-building"></i></span>
+                    <select id="portraitDepartment" name="department_id" class="portrait-control">
+                        <option value="all" {% if selected_department_id == 'all' %}selected{% endif %}>{{ 'Barcha bo‘limlar' if lang == 'uz' else 'Все отделы' }}</option>
+                        {% for dep in department_choices %}
+                        <option value="{{ dep.id }}" {% if selected_department_id|string == dep.id|string %}selected{% endif %}>{{ dep.name }}</option>
+                        {% endfor %}
+                    </select>
+                </span>
+            </label>
+
+            <label class="portrait-field" for="portraitPosition">
+                <span class="portrait-field-label">{{ 'Lavozim' if lang == 'uz' else 'Должность' }}</span>
+                <span class="portrait-control-shell">
+                    <span class="portrait-control-icon"><i class="fa-solid fa-briefcase"></i></span>
+                    <select id="portraitPosition" name="position_id" class="portrait-control">
+                        <option value="all" {% if selected_position_id == 'all' %}selected{% endif %}>{{ 'Barcha lavozimlar' if lang == 'uz' else 'Все должности' }}</option>
+                        {% for pos in position_choices %}
+                        <option value="{{ pos.id }}" {% if selected_position_id|string == pos.id|string %}selected{% endif %}>{{ pos.name }}</option>
+                        {% endfor %}
+                    </select>
+                </span>
+            </label>
+
+            <label class="portrait-field" for="portraitYear">
+                <span class="portrait-field-label">{{ 'Yil' if lang == 'uz' else 'Год' }}</span>
+                <span class="portrait-control-shell">
+                    <span class="portrait-control-icon"><i class="fa-solid fa-calendar"></i></span>
+                    <select id="portraitYear" name="year" class="portrait-control">
+                        <option value="all" {% if selected_year == 'all' %}selected{% endif %}>{{ 'Barcha yillar' if lang == 'uz' else 'Все годы' }}</option>
+                        {% for y in available_years %}
+                        <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>
+                        {% endfor %}
+                    </select>
+                </span>
+            </label>
+
+            <label class="portrait-field" for="portraitMonth">
+                <span class="portrait-field-label">{{ 'Oy' if lang == 'uz' else 'Месяц' }}</span>
+                <span class="portrait-control-shell">
+                    <span class="portrait-control-icon"><i class="fa-solid fa-calendar-days"></i></span>
+                    <select id="portraitMonth" name="month" class="portrait-control">
+                        <option value="all" {% if selected_month == 'all' %}selected{% endif %}>{{ 'Barcha oylar' if lang == 'uz' else 'Все месяцы' }}</option>
+                        {% for m in available_months %}
+                        <option value="{{ m }}" {% if selected_month == m %}selected{% endif %}>{{ m }}</option>
+                        {% endfor %}
+                    </select>
+                </span>
+            </label>
+
+            <label class="portrait-field" for="portraitDay">
+                <span class="portrait-field-label">{{ 'Kun' if lang == 'uz' else 'День' }}</span>
+                <span class="portrait-control-shell">
+                    <span class="portrait-control-icon"><i class="fa-solid fa-calendar-day"></i></span>
+                    <select id="portraitDay" name="day" class="portrait-control">
+                        <option value="all" {% if selected_day == 'all' %}selected{% endif %}>{{ 'Barcha kunlar' if lang == 'uz' else 'Все дни' }}</option>
+                        {% for d in available_days %}
+                        <option value="{{ d }}" {% if selected_day == d %}selected{% endif %}>{{ d }}</option>
+                        {% endfor %}
+                    </select>
+                </span>
+            </label>
+
+            <div class="portrait-filter-actions">
+                <button type="submit" class="portrait-filter-btn is-primary">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span>{{ 'Qo‘llash' if lang == 'uz' else 'Применить' }}</span>
+                </button>
+                <a href="/psixologik-portret" class="portrait-filter-btn is-ghost">
+                    <i class="fa-solid fa-rotate-left"></i>
+                    <span>{{ 'Tozalash' if lang == 'uz' else 'Сброс' }}</span>
+                </a>
+            </div>
+        </form>
+    </section>
+
+    <section class="portrait-analytics-grid">
+        <article class="portrait-panel">
+            <div class="portrait-panel-head">
+                <div>
+                    <p class="portrait-panel-kicker">{{ 'Asosiy ko‘rsatkich' if lang == 'uz' else 'Основной показатель' }}</p>
+                    <h2 class="portrait-panel-title">{{ 'Holatlar ulushi' if lang == 'uz' else 'Доля состояний' }}</h2>
+                </div>
+                <span class="portrait-mini-badge">{{ summary.selected_period_label }}</span>
+            </div>
+
+            <div class="portrait-progress-list">
+                {% for item in state_breakdown %}
+                <div class="portrait-progress-item">
+                    <div class="portrait-progress-top">
+                        <div class="portrait-progress-label-group">
+                            <span class="portrait-state-dot is-{{ item.key }}"></span>
+                            <span class="portrait-progress-label">{{ item.label }}</span>
+                        </div>
+                        <span class="portrait-progress-meta">{{ item.percent }}% · {{ item.count }}</span>
+                    </div>
+                    <div class="portrait-progress-track">
+                        <div class="portrait-progress-bar is-{{ item.key }}" style="width: {{ item.percent }}%"></div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="portrait-empty-inline">{{ 'Maʼlumot yo‘q' if lang == 'uz' else 'Нет данных' }}</div>
+                {% endfor %}
+            </div>
+        </article>
+
+        <div class="portrait-side-stack">
+            <article class="portrait-panel">
+                <div class="portrait-panel-head">
+                    <div>
+                        <p class="portrait-panel-kicker">{{ 'Manbalar' if lang == 'uz' else 'Источники' }}</p>
+                        <h2 class="portrait-panel-title">{{ 'Yozuv kelib chiqishi' if lang == 'uz' else 'Источник записей' }}</h2>
+                    </div>
+                    <i class="fa-solid fa-chart-simple portrait-panel-head-icon"></i>
+                </div>
+
+                <div class="portrait-source-list">
+                    {% for item in source_breakdown %}
+                    <div class="portrait-source-item">
+                        <div class="portrait-source-copy">
+                            <strong>{{ item.label }}</strong>
+                            <span>{{ item.count }} {{ 'ta yozuv' if lang == 'uz' else 'записей' }}</span>
+                        </div>
+                        <span class="portrait-source-pill">{{ item.percent }}%</span>
+                    </div>
+                    {% else %}
+                    <div class="portrait-empty-inline">{{ 'Manba maʼlumoti yo‘q' if lang == 'uz' else 'Нет данных по источникам' }}</div>
+                    {% endfor %}
+                </div>
+            </article>
+
+            <article class="portrait-panel">
+                <div class="portrait-panel-head">
+                    <div>
+                        <p class="portrait-panel-kicker">{{ 'AI izoh' if lang == 'uz' else 'AI пояснение' }}</p>
+                        <h2 class="portrait-panel-title">{{ 'Qisqa talqin' if lang == 'uz' else 'Краткая интерпретация' }}</h2>
+                    </div>
+                    <i class="fa-solid fa-circle-info portrait-panel-head-icon"></i>
+                </div>
+                <div class="portrait-ai-copy">
+                    {% if lang == 'uz' %}
+                    Tizim yuz ifodasi va emotsional signalni foizlarda baholab, dominant holat hamda top emotsiyalarni chiqaradi. Natija boshqaruv kuzatuvi va umumiy monitoring uchun mo‘ljallangan, tibbiy tashxis sifatida ishlatilmaydi.
+                    {% else %}
+                    Система оценивает мимику и эмоциональные сигналы в процентах, определяет доминирующее состояние и топ-эмоции. Результат предназначен для управленческого наблюдения и общего мониторинга, а не для медицинской диагностики.
+                    {% endif %}
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <section class="portrait-panel portrait-table-panel">
+        <div class="portrait-table-topbar">
+            <div>
+                <p class="portrait-panel-kicker">{{ 'Yozuvlar' if lang == 'uz' else 'Записи' }}</p>
+                <h2 class="portrait-panel-title">{{ 'Xodimlar holati jurnali' if lang == 'uz' else 'Журнал состояний сотрудников' }}</h2>
+            </div>
+            <div class="portrait-table-summary">
+                <span class="portrait-mini-badge">{{ pagination.total }} {{ 'ta yozuv' if lang == 'uz' else 'записей' }}</span>
+                <span class="portrait-profile-pill">{{ summary.average_profile_text or ('Aniqlanmadi' if lang == 'uz' else 'Не определено') }}</span>
             </div>
         </div>
 
-        <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p class="text-sm text-gray-500 dark:text-gray-400">
-                {{ pagination.total }} {{ 'ta yozuv' if lang == 'uz' else 'записей' }} · {{ pagination.page }} / {{ pagination.total_pages }}
+        <div class="portrait-table-wrap">
+            <table class="portrait-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>{{ 'Snapshot' if lang == 'uz' else 'Снимок' }}</th>
+                        <th>{{ 'Xodim' if lang == 'uz' else 'Сотрудник' }}</th>
+                        <th>{{ 'Tashkiliy blok' if lang == 'uz' else 'Орг. блок' }}</th>
+                        <th>{{ 'Holat va manba' if lang == 'uz' else 'Состояние и источник' }}</th>
+                        <th>{{ 'Emotsional profil' if lang == 'uz' else 'Эмоциональный профиль' }}</th>
+                        <th>{{ 'Sana' if lang == 'uz' else 'Дата' }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in recent_states %}
+                    {% set badge_class = 'is-undetermined' %}
+                    {% if row.state_key == 'happy' %}
+                        {% set badge_class = 'is-happy' %}
+                    {% elif row.state_key == 'neutral' %}
+                        {% set badge_class = 'is-neutral' %}
+                    {% elif row.state_key == 'sad' %}
+                        {% set badge_class = 'is-sad' %}
+                    {% elif row.state_key == 'fear' %}
+                        {% set badge_class = 'is-fear' %}
+                    {% elif row.state_key == 'angry' %}
+                        {% set badge_class = 'is-angry' %}
+                    {% elif row.state_key == 'surprise' %}
+                        {% set badge_class = 'is-surprise' %}
+                    {% elif row.state_key == 'disgust' %}
+                        {% set badge_class = 'is-disgust' %}
+                    {% elif row.state_key == 'contempt' %}
+                        {% set badge_class = 'is-contempt' %}
+                    {% endif %}
+                    <tr>
+                        <td class="portrait-col-index">{{ row.row_no }}</td>
+                        <td>
+                            {% set image_url = row.source_image_url %}
+                            {% if image_url %}
+                            <button
+                                type="button"
+                                data-psych-image-trigger
+                                data-image-url="{{ image_url }}"
+                                data-image-title="{{ row.employee_name }}"
+                                data-image-state="{{ row.state }}"
+                                data-image-date="{{ row.state_date }}"
+                                class="portrait-thumb"
+                                aria-label="{{ 'Rasmni ochish' if lang == 'uz' else 'Открыть снимок' }}"
+                            >
+                                <img src="{{ image_url }}" alt="{{ row.employee_name }}">
+                                <span>{{ 'Ko‘rish' if lang == 'uz' else 'Открыть' }}</span>
+                            </button>
+                            {% else %}
+                            <span class="portrait-thumb is-empty">{{ 'Yo‘q' if lang == 'uz' else 'Нет' }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="portrait-employee-cell">
+                                {% if row.employee_id %}
+                                <a href="/employees/{{ row.employee_id }}" class="portrait-employee-name">{{ row.employee_name }}</a>
+                                {% else %}
+                                <span class="portrait-employee-name is-static">{{ row.employee_name }}</span>
+                                {% endif %}
+                                <div class="portrait-meta-line">
+                                    <span class="portrait-tag">{{ row.personal_id or '-' }}</span>
+                                    {% if row.note %}
+                                    <span class="portrait-tag is-note">{{ row.note }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="portrait-org-cell">
+                                <strong>{{ row.department or '-' }}</strong>
+                                <span>{{ row.position or '-' }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="portrait-state-cell">
+                                <span class="portrait-state-badge {{ badge_class }}">{{ row.state }}</span>
+                                <div class="portrait-meta-line">
+                                    <span class="portrait-source-badge">{{ row.source or '-' }}</span>
+                                    {% if row.confidence_percent %}
+                                    <span class="portrait-confidence">{{ 'Aniqlik' if lang == 'uz' else 'Точность' }}: {{ row.confidence_percent }}%</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="portrait-profile-text">{{ row.profile_text or '-' }}</div>
+                        </td>
+                        <td>
+                            <span class="portrait-date-badge">{{ row.state_date or '-' }}</span>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7">
+                            <div class="portrait-empty-state">
+                                <div class="portrait-empty-icon"><i class="fa-solid fa-brain"></i></div>
+                                <h3>{{ 'Hozircha holat yozuvlari topilmadi' if lang == 'uz' else 'Записи состояний пока не найдены' }}</h3>
+                                <p>{{ 'Filtrni o‘zgartiring yoki boshqa davrni tanlang.' if lang == 'uz' else 'Измените фильтр или выберите другой период.' }}</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="portrait-pagination">
+            <p class="portrait-pagination-meta">
+                {{ pagination.page }} / {{ pagination.total_pages }} · {{ summary.selected_period_label }}
             </p>
-            <div class="flex flex-wrap items-center gap-2">
-                <a href="/psixologik-portret?q={{ table_search|urlencode }}&department_id={{ selected_department_id }}&position_id={{ selected_position_id }}&year={{ selected_year }}&month={{ selected_month }}&day={{ selected_day }}&page={{ pagination.prev_page }}" class="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 {% if not pagination.has_prev %}pointer-events-none opacity-50{% endif %} dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">{{ 'Oldingi' if lang == 'uz' else 'Назад' }}</a>
-                <a href="/psixologik-portret?q={{ table_search|urlencode }}&department_id={{ selected_department_id }}&position_id={{ selected_position_id }}&year={{ selected_year }}&month={{ selected_month }}&day={{ selected_day }}&page={{ pagination.next_page }}" class="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 {% if not pagination.has_next %}pointer-events-none opacity-50{% endif %} dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">{{ 'Keyingi' if lang == 'uz' else 'Далее' }}</a>
+            <div class="portrait-pagination-actions">
+                <a href="/psixologik-portret?q={{ table_search|urlencode }}&department_id={{ selected_department_id }}&position_id={{ selected_position_id }}&year={{ selected_year }}&month={{ selected_month }}&day={{ selected_day }}&page={{ pagination.prev_page }}" class="portrait-page-nav {% if not pagination.has_prev %}is-disabled{% endif %}">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>{{ 'Oldingi' if lang == 'uz' else 'Назад' }}</span>
+                </a>
+                <a href="/psixologik-portret?q={{ table_search|urlencode }}&department_id={{ selected_department_id }}&position_id={{ selected_position_id }}&year={{ selected_year }}&month={{ selected_month }}&day={{ selected_day }}&page={{ pagination.next_page }}" class="portrait-page-nav {% if not pagination.has_next %}is-disabled{% endif %}">
+                    <span>{{ 'Keyingi' if lang == 'uz' else 'Далее' }}</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </a>
             </div>
         </div>
     </section>

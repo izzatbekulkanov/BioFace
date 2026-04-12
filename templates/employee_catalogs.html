@@ -1,85 +1,117 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="animate-fade-in space-y-5">
-    <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-            <div class="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                Xodimlar katalogi
+<div class="employee-page catalog-page animate-fade-in space-y-5">
+    <section class="employee-hero catalog-hero">
+        <div class="employee-hero-backdrop" aria-hidden="true">
+            <span class="employee-hero-orb orb-one"></span>
+            <span class="employee-hero-orb orb-two"></span>
+        </div>
+        <div class="employee-hero-grid">
+            <div class="min-w-0">
+                <div class="employee-hero-pills">
+                    <span class="employee-hero-pill">
+                        <i class="fa-solid fa-server"></i>
+                        Tashkiliy katalog
+                    </span>
+                    <span class="employee-hero-pill is-muted">
+                        <i class="fa-solid fa-building"></i>
+                        Tashkiliy tuzilma
+                    </span>
+                    <span class="employee-hero-pill is-muted">
+                        <i class="fa-solid fa-layer-group"></i>
+                        Bo'limlar va lavozimlar
+                    </span>
+                </div>
+                <h1 class="employee-hero-title">Bo'lim va lavozimlar</h1>
+                <p class="employee-hero-text">
+                    Bo'limlar, ularga birikkan lavozimlar va har bir lavozimdagi xodimlar sonini bitta premium boshqaruv panelida boshqaring.
+                </p>
+                <div id="catalog-scope-note" class="employee-hero-counter">Ma'lumotlar yuklanmoqda...</div>
             </div>
-            <h2 class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">Bo'lim va lavozimlar</h2>
-            <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-                Bo'limlar, ularga birikkan lavozimlar va har bir lavozimdagi xodimlar sonini boshqarish sahifasi.
-            </p>
-        </div>
-        <div class="flex flex-wrap items-center gap-2">
-            <a href="/employees" class="inline-flex items-center gap-2 card-standard px-4 py-2.5 text-sm font-semibold text-gray-700  transition hover:bg-gray-50  dark:text-gray-200 dark:hover:bg-gray-700">
-                <i class="fa-solid fa-chevron-left"></i>
-                Xodimlarga qaytish
-            </a>
-            <button id="btn-add-department" type="button" class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60">
-                <i class="fa-solid fa-plus"></i>
-                Bo'lim qo'shish
-            </button>
-            <button id="btn-add-position" type="button" class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">
-                <i class="fa-solid fa-plus"></i>
-                Lavozim qo'shish
-            </button>
-        </div>
-    </div>
 
-    <div class="card-standard p-4  ">
-        <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-            <div class="w-full md:max-w-sm">
-                <label for="catalog-org-filter" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Tashkilot</label>
-                <select id="catalog-org-filter" class="w-full form-input">
-                    <option value="all">Barcha tashkilotlar</option>
-                </select>
-            </div>
-            <p id="catalog-scope-note" class="text-sm text-gray-500 dark:text-gray-400">Ma'lumotlar yuklanmoqda...</p>
-        </div>
-    </div>
-
-    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div class="card-hover card-standard p-5  ">
-            <p class="text-xs font-medium uppercase tracking-widest text-gray-500 dark:text-gray-400">Tashkilot</p>
-            <p id="catalog-stat-organizations" class="mt-1 text-3xl font-bold text-gray-900 dark:text-white">0</p>
-        </div>
-        <div class="card-hover rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm dark:border-emerald-900/30 dark:bg-emerald-900/20">
-            <p class="text-xs font-medium uppercase tracking-widest text-emerald-700 dark:text-emerald-300">Bo'lim</p>
-            <p id="catalog-stat-departments" class="mt-1 text-3xl font-bold text-emerald-700 dark:text-emerald-300">0</p>
-        </div>
-        <div class="card-hover rounded-2xl border border-blue-200 bg-blue-50 p-5 shadow-sm dark:border-blue-900/30 dark:bg-blue-900/20">
-            <p class="text-xs font-medium uppercase tracking-widest text-blue-700 dark:text-blue-300">Lavozim</p>
-            <p id="catalog-stat-positions" class="mt-1 text-3xl font-bold text-blue-700 dark:text-blue-300">0</p>
-        </div>
-        <div class="card-hover rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm dark:border-amber-900/30 dark:bg-amber-900/20">
-            <p class="text-xs font-medium uppercase tracking-widest text-amber-700 dark:text-amber-300">Xodim</p>
-            <p id="catalog-stat-employees" class="mt-1 text-3xl font-bold text-amber-700 dark:text-amber-300">0</p>
-        </div>
-    </div>
-
-    <div id="catalog-feedback" class="hidden rounded-2xl border px-4 py-3 text-sm"></div>
-
-    <div class="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-        <section class="card-standard p-5  ">
-            <div class="mb-4 flex items-center justify-between gap-3">
-                <div>
-                    <h3 class="text-lg font-bold text-gray-900 dark:text-white">Bo'limlar</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Har bir bo'lim ichida lavozimlar va xodimlar soni ko'rsatiladi.</p>
+            <div class="catalog-hero-side">
+                <label class="catalog-hero-filter">
+                    <span class="catalog-hero-filter-label">Tashkilot bo'yicha</span>
+                    <span class="shift-select-shell catalog-hero-select">
+                        <i class="fa-solid fa-building shift-select-icon"></i>
+                        <select id="catalog-org-filter" class="shift-select-control">
+                            <option value="all">Barcha tashkilotlar</option>
+                        </select>
+                    </span>
+                </label>
+                <div class="employee-hero-actions">
+                    <a href="/employees" class="employee-action-btn is-soft">
+                        <i class="fa-solid fa-chevron-left"></i>
+                        Xodimlarga qaytish
+                    </a>
+                    <button id="btn-add-department" type="button" class="employee-action-btn is-emerald">
+                        <i class="fa-solid fa-plus"></i>
+                        Bo'lim qo'shish
+                    </button>
+                    <button id="btn-add-position" type="button" class="employee-action-btn is-primary">
+                        <i class="fa-solid fa-plus"></i>
+                        Lavozim qo'shish
+                    </button>
                 </div>
             </div>
-            <div id="departments-grid" class="grid grid-cols-1 gap-3 lg:grid-cols-2"></div>
+        </div>
+    </section>
+
+    <section class="employee-stats-grid">
+        <article class="employee-stat-card is-blue">
+            <span class="employee-stat-icon"><i class="fa-solid fa-buildings"></i></span>
+            <p class="employee-stat-label">Tashkilot</p>
+            <p id="catalog-stat-organizations" class="employee-stat-value">0</p>
+        </article>
+        <article class="employee-stat-card is-emerald">
+            <span class="employee-stat-icon"><i class="fa-solid fa-diagram-project"></i></span>
+            <p class="employee-stat-label">Bo'lim</p>
+            <p id="catalog-stat-departments" class="employee-stat-value">0</p>
+        </article>
+        <article class="employee-stat-card is-indigo">
+            <span class="employee-stat-icon"><i class="fa-solid fa-briefcase"></i></span>
+            <p class="employee-stat-label">Lavozim</p>
+            <p id="catalog-stat-positions" class="employee-stat-value">0</p>
+        </article>
+        <article class="employee-stat-card is-amber">
+            <span class="employee-stat-icon"><i class="fa-solid fa-users"></i></span>
+            <p class="employee-stat-label">Xodim</p>
+            <p id="catalog-stat-employees" class="employee-stat-value">0</p>
+        </article>
+    </section>
+
+    <div id="catalog-feedback" class="catalog-feedback hidden"></div>
+
+    <div class="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+        <section class="employee-panel">
+            <div class="employee-panel-head">
+                <div>
+                    <p class="employee-panel-kicker">
+                        <i class="fa-solid fa-diagram-project"></i>
+                        Bo'lim strukturasi
+                    </p>
+                    <h2 class="employee-panel-title">Bo'limlar</h2>
+                    <p class="catalog-panel-text">Har bir bo'lim ichida lavozimlar va xodimlar soni ko'rsatiladi.</p>
+                </div>
+            </div>
+            <div id="departments-grid" class="catalog-departments-grid"></div>
         </section>
 
-        <section class="card-standard p-5  ">
-            <div class="mb-4">
-                <h3 class="text-lg font-bold text-gray-900 dark:text-white">Lavozimlar</h3>
-                <p class="text-sm text-gray-500 dark:text-gray-400">Lavozim qaysi bo'limga tegishli va nechta xodim borligi.</p>
+        <section class="employee-panel overflow-hidden">
+            <div class="employee-panel-head">
+                <div>
+                    <p class="employee-panel-kicker">
+                        <i class="fa-solid fa-briefcase"></i>
+                        Lavozim reyestri
+                    </p>
+                    <h2 class="employee-panel-title">Lavozimlar</h2>
+                    <p class="catalog-panel-text">Lavozim qaysi bo'limga tegishli va nechta xodim borligi shu yerda jamlanadi.</p>
+                </div>
             </div>
-            <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800">
-                <div class="max-h-[36rem] overflow-auto">
-                    <table class="table-standard">
+            <div class="catalog-table-shell">
+                <div class="max-h-[38rem] overflow-auto">
+                    <table class="table-standard employee-table catalog-table">
                         <thead>
                             <tr>
                                 <th class="px-4 py-3">#</th>
@@ -120,6 +152,16 @@ function formatNumber(value) {
     return Number.isFinite(numberValue) ? numberValue.toLocaleString("uz-UZ") : "0";
 }
 
+function emptyCatalogState(icon, title, text) {
+    return `
+        <div class="catalog-empty">
+            <span class="catalog-empty-icon"><i class="fa-solid ${icon}"></i></span>
+            <h3 class="catalog-empty-title">${escapeHtml(title)}</h3>
+            <p class="catalog-empty-text">${escapeHtml(text)}</p>
+        </div>
+    `;
+}
+
 function notifyCatalog(message, kind = "info") {
     const tone = kind === "error" ? "error" : (kind === "success" ? "success" : "info");
     if (window.AppNotify && typeof window.AppNotify[tone] === "function") {
@@ -127,13 +169,25 @@ function notifyCatalog(message, kind = "info") {
         return;
     }
     const box = document.getElementById("catalog-feedback");
-    box.className = "rounded-2xl border px-4 py-3 text-sm";
-    box.classList.add(
-        kind === "error" ? "border-red-200" : "border-blue-200",
-        kind === "error" ? "bg-red-50" : "bg-blue-50",
-        kind === "error" ? "text-red-700" : "text-blue-700",
-    );
-    box.textContent = String(message || "");
+    const icon = tone === "error"
+        ? "fa-circle-exclamation"
+        : (tone === "success" ? "fa-circle-check" : "fa-circle-info");
+    box.className = `catalog-feedback is-${tone}`;
+    box.innerHTML = `
+        <span class="catalog-feedback-icon"><i class="fa-solid ${icon}"></i></span>
+        <span class="catalog-feedback-text">${escapeHtml(message || "")}</span>
+    `;
+}
+
+function setSubmitState(button, isPending, pendingLabel) {
+    if (!button) return;
+    if (!button.dataset.initialContent) {
+        button.dataset.initialContent = button.innerHTML;
+    }
+    button.disabled = isPending;
+    button.innerHTML = isPending
+        ? `<i class="fa-solid fa-spinner fa-spin"></i><span>${escapeHtml(pendingLabel)}</span>`
+        : button.dataset.initialContent;
 }
 
 async function fetchJson(url, options = {}) {
@@ -200,9 +254,6 @@ function renderSummary() {
 }
 
 function actionButton(label, action, id, disabled = false, tone = "slate") {
-    const toneClass = tone === "red"
-        ? "bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20"
-        : "bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-300 dark:hover:bg-blue-500/20";
     const icon = tone === "red"
         ? '<i class="fa-solid fa-trash-can"></i>'
         : '<i class="fa-solid fa-pen-to-square"></i>';
@@ -214,55 +265,87 @@ function actionButton(label, action, id, disabled = false, tone = "slate") {
             title="${escapeHtml(label)}"
             aria-label="${escapeHtml(label)}"
             ${disabled ? "disabled" : ""}
-            class="inline-flex h-8 w-8 items-center justify-center rounded-lg transition disabled:cursor-not-allowed disabled:opacity-40 ${toneClass}"
-        >${icon}</button>
+            class="catalog-action-btn ${tone === "red" ? "is-danger" : "is-edit"}"
+        >
+            <span class="catalog-action-btn-icon">${icon}</span>
+            <span class="catalog-action-btn-label">${escapeHtml(label)}</span>
+        </button>
+    `;
+}
+
+function renderDeleteHint(canDelete, message) {
+    return canDelete
+        ? ""
+        : `<div class="catalog-card-lock"><i class="fa-solid fa-lock"></i>${escapeHtml(message)}</div>`;
+}
+
+function positionPill(position) {
+    return `
+        <div class="catalog-position-pill">
+            <div class="catalog-position-pill-main">
+                <span class="catalog-position-pill-name">${escapeHtml(position.name)}</span>
+                <span class="catalog-position-pill-count">${formatNumber(position.employee_count)} xodim</span>
+            </div>
+        </div>
     `;
 }
 
 function renderDepartments() {
     const grid = document.getElementById("departments-grid");
     if (!catalogState.departments.length) {
-        grid.innerHTML = '<div class="rounded-xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400 lg:col-span-2">Bo\'lim topilmadi.</div>';
+        grid.innerHTML = emptyCatalogState(
+            "fa-diagram-project",
+            "Bo'lim topilmadi",
+            "Tanlangan tashkilot bo'yicha hali bo'limlar yaratilmagan."
+        );
         return;
     }
 
     grid.innerHTML = catalogState.departments.map((department) => {
         const positions = Array.isArray(department.positions) ? department.positions : [];
-        const positionRows = positions.map((position) => `
-            <div class="flex items-center justify-between gap-2 rounded-lg bg-gray-50 px-3 py-2 text-xs dark:bg-gray-800/70">
-                <span class="font-medium text-gray-800 dark:text-gray-200">${escapeHtml(position.name)}</span>
-                <span class="rounded-full bg-white px-2 py-0.5 font-semibold text-gray-600 dark:bg-gray-900 dark:text-gray-300">${formatNumber(position.employee_count)} xodim</span>
-            </div>
-        `).join("");
+        const positionRows = positions.map(positionPill).join("");
         const deleteDisabled = !department.can_delete;
         const deleteTitle = department.employee_count > 0
             ? "Bu bo'limga xodim birikkan"
             : (department.position_count > 0 ? "Avval bo'limdagi lavozimlarni o'chiring" : "O'chirish");
         return `
-            <article class="card-standard p-4  ">
-                <div class="flex items-start justify-between gap-3">
+            <article class="catalog-department-card">
+                <div class="catalog-card-top">
                     <div class="min-w-0">
-                        <h4 class="truncate text-base font-bold text-gray-900 dark:text-white">${escapeHtml(department.name)}</h4>
-                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">${escapeHtml(department.organization_name || "-")}</p>
+                        <div class="catalog-card-title-row">
+                            <h3 class="catalog-card-title">${escapeHtml(department.name)}</h3>
+                            <span class="catalog-org-chip">
+                                <i class="fa-solid fa-building"></i>
+                                ${escapeHtml(department.organization_name || "Tashkilot belgilanmagan")}
+                            </span>
+                        </div>
+                        <p class="catalog-card-text">Bo'lim strukturasidagi lavozimlar va birikkan xodimlar kesimi.</p>
                     </div>
-                    <div class="flex shrink-0 items-center gap-2">
+                    <div class="catalog-card-actions">
                         ${actionButton("Tahrirlash", "edit-department", department.id)}
                         <span title="${escapeHtml(deleteTitle)}">${actionButton("O'chirish", "delete-department", department.id, deleteDisabled, "red")}</span>
                     </div>
                 </div>
-                <div class="mt-4 grid grid-cols-2 gap-2 text-xs">
-                    <div class="rounded-xl bg-emerald-50 px-3 py-2 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300">
-                        <div class="font-semibold">${formatNumber(department.position_count)}</div>
-                        <div>lavozim</div>
+                <div class="catalog-card-metrics">
+                    <div class="catalog-metric is-emerald">
+                        <span class="catalog-metric-label">Lavozim</span>
+                        <strong class="catalog-metric-value">${formatNumber(department.position_count)}</strong>
                     </div>
-                    <div class="rounded-xl bg-blue-50 px-3 py-2 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">
-                        <div class="font-semibold">${formatNumber(department.employee_count)}</div>
-                        <div>xodim</div>
+                    <div class="catalog-metric is-blue">
+                        <span class="catalog-metric-label">Xodim</span>
+                        <strong class="catalog-metric-value">${formatNumber(department.employee_count)}</strong>
                     </div>
                 </div>
-                <div class="mt-3 space-y-2">
-                    ${positionRows || '<div class="rounded-lg border border-dashed border-gray-300 px-3 py-2 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">Lavozim biriktirilmagan.</div>'}
+                <div class="catalog-card-body">
+                    <div class="catalog-card-section-title">
+                        <i class="fa-solid fa-briefcase"></i>
+                        Biriktirilgan lavozimlar
+                    </div>
+                    <div class="catalog-position-list">
+                        ${positionRows || '<div class="catalog-inline-empty">Lavozim biriktirilmagan.</div>'}
+                    </div>
                 </div>
+                ${renderDeleteHint(department.can_delete, deleteTitle)}
             </article>
         `;
     }).join("");
@@ -271,7 +354,17 @@ function renderDepartments() {
 function renderPositions() {
     const tbody = document.getElementById("positions-table");
     if (!catalogState.positions.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">Lavozim topilmadi.</td></tr>';
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="px-4 py-6">
+                    ${emptyCatalogState(
+                        "fa-briefcase",
+                        "Lavozim topilmadi",
+                        "Tanlangan scope bo'yicha hali lavozimlar mavjud emas."
+                    )}
+                </td>
+            </tr>
+        `;
         return;
     }
 
@@ -279,18 +372,33 @@ function renderPositions() {
         const deleteDisabled = !position.can_delete;
         const deleteTitle = position.employee_count > 0 ? "Bu lavozimga xodim birikkan" : "O'chirish";
         return `
-            <tr class="hover:bg-gray-50/80 dark:hover:bg-gray-800/50">
-                <td class="px-4 py-3 font-medium text-gray-500 dark:text-gray-400">${index + 1}</td>
-                <td class="px-4 py-3">
-                    <div class="font-semibold text-gray-900 dark:text-white">${escapeHtml(position.name)}</div>
-                    <div class="text-xs text-gray-500 dark:text-gray-400">${escapeHtml(position.organization_name || "-")}</div>
+            <tr class="catalog-table-row">
+                <td class="px-4 py-4">
+                    <span class="catalog-row-index">${String(index + 1).padStart(2, "0")}</span>
                 </td>
-                <td class="px-4 py-3 text-gray-700 dark:text-gray-300">${escapeHtml(position.department_name || "Bo'limsiz")}</td>
                 <td class="px-4 py-3">
-                    <span class="inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">${formatNumber(position.employee_count)} xodim</span>
+                    <div class="catalog-row-title">${escapeHtml(position.name)}</div>
+                    <div class="catalog-row-subtitle">
+                        <span class="catalog-org-chip is-subtle">
+                            <i class="fa-solid fa-building"></i>
+                            ${escapeHtml(position.organization_name || "Tashkilot belgilanmagan")}
+                        </span>
+                    </div>
+                </td>
+                <td class="px-4 py-3">
+                    <span class="catalog-row-badge">
+                        <i class="fa-solid fa-diagram-project"></i>
+                        ${escapeHtml(position.department_name || "Bo'limsiz")}
+                    </span>
+                </td>
+                <td class="px-4 py-3">
+                    <span class="catalog-count-badge">
+                        <i class="fa-solid fa-users"></i>
+                        ${formatNumber(position.employee_count)} xodim
+                    </span>
                 </td>
                 <td class="px-4 py-3 text-right">
-                    <div class="inline-flex items-center justify-end gap-2">
+                    <div class="catalog-table-actions">
                         ${actionButton("Tahrirlash", "edit-position", position.id)}
                         <span title="${escapeHtml(deleteTitle)}">${actionButton("O'chirish", "delete-position", position.id, deleteDisabled, "red")}</span>
                     </div>
@@ -332,27 +440,58 @@ function openDepartmentModal(department = null) {
         return;
     }
     const body = document.createElement("form");
-    body.className = "space-y-4";
+    body.className = "shift-modal-shell";
     body.innerHTML = `
-        <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800/70 dark:text-gray-300">
-            Tashkilot: <b>${escapeHtml(department?.organization_name || selectedOrgName())}</b>
+        <div class="catalog-modal-note">
+            <span class="catalog-modal-note-icon"><i class="fa-solid fa-building"></i></span>
+            <div>
+                <p class="catalog-modal-note-label">Tashkilot</p>
+                <p class="catalog-modal-note-value">${escapeHtml(department?.organization_name || selectedOrgName())}</p>
+            </div>
         </div>
-        <div>
-            <label for="department-name-input" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Bo'lim nomi</label>
-            <input id="department-name-input" value="${escapeHtml(department?.name || "")}" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:focus:ring-emerald-900/40" placeholder="Masalan: Kadrlar bo'limi" required>
+        <div class="shift-modal-surface">
+            <div class="shift-modal-form">
+                <div class="shift-modal-field">
+                    <label for="department-name-input" class="shift-modal-label">Bo'lim nomi</label>
+                    <div class="shift-modal-control">
+                        <i class="fa-solid fa-diagram-project shift-modal-icon"></i>
+                        <input
+                            id="department-name-input"
+                            value="${escapeHtml(department?.name || "")}"
+                            class="shift-modal-input"
+                            placeholder="Masalan: Kadrlar bo'limi"
+                            required
+                        >
+                    </div>
+                    <p class="catalog-modal-help">Bu nom lavozim tanlash va xodimlarni biriktirishda ko'rinadi.</p>
+                </div>
+            </div>
         </div>
-        <div class="flex justify-end gap-2">
-            <button type="button" data-modal-cancel class="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">Bekor qilish</button>
-            <button type="submit" class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Saqlash</button>
+        <div class="shift-modal-actions">
+            <button type="button" data-modal-cancel class="shift-modal-btn">Bekor qilish</button>
+            <button type="submit" data-submit-btn class="shift-modal-btn is-primary">
+                <i class="fa-solid fa-floppy-disk"></i>
+                Saqlash
+            </button>
         </div>
     `;
-    body.querySelector("[data-modal-cancel]").addEventListener("click", () => window.AppModal.close("cancel"));
+    const cancelButton = body.querySelector("[data-modal-cancel]");
+    const submitButton = body.querySelector("[data-submit-btn]");
+    const nameInput = body.querySelector("#department-name-input");
+    cancelButton.addEventListener("click", () => window.AppModal.close("cancel"));
     body.addEventListener("submit", async (event) => {
         event.preventDefault();
-        const name = body.querySelector("#department-name-input").value.trim();
+        const name = nameInput.value.trim();
+        if (!name) {
+            nameInput.focus();
+            notifyCatalog("Bo'lim nomini kiriting.", "error");
+            return;
+        }
         const url = department ? `/api/employee-catalogs/departments/${department.id}` : "/api/employee-catalogs/departments";
         const method = department ? "PUT" : "POST";
         try {
+            cancelButton.disabled = true;
+            setSubmitState(submitButton, true, "Saqlanmoqda...");
             await fetchJson(url, {
                 method,
                 headers: { "Content-Type": "application/json" },
@@ -363,6 +502,9 @@ function openDepartmentModal(department = null) {
             await loadCatalogs();
         } catch (error) {
             notifyCatalog(error.message || "Bo'limni saqlashda xatolik", "error");
+        } finally {
+            cancelButton.disabled = false;
+            setSubmitState(submitButton, false, "");
         }
     });
     window.AppModal.open({
@@ -370,6 +512,7 @@ function openDepartmentModal(department = null) {
         size: "lg",
         bodyNode: body,
     });
+    requestAnimationFrame(() => nameInput.focus());
 }
 
 function openPositionModal(position = null) {
@@ -384,35 +527,75 @@ function openPositionModal(position = null) {
         return;
     }
     const body = document.createElement("form");
-    body.className = "space-y-4";
+    body.className = "shift-modal-shell";
     const departmentOptions = departments.map((department) => `
         <option value="${Number(department.id)}" ${Number(position?.department_id || 0) === Number(department.id) ? "selected" : ""}>${escapeHtml(department.name)}</option>
     `).join("");
     body.innerHTML = `
-        <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800/70 dark:text-gray-300">
-            Tashkilot: <b>${escapeHtml(position?.organization_name || selectedOrgName())}</b>
+        <div class="catalog-modal-note">
+            <span class="catalog-modal-note-icon"><i class="fa-solid fa-building"></i></span>
+            <div>
+                <p class="catalog-modal-note-label">Tashkilot</p>
+                <p class="catalog-modal-note-value">${escapeHtml(position?.organization_name || selectedOrgName())}</p>
+            </div>
         </div>
-        <div>
-            <label for="position-department-input" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Bo'lim</label>
-            <select id="position-department-input" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:focus:ring-blue-900/40">${departmentOptions}</select>
+        <div class="shift-modal-surface">
+            <div class="shift-modal-form">
+                <div class="shift-modal-field">
+                    <label for="position-department-input" class="shift-modal-label">Bo'lim</label>
+                    <div class="shift-modal-control">
+                        <i class="fa-solid fa-diagram-project shift-modal-icon"></i>
+                        <select id="position-department-input" class="shift-modal-input">${departmentOptions}</select>
+                    </div>
+                </div>
+                <div class="shift-modal-field">
+                    <label for="position-name-input" class="shift-modal-label">Lavozim nomi</label>
+                    <div class="shift-modal-control">
+                        <i class="fa-solid fa-briefcase shift-modal-icon"></i>
+                        <input
+                            id="position-name-input"
+                            value="${escapeHtml(position?.name || "")}"
+                            class="shift-modal-input"
+                            placeholder="Masalan: Dasturchi"
+                            required
+                        >
+                    </div>
+                    <p class="catalog-modal-help">Lavozim bo'lim ichida xodim rollarini aniqlash uchun ishlatiladi.</p>
+                </div>
+            </div>
         </div>
-        <div>
-            <label for="position-name-input" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Lavozim nomi</label>
-            <input id="position-name-input" value="${escapeHtml(position?.name || "")}" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:focus:ring-blue-900/40" placeholder="Masalan: Dasturchi" required>
-        </div>
-        <div class="flex justify-end gap-2">
-            <button type="button" data-modal-cancel class="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">Bekor qilish</button>
-            <button type="submit" class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">Saqlash</button>
+        <div class="shift-modal-actions">
+            <button type="button" data-modal-cancel class="shift-modal-btn">Bekor qilish</button>
+            <button type="submit" data-submit-btn class="shift-modal-btn is-primary">
+                <i class="fa-solid fa-floppy-disk"></i>
+                Saqlash
+            </button>
         </div>
     `;
-    body.querySelector("[data-modal-cancel]").addEventListener("click", () => window.AppModal.close("cancel"));
+    const cancelButton = body.querySelector("[data-modal-cancel]");
+    const submitButton = body.querySelector("[data-submit-btn]");
+    const nameInput = body.querySelector("#position-name-input");
+    const departmentInput = body.querySelector("#position-department-input");
+    cancelButton.addEventListener("click", () => window.AppModal.close("cancel"));
     body.addEventListener("submit", async (event) => {
         event.preventDefault();
-        const name = body.querySelector("#position-name-input").value.trim();
-        const departmentId = Number(body.querySelector("#position-department-input").value || 0);
+        const name = nameInput.value.trim();
+        const departmentId = Number(departmentInput.value || 0);
+        if (!departmentId) {
+            departmentInput.focus();
+            notifyCatalog("Bo'limni tanlang.", "error");
+            return;
+        }
+        if (!name) {
+            nameInput.focus();
+            notifyCatalog("Lavozim nomini kiriting.", "error");
+            return;
+        }
         const url = position ? `/api/employee-catalogs/positions/${position.id}` : "/api/employee-catalogs/positions";
         const method = position ? "PUT" : "POST";
         try {
+            cancelButton.disabled = true;
+            setSubmitState(submitButton, true, "Saqlanmoqda...");
             await fetchJson(url, {
                 method,
                 headers: { "Content-Type": "application/json" },
@@ -423,6 +606,9 @@ function openPositionModal(position = null) {
             await loadCatalogs();
         } catch (error) {
             notifyCatalog(error.message || "Lavozimni saqlashda xatolik", "error");
+        } finally {
+            cancelButton.disabled = false;
+            setSubmitState(submitButton, false, "");
         }
     });
     window.AppModal.open({
@@ -430,6 +616,7 @@ function openPositionModal(position = null) {
         size: "lg",
         bodyNode: body,
     });
+    requestAnimationFrame(() => nameInput.focus());
 }
 
 async function deleteDepartment(department) {

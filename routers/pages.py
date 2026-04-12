@@ -619,7 +619,7 @@ def _build_employee_page_config(view_mode: str, menus: dict, lang: str) -> dict[
             "employee_heading_description": "Список сотрудников и преподавателей." if is_ru else "Hodim va o'qituvchilar ro'yxati.",
             "employee_add_url": "/employees/add?kind=staff",
             "employee_add_label": "Добавить сотрудника" if is_ru else "Yangi hodim",
-            "employee_default_type_filter": "staff",
+            "employee_default_type_filter": "all",
             "employee_import_default_type": "hodim",
         }
     if safe_mode == "students":
@@ -630,7 +630,7 @@ def _build_employee_page_config(view_mode: str, menus: dict, lang: str) -> dict[
             "employee_heading_description": "Список учеников и студентов." if is_ru else "O'quvchi va talabalar ro'yxati.",
             "employee_add_url": "/employees/add?kind=student",
             "employee_add_label": "Добавить ученика" if is_ru else "Yangi o'quvchi",
-            "employee_default_type_filter": "oquvchi",
+            "employee_default_type_filter": "all",
             "employee_import_default_type": "oquvchi",
         }
     return {

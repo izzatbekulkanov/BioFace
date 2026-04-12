@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="uz" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ app_name|default('BioFace') }} — Bog'lanish</title>
+    {% if favicon_url %}
+    <link rel="icon" href="{{ favicon_url }}" />
+    {% endif %}
+    <link href="/static/fontawesome/css/all.min.css" rel="stylesheet">
+    <link href="/static/css/output.css?v=20260317c" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --brand-1: #1d4ed8;
+            --brand-2: #2563eb;
+            --brand-3: #60a5fa;
+            --surface: #f3f6fa;
+            --ink: #0f172a;
+            --muted: #64748b;
+            --ok: #14b8a6;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Plus Jakarta Sans", "Trebuchet MS", "Segoe UI", sans-serif;
+            background:
+                radial-gradient(85rem 40rem at -10% -20%, #dbeafe 0%, transparent 45%),
+                radial-gradient(70rem 40rem at 120% 120%, #d1fae5 0%, transparent 42%),
+                var(--surface);
+            color: var(--ink);
+        }
+
+        .app-wrap { min-height: 100vh; display: flex; flex-direction: column; }
+
+        /* ── HEADER ── */
+        .site-header {
+            position: sticky; top: 0; z-index: 20;
+            backdrop-filter: blur(8px);
+            background: rgba(243, 246, 250, 0.86);
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .site-inner {
+            width: 100%; max-width: 1140px; margin: 0 auto;
+            padding: 10px 16px;
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+        }
+        .brand-top { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
+        .brand-top-logo {
+            width: 44px; height: 44px; overflow: hidden;
+            background: transparent; border: 0; display: grid; place-items: center; flex-shrink: 0;
+        }
+        .brand-top-logo img { width: 100%; height: 100%; object-fit: contain; }
+        .brand-top-title { font-size: 15px; font-weight: 700; color: #0f172a; white-space: nowrap; }
+        .nav-links { display: inline-flex; align-items: center; gap: 12px; color: #475569; font-size: 13px; }
+        .nav-links a {
+            color: inherit; text-decoration: none;
+            padding: 6px 10px; border-radius: 8px; display: inline-flex; align-items: center; gap: 5px;
+        }
+        .nav-links a:hover { background: #e2e8f0; color: #0f172a; }
+        .nav-links a.active { background: var(--brand-2); color: #fff; }
+        .lang {
+            display: inline-flex; border: 1px solid #cbd5e1; border-radius: 999px;
+            padding: 2px; background: #f8fafc; gap: 2px; flex-shrink: 0;
+        }
+        .lang button {
+            border: 0; border-radius: 999px; padding: 5px 10px;
+            font-size: 11px; font-weight: 700; color: #475569; background: transparent; cursor: pointer;
+        }
+        .lang button.active { background: var(--brand-2); color: #fff; }
+        .back-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            text-decoration: none; color: #475569; font-size: 13px; font-weight: 600;
+            padding: 6px 12px; border-radius: 8px; border: 1px solid #e2e8f0;
+            background: #fff; transition: all 0.15s; white-space: nowrap;
+        }
+        .back-btn:hover { border-color: #94a3b8; color: #0f172a; transform: translateX(-2px); }
+
+        /* ── PAGE CONTENT ── */
+        .page { flex: 1; padding: 40px 16px 60px; }
+        .container { width: 100%; max-width: 960px; margin: 0 auto; }
+
+        .page-hero { text-align: center; margin-bottom: 48px; }
+        .hero-badge {
+            display: inline-flex; align-items: center; gap: 7px;
+            background: linear-gradient(135deg, #eff6ff, #dbeafe);
+            border: 1px solid #bfdbfe; border-radius: 999px;
+            padding: 5px 14px; font-size: 12px; font-weight: 700;
+            color: #1d4ed8; margin-bottom: 16px; letter-spacing: 0.3px;
+        }
+        .page-hero h1 {
+            margin: 0 0 14px; font-size: 42px; font-weight: 800;
+            background: linear-gradient(135deg, #0f172a 0%, #1d4ed8 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text; line-height: 1.1;
+        }
+        .page-hero p {
+            margin: 0 auto; max-width: 540px; font-size: 16px;
+            color: var(--muted); line-height: 1.6;
+        }
+
+        /* ── CONTACT GRID ── */
+        .contact-grid { display: grid; grid-template-columns: 1fr 1.4fr; gap: 24px; align-items: start; }
+
+        /* ── INFO CARDS ── */
+        .info-cards { display: grid; gap: 14px; }
+        .info-card {
+            background: #fff; border: 1px solid #e2e8f0;
+            border-radius: 18px; padding: 20px;
+            box-shadow: 0 4px 20px rgba(15, 23, 42, 0.05);
+            display: flex; align-items: flex-start; gap: 14px;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .info-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 28px rgba(15, 23, 42, 0.10);
+        }
+        .info-icon {
+            width: 46px; height: 46px; border-radius: 12px;
+            display: grid; place-items: center; font-size: 18px; flex-shrink: 0;
+        }
+        .info-icon.blue { background: linear-gradient(135deg, #dbeafe, #bfdbfe); color: #1d4ed8; }
+        .info-icon.green { background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #059669; }
+        .info-icon.purple { background: linear-gradient(135deg, #ede9fe, #ddd6fe); color: #7c3aed; }
+        .info-icon.orange { background: linear-gradient(135deg, #fef3c7, #fed7aa); color: #d97706; }
+        .info-label {
+            font-size: 11px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.6px; color: var(--muted); margin-bottom: 4px;
+        }
+        .info-value { font-size: 15px; font-weight: 600; color: #0f172a; margin-bottom: 2px; }
+        .info-value a { color: #2563eb; text-decoration: none; }
+        .info-value a:hover { text-decoration: underline; }
+        .info-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+        
+        /* Telegram card — special */
+        .tg-card {
+            background: linear-gradient(135deg, #0088cc15, #229ED915);
+            border: 1px solid #0088cc30;
+        }
+        .tg-card .info-icon { background: linear-gradient(135deg, #0088cc20, #229ED930); color: #0088cc; }
+
+        /* ── FORM CARD ── */
+        .form-card {
+            background: #fff; border: 1px solid #e2e8f0;
+            border-radius: 20px; padding: 30px 28px;
+            box-shadow: 0 8px 32px rgba(15, 23, 42, 0.08);
+        }
+        .form-title {
+            font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 4px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .form-desc { font-size: 13px; color: var(--muted); margin: 0 0 22px; }
+        .field { margin-bottom: 16px; }
+        .field label {
+            display: block; font-size: 12px; font-weight: 700;
+            color: #334155; margin-bottom: 5px; letter-spacing: 0.1px;
+        }
+        .field label i { color: var(--muted); margin-right: 4px; }
+        .input {
+            width: 100%; border-radius: 11px; border: 1px solid #cbd5e1;
+            background: #f8fafc; color: #0f172a;
+            padding: 11px 13px; font-size: 13px; outline: none;
+            transition: border-color 0.16s, box-shadow 0.16s;
+            font-family: inherit;
+        }
+        .input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.14);
+            background: #fff;
+        }
+        textarea.input { resize: vertical; min-height: 120px; line-height: 1.5; }
+        select.input { cursor: pointer; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .submit-btn {
+            width: 100%; border: 0; border-radius: 12px;
+            padding: 13px 16px; font-size: 14px; font-weight: 700; color: #fff;
+            background: linear-gradient(135deg, #60a5fa, #1d4ed8);
+            cursor: pointer; display: inline-flex; align-items: center;
+            justify-content: center; gap: 8px;
+            box-shadow: 0 12px 22px rgba(37, 99, 235, 0.25);
+            transition: transform 0.16s, filter 0.16s, box-shadow 0.16s;
+            font-family: inherit; margin-top: 4px;
+        }
+        .submit-btn:hover {
+            filter: brightness(1.05); transform: translateY(-1px);
+            box-shadow: 0 16px 28px rgba(37, 99, 235, 0.30);
+        }
+        .submit-btn:disabled { opacity: 0.65; cursor: not-allowed; transform: none; }
+        .success-msg {
+            display: none; margin-top: 14px; border-radius: 12px;
+            background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+            border: 1px solid #6ee7b7; padding: 14px 16px;
+            color: #065f46; font-size: 13px; font-weight: 600;
+            align-items: center; gap: 8px;
+        }
+        .success-msg.show { display: flex; }
+        .err-msg {
+            display: none; margin-top: 14px; border-radius: 12px;
+            background: #fff1f2; border: 1px solid #fecaca;
+            padding: 12px 14px; color: #9f1239; font-size: 13px;
+        }
+        .err-msg.show { display: block; }
+
+        /* ── FOOTER ── */
+        .site-footer {
+            border-top: 1px solid #e2e8f0;
+            background: rgba(255,255,255,0.72);
+            backdrop-filter: blur(8px);
+        }
+        .site-footer .site-inner { padding-top: 10px; padding-bottom: 10px; }
+        .footer-text { font-size: 12px; color: #64748b; }
+        .footer-links { display: inline-flex; gap: 10px; font-size: 12px; }
+        .footer-links a { color: #475569; text-decoration: none; }
+        .footer-links a:hover { text-decoration: underline; }
+
+        /* ─── RESPONSIVE ─── */
+
+        /* Tablet: ≤ 860px */
+        @media (max-width: 860px) {
+            .contact-grid { grid-template-columns: 1fr; }
+            .form-card { order: -1; }
+            .page-hero h1 { font-size: 30px; }
+            .info-cards { grid-template-columns: 1fr 1fr; }
+        }
+
+        /* Large mobile: ≤ 640px */
+        @media (max-width: 640px) {
+            .info-cards { grid-template-columns: 1fr; }
+            .nav-links { gap: 6px; font-size: 12px; }
+            .nav-links a { padding: 5px 8px; }
+            .back-btn span { display: none; }
+            .page-hero h1 { font-size: 26px; }
+            .page-hero p { font-size: 14px; }
+            .page-hero { margin-bottom: 28px; }
+        }
+
+        /* Mobile: ≤ 540px */
+        @media (max-width: 540px) {
+            .site-inner { padding: 8px 12px; gap: 8px; }
+            .nav-links { display: none; }
+            .brand-top-title { display: none; }
+            .page { padding: 20px 12px 40px; }
+            .grid-2 { grid-template-columns: 1fr; }
+            .form-card { padding: 18px 14px; }
+            .page-hero h1 { font-size: 23px; }
+            .site-footer .site-inner { flex-direction: column; gap: 6px; text-align: center; }
+            .footer-links { justify-content: center; }
+        }
+
+        /* Extra small: ≤ 400px */
+        @media (max-width: 400px) {
+            .page-hero h1 { font-size: 20px; }
+            .back-btn { padding: 5px 10px; font-size: 12px; }
+            .info-card { padding: 14px; }
+            .info-icon { width: 38px; height: 38px; font-size: 15px; }
+            .lang { display: none; }
+        }
+
+
+        /* Animation */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .fade-up { animation: fadeUp 0.45s ease both; }
+        .fade-up-d1 { animation-delay: 0.05s; }
+        .fade-up-d2 { animation-delay: 0.10s; }
+        .fade-up-d3 { animation-delay: 0.15s; }
+        .fade-up-d4 { animation-delay: 0.20s; }
+        .fade-up-d5 { animation-delay: 0.25s; }
+    </style>
+</head>
+<body>
+{% set app_title = app_name|default("BioFace") %}
+{% set lang = lang|default("uz") %}
+{% if lang == "ru" %}
+  {% set hero_badge = "Поддержка и контакт" %}
+  {% set hero_title = "Свяжитесь с нами" %}
+  {% set hero_desc = "Остались вопросы? Наша команда всегда готова помочь." %}
+  {% set card_back = "Назад ко входу" %}
+  {% set lbl_email = "Электронная почта" %}
+  {% set lbl_phone = "Телефон" %}
+  {% set lbl_telegram = "Telegram" %}
+  {% set lbl_address = "Адрес" %}
+  {% set desc_email = "Мы ответим в течение рабочего дня" %}
+  {% set desc_phone = "Пн–Пт, 09:00 – 18:00 (Ташкент)" %}
+  {% set desc_telegram = "Быстрые ответы через Telegram" %}
+  {% set desc_address = "г. Ташкент, Узбекистан" %}
+  {% set form_title = "Написать нам" %}
+  {% set form_desc = "Заполните форму, и мы ответим вам в ближайшее время." %}
+  {% set lbl_name = "Имя" %}
+  {% set lbl_org = "Организация" %}
+  {% set lbl_subj = "Тема" %}
+  {% set lbl_msg = "Сообщение" %}
+  {% set lbl_contact_method = "Способ связи" %}
+  {% set ph_name = "Ваше имя" %}
+  {% set ph_org = "Название организации (необязательно)" %}
+  {% set ph_msg = "Опишите вашу проблему или вопрос..." %}
+  {% set btn_send = "Отправить сообщение" %}
+  {% set success_text = "Спасибо! Ваше сообщение отправлено. Мы свяжемся с вами в ближайшее время." %}
+  {% set err_text = "Заполните обязательные поля." %}
+  {% set nav_contact = "Контакт" %}
+  {% set footer_text = "Все права защищены." %}
+  {% set subj_general = "Общий вопрос" %}
+  {% set subj_tech = "Техническая поддержка" %}
+  {% set subj_billing = "Оплата / Лицензия" %}
+  {% set subj_other = "Другое" %}
+  {% set contact_email = "Электронная почта" %}
+  {% set contact_tg = "Telegram" %}
+  {% set contact_phone = "Телефон" %}
+{% else %}
+  {% set hero_badge = "Qo'llab-quvvatlash va aloqa" %}
+  {% set hero_title = "Biz bilan bog'laning" %}
+  {% set hero_desc = "Savollaringiz bormi? Jamoamiz doim yordam berishga tayyor." %}
+  {% set card_back = "Kirishga qaytish" %}
+  {% set lbl_email = "Elektron pochta" %}
+  {% set lbl_phone = "Telefon" %}
+  {% set lbl_telegram = "Telegram" %}
+  {% set lbl_address = "Manzil" %}
+  {% set desc_email = "Ish kunlarida javob beramiz" %}
+  {% set desc_phone = "Du–Ju, 09:00 – 18:00 (Toshkent)" %}
+  {% set desc_telegram = "Telegram orqali tezkor javob" %}
+  {% set desc_address = "Toshkent shahri, O'zbekiston" %}
+  {% set form_title = "Xabar yuboring" %}
+  {% set form_desc = "Formani to'ldiring, tez orada javob beramiz." %}
+  {% set lbl_name = "Ism" %}
+  {% set lbl_org = "Tashkilot" %}
+  {% set lbl_subj = "Mavzu" %}
+  {% set lbl_msg = "Xabar" %}
+  {% set lbl_contact_method = "Bog'lanish usuli" %}
+  {% set ph_name = "Ismingiz" %}
+  {% set ph_org = "Tashkilot nomi (ixtiyoriy)" %}
+  {% set ph_msg = "Muammo yoki savolingizni tasvirlab yozing..." %}
+  {% set btn_send = "Xabar yuborish" %}
+  {% set success_text = "Rahmat! Xabaringiz yuborildi. Tez orada siz bilan bog'lanamiz." %}
+  {% set err_text = "Iltimos, majburiy maydonlarni to'ldiring." %}
+  {% set nav_contact = "Bog'lanish" %}
+  {% set footer_text = "Barcha huquqlar himoyalangan." %}
+  {% set subj_general = "Umumiy savol" %}
+  {% set subj_tech = "Texnik yordam" %}
+  {% set subj_billing = "To'lov / Litsenziya" %}
+  {% set subj_other = "Boshqa" %}
+  {% set contact_email = "Elektron pochta" %}
+  {% set contact_tg = "Telegram" %}
+  {% set contact_phone = "Telefon" %}
+{% endif %}
+
+<div class="app-wrap">
+    <!-- HEADER -->
+    <header class="site-header">
+        <div class="site-inner">
+            <div style="display:flex; align-items:center; gap:14px;">
+                <a href="/login" class="back-btn">
+                    <i class="fa-solid fa-arrow-left"></i> {{ card_back }}
+                </a>
+            </div>
+            <div style="display:flex; align-items:center; gap:14px;">
+                <nav class="nav-links">
+                    <a href="/contact" class="active">
+                        <i class="fa-solid fa-headset"></i> {{ nav_contact }}
+                    </a>
+                </nav>
+                <div class="lang">
+                    <button type="button" class="{% if lang != 'ru' %}active{% endif %}" onclick="setLang('uz')">UZ</button>
+                    <button type="button" class="{% if lang == 'ru' %}active{% endif %}" onclick="setLang('ru')">RU</button>
+                </div>
+                <div class="brand-top">
+                    <div class="brand-top-logo">
+                        {% if logo_url %}
+                        <img src="{{ logo_url }}" alt="{{ app_title }} logo">
+                        {% else %}
+                        <i class="fa-solid fa-eye text-slate-700" style="font-size:22px; color:#334155;"></i>
+                        {% endif %}
+                    </div>
+                    <div class="brand-top-title">{{ app_title }}</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN -->
+    <main class="page">
+        <div class="container">
+            <!-- HERO -->
+            <div class="page-hero fade-up">
+                <div class="hero-badge">
+                    <i class="fa-solid fa-satellite-dish"></i>
+                    {{ hero_badge }}
+                </div>
+                <h1>{{ hero_title }}</h1>
+                <p>{{ hero_desc }}</p>
+            </div>
+
+            <!-- GRID -->
+            <div class="contact-grid">
+                <!-- INFO CARDS -->
+                <div class="info-cards">
+                    <!-- Email -->
+                    <div class="info-card fade-up fade-up-d1">
+                        <div class="info-icon blue">
+                            <i class="fa-solid fa-envelope"></i>
+                        </div>
+                        <div>
+                            <div class="info-label">{{ lbl_email }}</div>
+                            <div class="info-value">
+                                <a href="mailto:bioface.uz@gmail.com">bioface.uz@gmail.com</a>
+                            </div>
+                            <div class="info-desc">{{ desc_email }}</div>
+                        </div>
+                    </div>
+
+                    <!-- Phone -->
+                    <div class="info-card fade-up fade-up-d2">
+                        <div class="info-icon green">
+                            <i class="fa-solid fa-phone"></i>
+                        </div>
+                        <div>
+                            <div class="info-label">{{ lbl_phone }}</div>
+                            <div class="info-value">
+                                <a href="tel:+998933470011">+998 93 347-00-11</a>
+                            </div>
+                            <div class="info-desc">{{ desc_phone }}</div>
+                        </div>
+                    </div>
+
+                    <!-- Telegram -->
+                    <div class="info-card tg-card fade-up fade-up-d3">
+                        <div class="info-icon">
+                            <i class="fa-brands fa-telegram" style="color:#0088cc; font-size:20px;"></i>
+                        </div>
+                        <div>
+                            <div class="info-label">{{ lbl_telegram }}</div>
+                            <div class="info-value">
+                                <a href="https://t.me/bioface_support" target="_blank" rel="noopener">@bioface_support</a>
+                            </div>
+                            <div class="info-desc">{{ desc_telegram }}</div>
+                        </div>
+                    </div>
+
+                    <!-- Address -->
+                    <div class="info-card fade-up fade-up-d4">
+                        <div class="info-icon orange">
+                            <i class="fa-solid fa-location-dot"></i>
+                        </div>
+                        <div>
+                            <div class="info-label">{{ lbl_address }}</div>
+                            <div class="info-value">{{ desc_address }}</div>
+                            <div class="info-desc">
+                                <a href="https://maps.google.com/?q=Tashkent+Uzbekistan" target="_blank" rel="noopener" style="color:#7c3aed; font-weight:600;">
+                                    <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px;"></i>
+                                    Google Maps
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FORM -->
+                <div class="form-card fade-up fade-up-d2">
+                    <h2 class="form-title">
+                        <i class="fa-solid fa-paper-plane" style="color:#2563eb; font-size:18px;"></i>
+                        {{ form_title }}
+                    </h2>
+                    <p class="form-desc">{{ form_desc }}</p>
+
+                    <div class="grid-2">
+                        <div class="field">
+                            <label for="cf-name"><i class="fa-solid fa-user"></i>{{ lbl_name }} <span style="color:#ef4444">*</span></label>
+                            <input id="cf-name" type="text" class="input" placeholder="{{ ph_name }}" autocomplete="name">
+                        </div>
+                        <div class="field">
+                            <label for="cf-org"><i class="fa-solid fa-building"></i>{{ lbl_org }}</label>
+                            <input id="cf-org" type="text" class="input" placeholder="{{ ph_org }}" autocomplete="organization">
+                        </div>
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="field">
+                            <label for="cf-contact"><i class="fa-solid fa-at"></i>Email / Telegram <span style="color:#ef4444">*</span></label>
+                            <input id="cf-contact" type="text" class="input" placeholder="email@domain.com yoki @username" autocomplete="email">
+                        </div>
+                        <div class="field">
+                            <label for="cf-subject"><i class="fa-solid fa-tag"></i>{{ lbl_subj }}</label>
+                            <select id="cf-subject" class="input">
+                                <option value="general">{{ subj_general }}</option>
+                                <option value="tech">{{ subj_tech }}</option>
+                                <option value="billing">{{ subj_billing }}</option>
+                                <option value="other">{{ subj_other }}</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label for="cf-msg"><i class="fa-solid fa-comment-dots"></i>{{ lbl_msg }} <span style="color:#ef4444">*</span></label>
+                        <textarea id="cf-msg" class="input" placeholder="{{ ph_msg }}"></textarea>
+                    </div>
+
+                    <button class="submit-btn" id="cf-submit" onclick="submitContact()">
+                        <i class="fa-solid fa-paper-plane"></i>
+                        {{ btn_send }}
+                    </button>
+
+                    <div class="success-msg" id="cf-success">
+                        <i class="fa-solid fa-circle-check" style="font-size:18px; color:#059669;"></i>
+                        {{ success_text }}
+                    </div>
+                    <div class="err-msg" id="cf-err">{{ err_text }}</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="site-footer">
+        <div class="site-inner">
+            <div class="footer-text">&copy; 2026 {{ app_title }}. {{ footer_text }}</div>
+            <div class="footer-links">
+                <a href="/contact">{{ nav_contact }}</a>
+            </div>
+        </div>
+    </footer>
+</div>
+
+<script>
+    const SUCCESS_TEXT = {{ success_text | tojson }};
+    const ERR_TEXT = {{ err_text | tojson }};
+
+    async function setLang(code) {
+        await fetch(`/api/set_language?lang=${code}`);
+        window.location.reload();
+    }
+
+    async function submitContact() {
+        const name = document.getElementById('cf-name').value.trim();
+        const contact = document.getElementById('cf-contact').value.trim();
+        const msg = document.getElementById('cf-msg').value.trim();
+        const errEl = document.getElementById('cf-err');
+        const successEl = document.getElementById('cf-success');
+
+        errEl.classList.remove('show');
+        successEl.classList.remove('show');
+
+        if (!name || !contact || !msg) {
+            errEl.classList.add('show');
+            return;
+        }
+
+        // Formni tozalash
+        ['cf-name','cf-org','cf-contact','cf-msg'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        successEl.classList.add('show');
+        successEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+</script>
+</body>
+</html>

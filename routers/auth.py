@@ -443,3 +443,48 @@ def pending_approval_page(request: Request):
             **brand,
         },
     )
+
+
+@router.get("/contact")
+def contact_page(request: Request):
+    lang = request.cookies.get("lang", "uz")
+    brand = _get_brand_settings()
+    return templates.TemplateResponse(
+        request=request,
+        name="contact.html",
+        context={
+            "request": request,
+            "lang": lang,
+            **brand,
+        },
+    )
+
+
+@router.get("/about")
+def about_public_page(request: Request):
+    lang = request.cookies.get("lang", "uz")
+    brand = _get_brand_settings()
+    return templates.TemplateResponse(
+        request=request,
+        name="about_public.html",
+        context={
+            "request": request,
+            "lang": lang,
+            **brand,
+        },
+    )
+
+
+@router.get("/map")
+def map_page(request: Request):
+    lang = request.cookies.get("lang", "uz")
+    brand = _get_brand_settings()
+    return templates.TemplateResponse(
+        request=request,
+        name="map.html",
+        context={
+            "request": request,
+            "lang": lang,
+            **brand,
+        },
+    )

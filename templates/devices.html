@@ -1,67 +1,112 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="animate-fade-in space-y-4">
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div class="min-w-0">
-            <p class="text-xs font-semibold uppercase tracking-[0.22em] text-blue-600 dark:text-blue-400">Kamera monitoring</p>
-            <h1 class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">Kameralar ro'yxati</h1>
-            <p id="cam-count" class="mt-1 text-sm text-gray-500 dark:text-gray-400">Kameralar yuklanmoqda...</p>
-        </div>
-        <div class="flex flex-wrap gap-2">
-            <a href="/devices/guide" class="inline-flex items-center gap-2 card-standard px-4 py-2.5 text-sm font-medium text-gray-700  transition hover:bg-gray-50  dark:text-gray-200 dark:hover:bg-gray-700">
-                <i class="fa-solid fa-book-open"></i>
-                Qo'llanma
-            </a>
-            {% if camera_scope_limited %}
-            <span class="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-medium text-amber-700 shadow-sm dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-300">
-                <i class="fa-solid fa-circle-info"></i>
-                Faqat biriktirilgan kameralar
-            </span>
-            {% endif %}
-            {% if camera_manage_allowed %}
-            <a href="/devices/add" class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700">
-                <i class="fa-solid fa-plus"></i>
-                Yangi kamera
-            </a>
-            {% endif %}
-        </div>
-    </div>
+<div class="animate-fade-in space-y-6">
+    <section class="camera-hero">
+        <div class="camera-hero-grid">
+            <div class="min-w-0">
+                <span class="camera-hero-badge">
+                    <i class="fa-duotone fa-camera-cctv"></i>
+                    Camera Fleet
+                </span>
+                <h1 class="camera-hero-title">Kameralar ro'yxati</h1>
+                <p id="cam-count" class="camera-hero-text">Kameralar yuklanmoqda...</p>
+                <div class="camera-hero-actions">
+                    <a href="/devices/guide" class="camera-soft-chip camera-soft-chip-light">
+                        <i class="fa-duotone fa-book-open-cover"></i>
+                        Qo'llanma
+                    </a>
+                    <span class="camera-soft-chip camera-soft-chip-light">
+                        <i class="fa-duotone fa-wave-pulse"></i>
+                        Real-time monitoring
+                    </span>
+                    {% if camera_scope_limited %}
+                    <span class="camera-soft-chip camera-soft-chip-light">
+                        <i class="fa-duotone fa-lock-keyhole"></i>
+                        Faqat biriktirilgan kameralar
+                    </span>
+                    {% endif %}
+                    {% if camera_manage_allowed %}
+                    <a href="/devices/add" class="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/15 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/20">
+                        <i class="fa-duotone fa-plus"></i>
+                        Yangi kamera
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
 
-    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div class="card-standard px-4 py-3  ">
-            <div class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Jami</div>
-            <div id="stat-total" class="mt-2 text-xl font-bold text-gray-900 dark:text-white">0</div>
+            <div class="camera-summary-grid">
+                <article class="camera-summary-card">
+                    <div class="camera-summary-top">
+                        <span class="camera-summary-icon"><i class="fa-duotone fa-camera"></i></span>
+                    </div>
+                    <div class="camera-summary-label">Jami</div>
+                    <div id="stat-total" class="camera-summary-value">0</div>
+                    <div class="camera-summary-meta">Ro'yxatdagi barcha qurilmalar</div>
+                </article>
+                <article class="camera-summary-card">
+                    <div class="camera-summary-top">
+                        <span class="camera-summary-icon"><i class="fa-duotone fa-signal-stream"></i></span>
+                    </div>
+                    <div class="camera-summary-label">Faol</div>
+                    <div id="stat-online" class="camera-summary-value">0</div>
+                    <div class="camera-summary-meta">Ayni vaqtda bog'langan kameralar</div>
+                </article>
+                <article class="camera-summary-card">
+                    <div class="camera-summary-top">
+                        <span class="camera-summary-icon"><i class="fa-duotone fa-router"></i></span>
+                    </div>
+                    <div class="camera-summary-label">Offline</div>
+                    <div id="stat-offline" class="camera-summary-value">0</div>
+                    <div class="camera-summary-meta">E'tibor talab qiladigan kameralar</div>
+                </article>
+                <article class="camera-summary-card">
+                    <div class="camera-summary-top">
+                        <span class="camera-summary-icon"><i class="fa-duotone fa-filter-list"></i></span>
+                    </div>
+                    <div class="camera-summary-label">Filter</div>
+                    <div id="stat-filtered" class="camera-summary-value">0</div>
+                    <div class="camera-summary-meta">Joriy qidiruv natijasi</div>
+                </article>
+            </div>
         </div>
-        <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 shadow-sm dark:border-emerald-900/40 dark:bg-emerald-900/20">
-            <div class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">Faol</div>
-            <div id="stat-online" class="mt-2 text-xl font-bold text-emerald-700 dark:text-emerald-300">0</div>
-        </div>
-        <div class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 shadow-sm dark:border-rose-900/40 dark:bg-rose-900/20">
-            <div class="text-xs font-semibold uppercase tracking-[0.18em] text-rose-700 dark:text-rose-300">Offline</div>
-            <div id="stat-offline" class="mt-2 text-xl font-bold text-rose-700 dark:text-rose-300">0</div>
-        </div>
-        <div class="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 shadow-sm dark:border-blue-900/40 dark:bg-blue-900/20">
-            <div class="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700 dark:text-blue-300">Filter natijasi</div>
-            <div id="stat-filtered" class="mt-2 text-xl font-bold text-blue-700 dark:text-blue-300">0</div>
-        </div>
-    </div>
+    </section>
 
-    <section class="overflow-hidden card-standard  ">
-        {# ─── Filters — wrap qilinadi, scroll yo'q ─── #}
-        <div class="border-b border-gray-100 px-4 py-4 dark:border-gray-800">
-            <div class="flex flex-wrap items-end gap-3">
-                <label class="flex-1 min-w-[180px] block">
+    <section class="camera-panel overflow-hidden">
+        <div class="border-b border-slate-200 p-4 dark:border-slate-800">
+            <div class="camera-panel-header">
+                <div>
+                    <div class="camera-panel-eyebrow">
+                        <i class="fa-duotone fa-sliders-up"></i>
+                        Monitoring paneli
+                    </div>
+                    <h2 class="camera-panel-title">Qidiruv va boshqaruv</h2>
+                    <p class="camera-panel-text">Kameralarni nomi, model, tashkilot va holati bo'yicha tez filtrlash mumkin.</p>
+                </div>
+                <div class="hidden lg:flex items-center gap-2">
+                    <span class="camera-soft-chip">
+                        <i class="fa-duotone fa-grid-2"></i>
+                        Card view
+                    </span>
+                    <span class="camera-soft-chip">
+                        <i class="fa-duotone fa-bolt"></i>
+                        Tez amallar
+                    </span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 gap-3 xl:grid-cols-12">
+                <label class="block xl:col-span-4">
                     <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">Qidiruv</span>
                     <span class="flex overflow-hidden rounded-xl border border-gray-200 bg-gray-50 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                        <span class="flex w-10 shrink-0 items-center justify-center border-r border-gray-200 text-gray-400 dark:border-gray-700">
-                            <i class="fa-solid fa-magnifying-glass"></i>
+                        <span class="flex w-11 shrink-0 items-center justify-center border-r border-gray-200 text-gray-400 dark:border-gray-700">
+                            <i class="fa-duotone fa-magnifying-glass"></i>
                         </span>
                         <input id="filter-search" type="text" placeholder="Nomi, MAC, model..." class="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:text-white">
                     </span>
                 </label>
 
-                <label class="min-w-[140px] block">
+                <label class="block xl:col-span-3">
                     <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">Tashkilot</span>
                     <select id="filter-org" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
                         <option value="">Barchasi</option>
@@ -71,7 +116,7 @@
                     </select>
                 </label>
 
-                <label class="min-w-[120px] block">
+                <label class="block xl:col-span-2">
                     <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">Holat</span>
                     <select id="filter-status" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
                         <option value="">Barchasi</option>
@@ -80,7 +125,7 @@
                     </select>
                 </label>
 
-                <label class="min-w-[100px] block">
+                <label class="block xl:col-span-1">
                     <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">Sahifa</span>
                     <select id="filter-page-size" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
                         <option value="25">25 ta</option>
@@ -89,49 +134,43 @@
                     </select>
                 </label>
 
-                <div class="flex items-end gap-2">
-                    <div>
-                        <span class="mb-1 block text-xs text-transparent select-none">_</span>
-                        <button id="filters-apply" type="button" class="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 dark:border-gray-700 dark:bg-gray-800 dark:text-blue-300 dark:hover:bg-blue-900/20">
-                            <i class="fa-solid fa-check"></i>
-                            Qo'llash
-                        </button>
-                    </div>
-                    <div>
-                        <span class="mb-1 block text-xs text-transparent select-none">_</span>
-                        <button id="filters-reset" type="button" class="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
-                            <i class="fa-solid fa-eraser"></i>
-                            Tozalash
-                        </button>
-                    </div>
+                <div class="flex items-end gap-2 xl:col-span-2">
+                    <button id="filters-apply" type="button" class="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-300 dark:hover:bg-blue-900/30">
+                        <i class="fa-duotone fa-check"></i>
+                        Qo'llash
+                    </button>
+                    <button id="filters-reset" type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
+                        <i class="fa-duotone fa-rotate-left"></i>
+                        Tozalash
+                    </button>
                 </div>
             </div>
         </div>
 
         {% if camera_scope_limited %}
-        <div class="border-b border-amber-100 bg-amber-50/80 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/10 dark:text-amber-200">
+        <div class="camera-readonly-banner border-b px-4 py-3 text-sm dark:border-amber-900/40">
             Kamera boshqaruvi asosiy administrator uchun ochiq. Siz bu yerda faqat o'zingizga biriktirilgan tashkilot kameralarini ko'rasiz.
         </div>
         {% endif %}
 
-        <div id="cam-cards" class="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-            <div class="rounded-[24px] border border-gray-200 bg-gradient-to-br from-white to-gray-50 p-5 text-center shadow-sm dark:border-gray-800 dark:from-gray-900 dark:to-gray-950">
-                <i  class="fa-solid fa-circle-notch mx-auto mb-3 animate-spin text-blue-500"></i>
+        <div id="cam-cards" class="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            <div class="camera-panel p-6 text-center sm:col-span-2 xl:col-span-3 2xl:col-span-4">
+                <i class="fa-duotone fa-loader mx-auto mb-3 animate-spin text-2xl text-blue-500"></i>
                 <p class="text-sm text-gray-500 dark:text-gray-400">Kameralar yuklanmoqda...</p>
             </div>
         </div>
 
-        <div class="flex flex-col gap-3 border-t border-gray-100 px-4 py-3 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex flex-col gap-3 border-t border-gray-200 px-4 py-3 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-between">
             <p id="pagination-summary" class="text-sm text-gray-500 dark:text-gray-400">0 ta natija</p>
             <div class="flex flex-wrap items-center gap-2">
                 <button id="page-prev" type="button" class="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
-                    <i class="fa-solid fa-chevron-left"></i>
+                    <i class="fa-duotone fa-chevron-left"></i>
                     Oldingi
                 </button>
                 <div id="page-numbers" class="flex flex-wrap items-center gap-2"></div>
                 <button id="page-next" type="button" class="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
                     Keyingi
-                    <i class="fa-solid fa-chevron-right"></i>
+                    <i class="fa-duotone fa-chevron-right"></i>
                 </button>
             </div>
         </div>

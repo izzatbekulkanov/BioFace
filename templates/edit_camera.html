@@ -1,36 +1,108 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="animate-fade-in w-full space-y-6">
+    <section class="camera-hero">
+        <div class="camera-hero-grid">
+            <div class="min-w-0">
+                <div class="flex flex-wrap items-center gap-3">
+                    <a href="/devices" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/15 text-white transition hover:bg-white/20">
+                        <i class="fa-duotone fa-arrow-left"></i>
+                    </a>
+                    <span class="camera-hero-badge">
+                        <i class="fa-duotone fa-sliders-up"></i>
+                        Camera Configuration
+                    </span>
+                </div>
+                <h1 id="cam-page-title" class="camera-hero-title">Kamerani tahrirlash</h1>
+                <p class="camera-hero-text" id="cam-subtitle">Yuklanmoqda...</p>
+                <div class="camera-hero-actions">
+                    <span class="camera-soft-chip camera-soft-chip-light">
+                        <i class="fa-duotone fa-building"></i>
+                        Tashkilot biriktirish
+                    </span>
+                    <span class="camera-soft-chip camera-soft-chip-light">
+                        <i class="fa-duotone fa-link"></i>
+                        ISUP + HTTP sozlamalari
+                    </span>
+                    <span class="camera-soft-chip camera-soft-chip-light">
+                        <i class="fa-duotone fa-shield-check"></i>
+                        Metadata nazorati
+                    </span>
+                </div>
+            </div>
 
-    {# ── Header ── #}
-    <div class="flex items-center gap-3 mb-6">
-        <a href="/devices" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition">
-            <i class="fa-solid fa-arrow-left"></i>
-        </a>
-        <div>
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Kamerani Tahrirlash</h1>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5" id="cam-subtitle">Yuklanmoqda...</p>
+            <div class="camera-summary-grid">
+                <article class="camera-summary-card">
+                    <div class="camera-summary-top">
+                        <span class="camera-summary-icon"><i class="fa-duotone fa-camera-cctv"></i></span>
+                    </div>
+                    <div class="camera-summary-label">Profil</div>
+                    <div class="camera-summary-value">Core</div>
+                    <div class="camera-summary-meta">Nomi, model, tashkilot va identifikatorlar</div>
+                </article>
+                <article class="camera-summary-card">
+                    <div class="camera-summary-top">
+                        <span class="camera-summary-icon"><i class="fa-duotone fa-tower-broadcast"></i></span>
+                    </div>
+                    <div class="camera-summary-label">ISUP</div>
+                    <div class="camera-summary-value">Secure</div>
+                    <div class="camera-summary-meta">Device ID va encryption key boshqaruvi</div>
+                </article>
+                <article class="camera-summary-card">
+                    <div class="camera-summary-top">
+                        <span class="camera-summary-icon"><i class="fa-duotone fa-key"></i></span>
+                    </div>
+                    <div class="camera-summary-label">HTTP</div>
+                    <div class="camera-summary-value">Auth</div>
+                    <div class="camera-summary-meta">Login, parol va xotira limiti</div>
+                </article>
+                <article class="camera-summary-card">
+                    <div class="camera-summary-top">
+                        <span class="camera-summary-icon"><i class="fa-duotone fa-database"></i></span>
+                    </div>
+                    <div class="camera-summary-label">Metadata</div>
+                    <div class="camera-summary-value">Auto</div>
+                    <div class="camera-summary-meta">Sync orqali yangilanadigan qiymatlar</div>
+                </article>
+            </div>
         </div>
-    </div>
+    </section>
 
-    <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm p-6 md:p-8 space-y-5">
+    <input type="hidden" id="cam-id">
 
-        <input type="hidden" id="cam-id">
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <section class="camera-panel p-5 xl:col-span-2">
+            <div class="camera-panel-header">
+                <div>
+                    <div class="camera-panel-eyebrow">
+                        <i class="fa-duotone fa-circle-nodes"></i>
+                        Asosiy Ma'lumotlar
+                    </div>
+                    <h2 class="camera-panel-title">Kamera profili</h2>
+                    <p class="camera-panel-text">Kamera nomi, joylashuvi, modeli va identifikatsiya ma'lumotlarini shu yerda tahrirlaysiz.</p>
+                </div>
+            </div>
 
-        {# ── Section: Asosiy ma'lumotlar ── #}
-        <div>
-            <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Asosiy Ma'lumotlar</h3>
             <div class="grid grid-cols-1 gap-4 xl:grid-cols-12">
-                <div class="xl:col-span-4">
-                    <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">Kamera Nomi <span class="text-red-500">*</span></label>
+                <div class="camera-field xl:col-span-4">
+                    <label class="camera-field-label text-sm">
+                        <span class="camera-field-icon"><i class="fa-duotone fa-tag"></i></span>
+                        Kamera Nomi <span class="text-red-500">*</span>
+                    </label>
                     <input id="f-name" type="text" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition">
                 </div>
-                <div class="xl:col-span-4">
-                    <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">Joylashuv</label>
+                <div class="camera-field xl:col-span-4">
+                    <label class="camera-field-label text-sm">
+                        <span class="camera-field-icon"><i class="fa-duotone fa-location-dot"></i></span>
+                        Joylashuv
+                    </label>
                     <input id="f-location" type="text" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition">
                 </div>
-                <div class="xl:col-span-4">
-                    <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">Model</label>
+                <div class="camera-field xl:col-span-4">
+                    <label class="camera-field-label text-sm">
+                        <span class="camera-field-icon"><i class="fa-duotone fa-microchip-ai"></i></span>
+                        Model
+                    </label>
                     <input id="f-model" list="camera-model-suggestions" type="text" placeholder="DS-K1T343, DS-K1T671TM..." class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition">
                     <datalist id="camera-model-suggestions">
                         <option value="DS-K1T341CMF">
@@ -43,13 +115,16 @@
                         <option value="DS-K1T680DFW">
                     </datalist>
                     <div class="mt-2 flex flex-wrap gap-2">
-                        <button type="button" onclick="setModel('DS-K1T343MFWX')" class="px-2.5 py-1 text-xs rounded-full border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 dark:border-blue-800 dark:text-blue-300 dark:bg-blue-900/20">DS-K1T343MFWX</button>
-                        <button type="button" onclick="setModel('DS-K1T341CMF')" class="px-2.5 py-1 text-xs rounded-full border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 dark:border-blue-800 dark:text-blue-300 dark:bg-blue-900/20">DS-K1T341CMF</button>
-                        <button type="button" onclick="setModel('DS-K1T671TM-3XF')" class="px-2.5 py-1 text-xs rounded-full border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 dark:border-blue-800 dark:text-blue-300 dark:bg-blue-900/20">DS-K1T671TM-3XF</button>
+                        <button type="button" onclick="setModel('DS-K1T343MFWX')" class="camera-soft-chip"><i class="fa-duotone fa-bolt"></i>DS-K1T343MFWX</button>
+                        <button type="button" onclick="setModel('DS-K1T341CMF')" class="camera-soft-chip"><i class="fa-duotone fa-bolt"></i>DS-K1T341CMF</button>
+                        <button type="button" onclick="setModel('DS-K1T671TM-3XF')" class="camera-soft-chip"><i class="fa-duotone fa-bolt"></i>DS-K1T671TM-3XF</button>
                     </div>
                 </div>
-                <div class="xl:col-span-4">
-                    <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">Tashkilot</label>
+                <div class="camera-field xl:col-span-4">
+                    <label class="camera-field-label text-sm">
+                        <span class="camera-field-icon"><i class="fa-duotone fa-building"></i></span>
+                        Tashkilot
+                    </label>
                     <select id="f-org" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition">
                         <option value="">— Tanlanmagan —</option>
                         {% for org in organizations %}
@@ -57,112 +132,195 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="xl:col-span-4">
-                    <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">MAC Manzil</label>
+                <div class="camera-field xl:col-span-4">
+                    <label class="camera-field-label text-sm">
+                        <span class="camera-field-icon"><i class="fa-duotone fa-network-wired"></i></span>
+                        MAC Manzil
+                    </label>
                     <input id="f-mac" type="text" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-mono rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition uppercase">
                 </div>
-                <div class="xl:col-span-4">
-                    <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">Seriya Raqami</label>
+                <div class="camera-field xl:col-span-4">
+                    <label class="camera-field-label text-sm">
+                        <span class="camera-field-icon"><i class="fa-duotone fa-barcode-read"></i></span>
+                        Seriya Raqami
+                    </label>
                     <input id="f-serial" type="text" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-mono rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition">
                 </div>
             </div>
-        </div>
+        </section>
 
-        <hr class="border-gray-100 dark:border-gray-800">
-
-        {# ── Section: ISUP Ulanish ── #}
-        <div>
-            <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1">ISUP Ulanish Sozlamalari</h3>
-            <p class="text-xs text-gray-400 mb-4">Kamera ISUP serveriga ulanganda ishlatiladigan maxfiy sozlamalar</p>
-            <div class="grid grid-cols-1 gap-4 xl:grid-cols-12">
-                <div class="xl:col-span-6">
-                    <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">
-                        ISUP Device ID
-                        <span class="text-xs text-gray-400 font-normal ml-1">(masalan: CAM1111)</span>
-                    </label>
-                    <input id="f-isup-device-id" type="text"
-                        class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-mono rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition"
-                        placeholder="Bo'sh qoldirilsa ISUP orqali tekshirilmaydi">
-                    <p class="text-xs text-gray-400 mt-1">ISUP online/offline uchun kameradagi Device ID bilan bir xil bo'lishi kerak.</p>
-                </div>
-                <div class="xl:col-span-6">
-                    <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">
-                        Encryption Key
-                        <span class="text-xs text-gray-400 font-normal ml-1">(ISUP Parol)</span>
-                    </label>
-                    <input id="f-isup-password" type="text"
-                        class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-mono rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition"
-                        placeholder="facex2024">
-                    <p class="text-xs text-gray-400 mt-1">Kameradagi ISUP parol bilan mos bo'lishi kerak.</p>
+        <aside class="camera-panel p-5">
+            <div class="camera-panel-header tight">
+                <div>
+                    <div class="camera-panel-eyebrow">
+                        <i class="fa-duotone fa-memo-circle-check"></i>
+                        Eslatma
+                    </div>
+                    <h2 class="camera-panel-title">Saqlashdan oldin</h2>
                 </div>
             </div>
-        </div>
+            <div class="camera-info-list text-sm">
+                <div class="camera-info-row">
+                    <span class="camera-info-key"><i class="fa-duotone fa-link"></i> Device ID</span>
+                    <span class="camera-info-value">Kameradagi ID bilan bir xil bo'lsin</span>
+                </div>
+                <div class="camera-info-row">
+                    <span class="camera-info-key"><i class="fa-duotone fa-key"></i> Parol</span>
+                    <span class="camera-info-value">Bo'sh qoldirilsa eski HTTP parol saqlanadi</span>
+                </div>
+                <div class="camera-info-row">
+                    <span class="camera-info-key"><i class="fa-duotone fa-rotate"></i> Metadata</span>
+                    <span class="camera-info-value">Read-only maydonlar sync orqali yangilanadi</span>
+                </div>
+            </div>
+        </aside>
+    </div>
 
-        <hr class="border-gray-100 dark:border-gray-800">
-
-        {# ── Section: HTTP Auth ── #}
-        <div>
-            <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">HTTP Autentifikatsiya</h3>
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <section class="camera-panel p-5">
+            <div class="camera-panel-header">
+                <div>
+                    <div class="camera-panel-eyebrow">
+                        <i class="fa-duotone fa-tower-broadcast"></i>
+                        ISUP Ulanish Sozlamalari
+                    </div>
+                    <h2 class="camera-panel-title">ISUP konfiguratsiyasi</h2>
+                    <p class="camera-panel-text">Kamera ISUP serveriga ulanganda ishlatiladigan maxfiy parametrlar.</p>
+                </div>
+            </div>
             <div class="grid grid-cols-1 gap-4 xl:grid-cols-12">
-                <div class="xl:col-span-4">
-                    <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">Login</label>
+                <div class="camera-field xl:col-span-6">
+                    <label class="camera-field-label text-sm">
+                        <span class="camera-field-icon"><i class="fa-duotone fa-id-badge"></i></span>
+                        ISUP Device ID
+                    </label>
+                    <input id="f-isup-device-id" type="text" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-mono rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition" placeholder="Masalan: CAM1111">
+                    <p class="camera-field-hint text-xs">ISUP online/offline tekshiruv uchun kameradagi Device ID bilan mos bo'lishi kerak.</p>
+                </div>
+                <div class="camera-field xl:col-span-6">
+                    <label class="camera-field-label text-sm">
+                        <span class="camera-field-icon"><i class="fa-duotone fa-key"></i></span>
+                        Encryption Key
+                    </label>
+                    <input id="f-isup-password" type="text" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-mono rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition" placeholder="facex2024">
+                    <p class="camera-field-hint text-xs">Kameradagi ISUP parol bilan mos bo'lishi kerak.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="camera-panel p-5">
+            <div class="camera-panel-header">
+                <div>
+                    <div class="camera-panel-eyebrow">
+                        <i class="fa-duotone fa-lock"></i>
+                        HTTP Autentifikatsiya
+                    </div>
+                    <h2 class="camera-panel-title">HTTP kirish parametrlari</h2>
+                    <p class="camera-panel-text">API orqali bevosita ulanish va face sig'imi shu blokda boshqariladi.</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 gap-4 xl:grid-cols-12">
+                <div class="camera-field xl:col-span-4">
+                    <label class="camera-field-label text-sm">
+                        <span class="camera-field-icon"><i class="fa-duotone fa-user"></i></span>
+                        Login
+                    </label>
                     <input id="f-username" type="text" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition">
                 </div>
-                <div class="xl:col-span-4">
-                    <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">Yangi Parol <span class="text-gray-400 text-xs font-normal">(bo'sh — o'zgarmaydi)</span></label>
+                <div class="camera-field xl:col-span-4">
+                    <label class="camera-field-label text-sm">
+                        <span class="camera-field-icon"><i class="fa-duotone fa-key-skeleton"></i></span>
+                        Yangi Parol
+                    </label>
                     <input id="f-password" type="password" placeholder="••••••••" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition">
+                    <p class="camera-field-hint text-xs">Bo'sh qoldirilsa mavjud HTTP parol o'zgarmaydi.</p>
                 </div>
-                <div class="xl:col-span-4">
-                    <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">Maks. xotira (yuz soni)</label>
+                <div class="camera-field xl:col-span-4">
+                    <label class="camera-field-label text-sm">
+                        <span class="camera-field-icon"><i class="fa-duotone fa-database"></i></span>
+                        Maks. xotira
+                    </label>
                     <input id="f-max-memory" type="number" min="0" max="10000" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition">
+                    <p class="camera-field-hint text-xs">Yuzlar uchun maksimal xotira limiti.</p>
                 </div>
             </div>
-        </div>
+        </section>
+    </div>
 
-        <hr class="border-gray-100 dark:border-gray-800">
-
-        <div>
-            <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1">Avtomatik Metadata</h3>
-            <p class="text-xs text-gray-400 mb-4">ISUP va kamera sync orqali yangilanadigan ma'lumotlar</p>
-            <div class="grid grid-cols-1 gap-4 xl:grid-cols-12">
-                <div class="xl:col-span-4">
-                    <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">Firmware</label>
-                    <input id="f-firmware" type="text" readonly class="w-full bg-gray-100 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-sm rounded-xl px-4 py-2.5 outline-none">
+    <section class="camera-panel p-5">
+        <div class="camera-panel-header">
+            <div>
+                <div class="camera-panel-eyebrow">
+                    <i class="fa-duotone fa-database"></i>
+                    Avtomatik Metadata
                 </div>
-                <div class="xl:col-span-4">
-                    <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">Tashqi IP</label>
-                    <input id="f-external-ip" type="text" readonly class="w-full bg-gray-100 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-sm rounded-xl px-4 py-2.5 outline-none">
-                </div>
-                <div class="xl:col-span-4">
-                    <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">Protocol Versiyasi</label>
-                    <input id="f-protocol-version" type="text" readonly class="w-full bg-gray-100 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-sm rounded-xl px-4 py-2.5 outline-none">
-                </div>
-                <div class="xl:col-span-4">
-                    <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">Webhook Holati</label>
-                    <input id="f-webhook-enabled" type="text" readonly class="w-full bg-gray-100 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-sm rounded-xl px-4 py-2.5 outline-none">
-                </div>
-                <div class="xl:col-span-5">
-                    <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">Webhook URL</label>
-                    <input id="f-webhook-url" type="text" readonly class="w-full bg-gray-100 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-sm rounded-xl px-4 py-2.5 outline-none">
-                </div>
-                <div class="xl:col-span-3">
-                    <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">Rasm Yuborish</label>
-                    <input id="f-webhook-picture" type="text" readonly class="w-full bg-gray-100 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-sm rounded-xl px-4 py-2.5 outline-none">
-                </div>
+                <h2 class="camera-panel-title">Sync orqali yangilanadigan ma'lumotlar</h2>
+                <p class="camera-panel-text">Bu maydonlar ISUP va kamera sync natijasida avtomatik yangilanadi.</p>
             </div>
         </div>
+        <div class="grid grid-cols-1 gap-4 xl:grid-cols-12">
+            <div class="camera-field xl:col-span-4">
+                <label class="camera-field-label text-sm">
+                    <span class="camera-field-icon"><i class="fa-duotone fa-floppy-disk-circle-arrow-right"></i></span>
+                    Firmware
+                </label>
+                <input id="f-firmware" type="text" readonly class="w-full bg-gray-100 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-sm rounded-xl px-4 py-2.5 outline-none">
+            </div>
+            <div class="camera-field xl:col-span-4">
+                <label class="camera-field-label text-sm">
+                    <span class="camera-field-icon"><i class="fa-duotone fa-globe-pointer"></i></span>
+                    Tashqi IP
+                </label>
+                <input id="f-external-ip" type="text" readonly class="w-full bg-gray-100 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-sm rounded-xl px-4 py-2.5 outline-none">
+            </div>
+            <div class="camera-field xl:col-span-4">
+                <label class="camera-field-label text-sm">
+                    <span class="camera-field-icon"><i class="fa-duotone fa-code-branch"></i></span>
+                    Protocol Versiyasi
+                </label>
+                <input id="f-protocol-version" type="text" readonly class="w-full bg-gray-100 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-sm rounded-xl px-4 py-2.5 outline-none">
+            </div>
+            <div class="camera-field xl:col-span-4">
+                <label class="camera-field-label text-sm">
+                    <span class="camera-field-icon"><i class="fa-duotone fa-bell-on"></i></span>
+                    Webhook Holati
+                </label>
+                <input id="f-webhook-enabled" type="text" readonly class="w-full bg-gray-100 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-sm rounded-xl px-4 py-2.5 outline-none">
+            </div>
+            <div class="camera-field xl:col-span-5">
+                <label class="camera-field-label text-sm">
+                    <span class="camera-field-icon"><i class="fa-duotone fa-link-horizontal"></i></span>
+                    Webhook URL
+                </label>
+                <input id="f-webhook-url" type="text" readonly class="w-full bg-gray-100 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-sm rounded-xl px-4 py-2.5 outline-none">
+            </div>
+            <div class="camera-field xl:col-span-3">
+                <label class="camera-field-label text-sm">
+                    <span class="camera-field-icon"><i class="fa-duotone fa-image"></i></span>
+                    Rasm Yuborish
+                </label>
+                <input id="f-webhook-picture" type="text" readonly class="w-full bg-gray-100 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-sm rounded-xl px-4 py-2.5 outline-none">
+            </div>
+        </div>
+    </section>
 
-        {# ── Error block ── #}
-        <div id="form-error" class="hidden text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30 px-4 py-3 rounded-xl"></div>
-        <div id="form-success" class="hidden text-sm text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-900/30 px-4 py-3 rounded-xl"></div>
+    <div id="form-error" class="hidden text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30 px-4 py-3 rounded-xl"></div>
+    <div id="form-success" class="hidden text-sm text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-900/30 px-4 py-3 rounded-xl"></div>
 
-        {# ── Buttons ── #}
-        <div class="flex items-center gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
-            <a href="/devices" class="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition">Bekor qilish</a>
-            <button onclick="saveCamera()" class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition shadow">
-                <i id="save-spinner" class="fa-solid fa-circle-notch hidden animate-spin"></i>
-                Saqlash
-            </button>
+    <div class="camera-panel p-4">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div class="text-sm text-gray-500 dark:text-gray-400">Saqlangandan keyin sahifa avtomatik ravishda kamera ro'yxatiga qaytadi.</div>
+            <div class="flex items-center gap-3">
+                <a href="/devices" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                    <i class="fa-duotone fa-xmark"></i>
+                    Bekor qilish
+                </a>
+                <button onclick="saveCamera()" class="inline-flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition shadow">
+                    <i id="save-spinner" class="fa-duotone fa-loader hidden animate-spin"></i>
+                    <i class="fa-duotone fa-floppy-disk"></i>
+                    Saqlash
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -184,6 +342,7 @@ async function loadCamera() {
         if (cam.mac_address) subtitleParts.push(cam.mac_address);
         if (cam.serial_number) subtitleParts.push('S/N: ' + cam.serial_number);
         subtitleParts.push('ID: ' + cam.id);
+        document.getElementById('cam-page-title').textContent = cam.name || 'Kamerani tahrirlash';
         document.getElementById('cam-subtitle').textContent = subtitleParts.join(' · ');
         document.getElementById('f-name').value = cam.name || '';
         document.getElementById('f-location').value = cam.location || '';

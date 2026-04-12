@@ -4149,15 +4149,65 @@ class HikvisionSdkRuntime:
             "webhook_path": webhook_path,
         }
 
+    @staticmethod
+    def _find_so(sdk_dir: Path, base: str) -> str:
+        """Linux: .so faylni avtomat topadi (versiyali yoki versiyasiz)."""
+        # Aniq versiyali fayl birinchi izlanadi: eng keng tarqalgan versiyalar
+        candidates = [
+            sdk_dir / f"{base}.so.1.1",    # OpenSSL 1.1.x
+            sdk_dir / f"{base}.so.1.0.0",  # OpenSSL 1.0.0 (mavjud SDK versiyasi)
+            sdk_dir / f"{base}.so.1.0",    # OpenSSL 1.0.x boshqa
+            sdk_dir / f"{base}.so.1",      # generic soname
+            sdk_dir / f"{base}.so",        # versiyasiz
+        ]
+        for candidate in candidates:
+            if candidate.exists():
+                return str(candidate)
+        # Topilmasa — avtomat glob izlash (versiya raqamiga qarab sort)
+        import glob
+        pattern = str(sdk_dir / f"{base}.so*")
+        matches = sorted(glob.glob(pattern), reverse=True)  # yuqori versiya birinchi
+        if matches:
+            return matches[0]
+        # So'nggi chora: faqat nomni qaytarish, CDLL o'zi hal qilsin
+        return str(sdk_dir / f"{base}.so")
+
     def _load_dlls(self) -> None:
         if not self.sdk_dir.exists():
             raise FileNotFoundError(f"SDK papkasi topilmadi: {self.sdk_dir}")
 
-        if hasattr(os, "add_dll_directory"):
-            self._dll_dirs.append(os.add_dll_directory(str(self.sdk_dir)))
-            hcaap = self.sdk_dir / "HCAapSDKCom"
-            if hcaap.exists():
-                self._dll_dirs.append(os.add_dll_directory(str(hcaap)))
+        if sys.platform == "win32":
+            # Windows: dll search path ro'yxatiga qo'shish
+            if hasattr(os, "add_dll_directory"):
+                self._dll_dirs.append(os.add_dll_directory(str(self.sdk_dir)))
+                hcaap = self.sdk_dir / "HCAapSDKCom"
+                if hcaap.exists():
+                    self._dll_dirs.append(os.add_dll_directory(str(hcaap)))
+        else:
+            # Linux: LD_LIBRARY_PATH ga sdk_dir ni dinamik ravishda qo'shamiz
+            # Bu ctypes.CDLL ning transitive dependency larni topishi uchun zarur.
+            sdk_dir_str = str(self.sdk_dir)
+            existing_ld = os.environ.get("LD_LIBRARY_PATH", "")
+            dirs_to_add = [sdk_dir_str]
+            # Ichki subpapkalar (HCAapSDKCom, lib64, va hokazo)
+            for sub in ["HCAapSDKCom", "lib", "lib64"]:
+                subpath = self.sdk_dir / sub
+                if subpath.exists():
+                    dirs_to_add.append(str(subpath))
+            new_ld = ":".join(dirs_to_add)
+            if existing_ld:
+                new_ld = new_ld + ":" + existing_ld
+            os.environ["LD_LIBRARY_PATH"] = new_ld
+            # ctypes.cdll.LoadLibrary da RTLD_GLOBAL flag zarur bo'lishi mumkin
+            # Buni oldindan OpenSSL va boshqa transitive dep larini yuklab qo'yamiz
+            import ctypes as _ctypes
+            for preload_base in ["libcrypto", "libssl"]:
+                preload_path = self._find_so(self.sdk_dir, preload_base)
+                try:
+                    _ctypes.CDLL(preload_path, mode=_ctypes.RTLD_GLOBAL)
+                    print(f"[ISUP SDK] Preloaded (RTLD_GLOBAL): {preload_path}")
+                except Exception as preload_err:
+                    print(f"[ISUP SDK] WARNING: preload {preload_path} failed: {preload_err}")
 
         os.chdir(self.sdk_dir)
 
@@ -4166,9 +4216,15 @@ class HikvisionSdkRuntime:
             self._alarm = ctypes.WinDLL(str(self.sdk_dir / "HCISUPAlarm.dll"))
             self._ss = ctypes.WinDLL(str(self.sdk_dir / "HCISUPSS.dll"))
         else:
-            self._cms = ctypes.CDLL(str(self.sdk_dir / "libHCISUPCMS.so"))
-            self._alarm = ctypes.CDLL(str(self.sdk_dir / "libHCISUPAlarm.so"))
-            self._ss = ctypes.CDLL(str(self.sdk_dir / "libHCISUPSS.so"))
+            cms_path = self._find_so(self.sdk_dir, "libHCISUPCMS")
+            alarm_path = self._find_so(self.sdk_dir, "libHCISUPAlarm")
+            ss_path = self._find_so(self.sdk_dir, "libHCISUPSS")
+            print(f"[ISUP SDK] Loading Linux libs: CMS={cms_path}, Alarm={alarm_path}, SS={ss_path}")
+            # RTLD_GLOBAL: uch kutubxona bir-birining symbollarini ko'rishi uchun zarur.
+            # RTLD_LOCAL (default) da symbol resolution xatosi bo'lishi mumkin.
+            self._cms = ctypes.CDLL(cms_path, mode=ctypes.RTLD_GLOBAL)
+            self._alarm = ctypes.CDLL(alarm_path, mode=ctypes.RTLD_GLOBAL)
+            self._ss = ctypes.CDLL(ss_path, mode=ctypes.RTLD_GLOBAL)
 
         self._configure_signatures()
         self._configure_sdk_init_cfg()
@@ -4221,7 +4277,11 @@ class HikvisionSdkRuntime:
         self._ss.NET_ESS_StopListen.restype = BOOL
 
     def _ansi_buffer(self, text: str) -> ctypes.Array:
-        encoded = text.encode("mbcs", errors="ignore")
+        # Windows: ANSI (mbcs), Linux/Mac: UTF-8
+        if sys.platform == "win32":
+            encoded = text.encode("mbcs", errors="ignore")
+        else:
+            encoded = text.encode("utf-8", errors="ignore")
         return ctypes.create_string_buffer(encoded + b"\x00")
 
     def _configure_sdk_init_cfg(self) -> None:
@@ -4229,8 +4289,10 @@ class HikvisionSdkRuntime:
             libeay_path = str((self.sdk_dir / "libeay32.dll").resolve())
             ssleay_path = str((self.sdk_dir / "ssleay32.dll").resolve())
         else:
-            libeay_path = str((self.sdk_dir / "libcrypto.so").resolve())
-            ssleay_path = str((self.sdk_dir / "libssl.so").resolve())
+            # Linux: avtomat versiyali .so topamiz (1.1, 1, yoki versiyasiz)
+            libeay_path = self._find_so(self.sdk_dir, "libcrypto")
+            ssleay_path = self._find_so(self.sdk_dir, "libssl")
+            print(f"[ISUP SDK] OpenSSL paths: crypto={libeay_path}, ssl={ssleay_path}")
 
         cms_libeay = self._ansi_buffer(libeay_path)
         cms_ssleay = self._ansi_buffer(ssleay_path)
@@ -4241,7 +4303,11 @@ class HikvisionSdkRuntime:
 
         ss_sdk_path = NET_EHOME_SS_LOCAL_SDK_PATH()
         sdk_path = str(self.sdk_dir.resolve()) + os.sep
-        sdk_path_bytes = sdk_path.encode("mbcs", errors="ignore")[: MAX_PATH_LEN - 1]
+        # Linux va Windows: encoding farqli
+        if sys.platform == "win32":
+            sdk_path_bytes = sdk_path.encode("mbcs", errors="ignore")[: MAX_PATH_LEN - 1]
+        else:
+            sdk_path_bytes = sdk_path.encode("utf-8", errors="ignore")[: MAX_PATH_LEN - 1]
         ss_sdk_path.sPath = sdk_path_bytes + b"\x00"
 
         self._init_cfg_refs.extend(
@@ -5759,7 +5825,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("redis_port", nargs="?", type=int, default=6379)
     parser.add_argument("alarm_port", nargs="?", type=int, default=7661)
     parser.add_argument("picture_port", nargs="?", type=int, default=7662)
-    parser.add_argument("--sdk-dir", default=str(Path(__file__).resolve().parent / "hikvision_sdk"))
+    # Platform-ga qarab: Windows -> hikvision_sdk/, Linux -> hikvision_sdk_linux/
+    # Agar hikvision_sdk_linux/ papkasi mavjud bo'lsa Linux uchun undan foydalaniladi.
+    _script_dir = Path(__file__).resolve().parent
+    if sys.platform != "win32":
+        _linux_sdk = _script_dir / "hikvision_sdk_linux"
+        _default_sdk = str(_linux_sdk) if _linux_sdk.exists() else str(_script_dir / "hikvision_sdk")
+    else:
+        _default_sdk = str(_script_dir / "hikvision_sdk")
+    parser.add_argument("--sdk-dir", default=_default_sdk)
     parser.add_argument("--public-host", default=resolve_public_host_from_env())
     parser.add_argument("--public-web-base-url", default=resolve_public_web_base_url_from_env())
     parser.add_argument("--camera-event-push-base-url", default=resolve_camera_event_push_base_url_from_env())

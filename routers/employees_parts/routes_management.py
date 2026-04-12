@@ -280,10 +280,23 @@ def _employee_list_base_query(request: Request, db: Session):
     return db.query(Employee).filter(Employee.organization_id.in_(allowed_org_ids)), allowed_org_ids
 
 
+def _apply_employee_view_mode_scope(query, view_mode: Optional[str]):
+    normalized_employee_type = func.lower(func.trim(func.coalesce(Employee.employee_type, "")))
+    raw_view_mode = str(view_mode or "").strip().lower()
+    if not raw_view_mode or raw_view_mode == "all":
+        return query
+    if raw_view_mode == "staff":
+        return query.filter(normalized_employee_type.in_(["hodim", "oqituvchi"]))
+    if raw_view_mode == "students":
+        return query.filter(normalized_employee_type.in_(["", "oquvchi"]))
+    raise HTTPException(status_code=422, detail="Ko'rinish turi noto'g'ri")
+
+
 def _apply_employee_list_filters(
     query,
     *,
     search: Optional[str] = None,
+    view_mode: Optional[str] = None,
     organization_id: Optional[str] = None,
     department: Optional[str] = None,
     position: Optional[str] = None,
@@ -326,19 +339,21 @@ def _apply_employee_list_filters(
             )
         )
 
+    query = _apply_employee_view_mode_scope(query, view_mode)
+    normalized_employee_type = func.lower(func.trim(func.coalesce(Employee.employee_type, "")))
+
     raw_type = str(employee_type or "").strip().lower()
     if raw_type and raw_type != "all":
         if raw_type == "none":
-            query = query.filter(func.trim(func.coalesce(Employee.employee_type, "")) == "")
+            query = query.filter(normalized_employee_type == "")
         elif raw_type == "staff":
-            normalized_employee_type = func.lower(func.trim(func.coalesce(Employee.employee_type, "")))
             query = query.filter(
-                normalized_employee_type.in_(["", "hodim", "oqituvchi"])
+                normalized_employee_type.in_(["hodim", "oqituvchi"])
             )
         elif raw_type == "students":
-            query = query.filter(func.lower(func.coalesce(Employee.employee_type, "")) == "oquvchi")
+            query = query.filter(normalized_employee_type.in_(["", "oquvchi"]))
         elif raw_type in {"oquvchi", "oqituvchi", "hodim"}:
-            query = query.filter(func.lower(func.coalesce(Employee.employee_type, "")) == raw_type)
+            query = query.filter(normalized_employee_type == raw_type)
         else:
             raise HTTPException(status_code=422, detail="Xodim turi noto'g'ri")
 
@@ -356,21 +371,12 @@ def _unique_normalized_names(values: list[Optional[str]]) -> set[str]:
 
 def _employee_stats_payload(
     db: Session,
-    allowed_org_ids: list[int],
+    filtered_query,
     *,
     total_employees: int,
-    organization_id: Optional[str] = None,
-    department: Optional[str] = None,
-    position: Optional[str] = None,
     camera_id: Optional[str] = None,
 ) -> dict:
-    org_id = _parse_optional_positive_filter_int(organization_id, field_label="Tashkilot")
-    if org_id is not None and org_id not in allowed_org_ids:
-        org_filter_ids: list[int] = []
-    else:
-        org_filter_ids = [org_id] if org_id is not None else allowed_org_ids
-
-    if not org_filter_ids:
+    if int(total_employees or 0) <= 0:
         return {
             "total_employees": int(total_employees or 0),
             "organization_count": 0,
@@ -379,70 +385,58 @@ def _employee_stats_payload(
             "camera_count": 0,
         }
 
-    department_filter = normalize_catalog_name(department)
-    if department_filter and department_filter.lower() == "all":
-        department_filter = ""
-    position_filter = normalize_catalog_name(position)
-    if position_filter and position_filter.lower() == "all":
-        position_filter = ""
+    employee_scope = (
+        filtered_query
+        .with_entities(
+            Employee.id.label("employee_id"),
+            Employee.organization_id.label("organization_id"),
+            Employee.department.label("department"),
+            Employee.position.label("position"),
+        )
+        .subquery()
+    )
 
     org_count = int(
-        db.query(func.count(Organization.id))
-        .filter(Organization.id.in_(org_filter_ids))
+        db.query(func.count(func.distinct(employee_scope.c.organization_id)))
         .scalar()
         or 0
     )
 
-    camera_query = db.query(Device.id).filter(Device.organization_id.in_(org_filter_ids))
     cam_id = _parse_optional_positive_filter_int(camera_id, field_label="Kamera")
     if cam_id is not None:
-        camera_query = camera_query.filter(Device.id == cam_id)
-    camera_count = int(camera_query.count() or 0)
+        camera_count = 1 if int(total_employees or 0) > 0 else 0
+    else:
+        camera_count = int(
+            db.query(func.count(func.distinct(EmployeeCameraLink.camera_id)))
+            .join(employee_scope, employee_scope.c.employee_id == EmployeeCameraLink.employee_id)
+            .scalar()
+            or 0
+        )
 
     department_names = _unique_normalized_names(
-        [row[0] for row in db.query(Department.name).filter(Department.organization_id.in_(org_filter_ids)).all()]
+        [
+            row[0]
+            for row in (
+                db.query(employee_scope.c.department)
+                .filter(employee_scope.c.department.isnot(None))
+                .filter(func.trim(employee_scope.c.department) != "")
+                .distinct()
+                .all()
+            )
+        ]
     )
-    department_names.update(
-        _unique_normalized_names(
-            [
-                row[0]
-                for row in (
-                    db.query(Employee.department)
-                    .filter(Employee.organization_id.in_(org_filter_ids))
-                    .filter(Employee.department.isnot(None))
-                    .filter(func.trim(Employee.department) != "")
-                    .distinct()
-                    .all()
-                )
-            ]
-        )
+    position_names = _unique_normalized_names(
+        [
+            row[0]
+            for row in (
+                db.query(employee_scope.c.position)
+                .filter(employee_scope.c.position.isnot(None))
+                .filter(func.trim(employee_scope.c.position) != "")
+                .distinct()
+                .all()
+            )
+        ]
     )
-    if department_filter:
-        department_names = {name for name in department_names if name == department_filter.casefold()}
-
-    position_query = (
-        db.query(Position.name)
-        .outerjoin(Department, Department.id == Position.department_id)
-        .filter(Position.organization_id.in_(org_filter_ids))
-    )
-    if department_filter:
-        position_query = position_query.filter(func.trim(func.coalesce(Department.name, "")) == department_filter)
-    position_names = _unique_normalized_names([row[0] for row in position_query.all()])
-    legacy_position_query = (
-        db.query(Employee.position)
-        .filter(Employee.organization_id.in_(org_filter_ids))
-        .filter(Employee.position.isnot(None))
-        .filter(func.trim(Employee.position) != "")
-    )
-    if department_filter:
-        legacy_position_query = legacy_position_query.filter(
-            func.trim(func.coalesce(Employee.department, "")) == department_filter
-        )
-    position_names.update(
-        _unique_normalized_names([row[0] for row in legacy_position_query.distinct().all()])
-    )
-    if position_filter:
-        position_names = {name for name in position_names if name == position_filter.casefold()}
 
     return {
         "total_employees": int(total_employees or 0),
@@ -623,7 +617,12 @@ def _extract_camera_user_personal_ids(users: list[dict]) -> set[str]:
     return result
 
 
-def _employee_filter_options_payload(request: Request, db: Session, organization_id: Optional[str] = None) -> dict:
+def _employee_filter_options_payload(
+    request: Request,
+    db: Session,
+    organization_id: Optional[str] = None,
+    view_mode: Optional[str] = None,
+) -> dict:
     allowed_org_ids = _resolve_employee_allowed_org_ids(request, db)
     if not allowed_org_ids:
         return {"organizations": [], "departments": [], "positions": [], "cameras": []}
@@ -633,34 +632,49 @@ def _employee_filter_options_payload(request: Request, db: Session, organization
         return {"organizations": [], "departments": [], "positions": [], "cameras": []}
 
     org_filter_ids = [org_id] if org_id is not None else allowed_org_ids
+    employee_scope = _apply_employee_view_mode_scope(
+        db.query(
+            Employee.id.label("employee_id"),
+            Employee.organization_id.label("organization_id"),
+            Employee.department.label("department"),
+            Employee.position.label("position"),
+        ).filter(Employee.organization_id.in_(org_filter_ids)),
+        view_mode,
+    ).subquery()
+
     org_rows = (
         db.query(Organization.id, Organization.name)
-        .filter(Organization.id.in_(org_filter_ids))
+        .join(employee_scope, employee_scope.c.organization_id == Organization.id)
+        .distinct()
         .order_by(func.lower(Organization.name).asc(), Organization.id.asc())
         .all()
     )
     camera_rows = (
         db.query(Device.id, Device.name, Device.organization_id)
-        .filter(Device.organization_id.in_(org_filter_ids))
+        .join(EmployeeCameraLink, EmployeeCameraLink.camera_id == Device.id)
+        .join(employee_scope, employee_scope.c.employee_id == EmployeeCameraLink.employee_id)
+        .distinct()
         .order_by(func.lower(Device.name).asc(), Device.id.asc())
         .all()
     )
     dept_rows = (
-        db.query(Employee.organization_id, Employee.department)
-        .filter(Employee.organization_id.in_(org_filter_ids))
-        .filter(Employee.department.isnot(None))
-        .filter(func.trim(Employee.department) != "")
+        db.query(employee_scope.c.organization_id, employee_scope.c.department)
+        .filter(employee_scope.c.department.isnot(None))
+        .filter(func.trim(employee_scope.c.department) != "")
         .distinct()
-        .order_by(Employee.organization_id.asc(), func.lower(Employee.department).asc())
+        .order_by(employee_scope.c.organization_id.asc(), func.lower(employee_scope.c.department).asc())
         .all()
     )
     pos_rows = (
-        db.query(Employee.organization_id, Employee.department, Employee.position)
-        .filter(Employee.organization_id.in_(org_filter_ids))
-        .filter(Employee.position.isnot(None))
-        .filter(func.trim(Employee.position) != "")
+        db.query(employee_scope.c.organization_id, employee_scope.c.department, employee_scope.c.position)
+        .filter(employee_scope.c.position.isnot(None))
+        .filter(func.trim(employee_scope.c.position) != "")
         .distinct()
-        .order_by(Employee.organization_id.asc(), func.lower(Employee.department).asc(), func.lower(Employee.position).asc())
+        .order_by(
+            employee_scope.c.organization_id.asc(),
+            func.lower(employee_scope.c.department).asc(),
+            func.lower(employee_scope.c.position).asc(),
+        )
         .all()
     )
     return {
@@ -696,8 +710,16 @@ def get_employees(request: Request, db: Session = Depends(get_db)):
 
 
 @router.get("/api/employees/filter-options")
-def get_employee_filter_options(request: Request, organization_id: Optional[str] = Query(None), db: Session = Depends(get_db)):
-    return {"ok": True, **_employee_filter_options_payload(request, db, organization_id=organization_id)}
+def get_employee_filter_options(
+    request: Request,
+    organization_id: Optional[str] = Query(None),
+    view_mode: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
+    return {
+        "ok": True,
+        **_employee_filter_options_payload(request, db, organization_id=organization_id, view_mode=view_mode),
+    }
 
 
 @router.get("/api/employee-catalogs")
@@ -966,6 +988,7 @@ def search_employees(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     query: Optional[str] = Query(None),
+    view_mode: Optional[str] = Query(None),
     organization_id: Optional[str] = Query(None),
     department: Optional[str] = Query(None),
     position: Optional[str] = Query(None),
@@ -993,6 +1016,7 @@ def search_employees(
     filtered_query = _apply_employee_list_filters(
         base_query,
         search=query,
+        view_mode=view_mode,
         organization_id=organization_id,
         department=department,
         position=position,
@@ -1023,11 +1047,8 @@ def search_employees(
         "total_pages": total_pages,
         "stats": _employee_stats_payload(
             db,
-            allowed_org_ids,
+            filtered_query,
             total_employees=total,
-            organization_id=organization_id,
-            department=department,
-            position=position,
             camera_id=camera_id,
         ),
     }

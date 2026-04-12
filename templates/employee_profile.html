@@ -33,128 +33,242 @@
     animation: employee-calendar-glow 1.3s ease-in-out 2;
 }
 </style>
-<div class="space-y-6">
-    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div class="flex items-center gap-4">
-            {% if emp.image_url %}
-            <img src="{{ emp.image_url }}" alt="{{ emp.first_name }}" class="h-20 w-20 rounded-2xl border-2 border-blue-200 object-cover shadow dark:border-blue-900/40">
-            {% else %}
-            <div class="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-3xl font-bold text-white shadow">
-                {{ (emp.first_name or "X")[0] }}{{ (emp.last_name or "X")[0] }}
-            </div>
-            {% endif %}
-            <div>
-                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ emp.first_name }} {{ emp.last_name }}{% if emp.middle_name %} {{ emp.middle_name }}{% endif %}</h1>
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ emp.position or "Lavozim kiritilmagan" }}{% if emp.department %} | {{ emp.department }}{% endif %}</p>
-                <div class="mt-2 flex flex-wrap items-center gap-2">
-                    <span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">ID: {{ emp.id }}</span>
-                    <span class="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">Shaxsiy ID: {{ emp.personal_id or "-" }}</span>
+{% set employee_type_key = (emp.employee_type or "")|trim|lower %}
+{% if employee_type_key == "oquvchi" %}
+    {% set employee_type_label = "O'quvchi" %}
+{% elif employee_type_key == "oqituvchi" %}
+    {% set employee_type_label = "O'qituvchi" %}
+{% elif employee_type_key == "hodim" %}
+    {% set employee_type_label = "Hodim" %}
+{% else %}
+    {% set employee_type_label = "Tanlanmagan" %}
+{% endif %}
+{% set organization_name = emp.organization.name if emp.organization else "Tashkilot biriktirilmagan" %}
+{% set schedule_name = schedule_payload.schedule_name or "Tashkilot default" %}
+<div class="employee-page animate-fade-in space-y-6">
+    <section class="employee-hero employee-profile-hero">
+        <div class="employee-hero-backdrop" aria-hidden="true">
+            <span class="employee-hero-orb orb-one"></span>
+            <span class="employee-hero-orb orb-two"></span>
+        </div>
+        <div class="employee-hero-grid">
+            <div class="min-w-0">
+                <div class="employee-hero-pills">
+                    <span class="employee-hero-pill">
+                        <i class="fa-solid fa-address-card"></i>
+                        Foydalanuvchi profili
+                    </span>
+                    <span class="employee-hero-pill is-muted">{{ employee_type_label }}</span>
+                    <span class="employee-profile-hero-state {% if emp.has_access %}is-active{% else %}is-inactive{% endif %}">
+                        <i class="fa-solid {% if emp.has_access %}fa-circle-check{% else %}fa-ban{% endif %}"></i>
+                        {% if emp.has_access %}Faol{% else %}Nofaol{% endif %}
+                    </span>
+                </div>
+
+                <div class="employee-profile-identity">
+                    <div class="employee-profile-avatar">
+                        {% if emp.image_url %}
+                        <img src="{{ emp.image_url }}" alt="{{ emp.first_name }}" class="employee-profile-avatar-image">
+                        {% else %}
+                        <div class="employee-profile-avatar-fallback">
+                            {{ (emp.first_name or "X")[0] }}{{ (emp.last_name or "X")[0] }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="min-w-0">
+                        <h1 class="employee-hero-title">{{ emp.first_name }} {{ emp.last_name }}{% if emp.middle_name %} {{ emp.middle_name }}{% endif %}</h1>
+                        <p class="employee-profile-subtitle">
+                            {{ organization_name }}
+                            {% if emp.department %} · {{ emp.department }}{% endif %}
+                            {% if emp.position %} · {{ emp.position }}{% endif %}
+                        </p>
+                        <div class="employee-profile-chip-list">
+                            <span class="employee-profile-chip">
+                                <i class="fa-solid fa-hashtag"></i>
+                                ID: {{ emp.id }}
+                            </span>
+                            <span class="employee-profile-chip">
+                                <i class="fa-solid fa-id-badge"></i>
+                                Shaxsiy ID: {{ emp.personal_id or "-" }}
+                            </span>
+                            <span class="employee-profile-chip">
+                                <i class="fa-solid fa-clock"></i>
+                                {{ schedule_payload.start_time or "09:00" }} - {{ schedule_payload.end_time or "18:00" }}
+                            </span>
+                        </div>
+                        <div class="employee-hero-counter">{{ linked_cameras|length }} ta kamera biriktirilgan</div>
+                    </div>
+                </div>
+
+                <div class="employee-profile-meta-grid">
+                    <article class="employee-profile-meta-card">
+                        <p class="employee-profile-meta-label">Smena</p>
+                        <p class="employee-profile-meta-value">{{ schedule_name }}</p>
+                        <p class="employee-profile-meta-note">{% if schedule_payload.is_flexible %}Erkin vaqt oralig'i{% else %}Standart ish jadvali{% endif %}</p>
+                    </article>
+                    <article class="employee-profile-meta-card">
+                        <p class="employee-profile-meta-label">Bo'lim va lavozim</p>
+                        <p class="employee-profile-meta-value">{{ emp.department or "-" }}</p>
+                        <p class="employee-profile-meta-note">{{ emp.position or "Lavozim kiritilmagan" }}</p>
+                    </article>
+                    <article class="employee-profile-meta-card">
+                        <p class="employee-profile-meta-label">Tashkilot</p>
+                        <p class="employee-profile-meta-value">{{ organization_name }}</p>
+                        <p class="employee-profile-meta-note">Profil biriktirilgan tashkilot</p>
+                    </article>
+                    <article class="employee-profile-meta-card">
+                        <p class="employee-profile-meta-label">Yaratilgan sana</p>
+                        <p class="employee-profile-meta-value">{{ emp.created_at.strftime('%Y-%m-%d') if emp.created_at else "-" }}</p>
+                        <p class="employee-profile-meta-note">Bazadagi profil sanasi</p>
+                    </article>
                 </div>
             </div>
-        </div>
-        <div class="flex gap-2">
-            <button id="openTelegramContactsBtn" type="button" class="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-300 dark:hover:bg-emerald-900/30">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 4L3 11.5l7 2.2M21 4l-4.8 16-6.2-6.3M21 4L10 13.7"/></svg>
-                Telegram
-            </button>
-            <a href="/employees/{{ emp.id }}/edit" class="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-                {{ t.edit }}
-            </a>
-            <a href="/employees" class="inline-flex items-center rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800">
-                <i class="fa-solid fa-chevron-left mr-1.5"></i>
-                {{ t.employees_title }}
-            </a>
-        </div>
-    </div>
 
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-            <p class="text-xs text-gray-500 dark:text-gray-400">Joriy oy kelgan kun</p>
-            <p id="stat-present-days" class="mt-1 text-2xl font-bold text-emerald-700 dark:text-emerald-300">0</p>
+            <aside class="employee-profile-side-card">
+                <div>
+                    <p class="employee-profile-side-kicker">Tez amallar</p>
+                    <h2 class="employee-profile-side-title">Profil boshqaruvi</h2>
+                    <p class="employee-profile-side-text">Telegram kuzatuvchilari, tahrirlash va umumiy ro'yxatga qaytish shu blokdan boshqariladi.</p>
+                </div>
+
+                <div class="employee-profile-side-list">
+                    <div class="employee-profile-side-row">
+                        <span>Foydalanuvchi turi</span>
+                        <strong>{{ employee_type_label }}</strong>
+                    </div>
+                    <div class="employee-profile-side-row">
+                        <span>Status</span>
+                        <strong>{% if emp.has_access %}Faol{% else %}Nofaol{% endif %}</strong>
+                    </div>
+                    <div class="employee-profile-side-row">
+                        <span>Ish vaqti</span>
+                        <strong>{{ schedule_payload.start_time or "09:00" }} - {{ schedule_payload.end_time or "18:00" }}</strong>
+                    </div>
+                </div>
+
+                <div class="employee-hero-actions">
+                    <button id="openTelegramContactsBtn" type="button" class="employee-action-btn is-emerald">
+                        <i class="fa-brands fa-telegram"></i>
+                        Telegram
+                    </button>
+                    <a href="/employees/{{ emp.id }}/edit" class="employee-action-btn is-primary">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                        {{ t.edit }}
+                    </a>
+                    <a href="/employees" class="employee-action-btn is-soft">
+                        <i class="fa-solid fa-chevron-left"></i>
+                        {{ t.employees_title }}
+                    </a>
+                </div>
+            </aside>
         </div>
-        <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-            <p class="text-xs text-gray-500 dark:text-gray-400">Joriy oy kelmagan kun</p>
-            <p id="stat-absent-days" class="mt-1 text-2xl font-bold text-red-700 dark:text-red-300">0</p>
-        </div>
-        <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-            <p class="text-xs text-gray-500 dark:text-gray-400">Joriy oy kech qolgan kun</p>
-            <p id="stat-late-days" class="mt-1 text-2xl font-bold text-amber-700 dark:text-amber-300">0</p>
-        </div>
-        <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-            <p class="text-xs text-gray-500 dark:text-gray-400">Joriy oy kechikish jami</p>
-            <p id="stat-late-total" class="mt-1 text-lg font-bold text-gray-900 dark:text-white">0 daqiqa</p>
-        </div>
-        <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-            <p class="text-xs text-gray-500 dark:text-gray-400">Joriy oy eventlar</p>
-            <p id="stat-total-events" class="mt-1 text-2xl font-bold text-blue-700 dark:text-blue-300">0</p>
-        </div>
-    </div>
+    </section>
+
+    <section class="employee-stats-grid">
+        <article class="employee-stat-card is-emerald">
+            <span class="employee-stat-icon"><i class="fa-solid fa-calendar-check"></i></span>
+            <p class="employee-stat-label">Kelgan kun</p>
+            <p id="stat-present-days" class="employee-stat-value text-emerald-700 dark:text-emerald-300">0</p>
+        </article>
+        <article class="employee-stat-card is-blue">
+            <span class="employee-stat-icon"><i class="fa-solid fa-calendar-xmark"></i></span>
+            <p class="employee-stat-label">Kelmagan kun</p>
+            <p id="stat-absent-days" class="employee-stat-value text-rose-700 dark:text-rose-300">0</p>
+        </article>
+        <article class="employee-stat-card is-amber">
+            <span class="employee-stat-icon"><i class="fa-solid fa-user-clock"></i></span>
+            <p class="employee-stat-label">Kech qolgan kun</p>
+            <p id="stat-late-days" class="employee-stat-value text-amber-700 dark:text-amber-300">0</p>
+        </article>
+        <article class="employee-stat-card is-indigo">
+            <span class="employee-stat-icon"><i class="fa-solid fa-hourglass-clock"></i></span>
+            <p class="employee-stat-label">Jami kechikish</p>
+            <p id="stat-late-total" class="employee-stat-value text-lg text-slate-900 dark:text-white">0 daqiqa</p>
+        </article>
+        <article class="employee-stat-card is-sky">
+            <span class="employee-stat-icon"><i class="fa-solid fa-bolt"></i></span>
+            <p class="employee-stat-label">Eventlar</p>
+            <p id="stat-total-events" class="employee-stat-value text-sky-700 dark:text-sky-300">0</p>
+        </article>
+    </section>
 
     <div class="grid grid-cols-1 gap-6 xl:grid-cols-12">
-        <section class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900 xl:col-span-4">
-            <h2 class="mb-4 text-base font-bold text-gray-900 dark:text-white">Xodim ma'lumotlari</h2>
-            <div class="space-y-2 text-sm">
-                <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/70">
-                    <span class="text-gray-500 dark:text-gray-400">Tashkilot</span>
-                    <b class="text-gray-900 dark:text-gray-100">{{ emp.organization.name if emp.organization else "-" }}</b>
+        <section class="employee-panel employee-profile-panel-stack xl:col-span-4">
+            <div class="employee-panel-head">
+                <div>
+                    <p class="employee-panel-kicker">Profil kartasi</p>
+                    <h2 class="employee-panel-title">Asosiy ma'lumotlar</h2>
+                    <p class="camera-panel-text">Foydalanuvchi profili, smena va tashkiliy biriktirishlar shu blokda jamlangan.</p>
                 </div>
-                <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/70">
-                    <span class="text-gray-500 dark:text-gray-400">Bo'lim</span>
-                    <b class="text-gray-900 dark:text-gray-100">{{ emp.department or "-" }}</b>
-                </div>
-                <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/70">
-                    <span class="text-gray-500 dark:text-gray-400">Lavozim</span>
-                    <b class="text-gray-900 dark:text-gray-100">{{ emp.position or "-" }}</b>
-                </div>
-                <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/70">
-                    <span class="text-gray-500 dark:text-gray-400">Otasining ismi</span>
-                    <b class="text-gray-900 dark:text-gray-100">{{ emp.middle_name or "-" }}</b>
-                </div>
-                <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/70">
-                    <span class="text-gray-500 dark:text-gray-400">Ish jadvali</span>
-                    <b class="text-gray-900 dark:text-gray-100">{{ schedule_payload.start_time or "09:00" }} - {{ schedule_payload.end_time or "18:00" }}</b>
-                </div>
-                <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/70">
-                    <span class="text-gray-500 dark:text-gray-400">Smena</span>
-                    <b class="text-gray-900 dark:text-gray-100">
-                        {{ schedule_payload.schedule_name or "Tashkilot default" }}
-                        {% if schedule_payload.is_flexible %}
-                        <span class="ml-2 rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">Erkin</span>
-                        {% endif %}
-                    </b>
-                </div>
-                <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/70">
-                    <span class="text-gray-500 dark:text-gray-400">Status</span>
-                    {% if emp.has_access %}
-                    <b class="text-emerald-700 dark:text-emerald-300">Faol</b>
-                    {% else %}
-                    <b class="text-slate-600 dark:text-slate-300">Nofaol</b>
+            </div>
+
+            <div class="employee-profile-info-grid">
+                <article class="employee-profile-info-card">
+                    <span class="employee-profile-info-label"><i class="fa-solid fa-building"></i>Tashkilot</span>
+                    <p class="employee-profile-info-value">{{ organization_name }}</p>
+                </article>
+                <article class="employee-profile-info-card">
+                    <span class="employee-profile-info-label"><i class="fa-solid fa-diagram-project"></i>Bo'lim</span>
+                    <p class="employee-profile-info-value">{{ emp.department or "-" }}</p>
+                </article>
+                <article class="employee-profile-info-card">
+                    <span class="employee-profile-info-label"><i class="fa-solid fa-briefcase"></i>Lavozim</span>
+                    <p class="employee-profile-info-value">{{ emp.position or "-" }}</p>
+                </article>
+                <article class="employee-profile-info-card">
+                    <span class="employee-profile-info-label"><i class="fa-solid fa-user"></i>Otasining ismi</span>
+                    <p class="employee-profile-info-value">{{ emp.middle_name or "-" }}</p>
+                </article>
+                <article class="employee-profile-info-card">
+                    <span class="employee-profile-info-label"><i class="fa-solid fa-clock"></i>Ish jadvali</span>
+                    <p class="employee-profile-info-value">{{ schedule_payload.start_time or "09:00" }} - {{ schedule_payload.end_time or "18:00" }}</p>
+                </article>
+                <article class="employee-profile-info-card">
+                    <span class="employee-profile-info-label"><i class="fa-solid fa-layer-group"></i>Smena</span>
+                    <p class="employee-profile-info-value">{{ schedule_name }}</p>
+                </article>
+                <article class="employee-profile-info-card">
+                    <span class="employee-profile-info-label"><i class="fa-solid fa-shield-check"></i>Status</span>
+                    <p class="employee-profile-info-value">{% if emp.has_access %}Faol{% else %}Nofaol{% endif %}</p>
+                </article>
+                <article class="employee-profile-info-card">
+                    <span class="employee-profile-info-label"><i class="fa-solid fa-calendar-days"></i>Yaratilgan sana</span>
+                    <p class="employee-profile-info-value">{{ emp.created_at.strftime('%Y-%m-%d') if emp.created_at else "-" }}</p>
+                </article>
+            </div>
+
+            <div class="employee-profile-highlight">
+                <span class="employee-profile-highlight-icon"><i class="fa-solid fa-sparkles"></i></span>
+                <div class="min-w-0">
+                    <p class="employee-profile-highlight-title">Smena konfiguratsiyasi</p>
+                    <p class="employee-profile-highlight-text">{{ schedule_name }} asosida {{ schedule_payload.start_time or "09:00" }} dan {{ schedule_payload.end_time or "18:00" }} gacha kuzatiladi.</p>
+                    {% if schedule_payload.is_flexible %}
+                    <span class="employee-profile-highlight-chip">Erkin vaqt rejimi yoqilgan</span>
                     {% endif %}
-                </div>
-                <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/70">
-                    <span class="text-gray-500 dark:text-gray-400">Yaratilgan sana</span>
-                    <b class="text-gray-900 dark:text-gray-100">{{ emp.created_at.strftime('%Y-%m-%d') if emp.created_at else "-" }}</b>
                 </div>
             </div>
         </section>
 
-        <section class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900 xl:col-span-8">
-            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <h2 class="text-base font-bold text-gray-900 dark:text-white">Kalendar (davomat)</h2>
-                <div class="grid grid-cols-2 gap-2">
-                    <select id="cal-year" class="form-input"></select>
-                    <select id="cal-month" class="form-input"></select>
+        <section class="employee-panel xl:col-span-8">
+            <div class="employee-profile-calendar-toolbar">
+                <div>
+                    <p class="employee-panel-kicker">Davomat monitori</p>
+                    <h2 class="employee-panel-title">Kalendar ko'rinishi</h2>
+                    <p class="camera-panel-text">Oy kesimida kelish, kechikish va kelmagan kunlar ko'rinadi. Katakka bossangiz batafsil ma'lumot chiqadi.</p>
+                </div>
+                <div class="employee-profile-calendar-selects">
+                    <select id="cal-year" class="form-input employee-profile-select"></select>
+                    <select id="cal-month" class="form-input employee-profile-select"></select>
                 </div>
             </div>
 
-            <div class="mb-3 flex flex-wrap gap-2 text-xs">
-                <span class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>Kelgan</span>
-                <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"><span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>Kech qolgan</span>
-                <span class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-red-700 dark:bg-red-900/30 dark:text-red-300"><span class="h-1.5 w-1.5 rounded-full bg-red-500"></span>Kelmagan</span>
+            <div class="employee-profile-legend">
+                <span class="employee-profile-legend-pill is-emerald"><span class="employee-profile-legend-dot"></span>Kelgan</span>
+                <span class="employee-profile-legend-pill is-amber"><span class="employee-profile-legend-dot"></span>Kech qolgan</span>
+                <span class="employee-profile-legend-pill is-rose"><span class="employee-profile-legend-dot"></span>Kelmagan</span>
             </div>
 
-            <div class="text-center text-xs font-semibold text-gray-500 dark:text-gray-400" style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.5rem;">
+            <div class="employee-profile-weekdays">
                 <div>Dush</div>
                 <div>Sesh</div>
                 <div>Chor</div>
@@ -163,49 +277,88 @@
                 <div>Shan</div>
                 <div>Yak</div>
             </div>
-            <div id="attendance-calendar-wrap" class="relative mt-2">
-                <div id="attendance-calendar" style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.5rem;"></div>
-                <div id="calendar-day-popover" class="pointer-events-none absolute z-30 hidden w-[min(20rem,calc(100vw-2.5rem))] rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl shadow-slate-900/18 ring-1 ring-white/80 dark:border-slate-700 dark:bg-slate-950 dark:ring-slate-800 dark:shadow-black/40"></div>
+
+            <div id="attendance-calendar-wrap" class="employee-profile-calendar-shell">
+                <div id="attendance-calendar" class="employee-profile-calendar-grid"></div>
+                <div id="calendar-day-popover" class="employee-profile-popover pointer-events-none absolute z-30 hidden w-[min(20rem,calc(100vw-2.5rem))]"></div>
             </div>
-            <p id="calendar-detail-hint" class="mt-3 text-xs text-gray-500 dark:text-gray-400">Kun ustiga bossangiz, ma'lumot shu katak ustida chiqadi.</p>
+            <p id="calendar-detail-hint" class="employee-profile-hint">Kun ustiga bossangiz, ma'lumot shu katak ustida chiqadi.</p>
         </section>
     </div>
 
-    <section class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
-        <div class="mb-3 flex items-center justify-between">
-            <h2 class="text-base font-bold text-gray-900 dark:text-white">Ulangan kameralar</h2>
-            <span id="linked-camera-count" class="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-300">{{ linked_cameras|length }} ta</span>
+    <section class="employee-panel">
+        <div class="employee-panel-head">
+            <div>
+                <p class="employee-panel-kicker">Kamera mapping</p>
+                <h2 class="employee-panel-title">Ulangan kameralar</h2>
+                <p class="camera-panel-text">Profil qaysi kamera nuqtalariga biriktirilganini shu yerdan ko'rasiz.</p>
+            </div>
+            <span id="linked-camera-count" class="employee-profile-count-pill is-sky">{{ linked_cameras|length }} ta</span>
         </div>
-        <div id="linked-cameras-wrap" class="flex flex-wrap gap-2">
+
+        <div id="linked-cameras-wrap" class="employee-profile-camera-grid">
             {% if linked_cameras %}
                 {% for cam in linked_cameras %}
-                <span class="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-300">
-                    <b>{{ cam.name }}</b>
-                    {% if cam.isup_device_id %}<span class="font-mono">{{ cam.isup_device_id }}</span>{% endif %}
-                    {% if cam.mac_address %}<span class="font-mono">{{ cam.mac_address }}</span>{% endif %}
-                </span>
+                <a href="/camera-info?id={{ cam.id }}" class="employee-profile-camera-card">
+                    <div class="employee-profile-camera-head">
+                        <div class="employee-profile-camera-head-left">
+                            <span class="employee-profile-camera-icon"><i class="fa-solid fa-camera-cctv"></i></span>
+                            <div class="min-w-0">
+                                <p class="employee-profile-camera-title">{{ cam.name }}</p>
+                                <p class="employee-profile-camera-subtitle">Biriktirilgan kuzatuv nuqtasi</p>
+                            </div>
+                        </div>
+                        <span class="employee-profile-count-pill is-emerald">Ulangan</span>
+                    </div>
+                    <div class="employee-profile-camera-meta">
+                        {% if cam.isup_device_id %}
+                        <span class="employee-profile-camera-badge">
+                            <i class="fa-solid fa-fingerprint"></i>
+                            {{ cam.isup_device_id }}
+                        </span>
+                        {% endif %}
+                        {% if cam.mac_address %}
+                        <span class="employee-profile-camera-badge">
+                            <i class="fa-solid fa-network-wired"></i>
+                            {{ cam.mac_address }}
+                        </span>
+                        {% endif %}
+                        {% if not cam.isup_device_id and not cam.mac_address %}
+                        <span class="employee-profile-camera-badge">
+                            <i class="fa-solid fa-circle-info"></i>
+                            Qurilma ID ko'rsatilmagan
+                        </span>
+                        {% endif %}
+                    </div>
+                </a>
                 {% endfor %}
             {% else %}
-                <span class="text-sm text-gray-500 dark:text-gray-400">Kamera biriktirilmagan.</span>
+                <div class="employee-profile-empty">
+                    <i class="fa-solid fa-camera-slash"></i>
+                    <span>Kamera biriktirilmagan.</span>
+                </div>
             {% endif %}
         </div>
     </section>
 
     <section class="grid grid-cols-1 gap-6 xl:grid-cols-12">
-        <article class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900 xl:col-span-6">
-            <div class="mb-4 flex items-center justify-between gap-3">
-                <h2 class="text-base font-bold text-gray-900 dark:text-white">Kamera bo'yicha xodim holati</h2>
-                <span id="camera-insights-count" class="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">0 ta</span>
+        <article class="employee-panel overflow-hidden xl:col-span-6">
+            <div class="employee-panel-head">
+                <div>
+                    <p class="employee-panel-kicker">Kamera analitikasi</p>
+                    <h2 class="employee-panel-title">Kamera bo'yicha xodim holati</h2>
+                </div>
+                <span id="camera-insights-count" class="employee-profile-count-pill is-blue">0 ta</span>
             </div>
-            <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
-                <table class="min-w-full text-sm">
+            <div class="employee-profile-table-wrap">
+                <table class="table-standard employee-profile-table">
                     <thead>
                         <tr>
-                            <th class="px-3 py-2">Kamera</th>
-                            <th class="px-3 py-2">Xodim ma'lumoti</th>
-                            <th class="px-3 py-2">Ruxsat va jadval</th>
-                            <th class="px-3 py-2">Event</th>
-                            <th class="px-3 py-2">So'nggi kelgan vaqt</th>
+                            <th>Kamera</th>
+                            <th>Xodim ma'lumoti</th>
+                            <th>Ruxsat va jadval</th>
+                            <th>Event</th>
+                            <th>So'nggi kelgan vaqt</th>
                         </tr>
                     </thead>
                     <tbody id="camera-insights-body" class="divide-y divide-gray-100 dark:divide-gray-800">
@@ -215,19 +368,22 @@
             </div>
         </article>
 
-        <article class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900 xl:col-span-6">
-            <div class="mb-4 flex items-center justify-between gap-3">
-                <h2 class="text-base font-bold text-gray-900 dark:text-white">Kech qolish statistikasi</h2>
-                <span class="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">Kelish vaqti bo'yicha</span>
+        <article class="employee-panel overflow-hidden xl:col-span-6">
+            <div class="employee-panel-head">
+                <div>
+                    <p class="employee-panel-kicker">Kechikish kesimi</p>
+                    <h2 class="employee-panel-title">Kech qolish statistikasi</h2>
+                </div>
+                <span class="employee-profile-count-pill is-amber">Kelish vaqti bo'yicha</span>
             </div>
-            <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
-                <table class="min-w-full text-sm">
+            <div class="employee-profile-table-wrap">
+                <table class="table-standard employee-profile-table">
                     <thead>
                         <tr>
-                            <th class="px-3 py-2">Davr</th>
-                            <th class="px-3 py-2">Kech qolgan kun</th>
-                            <th class="px-3 py-2">Jami kechikish</th>
-                            <th class="px-3 py-2">Soat</th>
+                            <th>Davr</th>
+                            <th>Kech qolgan kun</th>
+                            <th>Jami kechikish</th>
+                            <th>Soat</th>
                         </tr>
                     </thead>
                     <tbody id="lateness-insights-body" class="divide-y divide-gray-100 dark:divide-gray-800">
@@ -238,19 +394,22 @@
         </article>
     </section>
 
-    <section class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
-        <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <h2 class="text-base font-bold text-gray-900 dark:text-white">Har kungi psixologik holat foizlari</h2>
-            <span id="psychology-days-count" class="rounded-full bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">0 kun</span>
+    <section class="employee-panel overflow-hidden">
+        <div class="employee-panel-head">
+            <div>
+                <p class="employee-panel-kicker">Psixologik monitoring</p>
+                <h2 class="employee-panel-title">Har kungi psixologik holat foizlari</h2>
+            </div>
+            <span id="psychology-days-count" class="employee-profile-count-pill is-violet">0 kun</span>
         </div>
-        <div id="psychology-average-wrap" class="mb-4 flex flex-wrap gap-2"></div>
-        <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
-            <table class="min-w-full text-sm">
+        <div id="psychology-average-wrap" class="employee-profile-average-wrap"></div>
+        <div class="employee-profile-table-wrap">
+            <table class="table-standard employee-profile-table">
                 <thead>
                     <tr>
-                        <th class="px-3 py-2">Sana</th>
-                        <th class="px-3 py-2">Dominant holat</th>
-                        <th class="px-3 py-2">Emotsiya foizlari</th>
+                        <th>Sana</th>
+                        <th>Dominant holat</th>
+                        <th>Emotsiya foizlari</th>
                     </tr>
                 </thead>
                 <tbody id="psychology-daily-body" class="divide-y divide-gray-100 dark:divide-gray-800">
@@ -260,19 +419,22 @@
         </div>
     </section>
 
-    <section class="overflow-hidden card-standard  ">
-        <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4 dark:border-gray-800">
-            <h2 class="text-base font-bold text-gray-900 dark:text-white">So'nggi davomat loglari</h2>
-            <span id="logs-total" class="text-xs text-gray-500 dark:text-gray-400">0 ta</span>
+    <section class="employee-panel overflow-hidden">
+        <div class="employee-panel-head">
+            <div>
+                <p class="employee-panel-kicker">Davomat tarixi</p>
+                <h2 class="employee-panel-title">So'nggi davomat loglari</h2>
+            </div>
+            <span id="logs-total" class="employee-profile-count-pill is-slate">0 ta</span>
         </div>
-        <div class="overflow-x-auto">
-            <table class="min-w-full text-sm">
+        <div class="employee-profile-table-wrap">
+            <table class="table-standard employee-profile-table">
                 <thead>
                     <tr>
-                        <th class="px-4 py-3">Sana</th>
-                        <th class="px-4 py-3">Vaqt</th>
-                        <th class="px-4 py-3">Kamera</th>
-                        <th class="px-4 py-3">Status</th>
+                        <th>Sana</th>
+                        <th>Vaqt</th>
+                        <th>Kamera</th>
+                        <th>Status</th>
                     </tr>
                 </thead>
                 <tbody id="employee-logs-body" class="divide-y divide-gray-100 dark:divide-gray-800">
@@ -282,13 +444,15 @@
                 </tbody>
             </table>
         </div>
-        <div class="flex items-center justify-between border-t border-gray-100 px-5 py-3 dark:border-gray-800">
-            <button id="logs-prev" type="button" class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800">
+        <div class="employee-profile-pager">
+            <button id="logs-prev" type="button" class="employee-profile-pager-btn">
+                <i class="fa-solid fa-chevron-left"></i>
                 Oldingi
             </button>
-            <span id="logs-page-info" class="text-xs text-gray-500 dark:text-gray-400">1 / 1</span>
-            <button id="logs-next" type="button" class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800">
+            <span id="logs-page-info" class="employee-profile-pager-info">1 / 1</span>
+            <button id="logs-next" type="button" class="employee-profile-pager-btn">
                 Keyingi
+                <i class="fa-solid fa-chevron-right"></i>
             </button>
         </div>
     </section>
@@ -385,8 +549,8 @@ function setCalendarHint(message, tone = "neutral") {
     if (!target) return;
     target.textContent = message;
     target.className = tone === "error"
-        ? "mt-3 text-xs text-red-600 dark:text-red-400"
-        : "mt-3 text-xs text-gray-500 dark:text-gray-400";
+        ? "employee-profile-hint is-error"
+        : "employee-profile-hint";
 }
 
 function hideCalendarPopover() {
@@ -562,7 +726,7 @@ function renderCalendar() {
 
     for (let i = 0; i < firstWeekdayMon; i += 1) {
         const empty = document.createElement("div");
-        empty.className = "h-20 rounded-xl border border-transparent";
+        empty.className = "employee-profile-calendar-empty";
         wrap.appendChild(empty);
     }
 
@@ -586,7 +750,7 @@ function renderCalendar() {
         }
         const isToday = day.date === todayKey;
         btn.dataset.calendarDay = day.date;
-        btn.className = `h-24 w-full rounded-xl border px-2.5 py-1.5 text-left transition hover:-translate-y-0.5 hover:shadow-sm ${style} ${isToday ? "ring-2 ring-blue-400/70 dark:ring-blue-400/60" : ""}`;
+        btn.className = `employee-profile-calendar-day h-24 w-full rounded-2xl border px-2.5 py-1.5 text-left transition hover:-translate-y-0.5 hover:shadow-sm ${style} ${isToday ? "ring-2 ring-blue-400/70 dark:ring-blue-400/60" : ""}`;
         const lateText = day.late_human_full || day.late_human || "0 daqiqa";
         const passCount = Number(day.event_count || 0);
         const passLine = `<div class="mt-0.5 text-[10px]">${esc(`${passCount} marta`)}</div>`;

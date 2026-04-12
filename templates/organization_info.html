@@ -1,191 +1,269 @@
 {% extends "base.html" %}
+
 {% block content %}
-<div class="animate-fade-in mb-6 flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center">
-    <div class="flex items-center gap-3">
-        <a href="/organizations" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition">
-            <i class="fa-solid fa-arrow-left"></i>
-        </a>
-        <div>
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white" id="org-title">Yuklanmoqda...</h1>
-            <p class="text-xs text-gray-500 font-mono" id="org-subtitle"></p>
-        </div>
-    </div>
-    <span id="org-status-badge" class="hidden px-3 py-1 rounded-full text-sm font-medium"></span>
-</div>
+<div class="animate-fade-in space-y-4">
+    <section class="overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 to-indigo-600 shadow-xl">
+        <div class="space-y-4 p-5">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div class="flex items-start gap-3">
+                    <a href="/organizations" class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-white transition hover:bg-white/15">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </a>
+                    <div>
+                        <div class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white/80 backdrop-blur-sm">
+                            <i class="fa-solid fa-buildings"></i>
+                            <span>{% if lang == "ru" %}Карточка организации{% else %}Tashkilot kartasi{% endif %}</span>
+                        </div>
+                        <h1 class="mt-3 text-3xl font-bold tracking-tight text-white" id="org-title">Yuklanmoqda...</h1>
+                        <p class="mt-1 text-sm text-white/80" id="org-subtitle"></p>
+                    </div>
+                </div>
 
-<!-- Stat cards -->
-<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6" id="stats-row">
-    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 shadow-sm">
-        <p class="text-xs text-gray-400 mb-1">Xodimlar</p>
-        <p class="text-2xl font-bold text-gray-900 dark:text-white" id="stat-emp">—</p>
-    </div>
-    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 shadow-sm">
-        <p class="text-xs text-gray-400 mb-1">Kameralar</p>
-        <p class="text-2xl font-bold text-gray-900 dark:text-white" id="stat-cam">—</p>
-    </div>
-    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 shadow-sm">
-        <p class="text-xs text-gray-400 mb-1">Adminlar</p>
-        <p class="text-2xl font-bold text-gray-900 dark:text-white" id="stat-usr">—</p>
-    </div>
-    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 shadow-sm">
-        <p class="text-xs text-gray-400 mb-1">Bugun kirish</p>
-        <p class="text-2xl font-bold text-gray-900 dark:text-white" id="stat-att">—</p>
-    </div>
-</div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <a id="org-edit-link" href="/organizations" class="inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-blue-50">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                        <span>{% if lang == "ru" %}Редактировать{% else %}Tahrirlash{% endif %}</span>
+                    </a>
+                    <span id="org-status-badge" class="hidden rounded-full px-3 py-1 text-xs font-semibold"></span>
+                </div>
+            </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <!-- Cameras -->
-    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
-        <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-            <h2 class="font-semibold text-gray-900 dark:text-white">Kameralar</h2>
-            <a href="/devices" class="text-xs text-blue-500 hover:underline">Barchasi →</a>
+            <div class="grid gap-3 sm:grid-cols-3" id="stats-row">
+                <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-white/80">{% if lang == "ru" %}Камеры{% else %}Kameralar{% endif %}</p>
+                    <p class="mt-2 text-2xl font-bold text-white" id="stat-cam">—</p>
+                </div>
+                <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-white/80">{% if lang == "ru" %}Admins{% else %}Adminlar{% endif %}</p>
+                    <p class="mt-2 text-2xl font-bold text-white" id="stat-usr">—</p>
+                </div>
+                <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-white/80">{% if lang == "ru" %}Сегодняшние события{% else %}Bugungi kirishlar{% endif %}</p>
+                    <p class="mt-2 text-2xl font-bold text-white" id="stat-att">—</p>
+                </div>
+            </div>
         </div>
-        <div id="cams-list" class="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
-            <p class="p-5 text-gray-400">Yuklanmoqda...</p>
-        </div>
-    </div>
+    </section>
 
-    <!-- Employees -->
-    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
-        <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-            <h2 class="font-semibold text-gray-900 dark:text-white">Xodimlar</h2>
-            <a href="/employees" class="text-xs text-blue-500 hover:underline">Barchasi →</a>
-        </div>
-        <div id="emps-list" class="divide-y divide-gray-100 dark:divide-gray-800 text-sm max-h-72 overflow-y-auto">
-            <p class="p-5 text-gray-400">Yuklanmoqda...</p>
-        </div>
-    </div>
+    <div class="grid gap-4 xl:grid-cols-3">
+        <section class="rounded-3xl border border-gray-200 bg-white/80 p-5 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80 xl:col-span-1">
+            <div class="flex items-center justify-between gap-3">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">{% if lang == "ru" %}Паспорт{% else %}Pasport{% endif %}</p>
+                    <h2 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{% if lang == "ru" %}Основная информация{% else %}Asosiy ma'lumotlar{% endif %}</h2>
+                </div>
+                <div class="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
+                    <i class="fa-solid fa-building"></i>
+                </div>
+            </div>
 
-    <!-- Admin Users -->
-    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
-        <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
-            <h2 class="font-semibold text-gray-900 dark:text-white">Admin Foydalanuvchilar</h2>
-        </div>
-        <div id="users-list" class="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
-            <p class="p-5 text-gray-400">Yuklanmoqda...</p>
-        </div>
-    </div>
+            <div class="mt-5 space-y-3 text-sm">
+                <div class="rounded-2xl bg-gray-50 px-4 py-3 dark:bg-gray-800">
+                    <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{% if lang == "ru" %}Название{% else %}Nomi{% endif %}</p>
+                    <p class="mt-1 font-medium text-gray-900 dark:text-white" id="info-name">—</p>
+                </div>
+                <div class="rounded-2xl bg-gray-50 px-4 py-3 dark:bg-gray-800">
+                    <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{% if lang == "ru" %}Тип{% else %}Turi{% endif %}</p>
+                    <p class="mt-1 font-medium text-gray-900 dark:text-white" id="info-type">—</p>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="rounded-2xl bg-gray-50 px-4 py-3 dark:bg-gray-800">
+                        <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{% if lang == "ru" %}Старт{% else %}Boshlanish{% endif %}</p>
+                        <p class="mt-1 font-medium text-gray-900 dark:text-white" id="info-start">—</p>
+                    </div>
+                    <div class="rounded-2xl bg-gray-50 px-4 py-3 dark:bg-gray-800">
+                        <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{% if lang == "ru" %}Конец{% else %}Tugash{% endif %}</p>
+                        <p class="mt-1 font-medium text-gray-900 dark:text-white" id="info-end">—</p>
+                    </div>
+                </div>
+                <div class="rounded-2xl bg-gray-50 px-4 py-3 dark:bg-gray-800">
+                    <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{% if lang == "ru" %}Подписка{% else %}Obuna{% endif %}</p>
+                    <p class="mt-1 font-medium text-gray-900 dark:text-white" id="info-sub">—</p>
+                </div>
+            </div>
+        </section>
 
-    <!-- Org info -->
-    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-5">
-        <h2 class="font-semibold text-gray-900 dark:text-white mb-4">Tashkilot Ma'lumotlari</h2>
-        <div class="space-y-3 text-sm">
-            <div class="flex justify-between"><span class="text-gray-400">Nomi</span><span class="font-medium dark:text-white" id="info-name">—</span></div>
-            <div class="flex justify-between"><span class="text-gray-400">Turi</span><span class="font-medium dark:text-white" id="info-type">—</span></div>
-            <div class="flex justify-between"><span class="text-gray-400">Ish boshlanishi</span><span class="font-medium dark:text-white" id="info-start">—</span></div>
-            <div class="flex justify-between"><span class="text-gray-400">Ish tugashi</span><span class="font-medium dark:text-white" id="info-end">—</span></div>
-            <div class="flex justify-between"><span class="text-gray-400">Obuna</span><span class="font-medium dark:text-white" id="info-sub">—</span></div>
-        </div>
+        <section class="rounded-3xl border border-gray-200 bg-white/80 p-5 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80 xl:col-span-1">
+            <div class="flex items-center justify-between gap-3">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">{% if lang == "ru" %}Камеры{% else %}Kameralar{% endif %}</p>
+                    <h2 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{% if lang == "ru" %}Подключённые устройства{% else %}Ulangan qurilmalar{% endif %}</h2>
+                </div>
+                <a href="/devices" class="inline-flex items-center gap-2 rounded-2xl border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
+                    <span>{% if lang == "ru" %}Все{% else %}Barchasi{% endif %}</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </a>
+            </div>
+            <div id="cams-list" class="mt-5 space-y-3">
+                <div class="rounded-2xl bg-gray-50 px-4 py-6 text-center text-sm text-gray-400 dark:bg-gray-800">Yuklanmoqda...</div>
+            </div>
+        </section>
+
+        <section class="rounded-3xl border border-gray-200 bg-white/80 p-5 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80 xl:col-span-1">
+            <div class="flex items-center justify-between gap-3">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">Users</p>
+                    <h2 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{% if lang == "ru" %}Администраторы{% else %}Admin foydalanuvchilar{% endif %}</h2>
+                </div>
+            </div>
+            <div id="users-list" class="mt-5 space-y-3">
+                <div class="rounded-2xl bg-gray-50 px-4 py-6 text-center text-sm text-gray-400 dark:bg-gray-800">Yuklanmoqda...</div>
+            </div>
+        </section>
     </div>
 </div>
 
 <script>
+const ORG_PAGE_LANG = "{{ lang }}";
+
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+}
+
+function initialsFromName(value) {
+    const safe = String(value || "").trim();
+    if (!safe) return "?";
+    return safe.split(/\s+/).slice(0, 2).map((item) => item[0]).join("").toUpperCase();
+}
+
+function statusMeta(statusRaw) {
+    const safe = String(statusRaw || "").toLowerCase();
+    if (safe.includes("active")) {
+        return {
+            label: ORG_PAGE_LANG === "ru" ? "Активная" : "Faol",
+            className: "inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
+        };
+    }
+    if (safe.includes("expired")) {
+        return {
+            label: ORG_PAGE_LANG === "ru" ? "Истекла" : "Tugagan",
+            className: "inline-flex rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
+        };
+    }
+    return {
+        label: ORG_PAGE_LANG === "ru" ? "Ожидает" : "Kutilmoqda",
+        className: "inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+    };
+}
+
+function renderEmptyCard(message, extraClass = "") {
+    return `<div class="rounded-2xl bg-gray-50 px-4 py-6 text-center text-sm text-gray-400 dark:bg-gray-800 ${extraClass}">${escapeHtml(message)}</div>`;
+}
+
 async function loadOrgInfo() {
-    const orgId = new URLSearchParams(window.location.search).get('id');
-    if (!orgId) { window.location.href = '/organizations'; return; }
+    const orgId = new URLSearchParams(window.location.search).get("id");
+    if (!orgId) {
+        window.location.href = "/organizations";
+        return;
+    }
 
     try {
-        // Load org basic info
-        const orgRes = await fetch('/api/organizations');
-        const orgs = await orgRes.json();
-        const org = orgs.find(o => o.id == orgId);
-        if (!org) throw new Error('Tashkilot topilmadi');
+        const [orgRes, camsRes] = await Promise.all([
+            fetch(`/api/organizations/${encodeURIComponent(orgId)}?lang=${encodeURIComponent(ORG_PAGE_LANG)}`),
+            fetch(`/api/cameras/by-org/${encodeURIComponent(orgId)}`),
+        ]);
 
-        document.getElementById('org-title').textContent = org.name;
-        document.getElementById('org-subtitle').textContent = 'ID: ' + org.id;
-        document.getElementById('info-name').textContent = org.name;
-        document.getElementById('info-type').textContent = org.organization_type_label || org.organization_type || 'Boshqa';
-        document.getElementById('info-start').textContent = org.default_start_time || '09:00';
-        document.getElementById('info-end').textContent = org.default_end_time || '18:00';
-        document.getElementById('info-sub').textContent = org.subscription_end_date
-            ? new Date(org.subscription_end_date).toLocaleDateString('uz-UZ') : 'Cheklanmagan';
-
-        const badge = document.getElementById('org-status-badge');
-        badge.classList.remove('hidden');
-        const isActive = String(org.subscription_status || '').toLowerCase().includes('active');
-        badge.className += isActive
-            ? ' bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-            : ' bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
-        badge.textContent = isActive ? 'Faol' : 'Faol emas';
-
-        // Cameras
-        const camsRes = await fetch('/api/cameras/by-org/' + orgId);
-        const cams = await camsRes.json();
-        document.getElementById('stat-cam').textContent = cams.length;
-        document.getElementById('cams-list').innerHTML = cams.length === 0
-            ? '<p class="p-5 text-gray-400 text-center">Kamera yo\'q</p>'
-            : cams.map(c => `
-                <div class="px-5 py-3 flex items-center justify-between">
-                    <div>
-                        <p class="font-medium text-gray-900 dark:text-white">${c.name}</p>
-                        <p class="text-xs text-gray-400 font-mono">${c.mac_address}</p>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <span class="w-2 h-2 rounded-full ${c.is_online ? 'bg-emerald-500' : 'bg-gray-400'}"></span>
-                        <span class="text-xs ${c.is_online ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400'}">${c.is_online ? 'Online' : 'Offline'}</span>
-                        <a href="/camera-info?id=${c.id}" class="text-xs text-blue-500 hover:underline ml-2">Kirish</a>
-                    </div>
-                </div>`).join('');
-
-        // Employees
-        const empsRes = await fetch('/api/employees');
-        const allEmps = await empsRes.json();
-        const emps = allEmps.filter ? allEmps.filter(e => e.organization_id == orgId) : [];
-        document.getElementById('stat-emp').textContent = emps.length;
-        document.getElementById('emps-list').innerHTML = emps.length === 0
-            ? '<p class="p-5 text-gray-400 text-center">Xodim yo\'q</p>'
-            : emps.map(e => `
-                <div class="px-5 py-3 flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 font-bold text-sm">
-                            ${e.full_name ? e.full_name[0] : '?'}
-                        </div>
-                        <div>
-                            <p class="font-medium text-gray-900 dark:text-white text-sm">${e.full_name}</p>
-                            <p class="text-xs text-gray-400">${e.department || e.position || ''}</p>
-                        </div>
-                    </div>
-                    <a href="/employees/${e.id}" class="text-xs text-blue-500 hover:underline">Profil</a>
-                </div>`).join('');
-
-        // Users (admins) for this org — use /api/users endpoint
-        try {
-            const usrsRes = await fetch('/api/users');
-            const allUsers = await usrsRes.json();
-            const orgUsers = allUsers.filter(u => {
-                const linkedIds = Array.isArray(u.organization_ids) ? u.organization_ids.map((id) => Number(id)) : [];
-                return linkedIds.includes(Number(orgId)) || Number(u.organization_id) === Number(orgId);
-            });
-            document.getElementById('stat-usr').textContent = orgUsers.length;
-            document.getElementById('users-list').innerHTML = orgUsers.length === 0
-                ? '<p class="p-5 text-gray-400 text-center">Admin yo\'q</p>'
-                : orgUsers.map(u => `
-                    <div class="px-5 py-3 flex items-center justify-between">
-                        <div>
-                            <p class="font-medium text-gray-900 dark:text-white text-sm">${u.name}</p>
-                            <p class="text-xs text-gray-400">${u.email} · ${u.role}</p>
-                        </div>
-                    </div>`).join('');
-        } catch(e2) {
-            document.getElementById('stat-usr').textContent = '—';
+        if (!orgRes.ok) {
+            throw new Error("Tashkilot topilmadi");
         }
 
-        // Attendance today
-        try {
-            const today = new Date().toISOString().split('T')[0];
-            const evtRes = await fetch('/api/events?limit=500');
-            const evts = await evtRes.json();
-            const todayEvts = evts.filter(ev => ev.timestamp && ev.timestamp.startsWith(today));
-            // Filter by org cameras
-            const camIds = new Set(cams.map(c => c.id));
-            const orgEvts = todayEvts.filter(ev => camIds.has(ev.device_id));
-            document.getElementById('stat-att').textContent = orgEvts.length;
-        } catch { document.getElementById('stat-att').textContent = '—'; }
+        const org = await orgRes.json();
+        const cams = camsRes.ok ? await camsRes.json() : [];
 
-    } catch(e) {
-        document.querySelector('#stats-row').innerHTML = `<p class="col-span-4 text-red-500 p-4">Xatolik: ${e.message}</p>`;
+        document.getElementById("org-title").textContent = org.name || "—";
+        document.getElementById("org-subtitle").textContent = `ID: ${org.id}`;
+        document.getElementById("org-edit-link").href = `/organizations/${encodeURIComponent(org.id)}/edit`;
+
+        document.getElementById("info-name").textContent = org.name || "—";
+        document.getElementById("info-type").textContent = org.organization_type_label || org.organization_type || "—";
+        document.getElementById("info-start").textContent = org.default_start_time || "09:00";
+        document.getElementById("info-end").textContent = org.default_end_time || "18:00";
+        document.getElementById("info-sub").textContent = org.subscription_end_date
+            ? new Date(org.subscription_end_date).toLocaleDateString(ORG_PAGE_LANG === "ru" ? "ru-RU" : "uz-UZ")
+            : (ORG_PAGE_LANG === "ru" ? "Без ограничения" : "Cheklanmagan");
+
+        const badge = document.getElementById("org-status-badge");
+        const badgeMeta = statusMeta(org.subscription_status);
+        badge.className = badgeMeta.className;
+        badge.textContent = badgeMeta.label;
+
+        document.getElementById("stat-cam").textContent = Array.isArray(cams) ? cams.length : "0";
+
+        document.getElementById("cams-list").innerHTML = !Array.isArray(cams) || cams.length === 0
+            ? renderEmptyCard(ORG_PAGE_LANG === "ru" ? "Камер пока нет" : "Kamera yo‘q")
+            : cams.map((camera) => `
+                <div class="flex items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-gray-800">
+                    <div class="min-w-0">
+                        <p class="truncate text-sm font-semibold text-gray-900 dark:text-white">${escapeHtml(camera.name || "-")}</p>
+                        <p class="mt-1 truncate text-xs text-gray-500 dark:text-gray-400">${escapeHtml(camera.mac_address || "-")}</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-medium ${camera.is_online ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" : "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200"}">
+                            <span class="h-2 w-2 rounded-full ${camera.is_online ? "bg-emerald-500" : "bg-gray-400"}"></span>
+                            ${camera.is_online ? "Online" : "Offline"}
+                        </span>
+                        <a href="/camera-info?id=${encodeURIComponent(camera.id)}" class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-700 transition hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-300" title="Info">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                        </a>
+                    </div>
+                </div>
+            `).join("");
+
+        try {
+            const usersRes = await fetch("/api/users");
+            const allUsers = usersRes.ok ? await usersRes.json() : [];
+            const orgUsers = Array.isArray(allUsers)
+                ? allUsers.filter((user) => {
+                    const linkedIds = Array.isArray(user.organization_ids) ? user.organization_ids.map((id) => Number(id)) : [];
+                    return linkedIds.includes(Number(orgId)) || Number(user.organization_id) === Number(orgId);
+                })
+                : [];
+
+            document.getElementById("stat-usr").textContent = orgUsers.length;
+            document.getElementById("users-list").innerHTML = orgUsers.length === 0
+                ? renderEmptyCard(ORG_PAGE_LANG === "ru" ? "Админов пока нет" : "Admin yo‘q")
+                : orgUsers.map((user) => `
+                    <div class="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-gray-800">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="truncate text-sm font-semibold text-gray-900 dark:text-white">${escapeHtml(user.name || "-")}</p>
+                                <p class="mt-1 truncate text-xs text-gray-500 dark:text-gray-400">${escapeHtml(user.email || "-")}</p>
+                            </div>
+                            <span class="inline-flex rounded-full bg-slate-900 px-2.5 py-1 text-[11px] font-semibold text-white dark:bg-white dark:text-slate-900">${escapeHtml(user.role || "-")}</span>
+                        </div>
+                    </div>
+                `).join("");
+        } catch (_) {
+            document.getElementById("stat-usr").textContent = "—";
+            document.getElementById("users-list").innerHTML = renderEmptyCard(ORG_PAGE_LANG === "ru" ? "Не удалось загрузить users" : "Userlar yuklanmadi");
+        }
+
+        try {
+            const today = new Date().toISOString().split("T")[0];
+            const evtRes = await fetch("/api/events?limit=500");
+            const evts = evtRes.ok ? await evtRes.json() : [];
+            const camIds = new Set(Array.isArray(cams) ? cams.map((camera) => Number(camera.id)) : []);
+            const orgEvents = Array.isArray(evts)
+                ? evts.filter((event) => event.timestamp && event.timestamp.startsWith(today) && camIds.has(Number(event.device_id)))
+                : [];
+            document.getElementById("stat-att").textContent = orgEvents.length;
+        } catch (_) {
+            document.getElementById("stat-att").textContent = "—";
+        }
+    } catch (error) {
+        document.getElementById("stats-row").innerHTML = `
+            <div class="sm:col-span-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-600 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300">
+                Xatolik: ${escapeHtml(error.message || "unknown")}
+            </div>
+        `;
     }
 }
-document.addEventListener('DOMContentLoaded', loadOrgInfo);
+
+document.addEventListener("DOMContentLoaded", loadOrgInfo);
 </script>
 {% endblock %}

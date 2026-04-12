@@ -49,6 +49,9 @@ PUBLIC_PATHS = {
     "/logout",
     "/favicon.ico",
     "/pending-approval",
+    "/contact",
+    "/about",
+    "/map",
 }
 
 AUTH_PERMISSION_EXEMPT_PATHS = {

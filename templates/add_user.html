@@ -1,92 +1,168 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="animate-fade-in w-full max-w-7xl mx-auto">
-    <div class="mb-6 flex items-center justify-between">
-        <div>
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t.add_user }}</h1>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Yangi tizim foydalanuvchisini qo'shish</p>
+<div class="animate-fade-in mx-auto max-w-7xl space-y-4">
+
+    <!-- ── HERO BANNER ── -->
+    <section class="overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-blue-900 shadow-xl">
+        <div class="grid gap-4 p-5 lg:grid-cols-3">
+            <div class="space-y-4 lg:col-span-2">
+                <div class="flex items-start gap-3">
+                    <a href="/users" class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-white transition hover:bg-white/15">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </a>
+                    <div>
+                        <div class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white/80 backdrop-blur-sm">
+                            <i class="fa-solid fa-user-plus"></i>
+                            <span>{% if lang == "ru" %}Новый пользователь{% else %}Yangi foydalanuvchi{% endif %}</span>
+                        </div>
+                        <h1 class="mt-3 text-3xl font-bold tracking-tight text-white">{{ t.add_user }}</h1>
+                        <p class="mt-2 max-w-2xl text-sm leading-6 text-blue-100">
+                            {% if lang == "ru" %}
+                            Заполните данные нового системного пользователя: логин, пароль, роль и права доступа.
+                            {% else %}
+                            Yangi tizim foydalanuvchisini qo'shing: login, parol, rol va menyu ruxsatlarini belgilang.
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rounded-3xl border border-white/10 bg-black/20 p-4 backdrop-blur-sm">
+                <p class="text-xs font-semibold uppercase tracking-wide text-white/80">{% if lang == "ru" %}Что заполняется{% else %}Nimalar kiritiladi{% endif %}</p>
+                <div class="mt-3 space-y-3 text-sm text-white/80">
+                    <div class="rounded-2xl border border-white/10 bg-white/10 p-3">
+                        <p class="font-semibold text-white">{% if lang == "ru" %}Личные данные{% else %}Shaxsiy ma'lumotlar{% endif %}</p>
+                        <p class="mt-1 text-xs leading-5 text-white/80">{% if lang == "ru" %}Имя, фамилия, email и номер телефона.{% else %}Ism, familiya, email va telefon raqam.{% endif %}</p>
+                    </div>
+                    <div class="rounded-2xl border border-white/10 bg-white/10 p-3">
+                        <p class="font-semibold text-white">{% if lang == "ru" %}Роль и права доступа{% else %}Rol va ruxsatlar{% endif %}</p>
+                        <p class="mt-1 text-xs leading-5 text-white/80">{% if lang == "ru" %}Определите, что пользователь видит в меню.{% else %}Foydalanuvchi qaysi menyularni ko'ra olishi belgilanadi.{% endif %}</p>
+                    </div>
+                    <div class="rounded-2xl border border-white/10 bg-white/10 p-3">
+                        <p class="font-semibold text-white">{% if lang == "ru" %}Аватар{% else %}Avatar{% endif %}</p>
+                        <p class="mt-1 text-xs leading-5 text-white/80">{% if lang == "ru" %}Загрузите фото или укажите URL изображения.{% else %}Rasm yuklanadi yoki URL kiritiladi.{% endif %}</p>
+                    </div>
+                </div>
+            </div>
         </div>
-        <a href="/users" class="px-4 py-2 text-sm font-medium bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-            {{ t.cancel }}
-        </a>
-    </div>
+    </section>
 
-    <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm overflow-hidden p-5">
-        <div class="space-y-5">
-            <div id="user-error" class="hidden text-sm text-red-600 bg-red-50 dark:bg-red-900/20 px-4 py-3 rounded-lg border border-red-200 dark:border-red-800/30"></div>
+    <!-- ── ERROR BOX ── -->
+    <div id="user-error" class="hidden rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300"></div>
 
-            <div class="space-y-5">
-                <section class="grid grid-cols-1 gap-4 md:grid-cols-3">
+    <!-- ── MAIN CONTENT GRID ── -->
+    <div class="grid gap-4 lg:grid-cols-3 xl:grid-cols-4">
+
+        <!-- ── LEFT: FORM ── -->
+        <section class="space-y-4 rounded-3xl border border-gray-200 bg-white/80 p-5 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80 lg:col-span-2 xl:col-span-3">
+
+            <!-- Section: Shaxsiy ma'lumotlar -->
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">{% if lang == "ru" %}Личные данные{% else %}Shaxsiy ma'lumotlar{% endif %}</p>
+                <h2 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{% if lang == "ru" %}Имя пользователя{% else %}Foydalanuvchi ma'lumotlari{% endif %}</h2>
+            </div>
+
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Ism <span class="text-red-500">*</span></label>
-                    <input type="text" id="inp-first-name" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 placeholder-gray-400">
+                    <label class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Ism <span class="text-red-500">*</span></label>
+                    <div class="flex overflow-hidden rounded-2xl border border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-800 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 dark:focus-within:ring-blue-900/40 transition">
+                        <span class="flex w-10 shrink-0 items-center justify-center border-r border-gray-300 text-gray-400 dark:border-gray-700"><i class="fa-solid fa-user text-xs"></i></span>
+                        <input type="text" id="inp-first-name" placeholder="{% if lang == 'ru' %}Имя{% else %}Ism{% endif %}" class="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:text-white">
+                    </div>
                 </div>
-
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Familiya</label>
-                    <input type="text" id="inp-last-name" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 placeholder-gray-400">
+                    <label class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Familiya</label>
+                    <div class="flex overflow-hidden rounded-2xl border border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-800 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 dark:focus-within:ring-blue-900/40 transition">
+                        <span class="flex w-10 shrink-0 items-center justify-center border-r border-gray-300 text-gray-400 dark:border-gray-700"><i class="fa-solid fa-user text-xs"></i></span>
+                        <input type="text" id="inp-last-name" placeholder="{% if lang == 'ru' %}Фамилия{% else %}Familiya{% endif %}" class="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:text-white">
+                    </div>
                 </div>
-
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Otasining ismi</label>
-                    <input type="text" id="inp-middle-name" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 placeholder-gray-400">
+                    <label class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Otasining ismi</label>
+                    <div class="flex overflow-hidden rounded-2xl border border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-800 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 dark:focus-within:ring-blue-900/40 transition">
+                        <span class="flex w-10 shrink-0 items-center justify-center border-r border-gray-300 text-gray-400 dark:border-gray-700"><i class="fa-solid fa-user text-xs"></i></span>
+                        <input type="text" id="inp-middle-name" placeholder="Otasining ismi" class="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:text-white">
+                    </div>
                 </div>
-                </section>
+            </div>
 
-                <section class="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <!-- Divider -->
+            <div class="border-t border-gray-100 pt-4 dark:border-gray-800">
+                <p class="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">{% if lang == "ru" %}Учётные данные{% else %}Kirish ma'lumotlari{% endif %}</p>
+                <h2 class="mt-1 text-base font-semibold text-gray-900 dark:text-white">Login, parol</h2>
+            </div>
+
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <!-- Username -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Username (login nomi) <span class="text-red-500">*</span></label>
-                    <div class="relative">
-                        <input type="text" id="inp-username" autocomplete="username" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 pr-10 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 placeholder-gray-400">
-                        <i id="username-check-spinner" class="fa-solid fa-circle-notch absolute right-3 top-1/2 hidden -translate-y-1/2 animate-spin text-blue-500"></i>
+                    <label class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Username <span class="text-red-500">*</span></label>
+                    <div id="username-input-wrapper" class="relative flex rounded-2xl border border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-800 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 dark:focus-within:ring-blue-900/40 transition">
+                        <span class="flex w-10 shrink-0 items-center justify-center border-r border-gray-300 text-gray-400 dark:border-gray-700 rounded-l-2xl"><i class="fa-solid fa-at text-xs"></i></span>
+                        <input type="text" id="inp-username" autocomplete="username" placeholder="username" class="min-w-0 flex-1 bg-transparent px-3 py-2.5 pr-8 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:text-white rounded-r-2xl">
+                        <span class="flex w-8 shrink-0 items-center justify-center">
+                            <i id="username-check-spinner" class="fa-solid fa-circle-notch animate-spin text-blue-500 text-xs" style="display:none"></i>
+                        </span>
                     </div>
                     <p id="username-hint" class="mt-1 text-xs text-gray-500 dark:text-gray-400">Username tizimda yagona bo'lishi kerak.</p>
                 </div>
 
+                <!-- Password -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ t.password }} <span class="text-red-500">*</span></label>
-                    <div class="relative">
-                        <input type="password" id="inp-password" placeholder="Parol kiriting" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 pr-11 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 placeholder-gray-400">
-                        <button type="button" id="toggle-password" class="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-blue-600 transition" aria-label="Parolni ko'rsatish yoki yashirish">
-                            <i class="fa-solid fa-eye icon-eye"></i>
-                            <svg class="w-5 h-5 icon-eye-off hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.287-3.95M9.88 9.88a3 3 0 104.24 4.24M6.1 6.1A9.954 9.954 0 0112 5c4.478 0 8.268 2.943 9.542 7a9.97 9.97 0 01-4.133 5.105M3 3l18 18"/>
-                            </svg>
+                    <label class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">{{ t.password }} <span class="text-red-500">*</span></label>
+                    <div class="relative flex overflow-hidden rounded-2xl border border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-800 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 dark:focus-within:ring-blue-900/40 transition">
+                        <span class="flex w-10 shrink-0 items-center justify-center border-r border-gray-300 text-gray-400 dark:border-gray-700"><i class="fa-solid fa-lock text-xs"></i></span>
+                        <input type="password" id="inp-password" placeholder="Parol kiriting" class="min-w-0 flex-1 bg-transparent px-3 py-2.5 pr-9 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:text-white">
+                        <button type="button" id="toggle-password" class="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-blue-600 transition" aria-label="Ko'rsatish">
+                            <i class="fa-solid fa-eye icon-eye text-xs"></i>
+                            <svg class="w-4 h-4 icon-eye-off hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.287-3.95M9.88 9.88a3 3 0 104.24 4.24M6.1 6.1A9.954 9.954 0 0112 5c4.478 0 8.268 2.943 9.542 7a9.97 9.97 0 01-4.133 5.105M3 3l18 18"/></svg>
                         </button>
                     </div>
-                    <p id="password-hint" class="mt-1 text-xs text-gray-500 dark:text-gray-400">Kamida 8 ta belgi, kamida 1 ta harf va 1 ta boshqa belgi (raqam/symbol).</p>
+                    <p id="password-hint" class="mt-1 text-xs text-gray-500 dark:text-gray-400">Kamida 8 ta belgi, 1 harf va 1 raqam/symbol.</p>
                 </div>
 
+                <!-- Confirm -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Parol tasdiqlash <span class="text-red-500">*</span></label>
-                    <div class="relative">
-                        <input type="password" id="inp-password-confirm" placeholder="Parolni qayta kiriting" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 pr-11 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 placeholder-gray-400">
-                        <button type="button" id="toggle-password-confirm" class="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-blue-600 transition" aria-label="Parol tasdig'ini ko'rsatish yoki yashirish">
-                            <i class="fa-solid fa-eye icon-eye"></i>
-                            <svg class="w-5 h-5 icon-eye-off hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.287-3.95M9.88 9.88a3 3 0 104.24 4.24M6.1 6.1A9.954 9.954 0 0112 5c4.478 0 8.268 2.943 9.542 7a9.97 9.97 0 01-4.133 5.105M3 3l18 18"/>
-                            </svg>
+                    <label class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Parol tasdiqlash <span class="text-red-500">*</span></label>
+                    <div class="relative flex overflow-hidden rounded-2xl border border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-800 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 dark:focus-within:ring-blue-900/40 transition">
+                        <span class="flex w-10 shrink-0 items-center justify-center border-r border-gray-300 text-gray-400 dark:border-gray-700"><i class="fa-solid fa-lock text-xs"></i></span>
+                        <input type="password" id="inp-password-confirm" placeholder="Qayta kiriting" class="min-w-0 flex-1 bg-transparent px-3 py-2.5 pr-9 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:text-white">
+                        <button type="button" id="toggle-password-confirm" class="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-blue-600 transition" aria-label="Ko'rsatish">
+                            <i class="fa-solid fa-eye icon-eye text-xs"></i>
+                            <svg class="w-4 h-4 icon-eye-off hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.287-3.95M9.88 9.88a3 3 0 104.24 4.24M6.1 6.1A9.954 9.954 0 0112 5c4.478 0 8.268 2.943 9.542 7a9.97 9.97 0 01-4.133 5.105M3 3l18 18"/></svg>
                         </button>
                     </div>
                     <p id="password-confirm-hint" class="mt-1 text-xs text-gray-500 dark:text-gray-400">Tasdiq parol bilan bir xil bo'lishi kerak.</p>
                 </div>
-                </section>
+            </div>
 
-                <section class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ t.email }} <span class="text-red-500">*</span></label>
-                    <input type="email" id="inp-email" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 placeholder-gray-400">
+            <!-- Divider: Kontakt & Rol -->
+            <div class="border-t border-gray-100 pt-4 dark:border-gray-800">
+                <p class="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">{% if lang == "ru" %}Контакт и роль{% else %}Kontakt va rol{% endif %}</p>
+            </div>
+
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <!-- Email -->
+                <div class="xl:col-span-2">
+                    <label class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">{{ t.email }} <span class="text-red-500">*</span></label>
+                    <div class="flex overflow-hidden rounded-2xl border border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-800 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 dark:focus-within:ring-blue-900/40 transition">
+                        <span class="flex w-10 shrink-0 items-center justify-center border-r border-gray-300 text-gray-400 dark:border-gray-700"><i class="fa-solid fa-envelope text-xs"></i></span>
+                        <input type="email" id="inp-email" placeholder="user@example.com" class="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:text-white">
+                    </div>
                 </div>
 
+                <!-- Phone -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Telefon raqam</label>
-                    <input type="tel" id="inp-phone" placeholder="+998 90 123 45 67" maxlength="17" inputmode="numeric" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 placeholder-gray-400">
-                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Format: +998 xx xxx xx xx</p>
+                    <label class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Telefon</label>
+                    <div class="flex overflow-hidden rounded-2xl border border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-800 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 dark:focus-within:ring-blue-900/40 transition">
+                        <span class="flex w-10 shrink-0 items-center justify-center border-r border-gray-300 text-gray-400 dark:border-gray-700"><i class="fa-solid fa-phone text-xs"></i></span>
+                        <input type="tel" id="inp-phone" placeholder="+998 90 123 45 67" maxlength="17" inputmode="numeric" class="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:text-white">
+                    </div>
                 </div>
 
+                <!-- Role -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ t.role }} <span class="text-red-500">*</span></label>
-                    <select id="inp-role" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100">
+                    <label class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">{{ t.role }} <span class="text-red-500">*</span></label>
+                    <select id="inp-role" class="w-full rounded-2xl border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40 transition">
                         <option value="SuperAdmin">{{ t.super_admin }}</option>
                         <option value="MahallaAdmin">{{ t.mahalla_admin }}</option>
                         <option value="MaktabAdmin">{{ t.maktab_admin }}</option>
@@ -96,108 +172,153 @@
                     </select>
                 </div>
 
+                <!-- Status -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Status <span class="text-red-500">*</span></label>
-                    <select id="inp-status" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100">
+                    <label class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Status <span class="text-red-500">*</span></label>
+                    <select id="inp-status" class="w-full rounded-2xl border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40 transition">
                         <option value="active">Faol (Active)</option>
                         <option value="pending">Kutilmoqda (Pending)</option>
                         <option value="inactive">Nofaol (Inactive)</option>
                     </select>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ t.organization }}</label>
+                <!-- Organization -->
+                <div class="sm:col-span-2 xl:col-span-2">
+                    <label class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">{{ t.organization }}</label>
                     <div id="inp-orgs-wrap" class="relative">
-                        <button type="button" id="inp-orgs-toggle" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-left outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 inline-flex items-center justify-between gap-2">
-                            <span id="inp-orgs-summary" class="truncate text-gray-500 dark:text-gray-400">Tashkilot tanlang...</span>
-                            <i class="fa-solid fa-chevron-down text-gray-500"></i>
+                        <button type="button" id="inp-orgs-toggle" class="w-full rounded-2xl border border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-800 px-4 py-2.5 text-sm text-left outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900/40 text-gray-900 dark:text-white inline-flex items-center justify-between gap-2 transition">
+                            <span id="inp-orgs-summary" class="truncate text-gray-400">Tashkilot tanlang...</span>
+                            <i class="fa-solid fa-chevron-down text-gray-400 text-xs"></i>
                         </button>
-                        <div id="inp-orgs-dropdown" class="absolute z-20 mt-1 hidden w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg">
+                        <div id="inp-orgs-dropdown" class="absolute z-20 mt-1 hidden w-full rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl">
                             <div class="p-2 border-b border-gray-200 dark:border-gray-800">
-                                <input type="text" id="inp-orgs-search" placeholder="Tashkilot qidirish..." class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-md px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 placeholder-gray-400">
+                                <input type="text" id="inp-orgs-search" placeholder="Qidirish..." class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white placeholder:text-gray-400">
                             </div>
                             <div id="inp-orgs-list" class="max-h-56 overflow-auto p-1"></div>
                         </div>
                     </div>
-                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Bir nechta tashkilotni qidirib tanlashingiz mumkin.</p>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Bir nechta tashkilot tanlanishi mumkin.</p>
                 </div>
-                </section>
+            </div>
 
-                <label class="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
-                    <span class="flex items-center gap-3 min-w-0">
-                        <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-sm font-bold text-gray-700 shadow-sm ring-1 ring-gray-200 dark:bg-gray-900 dark:text-gray-200 dark:ring-gray-700">G</span>
-                        <span class="min-w-0">
-                            <span class="block text-sm font-semibold text-gray-900 dark:text-white">Google OAuth</span>
-                            <span class="block truncate text-xs text-gray-500 dark:text-gray-400">Google orqali kirish ruxsati va keyingi OAuth bog'lanishi saqlanadi.</span>
-                        </span>
+            <!-- Google OAuth toggle -->
+            <label class="flex items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50 cursor-pointer hover:border-blue-300 dark:hover:border-blue-700 transition">
+                <span class="flex items-center gap-3 min-w-0">
+                    <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-sm font-bold text-gray-700 shadow-sm ring-1 ring-gray-200 dark:bg-gray-900 dark:text-gray-200 dark:ring-gray-700">G</span>
+                    <span class="min-w-0">
+                        <span class="block text-sm font-semibold text-gray-900 dark:text-white">Google OAuth</span>
+                        <span class="block truncate text-xs text-gray-500 dark:text-gray-400">Google orqali kirish ruxsati.</span>
                     </span>
-                    <input type="checkbox" id="inp-google-oauth" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                </label>
+                </span>
+                <input type="checkbox" id="inp-google-oauth" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+            </label>
 
-                <div>
-                    <div class="flex items-start justify-between gap-3">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ 'Menyu ruxsatlari' if lang == 'uz' else 'Права на меню' }}</label>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ 'Foydalanuvchi qaysi bo‘limlarni ko‘ra olishini tanlang.' if lang == 'uz' else 'Выберите разделы, доступные пользователю.' }}</p>
-                        </div>
-                        <button type="button" id="btn-role-defaults" class="inline-flex items-center rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50">
-                            {{ 'Rol defaultlari' if lang == 'uz' else 'Стандарт роли' }}
-                        </button>
+            <!-- Menu permissions -->
+            <div class="border-t border-gray-100 pt-4 dark:border-gray-800">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">{{ 'Menyu ruxsatlari' if lang == 'uz' else 'Права на меню' }}</p>
+                        <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{{ 'Foydalanuvchi qaysi bo\'limlarni ko\'ra olishini tanlang.' if lang == 'uz' else 'Выберите разделы, доступные пользователю.' }}</p>
                     </div>
-                    <div id="menu-permissions-summary" class="mt-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-600 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-300"></div>
-                    <div id="menu-permission-groups" class="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"></div>
+                    <button type="button" id="btn-role-defaults" class="inline-flex shrink-0 items-center rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 transition">
+                        <i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i>
+                        {{ 'Rol defaultlari' if lang == 'uz' else 'Стандарт роли' }}
+                    </button>
                 </div>
+                <div id="menu-permissions-summary" class="mt-2 rounded-2xl border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-600 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-300"></div>
+                <div id="menu-permission-groups" class="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"></div>
+            </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Rasm URL (ixtiyoriy)</label>
-                    <input type="url" id="inp-image-url" placeholder="https://example.com/avatar.jpg" class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-gray-100 placeholder-gray-400">
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Rasm yuklash</label>
-                    <input type="file" id="inp-image" accept="image/*" class="hidden">
-                    <div id="image-dropzone" class="relative rounded-2xl border-2 border-dashed border-blue-300/80 dark:border-blue-700/60 bg-gradient-to-br from-blue-50 via-indigo-50 to-sky-50 dark:from-gray-900 dark:via-gray-900 dark:to-blue-950/20 p-5 transition-all cursor-pointer hover:shadow-md hover:border-blue-400 dark:hover:border-blue-600">
-                        <div id="upload-empty" class="flex items-center gap-4">
-                            <div class="w-14 h-14 rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-blue-100 dark:border-gray-700 flex items-center justify-center text-blue-600 dark:text-blue-400">
-                                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M12 13v8m0-8l-3 3m3-3l3 3"/>
-                                </svg>
-                            </div>
-                            <div class="min-w-0">
-                                <p class="text-sm font-semibold text-gray-800 dark:text-gray-100">Rasmni shu yerga tashlang yoki tanlang</p>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">JPG, PNG, WEBP. Tavsiya: kvadrat yoki portret rasm.</p>
-                                <button type="button" id="btn-open-file" class="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition">
-                                    <i class="fa-solid fa-plus"></i>
-                                    Rasm tanlash
-                                </button>
-                            </div>
+            <!-- Avatar upload -->
+            <div class="border-t border-gray-100 pt-4 dark:border-gray-800">
+                <p class="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400 mb-3">Avatar</p>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Rasm URL (ixtiyoriy)</label>
+                        <div class="flex overflow-hidden rounded-2xl border border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-800 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 dark:focus-within:ring-blue-900/40 transition">
+                            <span class="flex w-10 shrink-0 items-center justify-center border-r border-gray-300 text-gray-400 dark:border-gray-700"><i class="fa-solid fa-link text-xs"></i></span>
+                            <input type="url" id="inp-image-url" placeholder="https://example.com/avatar.jpg" class="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:text-white">
                         </div>
-
-                        <div id="upload-preview" class="hidden items-center gap-4">
-                            <img id="upload-preview-img" src="" alt="Preview" class="w-20 h-20 rounded-2xl object-cover ring-2 ring-white dark:ring-gray-800 shadow-md">
-                            <div class="min-w-0 flex-1">
-                                <p id="upload-file-name" class="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate"></p>
-                                <p id="upload-file-size" class="text-xs text-gray-500 dark:text-gray-400 mt-1"></p>
-                                <div class="mt-2 flex items-center gap-2">
-                                    <button type="button" id="btn-change-file" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition">Almashtirish</button>
-                                    <button type="button" id="btn-remove-file" class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200 text-xs font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition">O'chirish</button>
+                    </div>
+                    <div>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Rasm yuklash</label>
+                        <input type="file" id="inp-image" accept="image/*" class="hidden">
+                        <div id="image-dropzone" class="relative rounded-2xl border-2 border-dashed border-blue-300/80 dark:border-blue-700/60 bg-gradient-to-br from-blue-50 via-indigo-50 to-sky-50 dark:from-gray-900 dark:via-gray-900 dark:to-blue-950/20 p-4 transition-all cursor-pointer hover:border-blue-400 dark:hover:border-blue-600">
+                            <div id="upload-empty" class="flex items-center gap-3">
+                                <div class="w-11 h-11 rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-blue-100 dark:border-gray-700 flex items-center justify-center text-blue-500">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M12 13v8m0-8l-3 3m3-3l3 3"/></svg>
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="text-xs font-semibold text-gray-800 dark:text-gray-100">Faylni tashlang yoki tanlang</p>
+                                    <button type="button" id="btn-open-file" class="mt-1.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition"><i class="fa-solid fa-plus text-xs"></i> Tanlash</button>
                                 </div>
                             </div>
-                            <div id="avatar-preview-box" class="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center text-lg font-bold shadow-sm shrink-0">U</div>
+                            <div id="upload-preview" class="hidden items-center gap-3">
+                                <img id="upload-preview-img" src="" alt="Preview" class="w-16 h-16 rounded-xl object-cover ring-2 ring-white dark:ring-gray-800 shadow">
+                                <div class="min-w-0 flex-1">
+                                    <p id="upload-file-name" class="text-xs font-semibold text-gray-800 dark:text-gray-100 truncate"></p>
+                                    <p id="upload-file-size" class="text-xs text-gray-500 mt-0.5"></p>
+                                    <div class="mt-1.5 flex gap-1.5">
+                                        <button type="button" id="btn-change-file" class="px-2.5 py-1 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition">Almashtir</button>
+                                        <button type="button" id="btn-remove-file" class="px-2.5 py-1 rounded-lg bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200 text-xs font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition">O'chir</button>
+                                    </div>
+                                </div>
+                                <div id="avatar-preview-box" class="w-11 h-11 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center text-base font-bold shadow shrink-0">U</div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="pt-4 mt-6 border-t border-gray-100 dark:border-gray-800 flex justify-end">
-                <button onclick="saveUser()" class="px-6 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl flex items-center gap-2 transition shadow-sm">
-                    <i id="save-spinner" class="fa-solid fa-circle-notch hidden animate-spin"></i>
-                    {{ t.save }}
+            <!-- Actions -->
+            <div class="mt-2 flex flex-col gap-3 border-t border-gray-100 pt-5 dark:border-gray-800 sm:flex-row sm:items-center">
+                <a href="/users" class="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>{{ t.cancel }}</span>
+                </a>
+                <button id="save-btn" type="button" onclick="saveUser()" class="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 shadow-sm shadow-blue-500/30 disabled:opacity-60 disabled:cursor-not-allowed">
+                    <i id="save-spinner" class="fa-solid fa-circle-notch animate-spin" style="display:none"></i>
+                    <i id="save-disk-icon" class="fa-solid fa-floppy-disk"></i>
+                    <span id="save-btn-text">{{ t.save }}</span>
                 </button>
             </div>
-        </div>
+        </section>
+
+        <!-- ── RIGHT: SIDEBAR ── -->
+        <aside class="space-y-4 xl:col-span-1">
+            <!-- Help card -->
+            <section class="rounded-3xl border border-gray-200 bg-white/80 p-5 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80">
+                <p class="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">{% if lang == "ru" %}Подсказка{% else %}Eslatma{% endif %}</p>
+                <h2 class="mt-1 text-base font-semibold text-gray-900 dark:text-white">{% if lang == "ru" %}Обязательные поля{% else %}Majburiy maydonlar{% endif %}</h2>
+                <div class="mt-4 space-y-3 text-sm text-gray-600 dark:text-gray-300">
+                    <div class="rounded-2xl bg-gray-50 px-4 py-3 dark:bg-gray-800">
+                        <p class="font-medium text-gray-900 dark:text-white">Ism, Username, Email, Parol</p>
+                        <p class="mt-1 text-xs leading-5">{% if lang == "ru" %}Без этих полей запись не будет сохранена.{% else %}Bu maydonlarsiz foydalanuvchi yozuvi saqlanmaydi.{% endif %}</p>
+                    </div>
+                    <div class="rounded-2xl bg-gray-50 px-4 py-3 dark:bg-gray-800">
+                        <p class="font-medium text-gray-900 dark:text-white">{% if lang == "ru" %}Пароль{% else %}Parol kuchliligi{% endif %}</p>
+                        <p class="mt-1 text-xs leading-5">{% if lang == "ru" %}Минимум 8 символов, одна буква и один спецсимвол.{% else %}Kamida 8 belgi, 1 harf va 1 raqam yoki symbol.{% endif %}</p>
+                    </div>
+                    <div class="rounded-2xl bg-gray-50 px-4 py-3 dark:bg-gray-800">
+                        <p class="font-medium text-gray-900 dark:text-white">{% if lang == "ru" %}Права меню{% else %}Menyu ruxsatlari{% endif %}</p>
+                        <p class="mt-1 text-xs leading-5">{% if lang == "ru" %}Без хотя бы одного раздела пользователь не может войти.{% else %}Kamida bitta menyu bo'lmasa foydalanuvchi tizimga kira olmaydi.{% endif %}</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Username auto-gen info -->
+            <section class="rounded-3xl border border-blue-100 bg-blue-50/60 p-4 dark:border-blue-900/40 dark:bg-blue-950/20">
+                <div class="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                    <i class="fa-solid fa-wand-magic-sparkles text-sm"></i>
+                    <p class="text-xs font-semibold uppercase tracking-wide">Auto-username</p>
+                </div>
+                <p class="mt-2 text-xs text-blue-700/80 dark:text-blue-300/80 leading-5">{% if lang == "ru" %}Username формируется автоматически на основе имени и фамилии. Вы можете изменить его вручную.{% else %}Username ism va familiya asosida avtomatik shakllanadi. Qo'lda o'zgartirishingiz mumkin.{% endif %}</p>
+            </section>
+        </aside>
     </div>
+
 </div>
+
 
 <script>
 const imageInput = document.getElementById('inp-image');
@@ -293,15 +414,22 @@ function getUsernameFormatError(username) {
     return '';
 }
 
+const usernameInputWrapper = document.getElementById('username-input-wrapper');
+function showSpinner(el) { if(el) el.style.display = 'inline-block'; }
+function hideSpinner(el) { if(el) el.style.display = 'none'; }
+
 function setUsernameStatus(status, message) {
-    usernameInput.classList.remove('border-red-400', 'border-emerald-400', 'focus:ring-red-500', 'focus:ring-emerald-500');
+    // Spinner
+    if (status === 'checking') showSpinner(usernameSpinner);
+    else hideSpinner(usernameSpinner);
+    // Wrapper border rengi
+    usernameInputWrapper?.classList.remove('border-red-400', 'border-emerald-400');
     usernameHint.className = 'mt-1 text-xs';
-    usernameSpinner.classList.toggle('hidden', status !== 'checking');
     if (status === 'ok') {
-        usernameInput.classList.add('border-emerald-400', 'focus:ring-emerald-500');
+        usernameInputWrapper?.classList.add('border-emerald-400');
         usernameHint.classList.add('text-emerald-600', 'dark:text-emerald-400');
     } else if (status === 'error') {
-        usernameInput.classList.add('border-red-400', 'focus:ring-red-500');
+        usernameInputWrapper?.classList.add('border-red-400');
         usernameHint.classList.add('text-red-600', 'dark:text-red-400');
     } else if (status === 'checking') {
         usernameHint.classList.add('text-blue-600', 'dark:text-blue-400');
@@ -344,7 +472,7 @@ async function checkUsernameAvailabilityNow() {
     } finally {
         if (seq === usernameCheckState.requestSeq) {
             usernameCheckState.checking = false;
-            usernameSpinner.classList.add('hidden');
+            hideSpinner(usernameSpinner);
         }
     }
 }
@@ -748,7 +876,13 @@ async function saveUser() {
     }
 
     errEl.classList.add('hidden');
-    document.getElementById('save-spinner').classList.remove('hidden');
+    // Spinner ko'rsatish
+    const saveSpinner = document.getElementById('save-spinner');
+    const saveDiskIcon = document.getElementById('save-disk-icon');
+    const saveBtn = document.getElementById('save-btn');
+    showSpinner(saveSpinner);
+    if (saveDiskIcon) saveDiskIcon.style.display = 'none';
+    if (saveBtn) saveBtn.disabled = true;
 
     const formData = new FormData();
     formData.append('username', name);
@@ -784,7 +918,10 @@ async function saveUser() {
         errEl.textContent = "Tarmoqda xatolik";
         errEl.classList.remove('hidden');
     } finally {
-        document.getElementById('save-spinner').classList.add('hidden');
+        // Spinner yashirish — har doim
+        hideSpinner(saveSpinner);
+        if (saveDiskIcon) saveDiskIcon.style.display = '';
+        if (saveBtn) saveBtn.disabled = false;
     }
 }
 

@@ -1,131 +1,151 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="animate-fade-in mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-    <div>
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{{ employee_heading_title or "Foydalanuvchilar" }}</h2>
-        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ employee_heading_description or "Barcha foydalanuvchilar ro'yxati." }}</p>
-        <p id="employees-count-text" class="mt-1 text-sm text-gray-500 dark:text-gray-400">Yuklanmoqda...</p>
-    </div>
-    <div class="flex items-center gap-2">
-        <a href="/employees/catalogs" class="inline-flex cursor-pointer items-center gap-2 card-standard px-4 py-2.5 text-sm font-semibold text-slate-700  transition hover:-translate-y-0.5 hover:bg-slate-50  dark:text-slate-200 dark:hover:bg-slate-700">
-            <i class="fa-solid fa-server"></i>
-            Bo'lim va lavozimlar
-        </a>
-        <button id="btn-camera-import" type="button" class="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-indigo-300 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-indigo-100 dark:border-indigo-900/40 dark:bg-indigo-900/20 dark:text-indigo-300 dark:hover:bg-indigo-900/30">
-            <i class="fa-solid fa-rotate"></i>
-            Kameradan yuklash
-        </button>
-        <button id="btn-attendance-import" type="button" class="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-100 dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-300 dark:hover:bg-emerald-900/30">
-            <i class="fa-solid fa-check"></i>
-            Davomatdan saqlash
-        </button>
-        <a href="{{ employee_add_url or '/employees/add' }}" class="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-700">
-            <i class="fa-solid fa-plus"></i>
-            {{ employee_add_label or "Yangi foydalanuvchi" }}
-        </a>
-    </div>
-</div>
+<div class="employee-page animate-fade-in space-y-5">
+    <section class="employee-hero">
+        <div class="employee-hero-backdrop" aria-hidden="true">
+            <span class="employee-hero-orb orb-one"></span>
+            <span class="employee-hero-orb orb-two"></span>
+        </div>
+        <div class="employee-hero-grid">
+            <div class="min-w-0">
+                <div class="employee-hero-pills">
+                    <span class="employee-hero-pill">Workforce Console</span>
+                    {% if employee_view_mode == 'students' %}
+                    <span class="employee-hero-pill is-muted">O'quvchi oqimi</span>
+                    {% elif employee_view_mode == 'staff' %}
+                    <span class="employee-hero-pill is-muted">Hodim oqimi</span>
+                    {% else %}
+                    <span class="employee-hero-pill is-muted">To'liq ro'yxat</span>
+                    {% endif %}
+                </div>
+                <h1 class="employee-hero-title">{{ employee_heading_title or "Foydalanuvchilar" }}</h1>
+                <p class="employee-hero-text">{{ employee_heading_description or "Barcha foydalanuvchilar ro'yxati." }}</p>
+                <div id="employees-count-text" class="employee-hero-counter">Yuklanmoqda...</div>
+            </div>
+            <div class="employee-hero-actions">
+                <a href="/employees/catalogs" class="employee-action-btn is-soft">
+                    <i class="fa-solid fa-server"></i>
+                    Bo'lim va lavozimlar
+                </a>
+                <button id="btn-camera-import" type="button" class="employee-action-btn is-indigo">
+                    <i class="fa-solid fa-rotate"></i>
+                    Kameradan yuklash
+                </button>
+                <button id="btn-attendance-import" type="button" class="employee-action-btn is-emerald">
+                    <i class="fa-solid fa-check"></i>
+                    Davomatdan saqlash
+                </button>
+                <a href="{{ employee_add_url or '/employees/add' }}" class="employee-action-btn is-primary">
+                    <i class="fa-solid fa-plus"></i>
+                    {{ employee_add_label or "Yangi foydalanuvchi" }}
+                </a>
+            </div>
+        </div>
+    </section>
 
-<div id="employees-feedback" class="mb-4 hidden rounded-2xl border px-4 py-3 text-sm"></div>
+    <div id="employees-feedback" class="hidden rounded-2xl border px-4 py-3 text-sm"></div>
 
-<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-    <div class="card-hover flex items-center gap-4 card-standard p-5  ">
-        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400">
-            <i class="fa-solid fa-users"></i>
-        </div>
-        <div>
-            <p class="text-xs font-medium uppercase tracking-widest text-gray-500 dark:text-gray-400">Jami foydalanuvchi</p>
-            <p id="employees-stat-total" class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">0</p>
-        </div>
-    </div>
-    <div class="card-hover flex items-center gap-4 rounded-2xl border border-indigo-200 bg-indigo-50 p-5 shadow-sm dark:border-indigo-900/30 dark:bg-indigo-900/20">
-        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400">
-            <i class="fa-solid fa-building"></i>
-        </div>
-        <div>
-            <p class="text-xs font-medium uppercase tracking-widest text-indigo-700 dark:text-indigo-300">Tashkilot</p>
-            <p id="employees-stat-organizations" class="mt-1 text-2xl font-bold text-indigo-700 dark:text-indigo-300">0</p>
-        </div>
-    </div>
-    <div class="card-hover flex items-center gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm dark:border-emerald-900/30 dark:bg-emerald-900/20">
-        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400">
-            <i class="fa-solid fa-server"></i>
-        </div>
-        <div>
-            <p class="text-xs font-medium uppercase tracking-widest text-emerald-700 dark:text-emerald-300">Bo'lim</p>
-            <p id="employees-stat-departments" class="mt-1 text-2xl font-bold text-emerald-700 dark:text-emerald-300">0</p>
-        </div>
-    </div>
-    <div class="card-hover flex items-center gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm dark:border-amber-900/30 dark:bg-amber-900/20">
-        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400">
-            <i class="fa-solid fa-address-card"></i>
-        </div>
-        <div>
-            <p class="text-xs font-medium uppercase tracking-widest text-amber-700 dark:text-amber-300">Lavozim</p>
-            <p id="employees-stat-positions" class="mt-1 text-2xl font-bold text-amber-700 dark:text-amber-300">0</p>
-        </div>
-    </div>
-    <div class="card-hover flex items-center gap-4 rounded-2xl border border-sky-200 bg-sky-50 p-5 shadow-sm dark:border-sky-900/30 dark:bg-sky-900/20">
-        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-600 dark:bg-sky-900/40 dark:text-sky-400">
-            <i class="fa-solid fa-camera-cctv"></i>
-        </div>
-        <div>
-            <p class="text-xs font-medium uppercase tracking-widest text-sky-700 dark:text-sky-300">Kamera</p>
-            <p id="employees-stat-cameras" class="mt-1 text-2xl font-bold text-sky-700 dark:text-sky-300">0</p>
-        </div>
-    </div>
-</div>
+    <section class="employee-stats-grid">
+        <article class="employee-stat-card is-blue">
+            <span class="employee-stat-icon"><i class="fa-solid fa-users"></i></span>
+            <p class="employee-stat-label">Jami foydalanuvchi</p>
+            <p id="employees-stat-total" class="employee-stat-value">0</p>
+        </article>
+        <article class="employee-stat-card is-indigo">
+            <span class="employee-stat-icon"><i class="fa-solid fa-building"></i></span>
+            <p class="employee-stat-label">Tashkilot</p>
+            <p id="employees-stat-organizations" class="employee-stat-value">0</p>
+        </article>
+        <article class="employee-stat-card is-emerald">
+            <span class="employee-stat-icon"><i class="fa-solid fa-server"></i></span>
+            <p class="employee-stat-label">Bo'lim</p>
+            <p id="employees-stat-departments" class="employee-stat-value">0</p>
+        </article>
+        <article class="employee-stat-card is-amber">
+            <span class="employee-stat-icon"><i class="fa-solid fa-address-card"></i></span>
+            <p class="employee-stat-label">Lavozim</p>
+            <p id="employees-stat-positions" class="employee-stat-value">0</p>
+        </article>
+        <article class="employee-stat-card is-sky">
+            <span class="employee-stat-icon"><i class="fa-solid fa-camera-cctv"></i></span>
+            <p class="employee-stat-label">Kamera</p>
+            <p id="employees-stat-cameras" class="employee-stat-value">0</p>
+        </article>
+    </section>
 
-<div class="mb-4 card-standard p-3  ">
-    <div class="overflow-x-auto">
-        <div class="flex min-w-max items-center gap-2">
-            <label for="employees-query-filter" class="sr-only">Qidiruv</label>
-            <input id="employees-query-filter" type="text" placeholder="Qidiruv: F.I.Sh. yoki ID" class="w-72 form-input">
-
-            <label for="employees-org-filter" class="sr-only">Tashkilot</label>
-            <select id="employees-org-filter" class="w-44 appearance-none cursor-pointer rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 pr-10 text-sm text-gray-900 outline-none transition hover:border-gray-400 hover:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:hover:border-gray-500 dark:hover:bg-gray-700 dark:focus:ring-blue-900/40" style="background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M6 9l6 6 6-6'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;">
-                <option value="all">Tashkilot: barchasi</option>
-            </select>
-
-            <label for="employees-dept-filter" class="sr-only">Bo'lim</label>
-            <select id="employees-dept-filter" class="w-40 appearance-none cursor-pointer rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 pr-10 text-sm text-gray-900 outline-none transition hover:border-gray-400 hover:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:hover:border-gray-500 dark:hover:bg-gray-700 dark:focus:ring-blue-900/40" style="background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M6 9l6 6 6-6'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;">
-                <option value="all">Bo'lim: barchasi</option>
-            </select>
-
-            <label for="employees-pos-filter" class="sr-only">Lavozim</label>
-            <select id="employees-pos-filter" class="w-40 appearance-none cursor-pointer rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 pr-10 text-sm text-gray-900 outline-none transition hover:border-gray-400 hover:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:hover:border-gray-500 dark:hover:bg-gray-700 dark:focus:ring-blue-900/40" style="background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M6 9l6 6 6-6'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;">
-                <option value="all">Lavozim: barchasi</option>
-            </select>
-
-            <label for="employees-camera-filter" class="sr-only">Kamera</label>
-            <select id="employees-camera-filter" class="w-40 appearance-none cursor-pointer rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 pr-10 text-sm text-gray-900 outline-none transition hover:border-gray-400 hover:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:hover:border-gray-500 dark:hover:bg-gray-700 dark:focus:ring-blue-900/40" style="background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M6 9l6 6 6-6'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;">
-                <option value="all">Kamera: barchasi</option>
-            </select>
-
-            <label for="employees-type-filter" class="sr-only">Xodim turi</label>
-            <select id="employees-type-filter" class="w-40 appearance-none cursor-pointer rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 pr-10 text-sm text-gray-900 outline-none transition hover:border-gray-400 hover:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:hover:border-gray-500 dark:hover:bg-gray-700 dark:focus:ring-blue-900/40" style="background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M6 9l6 6 6-6'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;">
-                <option value="all">Tur: barchasi</option>
-                <option value="staff">Hodim / O'qituvchi</option>
-                <option value="oquvchi">O'quvchi</option>
-                <option value="oqituvchi">O'qituvchi</option>
-                <option value="hodim">Xodim</option>
-                <option value="none">Tanlanmagan</option>
-            </select>
-
-            <button id="employees-apply-filter" title="Filter qo'llash" aria-label="Filter qo'llash" class="inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-blue-600 text-white transition hover:bg-blue-700">
-                <i class="fa-solid fa-filter"></i>
-            </button>
-            <button id="employees-reset-filter" title="Filterlarni tozalash" aria-label="Filterlarni tozalash" class="inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-gray-300 bg-white text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
+    <section class="employee-panel">
+        <div class="employee-panel-head">
+            <div>
+                <p class="employee-panel-kicker">Filtrlash paneli</p>
+                <h2 class="employee-panel-title">Hodim va o'quvchilar bo'yicha tez qidiruv</h2>
+            </div>
         </div>
-    </div>
-</div>
+        <div class="employee-filter-grid grid grid-cols-1 gap-3 xl:grid-cols-12">
+            <label class="block xl:col-span-2">
+                <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">Qidiruv</span>
+                <input id="employees-query-filter" type="text" placeholder="Qidiruv: F.I.Sh. yoki ID" class="form-input w-full">
+            </label>
+            <label class="block xl:col-span-2">
+                <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">Tashkilot</span>
+                <select id="employees-org-filter" class="form-input w-full">
+                    <option value="all">Tashkilot: barchasi</option>
+                </select>
+            </label>
+            <label class="block xl:col-span-2">
+                <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">Bo'lim</span>
+                <select id="employees-dept-filter" class="form-input w-full">
+                    <option value="all">Bo'lim: barchasi</option>
+                </select>
+            </label>
+            <label class="block xl:col-span-2">
+                <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">Lavozim</span>
+                <select id="employees-pos-filter" class="form-input w-full">
+                    <option value="all">Lavozim: barchasi</option>
+                </select>
+            </label>
+            <label class="block xl:col-span-1">
+                <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">Kamera</span>
+                <select id="employees-camera-filter" class="form-input w-full">
+                    <option value="all">Kamera: barchasi</option>
+                </select>
+            </label>
+            <label class="block xl:col-span-1">
+                <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">Tur</span>
+                <select id="employees-type-filter" class="form-input w-full">
+                    {% if employee_view_mode == 'staff' %}
+                    <option value="all">Tur: barchasi</option>
+                    <option value="oqituvchi">O'qituvchi</option>
+                    <option value="hodim">Xodim</option>
+                    {% elif employee_view_mode == 'students' %}
+                    <option value="all">Tur: barchasi</option>
+                    <option value="oquvchi">O'quvchi</option>
+                    <option value="none">Tanlanmagan</option>
+                    {% else %}
+                    <option value="all">Tur: barchasi</option>
+                    <option value="staff">Hodim / O'qituvchi</option>
+                    <option value="oquvchi">O'quvchi</option>
+                    <option value="oqituvchi">O'qituvchi</option>
+                    <option value="hodim">Xodim</option>
+                    <option value="none">Tanlanmagan</option>
+                    {% endif %}
+                </select>
+            </label>
+            <div class="employee-filter-actions xl:col-span-2">
+                <span class="employee-filter-actions-label">Amallar</span>
+                <div class="employee-filter-actions-row">
+                    <button id="employees-reset-filter" type="button" title="Filterlarni tozalash" aria-label="Filterlarni tozalash" class="employee-filter-btn is-secondary">
+                        <i class="fa-solid fa-xmark"></i>
+                        <span>Tozalash</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
 
-<div class="overflow-hidden card-standard  ">
-    <div class="overflow-x-auto">
-        <table class="table-standard">
+    <section class="employee-panel overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="table-standard employee-table">
             <thead>
                 <tr>
                     <th class="px-6 py-4 font-semibold">#</th>
@@ -145,13 +165,14 @@
             </tbody>
         </table>
     </div>
-    <div class="flex flex-col items-center justify-between gap-3 border-t border-gray-100 px-6 py-4 dark:border-gray-800 sm:flex-row">
+    <div class="employee-pagination">
         <p id="employees-page-info" class="text-xs text-gray-500 dark:text-gray-400">1 / 1</p>
         <div class="inline-flex items-center gap-2">
             <button id="employees-prev-page" class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">Oldingi</button>
             <button id="employees-next-page" class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">Keyingi</button>
         </div>
     </div>
+    </section>
 </div>
 
 <script>
@@ -289,6 +310,14 @@ function clearSavedEmployeesImportJob() {
     localStorage.removeItem(EMPLOYEES_IMPORT_JOB_VERSION_KEY);
 }
 
+function setEmployeesFilterButtonLoading(isLoading) {
+    const resetBtn = document.getElementById("employees-reset-filter");
+
+    if (resetBtn) {
+        resetBtn.disabled = isLoading;
+    }
+}
+
 function setEmployeesLoading(isLoading, message = "Yuklanmoqda...") {
     const tbody = document.getElementById("employeesTableBody");
     if (tbody && isLoading) {
@@ -298,6 +327,7 @@ function setEmployeesLoading(isLoading, message = "Yuklanmoqda...") {
     const nextBtn = document.getElementById("employees-next-page");
     if (prevBtn) prevBtn.disabled = isLoading;
     if (nextBtn) nextBtn.disabled = isLoading;
+    setEmployeesFilterButtonLoading(isLoading);
 }
 
 function getEmployeesFilterState() {
@@ -373,12 +403,20 @@ function buildEmployeesSearchParams(page = 1) {
     const params = new URLSearchParams();
     params.set("page", String(page || 1));
     params.set("page_size", String(employeesState.pageSize));
+    if (EMPLOYEE_VIEW_MODE && EMPLOYEE_VIEW_MODE !== "all") params.set("view_mode", String(EMPLOYEE_VIEW_MODE));
     if (String(filters.query || "").trim()) params.set("query", String(filters.query || "").trim());
     if (String(filters.organizationId || "").trim() && String(filters.organizationId) !== "all") params.set("organization_id", String(filters.organizationId));
     if (String(filters.department || "").trim() && String(filters.department) !== "all") params.set("department", String(filters.department));
     if (String(filters.position || "").trim() && String(filters.position) !== "all") params.set("position", String(filters.position));
     if (String(filters.cameraId || "").trim() && String(filters.cameraId) !== "all") params.set("camera_id", String(filters.cameraId));
-    if (String(filters.employeeType || "").trim() && String(filters.employeeType) !== "all") params.set("employee_type", String(filters.employeeType));
+    const activeType = String(filters.employeeType || "").trim();
+    if (activeType && activeType !== "all") {
+        params.set("employee_type", activeType);
+    } else if (EMPLOYEE_VIEW_MODE === "staff") {
+        params.set("employee_type", "staff");
+    } else if (EMPLOYEE_VIEW_MODE === "students") {
+        params.set("employee_type", "students");
+    }
     return params;
 }
 
@@ -1079,6 +1117,7 @@ function renderFilters() {
     const deptSel = document.getElementById("employees-dept-filter");
     const posSel = document.getElementById("employees-pos-filter");
     const camSel = document.getElementById("employees-camera-filter");
+    const typeSel = document.getElementById("employees-type-filter");
 
     setFilterOptions(orgSel, "Barcha tashkilotlar", employeesState.filterMeta.organizations, orgSel?.value || "all", (item) => item.id, (item) => item.name);
     refreshDeptPosFilters();
@@ -1095,6 +1134,7 @@ function renderFilters() {
     };
     posSel.onchange = () => applyFilters();
     camSel.onchange = () => applyFilters();
+    typeSel.onchange = () => applyFilters();
 }
 
 function refreshCameraFilter() {
@@ -1296,7 +1336,9 @@ async function loadEmployeesPage(page = 1) {
 async function loadEmployees() {
     try {
         setEmployeesLoading(true);
-        const metaRes = await fetchJson('/api/employees/filter-options');
+        const metaParams = new URLSearchParams();
+        if (EMPLOYEE_VIEW_MODE && EMPLOYEE_VIEW_MODE !== "all") metaParams.set("view_mode", String(EMPLOYEE_VIEW_MODE));
+        const metaRes = await fetchJson(`/api/employees/filter-options?${metaParams.toString()}`);
         employeesState.filterMeta = {
             organizations: Array.isArray(metaRes.organizations) ? metaRes.organizations : [],
             departments: Array.isArray(metaRes.departments) ? metaRes.departments : [],
@@ -1357,7 +1399,6 @@ async function confirmDeleteEmployee() {
     }
 }
 
-document.getElementById("employees-apply-filter").addEventListener("click", applyFilters);
 document.getElementById("employees-query-filter").addEventListener("input", () => {
     clearTimeout(employeesState.searchDebounceTimer);
     employeesState.searchDebounceTimer = setTimeout(() => applyFilters(), 280);

@@ -1,109 +1,292 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="animate-fade-in space-y-4">
-    <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{% if lang == "ru" %}Организации{% else %}Tashkilotlar{% endif %}</h1>
-            <p id="organizations-count" class="mt-1 text-sm text-gray-500 dark:text-gray-400">{% if lang == "ru" %}Управление организациями{% else %}Tashkilotlarni boshqarish{% endif %}</p>
-        </div>
-        <a href="/organizations/add" class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700">
-            <i class="fa-solid fa-plus"></i>
-            {% if lang == "ru" %}Добавить{% else %}Yangi tashkilot{% endif %}
-        </a>
-    </div>
+    {% set ns = namespace(active_orgs=0, total_employees=0, total_devices=0, total_users=0) %}
+    {% for org in organizations %}
+        {% set ns.total_employees = ns.total_employees + (org.employees_count or 0) %}
+        {% set ns.total_devices = ns.total_devices + (org.devices_count or 0) %}
+        {% set ns.total_users = ns.total_users + (org.users_count or 0) %}
+        {% if "active" in (org.subscription_status|string)|lower %}
+            {% set ns.active_orgs = ns.active_orgs + 1 %}
+        {% endif %}
+    {% endfor %}
 
-    <section class="overflow-hidden card-standard  ">
-        <div class="border-b border-gray-100 px-4 py-4 dark:border-gray-800">
-            <div class="overflow-x-auto">
-                <div class="flex min-w-max items-end gap-3">
-                    <label class="block w-[25rem]">
-                        <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">Qidiruv</span>
-                        <span class="flex overflow-hidden rounded-xl border border-gray-200 bg-gray-50 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                            <span class="flex w-11 shrink-0 items-center justify-center border-r border-gray-200 text-gray-400 dark:border-gray-700">
-                                <i class="fa-solid fa-magnifying-glass"></i>
-                            </span>
-                            <input id="organizations-search" type="text" placeholder="Tashkilot nomi yoki turi bo'yicha qidiruv" class="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:text-white">
-                        </span>
-                    </label>
-
-                    <label class="block w-[11rem]">
-                        <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">Holat</span>
-                        <select id="organizations-status" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
-                            <option value="">Barchasi</option>
-                            <option value="active">Faol</option>
-                            <option value="expired">Tugagan</option>
-                            <option value="pending">Kutilmoqda</option>
-                        </select>
-                    </label>
-
-                    <label class="block w-[13rem]">
-                        <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">Turi</span>
-                        <select id="organizations-type" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
-                            <option value="">Barcha turlar</option>
-                        </select>
-                    </label>
-
-                    <div class="grid w-[15rem] grid-cols-2 overflow-hidden card-standard  ">
-                        <button id="organizations-apply" type="button" class="inline-flex items-center justify-center gap-2 border-r border-gray-300 px-4 py-2.5 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 dark:border-gray-700 dark:text-blue-300 dark:hover:bg-blue-900/20">
-                            <i class="fa-solid fa-check"></i>
-                            Qo'llash
-                        </button>
-                        <button id="organizations-reset" type="button" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h5M20 20v-5h-5M5.636 18.364A9 9 0 1018.364 5.636"/>
-                            </svg>
-                            Tozalash
-                        </button>
+    <div class="animate-fade-in space-y-4">
+        <section class="overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 to-indigo-600 shadow-xl">
+            <div class="grid gap-4 p-5 xl:grid-cols-3">
+                <div class="space-y-4 xl:col-span-2">
+                    <div class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white/80 backdrop-blur-sm">
+                        <i class="fa-solid fa-building"></i>
+                        <span>{% if lang == "ru" %}Премиум управление{% else %}Premium boshqaruv{% endif %}</span>
                     </div>
 
-                    <label class="block w-[10rem]">
-                        <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">Sahifa hajmi</span>
-                        <select id="organizations-page-size" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
-                            <option value="10">10 ta</option>
-                            <option value="25" selected>25 ta</option>
-                            <option value="50">50 ta</option>
-                        </select>
-                    </label>
+                    <div class="space-y-2">
+                        <h1 class="text-3xl font-bold tracking-tight text-white">{% if lang == "ru" %}
+                            Организации{% else %}Tashkilotlar{% endif %}</h1>
+                        <p class="max-w-3xl text-sm leading-6 text-blue-100">
+                            {% if lang == "ru" %}
+                                Организации собраны в компактной панели: быстрый поиск, статусы, рабочее время и
+                                ключевые метрики в одном экране без грубых блоков.
+                            {% else %}
+                                Tashkilotlar bir ekranda ixcham boshqariladi: qidiruv, obuna holati, ish vaqti va asosiy
+                                metrikalar premium, lekin zich joylashuvda chiqadi.
+                            {% endif %}
+                        </p>
+                        <p id="organizations-count" class="text-sm font-medium text-white/80">
+                            {{ organizations|length }} {% if lang == "ru" %}организаций доступно{% else %}ta tashkilot
+                            mavjud{% endif %}
+                        </p>
+                    </div>
+
+                    <div class="grid gap-3 sm:grid-cols-3">
+                        <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-white/80">{% if lang == "ru" %}
+                                Активные{% else %}Faol obuna{% endif %}</p>
+                            <p class="mt-2 text-2xl font-bold text-white">{{ ns.active_orgs }}</p>
+                            <p class="mt-1 text-xs text-white/80">{% if lang == "ru" %}Из {{ organizations|length }}
+                                организаций{% else %}{{ organizations|length }} tadan{% endif %}</p>
+                        </div>
+                        <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-white/80">{% if lang == "ru" %}
+                                Сотрудники{% else %}Xodimlar{% endif %}</p>
+                            <p class="mt-2 text-2xl font-bold text-white">{{ ns.total_employees }}</p>
+                            <p class="mt-1 text-xs text-white/80">{% if lang == "ru" %}По всем организациям{% else %}
+                                Barcha tashkilotlar bo‘yicha{% endif %}</p>
+                        </div>
+                        <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-white/80">{% if lang == "ru" %}
+                                Камеры и users{% else %}Kamera va userlar{% endif %}</p>
+                            <p class="mt-2 text-2xl font-bold text-white">{{ ns.total_devices }}
+                                / {{ ns.total_users }}</p>
+                            <p class="mt-1 text-xs text-white/80">{% if lang == "ru" %}Инфраструктура и доступ{% else %}
+                                Infratuzilma va kirishlar{% endif %}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col justify-between gap-4 rounded-3xl border border-white/10 bg-black/20 p-4 backdrop-blur-sm">
+                    <div class="space-y-2">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-white/80">{% if lang == "ru" %}
+                            Быстрое действие{% else %}Tez amal{% endif %}</p>
+                        <h2 class="text-xl font-semibold text-white">{% if lang == "ru" %}Новая организация{% else %}
+                            Yangi tashkilot qo‘shish{% endif %}</h2>
+                        <p class="text-sm leading-6 text-white/80">
+                            {% if lang == "ru" %}
+                                Новая карточка сразу попадает в список и становится доступной для камер, пользователей и
+                                сотрудников.
+                            {% else %}
+                                Yangi tashkilot yaratilgach, u darhol kameralar, foydalanuvchilar va xodimlar bilan
+                                ishlash uchun tayyor bo‘ladi.
+                            {% endif %}
+                        </p>
+                    </div>
+
+                    <div class="space-y-3">
+                        <a href="/organizations/add"
+                           class="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-blue-50">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>{% if lang == "ru" %}Добавить организацию{% else %}Yangi tashkilot{% endif %}</span>
+                        </a>
+                        <div class="rounded-2xl border border-white/10 bg-white/10 p-3 text-xs leading-5 text-white/80">
+                            {% if lang == "ru" %}
+                                Список ниже фильтруется мгновенно, поэтому интерфейс остаётся плотным и рабочим даже при
+                                большом количестве организаций.
+                            {% else %}
+                                Pastdagi jadval tez filtrlanadi, shu sabab ko‘p tashkilot bo‘lsa ham interfeys ixcham va
+                                ishchi holatda qoladi.
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-        <div class="overflow-x-auto">
-            <table class="min-w-full text-sm">
-                <thead>
+        </section>
+
+        <section class="grid grid-cols-2 gap-3 xl:grid-cols-4">
+            <article
+                    class="rounded-3xl border border-gray-200 bg-white/80 p-4 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80">
+                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    {% if lang == "ru" %}Всего организаций{% else %}Jami tashkilot{% endif %}</p>
+                <p class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{{ organizations|length }}</p>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% if lang == "ru" %}Текущий список{% else %}
+                    Joriy ro‘yxat{% endif %}</p>
+            </article>
+            <article
+                    class="rounded-3xl border border-gray-200 bg-white/80 p-4 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80">
+                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    {% if lang == "ru" %}Фаол обуна{% else %}Faol obuna{% endif %}</p>
+                <p class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{{ ns.active_orgs }}</p>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% if lang == "ru" %}Подключённые
+                    организации{% else %}Faol ishlayotganlar{% endif %}</p>
+            </article>
+            <article
+                    class="rounded-3xl border border-gray-200 bg-white/80 p-4 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80">
+                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    {% if lang == "ru" %}Xodimlar soni{% else %}Xodimlar soni{% endif %}</p>
+                <p class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{{ ns.total_employees }}</p>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% if lang == "ru" %}Суммарно по
+                    системе{% else %}Tizim bo‘yicha umumiy{% endif %}</p>
+            </article>
+            <article
+                    class="rounded-3xl border border-gray-200 bg-white/80 p-4 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80">
+                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    {% if lang == "ru" %}Камеры / Users{% else %}Kamera / User{% endif %}</p>
+                <p class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{{ ns.total_devices }}
+                    / {{ ns.total_users }}</p>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% if lang == "ru" %}Доступ и
+                    инфраструктура{% else %}Kirish va infratuzilma{% endif %}</p>
+            </article>
+        </section>
+
+        <section
+                class="rounded-3xl border border-gray-200 bg-white/80 p-4 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80">
+            <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">
+                        {% if lang == "ru" %}Компактный фильтр{% else %}Compact filter{% endif %}</p>
+                    <h2 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{% if lang == "ru" %}Поиск и
+                        быстрые срезы{% else %}Qidiruv va tez kesimlar{% endif %}</h2>
+                </div>
+                <div class="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span>{% if lang == "ru" %}Ничего лишнего, только рабочие фильтры{% else %}Faqat kerakli filterlar,
+                        ortiqcha blok yo‘q{% endif %}</span>
+                </div>
+            </div>
+
+            <div class="mt-4 grid gap-3 xl:grid-cols-12 items-end">
+
+                <label class="block xl:col-span-4">
+                    <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{% if lang == "ru" %}
+                        Поиск{% else %}Qidiruv{% endif %}</span>
+                    <span class="flex overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+            <span class="flex w-11 shrink-0 items-center justify-center border-r border-gray-200 text-gray-400 dark:border-gray-700">
+                <i class="fa-solid fa-magnifying-glass"></i>
+            </span>
+            <input id="organizations-search" type="text"
+                   placeholder="{% if lang == 'ru' %}Название организации или тип{% else %}Tashkilot nomi yoki turi{% endif %}"
+                   class="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:text-white">
+        </span>
+                </label>
+
+                <label class="block xl:col-span-2">
+                    <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{% if lang == "ru" %}
+                        Статус{% else %}Holat{% endif %}</span>
+                    <select id="organizations-status"
+                            class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
+                        <option value="">{% if lang == "ru" %}Все{% else %}Barchasi{% endif %}</option>
+                        <option value="active">{% if lang == "ru" %}Активные{% else %}Faol{% endif %}</option>
+                        <option value="expired">{% if lang == "ru" %}Истёкшие{% else %}Tugagan{% endif %}</option>
+                        <option value="pending">{% if lang == "ru" %}Ожидают{% else %}Kutilmoqda{% endif %}</option>
+                    </select>
+                </label>
+
+                <label class="block xl:col-span-2">
+                    <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{% if lang == "ru" %}
+                        Тип{% else %}Turi{% endif %}</span>
+                    <select id="organizations-type"
+                            class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
+                        <option value="">{% if lang == "ru" %}Все типы{% else %}Barcha turlar{% endif %}</option>
+                    </select>
+                </label>
+
+                <label class="block xl:col-span-2">
+                    <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{% if lang == "ru" %}
+                        Размер страницы{% else %}Sahifa hajmi{% endif %}</span>
+                    <select id="organizations-page-size"
+                            class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
+                        <option value="10">10</option>
+                        <option value="25" selected>25</option>
+                        <option value="50">50</option>
+                    </select>
+                </label>
+
+                <div class="grid gap-1.5 xl:col-span-2 xl:grid-cols-2">
+                    <button id="organizations-apply" type="button"
+                            class="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3.5 text-xs font-semibold text-white transition hover:bg-blue-700">
+                        <i class="fa-solid fa-check"></i>
+                        <span>{% if lang == "ru" %}Применить{% else %}Qo‘llash{% endif %}</span>
+                    </button>
+                    <button id="organizations-reset" type="button"
+                            class="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
+                        <i class="fa-solid fa-rotate-left"></i>
+                        <span>{% if lang == "ru" %}Сброс{% else %}Tozalash{% endif %}</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section
+                class="overflow-hidden rounded-3xl border border-gray-200 bg-white/80 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80">
+            <div class="flex flex-col gap-2 border-b border-gray-100 px-4 py-4 dark:border-gray-800 md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{% if lang == "ru" %}Реестр
+                        организаций{% else %}Tashkilotlar reyestri{% endif %}</h2>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{% if lang == "ru" %}Компактная таблица со
+                        статусом, рабочим временем и действиями{% else %}Holat, ish vaqti va amallar bir joyda
+                        ko‘rinadigan ixcham jadval{% endif %}</p>
+                </div>
+                <div class="inline-flex items-center gap-2 rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white dark:bg-white dark:text-slate-900">
+                    <i class="fa-solid fa-table-list"></i>
+                    <span>{% if lang == "ru" %}Плотный режим{% else %}Zich ko‘rinish{% endif %}</span>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-left text-sm">
+                    <thead class="bg-gray-50 dark:bg-gray-950">
                     <tr>
-                        <th class="w-16 px-4 py-3 text-center">T/r</th>
-                        <th class="px-4 py-3">Tashkilot</th>
-                        <th class="px-4 py-3">Turi</th>
-                        <th class="px-4 py-3">Holat</th>
-                        <th class="px-4 py-3">Ish vaqti</th>
-                        <th class="px-4 py-3">Xodim</th>
-                        <th class="px-4 py-3">Kamera</th>
-                        <th class="px-4 py-3">User</th>
-                        <th class="px-4 py-3 text-right">Amallar</th>
+                        <th class="w-16 px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                            T/r
+                        </th>
+                        <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                            {% if lang == "ru" %}Организация{% else %}Tashkilot{% endif %}</th>
+                        <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                            {% if lang == "ru" %}Тип{% else %}Turi{% endif %}</th>
+                        <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                            {% if lang == "ru" %}Статус{% else %}Holat{% endif %}</th>
+                        <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                            {% if lang == "ru" %}Рабочее время{% else %}Ish vaqti{% endif %}</th>
+                        <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                            {% if lang == "ru" %}Сотрудники{% else %}Xodim{% endif %}</th>
+                        <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                            {% if lang == "ru" %}Камеры{% else %}Kamera{% endif %}</th>
+                        <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                            User
+                        </th>
+                        <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                            {% if lang == "ru" %}Действия{% else %}Amallar{% endif %}</th>
                     </tr>
-                </thead>
-                <tbody id="organizations-table-body" class="divide-y divide-gray-100 dark:divide-gray-800">
+                    </thead>
+                    <tbody id="organizations-table-body" class="divide-y divide-gray-100 dark:divide-gray-800">
                     <tr>
                         <td colspan="9" class="px-4 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
-                            Tashkilotlar yuklanmoqda...
+                            {% if lang == "ru" %}Организации загружаются...{% else %}Tashkilotlar
+                                yuklanmoqda...{% endif %}
                         </td>
                     </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <div class="flex flex-col gap-3 border-t border-gray-100 px-4 py-3 dark:border-gray-800 md:flex-row md:items-center md:justify-between">
-            <p id="organizations-page-info" class="text-sm text-gray-500 dark:text-gray-400">0 ta natija</p>
-            <div class="flex flex-wrap items-center gap-2">
-                <button id="organizations-prev-page" type="button" class="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">Oldingi</button>
-                <div id="organizations-page-numbers" class="flex flex-wrap items-center gap-2"></div>
-                <button id="organizations-next-page" type="button" class="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">Keyingi</button>
+                    </tbody>
+                </table>
             </div>
-        </div>
-    </section>
-</div>
 
-<script id="organizations-json" type="application/json">{{ organizations | tojson }}</script>
-<script src="/static/js/organizations-table.js?v=20260407b"></script>
+            <div class="flex flex-col gap-3 border-t border-gray-100 px-4 py-3 dark:border-gray-800 md:flex-row md:items-center md:justify-between">
+                <p id="organizations-page-info" class="text-sm text-gray-500 dark:text-gray-400">0 ta natija</p>
+                <div class="flex flex-wrap items-center gap-2">
+                    <button id="organizations-prev-page" type="button"
+                            class="inline-flex items-center gap-2 rounded-2xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
+                        <i class="fa-solid fa-arrow-left"></i>
+                        <span>{% if lang == "ru" %}Назад{% else %}Oldingi{% endif %}</span>
+                    </button>
+                    <div id="organizations-page-numbers" class="flex flex-wrap items-center gap-2"></div>
+                    <button id="organizations-next-page" type="button"
+                            class="inline-flex items-center gap-2 rounded-2xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
+                        <span>{% if lang == "ru" %}Далее{% else %}Keyingi{% endif %}</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script id="organizations-json" type="application/json">{{ organizations | tojson }}</script>
+    <script src="/static/js/organizations-table.js?v=20260413a"></script>
 {% endblock %}

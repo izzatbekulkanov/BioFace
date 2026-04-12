@@ -1,50 +1,121 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="animate-fade-in mx-auto max-w-2xl space-y-6">
-    <div class="flex items-center gap-3">
-        <a href="/organizations" class="text-gray-400 transition hover:text-gray-600 dark:hover:text-gray-300">
-            <i class="fa-solid fa-arrow-left"></i>
-        </a>
-        <div>
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{% if lang == "ru" %}Добавить организацию{% else %}Yangi tashkilot{% endif %}</h1>
-            <p class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">{% if lang == "ru" %}Создание новой организации{% else %}Yangi tashkilot ma'lumotlarini kiriting{% endif %}</p>
-        </div>
-    </div>
+<div class="animate-fade-in mx-auto max-w-7xl space-y-4">
+    <section class="overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 to-indigo-600 shadow-xl">
+        <div class="grid gap-4 p-5 lg:grid-cols-3">
+            <div class="space-y-4 lg:col-span-2">
+                <div class="flex items-start gap-3">
+                    <a href="/organizations" class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-white transition hover:bg-white/15">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </a>
+                    <div>
+                        <div class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white/80 backdrop-blur-sm">
+                            <i class="fa-solid fa-building-circle-arrow-right"></i>
+                            <span>{% if lang == "ru" %}Новая запись{% else %}Yangi yozuv{% endif %}</span>
+                        </div>
+                        <h1 class="mt-3 text-3xl font-bold tracking-tight text-white">{% if lang == "ru" %}Добавить организацию{% else %}Yangi tashkilot{% endif %}</h1>
+                        <p class="mt-2 max-w-2xl text-sm leading-6 text-blue-100">
+                            {% if lang == "ru" %}
+                            Создайте новую организацию в аккуратной форме: название, тип и рабочее время задаются без лишних блоков и грубых отступов.
+                            {% else %}
+                            Tashkilotni premium, lekin ixcham forma orqali yarating: nom, turi va ish vaqti bir joyda, ortiqcha qo‘pol bloklarsiz.
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
 
-    <div class="card-standard p-6  ">
-        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
-            <div class="sm:col-span-2">
-                <label class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Tashkilot nomi <span class="text-red-500">*</span></label>
-                <input id="org-name" type="text" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
-            </div>
-            <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Tashkilot turi</label>
-                <select id="org-type" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
-                    {% for item in organization_types %}
-                    <option value="{{ item.value }}" {% if item.value == "boshqa" %}selected{% endif %}>{{ item.label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Ish boshlanishi</label>
-                <input id="org-start" type="time" value="09:00" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
-            </div>
-            <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Ish tugashi</label>
-                <input id="org-end" type="time" value="18:00" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
+            <div class="rounded-3xl border border-white/10 bg-black/20 p-4 backdrop-blur-sm">
+                <p class="text-xs font-semibold uppercase tracking-wide text-white/80">{% if lang == "ru" %}Что заполняется{% else %}Nimalar kiritiladi{% endif %}</p>
+                <div class="mt-3 space-y-3 text-sm text-white/80">
+                    <div class="rounded-2xl border border-white/10 bg-white/10 p-3">
+                        <p class="font-semibold text-white">{% if lang == "ru" %}Название и тип{% else %}Nom va tur{% endif %}</p>
+                        <p class="mt-1 text-xs leading-5 text-white/80">{% if lang == "ru" %}Карточка попадает в общий реестр организаций.{% else %}Kartochka umumiy tashkilotlar reyestriga tushadi.{% endif %}</p>
+                    </div>
+                    <div class="rounded-2xl border border-white/10 bg-white/10 p-3">
+                        <p class="font-semibold text-white">{% if lang == "ru" %}Рабочий график{% else %}Ish grafigi{% endif %}</p>
+                        <p class="mt-1 text-xs leading-5 text-white/80">{% if lang == "ru" %}Старт и конец дня используются по умолчанию в связанных сущностях.{% else %}Boshlanish va tugash vaqti bog‘liq jarayonlar uchun default bo‘lib xizmat qiladi.{% endif %}</p>
+                    </div>
+                </div>
             </div>
         </div>
+    </section>
 
-        <div id="form-error" class="mt-4 hidden rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-600 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300"></div>
+    <div class="grid gap-4 lg:grid-cols-3 xl:grid-cols-4">
+        <section class="rounded-3xl border border-gray-200 bg-white/80 p-5 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80 lg:col-span-2 xl:col-span-3">
+            <div class="flex items-center justify-between gap-3">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">{% if lang == "ru" %}Основная форма{% else %}Asosiy forma{% endif %}</p>
+                    <h2 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{% if lang == "ru" %}Параметры организации{% else %}Tashkilot parametrlari{% endif %}</h2>
+                </div>
+                <div class="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">ID auto</div>
+            </div>
 
-        <div class="mt-6 flex items-center gap-3 border-t border-gray-100 pt-5 dark:border-gray-800">
-            <a href="/organizations" class="rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">Bekor qilish</a>
-            <button type="button" onclick="saveOrganization()" class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700">
-                <i id="save-spinner" class="fa-solid fa-circle-notch hidden animate-spin"></i>
-                Saqlash
-            </button>
-        </div>
+            <div class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <div class="sm:col-span-2">
+                    <label for="org-name" class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">{% if lang == "ru" %}Название организации{% else %}Tashkilot nomi{% endif %} <span class="text-red-500">*</span></label>
+                    <div class="flex overflow-hidden rounded-2xl border border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
+                        <span class="flex w-11 shrink-0 items-center justify-center border-r border-gray-300 text-gray-400 dark:border-gray-700">
+                            <i class="fa-solid fa-building"></i>
+                        </span>
+                        <input id="org-name" type="text" class="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:text-white" placeholder="{% if lang == 'ru' %}Введите название{% else %}Nomini kiriting{% endif %}">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="org-type" class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">{% if lang == "ru" %}Тип организации{% else %}Tashkilot turi{% endif %}</label>
+                    <select id="org-type" class="w-full rounded-2xl border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
+                        {% for item in organization_types %}
+                        <option value="{{ item.value }}" {% if item.value == "boshqa" %}selected{% endif %}>{{ item.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label for="org-start" class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">{% if lang == "ru" %}Начало работы{% else %}Ish boshlanishi{% endif %}</label>
+                    <input id="org-start" type="time" value="09:00" class="w-full rounded-2xl border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
+                </div>
+
+                <div>
+                    <label for="org-end" class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">{% if lang == "ru" %}Окончание работы{% else %}Ish tugashi{% endif %}</label>
+                    <input id="org-end" type="time" value="18:00" class="w-full rounded-2xl border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
+                </div>
+
+                <div class="sm:col-span-2">
+                    <div id="form-error" class="hidden rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300"></div>
+                </div>
+            </div>
+
+            <div class="mt-6 flex flex-col gap-3 border-t border-gray-100 pt-5 dark:border-gray-800 sm:flex-row sm:items-center">
+                <a href="/organizations" class="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>{% if lang == "ru" %}Отмена{% else %}Bekor qilish{% endif %}</span>
+                </a>
+                <button type="button" onclick="saveOrganization()" class="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700">
+                    <i id="save-spinner" class="fa-solid fa-circle-notch hidden animate-spin"></i>
+                    <i class="fa-solid fa-floppy-disk"></i>
+                    <span>{% if lang == "ru" %}Сохранить организацию{% else %}Tashkilotni saqlash{% endif %}</span>
+                </button>
+            </div>
+        </section>
+
+        <aside class="space-y-4 xl:col-span-1">
+            <section class="rounded-3xl border border-gray-200 bg-white/80 p-5 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80">
+                <p class="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">{% if lang == "ru" %}Подсказка{% else %}Eslatma{% endif %}</p>
+                <h2 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{% if lang == "ru" %}Минимальный набор{% else %}Minimal to‘plam{% endif %}</h2>
+                <div class="mt-4 space-y-3 text-sm text-gray-600 dark:text-gray-300">
+                    <div class="rounded-2xl bg-gray-50 px-4 py-3 dark:bg-gray-800">
+                        <p class="font-medium text-gray-900 dark:text-white">{% if lang == "ru" %}Название обязательно{% else %}Nom majburiy{% endif %}</p>
+                        <p class="mt-1 text-xs leading-5">{% if lang == "ru" %}Без него карточка не будет сохранена.{% else %}Usiz tashkilot yozuvi saqlanmaydi.{% endif %}</p>
+                    </div>
+                    <div class="rounded-2xl bg-gray-50 px-4 py-3 dark:bg-gray-800">
+                        <p class="font-medium text-gray-900 dark:text-white">{% if lang == "ru" %}Время можно изменить позже{% else %}Vaqtni keyin ham o‘zgartirish mumkin{% endif %}</p>
+                        <p class="mt-1 text-xs leading-5">{% if lang == "ru" %}Текущие значения задают стартовую конфигурацию.{% else %}Hozirgi qiymatlar boshlang‘ich konfiguratsiya sifatida ishlaydi.{% endif %}</p>
+                    </div>
+                </div>
+            </section>
+        </aside>
     </div>
 </div>
 

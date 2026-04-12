@@ -1,222 +1,397 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="animate-fade-in mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-    <div>
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{{ "Смены" if lang == "ru" else "Smenalar" }}</h2>
-        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            {{ "Здесь показаны персональные и организационные графики сотрудников и учащихся." if lang == "ru" else "Bu yerda hodim va o'quvchilarning shaxsiy hamda tashkilotga bog'liq smenalari ko'rsatiladi." }}
-        </p>
-    </div>
-    <div class="flex items-center gap-2">
-        <a href="/employees/catalogs" class="inline-flex items-center gap-2 card-standard px-4 py-2.5 text-sm font-semibold text-slate-700  transition hover:bg-slate-50  dark:text-slate-200 dark:hover:bg-slate-700">
-            <i class="fa-solid fa-server"></i>
-            {{ "Отделы и должности" if lang == "ru" else "Bo'lim va lavozimlar" }}
-        </a>
-    </div>
-</div>
+<div class="employee-page shift-page animate-fade-in space-y-5">
+    <section class="employee-hero shift-hero">
+        <div class="employee-hero-backdrop" aria-hidden="true">
+            <span class="employee-hero-orb orb-one"></span>
+            <span class="employee-hero-orb orb-two"></span>
+        </div>
+        <div class="employee-hero-grid">
+            <div class="min-w-0">
+                <div class="employee-hero-pills">
+                    <span class="employee-hero-pill">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                        Shift Console
+                    </span>
+                    <span class="employee-hero-pill is-muted">
+                        <i class="fa-solid fa-calendar-days"></i>
+                        {{ "Орг. графики" if lang == "ru" else "Org. grafiklar" }}
+                    </span>
+                    <span class="employee-hero-pill is-muted">
+                        <i class="fa-solid fa-wave-pulse"></i>
+                        {{ "Живой мониторинг" if lang == "ru" else "Jonli monitoring" }}
+                    </span>
+                </div>
+                <h1 class="employee-hero-title">{{ "Смены" if lang == "ru" else "Smenalar" }}</h1>
+                <p class="employee-hero-text">
+                    {{ "Здесь показаны персональные и организационные графики сотрудников и учащихся." if lang == "ru" else "Bu yerda hodim va o'quvchilarning shaxsiy, tayyor va tashkilot default smenalari yagona premium boshqaruv panelida ko'rsatiladi." }}
+                </p>
+                <div class="employee-hero-counter">{{ shift_stats.total_employees or 0 }} {{ "ta profil smena nazoratida" if lang != "ru" else "профилей под контролем смен" }}</div>
 
-<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-    <div class="rounded-2xl border border-blue-200 bg-blue-50 p-5 shadow-sm dark:border-blue-900/30 dark:bg-blue-900/20">
-        <p class="text-xs font-medium uppercase tracking-widest text-blue-700 dark:text-blue-300">{{ "Jami" if lang != "ru" else "Всего" }}</p>
-        <p class="mt-2 text-2xl font-bold text-blue-700 dark:text-blue-300">{{ shift_stats.total_employees or 0 }}</p>
-    </div>
-    <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm dark:border-emerald-900/30 dark:bg-emerald-900/20">
-        <p class="text-xs font-medium uppercase tracking-widest text-emerald-700 dark:text-emerald-300">{{ "Shaxsiy smena" if lang != "ru" else "Персональная смена" }}</p>
-        <p class="mt-2 text-2xl font-bold text-emerald-700 dark:text-emerald-300">{{ shift_stats.custom_shift_count or 0 }}</p>
-    </div>
-    <div class="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm dark:border-amber-900/30 dark:bg-amber-900/20">
-        <p class="text-xs font-medium uppercase tracking-widest text-amber-700 dark:text-amber-300">{{ "Tashkilot default" if lang != "ru" else "По умолчанию организации" }}</p>
-        <p class="mt-2 text-2xl font-bold text-amber-700 dark:text-amber-300">{{ shift_stats.default_shift_count or 0 }}</p>
-    </div>
-    <div class="rounded-2xl border border-cyan-200 bg-cyan-50 p-5 shadow-sm dark:border-cyan-900/30 dark:bg-cyan-900/20">
-        <p class="text-xs font-medium uppercase tracking-widest text-cyan-700 dark:text-cyan-300">{{ "Smenaga bog'langan" if lang != "ru" else "Привязаны к смене" }}</p>
-        <p class="mt-2 text-2xl font-bold text-cyan-700 dark:text-cyan-300">{{ shift_stats.schedule_shift_count or 0 }}</p>
-    </div>
-    <div class="rounded-2xl border border-violet-200 bg-violet-50 p-5 shadow-sm dark:border-violet-900/30 dark:bg-violet-900/20">
-        <p class="text-xs font-medium uppercase tracking-widest text-violet-700 dark:text-violet-300">{{ "Tashkilotlar" if lang != "ru" else "Организации" }}</p>
-        <p class="mt-2 text-2xl font-bold text-violet-700 dark:text-violet-300">{{ shift_stats.organization_count or 0 }}</p>
-    </div>
-</div>
-
-<div class="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-12">
-    <section class="card-standard p-5   xl:col-span-6">
-        <div class="mb-4 flex flex-col gap-2 xl:flex-row xl:flex-nowrap xl:items-center xl:justify-between">
-            <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
-                <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">{{ "Smenalar boshqaruvi" if lang != "ru" else "Управление сменами" }}</h3>
-                <p class="text-[11px] leading-5 text-slate-500 dark:text-slate-400">{{ "Tashkilot bo'yicha qat'iy va erkin smenalarni shu yerda boshqaring." if lang != "ru" else "Здесь управляйте фиксированными и гибкими сменами по организации." }}</p>
+                <div class="shift-hero-metrics">
+                    <article class="shift-hero-metric">
+                        <span class="shift-hero-metric-label">{{ "Shaxsiy smena" if lang != "ru" else "Персональная смена" }}</span>
+                        <strong class="shift-hero-metric-value">{{ shift_stats.custom_shift_count or 0 }}</strong>
+                    </article>
+                    <article class="shift-hero-metric">
+                        <span class="shift-hero-metric-label">{{ "Tayyor smena" if lang != "ru" else "Готовая смена" }}</span>
+                        <strong class="shift-hero-metric-value">{{ shift_stats.schedule_shift_count or 0 }}</strong>
+                    </article>
+                    <article class="shift-hero-metric">
+                        <span class="shift-hero-metric-label">{{ "Tashkilotlar" if lang != "ru" else "Организации" }}</span>
+                        <strong class="shift-hero-metric-value">{{ shift_stats.organization_count or 0 }}</strong>
+                    </article>
+                </div>
             </div>
-            <div class="flex shrink-0 flex-wrap items-center gap-2 xl:flex-nowrap">
-                <select id="schedule-manager-org" class="min-w-[190px] card-standard px-3.5 py-2 text-sm text-slate-900  focus:border-blue-500 focus:ring-blue-500  dark:text-white"></select>
-                <button id="add-schedule-btn" type="button" title="{{ "Smena qo'shish" if lang != 'ru' else 'Добавить смену' }}" aria-label="{{ "Smena qo'shish" if lang != 'ru' else 'Добавить смену' }}" class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-md">
+
+            <div class="employee-hero-actions shift-hero-actions">
+                <a href="/employees/catalogs" class="employee-action-btn is-soft">
+                    <i class="fa-solid fa-server"></i>
+                    {{ "Отделы и должности" if lang == "ru" else "Bo'lim va lavozimlar" }}
+                </a>
+                <button
+                    id="add-schedule-btn"
+                    data-shift-open-schedule
+                    type="button"
+                    class="employee-action-btn is-primary"
+                >
                     <i class="fa-solid fa-plus"></i>
+                    {{ "Новая смена" if lang == "ru" else "Yangi smena" }}
+                </button>
+                <button
+                    id="add-holiday-btn"
+                    data-shift-open-holiday
+                    type="button"
+                    class="employee-action-btn is-emerald"
+                >
+                    <i class="fa-solid fa-calendar-plus"></i>
+                    {{ "Добавить день" if lang == "ru" else "Bayram qo'shish" }}
                 </button>
             </div>
         </div>
-        <div id="schedule-manager-list" class="space-y-3">
-            <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300">{{ "Yuklanmoqda..." if lang != "ru" else "Загрузка..." }}</div>
+    </section>
+
+    <section class="employee-stats-grid shift-stats-grid">
+        <article class="employee-stat-card is-blue">
+            <span class="employee-stat-icon"><i class="fa-solid fa-users"></i></span>
+            <p class="employee-stat-label">{{ "Jami" if lang != "ru" else "Всего" }}</p>
+            <p class="employee-stat-value">{{ shift_stats.total_employees or 0 }}</p>
+        </article>
+        <article class="employee-stat-card is-emerald">
+            <span class="employee-stat-icon"><i class="fa-solid fa-user-clock"></i></span>
+            <p class="employee-stat-label">{{ "Shaxsiy smena" if lang != "ru" else "Персональная смена" }}</p>
+            <p class="employee-stat-value">{{ shift_stats.custom_shift_count or 0 }}</p>
+        </article>
+        <article class="employee-stat-card is-amber">
+            <span class="employee-stat-icon"><i class="fa-solid fa-building"></i></span>
+            <p class="employee-stat-label">{{ "Tashkilot default" if lang != "ru" else "По умолчанию организации" }}</p>
+            <p class="employee-stat-value">{{ shift_stats.default_shift_count or 0 }}</p>
+        </article>
+        <article class="employee-stat-card is-indigo">
+            <span class="employee-stat-icon"><i class="fa-solid fa-calendar-days"></i></span>
+            <p class="employee-stat-label">{{ "Smenaga bog'langan" if lang != "ru" else "Привязаны к смене" }}</p>
+            <p class="employee-stat-value">{{ shift_stats.schedule_shift_count or 0 }}</p>
+        </article>
+        <article class="employee-stat-card is-sky">
+            <span class="employee-stat-icon"><i class="fa-solid fa-buildings"></i></span>
+            <p class="employee-stat-label">{{ "Tashkilotlar" if lang != "ru" else "Организации" }}</p>
+            <p class="employee-stat-value">{{ shift_stats.organization_count or 0 }}</p>
+        </article>
+    </section>
+
+    <div class="grid grid-cols-1 gap-5 xl:grid-cols-12">
+        <section class="employee-panel shift-manager-panel xl:col-span-5">
+            <div class="employee-panel-head shift-panel-head">
+                <div>
+                    <p class="employee-panel-kicker">
+                        <i class="fa-solid fa-layer-group"></i>
+                        {{ "Smena konstruktori" if lang != "ru" else "Конструктор смен" }}
+                    </p>
+                    <h2 class="employee-panel-title">{{ "Smenalar boshqaruvi" if lang != "ru" else "Управление сменами" }}</h2>
+                    <p class="shift-panel-text">{{ "Tashkilot bo'yicha qat'iy va erkin smenalarni shu yerda boshqaring." if lang != "ru" else "Здесь управляйте фиксированными и гибкими сменами по организации." }}</p>
+                </div>
+                <div class="shift-toolbar">
+                    <label class="shift-select-shell">
+                        <i class="fa-solid fa-building shift-select-icon"></i>
+                        <select id="schedule-manager-org" class="shift-select-control"></select>
+                    </label>
+                    <button
+                        type="button"
+                        data-shift-open-schedule
+                        title="{{ "Smena qo'shish" if lang != 'ru' else 'Добавить смену' }}"
+                        aria-label="{{ "Smena qo'shish" if lang != 'ru' else 'Добавить смену' }}"
+                        class="shift-icon-action"
+                    >
+                        <i class="fa-solid fa-plus"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="shift-inline-note">
+                <span class="shift-inline-note-icon"><i class="fa-solid fa-bolt"></i></span>
+                <span>{{ "Yangi smena yaratilgach, shu tashkilotdagi bir nechta profilga bulk tarzda biriktirish mumkin." if lang != "ru" else "После создания смену можно массово назначить нескольким профилям этой организации." }}</span>
+            </div>
+            <div id="schedule-manager-list" class="shift-stack-list">
+                <div class="shift-status-box">
+                    <i class="fa-solid fa-loader animate-spin"></i>
+                    <span>{{ "Yuklanmoqda..." if lang != "ru" else "Загрузка..." }}</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="employee-panel shift-holiday-panel xl:col-span-7">
+            <div class="employee-panel-head shift-panel-head">
+                <div>
+                    <p class="employee-panel-kicker">
+                        <i class="fa-solid fa-calendar-star"></i>
+                        {{ "Kalendar boshqaruvi" if lang != "ru" else "Управление календарём" }}
+                    </p>
+                    <h2 class="employee-panel-title">{{ "Dam olish kunlari" if lang != "ru" else "Праздники и выходные" }}</h2>
+                    <p class="shift-panel-text">{{ "Global va tashkilotga xos dam olish kunlarini kalendar ko'rinishida boshqaring." if lang != "ru" else "Управляйте глобальными и организационными выходными в виде календаря." }}</p>
+                </div>
+                <div class="shift-toolbar">
+                    <label class="shift-select-shell">
+                        <i class="fa-solid fa-globe shift-select-icon"></i>
+                        <select id="holiday-manager-org" class="shift-select-control"></select>
+                    </label>
+                    <button
+                        type="button"
+                        data-shift-open-holiday
+                        title="{{ "Bayram qo'shish" if lang != 'ru' else 'Добавить день' }}"
+                        aria-label="{{ "Bayram qo'shish" if lang != 'ru' else 'Добавить день' }}"
+                        class="shift-icon-action is-rose"
+                    >
+                        <i class="fa-solid fa-calendar-plus"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="shift-holiday-hero">
+                <div class="shift-holiday-nav">
+                    <button id="holiday-prev-month" type="button" class="shift-holiday-nav-btn" aria-label="Oldingi oy">‹</button>
+                    <div class="shift-holiday-heading">
+                        <div id="holiday-month-label" class="shift-holiday-month">-</div>
+                        <div id="holiday-scope-label" class="shift-holiday-scope">-</div>
+                        <div id="holiday-monitor-status" class="shift-holiday-status">-</div>
+                    </div>
+                    <div class="shift-holiday-nav-actions">
+                        <button id="holiday-run-monitor" type="button" class="shift-holiday-monitor-btn">
+                            <i class="fa-solid fa-wave-pulse"></i>
+                            <span>{{ "Tekshirgichni ishga tushirish" if lang != "ru" else "Запустить проверку" }}</span>
+                        </button>
+                        <button id="holiday-next-month" type="button" class="shift-holiday-nav-btn" aria-label="Keyingi oy">›</button>
+                    </div>
+                </div>
+            </div>
+            <div class="shift-holiday-summary">
+                <div class="shift-summary-card">
+                    <span class="shift-summary-icon"><i class="fa-solid fa-calendar-days"></i></span>
+                    <div>
+                        <div class="shift-summary-label">Oydagi yozuvlar</div>
+                        <div id="holiday-summary-total" class="shift-summary-value">0</div>
+                    </div>
+                </div>
+                <div class="shift-summary-card is-amber">
+                    <span class="shift-summary-icon"><i class="fa-solid fa-umbrella-beach"></i></span>
+                    <div>
+                        <div class="shift-summary-label">Dam olish</div>
+                        <div id="holiday-summary-weekends" class="shift-summary-value">0</div>
+                    </div>
+                </div>
+                <div class="shift-summary-card is-rose">
+                    <span class="shift-summary-icon"><i class="fa-solid fa-flag"></i></span>
+                    <div>
+                        <div class="shift-summary-label">Bayramlar</div>
+                        <div id="holiday-summary-holidays" class="shift-summary-value">0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="shift-holiday-legend">
+                <div class="shift-holiday-legend-items">
+                    <span class="shift-legend-pill"><i class="fa-solid fa-circle shift-legend-dot is-empty"></i>Bo'sh kun</span>
+                    <span class="shift-legend-pill"><i class="fa-solid fa-circle shift-legend-dot is-weekend"></i>Dam olish</span>
+                    <span class="shift-legend-pill"><i class="fa-solid fa-circle shift-legend-dot is-holiday"></i>Bayram</span>
+                    <span class="shift-legend-pill"><i class="fa-solid fa-circle shift-legend-dot is-mixed"></i>Aralash kun</span>
+                </div>
+                <div id="holiday-selected-date" class="shift-selected-date">Kun tanlanmagan</div>
+            </div>
+            <div class="shift-weekdays">
+                <div>Dush</div><div>Sesh</div><div>Chor</div><div>Pays</div><div>Juma</div><div>Shan</div><div class="text-amber-500 dark:text-amber-300">Yak</div>
+            </div>
+            <div id="holiday-calendar-grid" class="mt-4 grid [grid-template-columns:repeat(7,minmax(0,1fr))] justify-items-center gap-3.5 px-1 sm:gap-4"></div>
+            <div class="mt-4">
+                <div class="mb-2 flex items-center justify-between gap-3">
+                    <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ "Oy yozuvlari" if lang != "ru" else "Записи за месяц" }}</h4>
+                    <span id="holiday-count-text" class="shift-list-count">0 ta</span>
+                </div>
+                <div id="holiday-list" class="shift-stack-list">
+                    <div class="shift-status-box">
+                        <i class="fa-solid fa-loader animate-spin"></i>
+                        <span>{{ "Yuklanmoqda..." if lang != "ru" else "Загрузка..." }}</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <section class="employee-panel shift-filter-panel">
+        <div class="employee-panel-head">
+            <div>
+                <p class="employee-panel-kicker">
+                    <i class="fa-solid fa-sliders"></i>
+                    {{ "Filtrlash paneli" if lang != "ru" else "Панель фильтров" }}
+                </p>
+                <h2 class="employee-panel-title">{{ "Smena bo'yicha tez qidiruv" if lang != "ru" else "Быстрый поиск по сменам" }}</h2>
+            </div>
+        </div>
+        <div class="shift-filter-grid grid grid-cols-1 gap-3 xl:grid-cols-12">
+            <label class="shift-filter-field xl:col-span-2">
+                <span class="shift-filter-label">Qidiruv</span>
+                <span class="shift-filter-control">
+                    <i class="fa-solid fa-magnifying-glass shift-filter-icon"></i>
+                    <input id="shift-search" type="text" placeholder="{{ 'Qidiruv: F.I.Sh. yoki ID' if lang != 'ru' else 'Поиск: ФИО или ID' }}" class="shift-filter-input">
+                </span>
+            </label>
+            <label class="shift-filter-field xl:col-span-2">
+                <span class="shift-filter-label">Tashkilot</span>
+                <span class="shift-filter-control">
+                    <i class="fa-solid fa-building shift-filter-icon"></i>
+                    <select id="shift-org-filter" class="shift-filter-input">
+                        <option value="all">{{ "Barcha tashkilotlar" if lang != "ru" else "Все организации" }}</option>
+                    </select>
+                </span>
+            </label>
+            <label class="shift-filter-field xl:col-span-2">
+                <span class="shift-filter-label">Smena manbasi</span>
+                <span class="shift-filter-control">
+                    <i class="fa-solid fa-diagram-project shift-filter-icon"></i>
+                    <select id="shift-source-filter" class="shift-filter-input">
+                        <option value="all">{{ "Smena manbasi: barchasi" if lang != "ru" else "Источник смены: все" }}</option>
+                        <option value="custom">{{ "Shaxsiy smena" if lang != "ru" else "Персональная смена" }}</option>
+                        <option value="schedule">{{ "Tayyor smena" if lang != "ru" else "Готовая смена" }}</option>
+                        <option value="organization">{{ "Tashkilot default" if lang != "ru" else "По умолчанию организации" }}</option>
+                    </select>
+                </span>
+            </label>
+            <label class="shift-filter-field xl:col-span-2">
+                <span class="shift-filter-label">Bo'lim</span>
+                <span class="shift-filter-control">
+                    <i class="fa-solid fa-diagram-project shift-filter-icon"></i>
+                    <select id="shift-department-filter" class="shift-filter-input">
+                        <option value="all">Bo'lim: barchasi</option>
+                    </select>
+                </span>
+            </label>
+            <label class="shift-filter-field xl:col-span-1">
+                <span class="shift-filter-label">Tur</span>
+                <span class="shift-filter-control">
+                    <i class="fa-solid fa-users shift-filter-icon"></i>
+                    <select id="shift-type-filter" class="shift-filter-input">
+                        <option value="all">Tur: barchasi</option>
+                    </select>
+                </span>
+            </label>
+            <label class="shift-filter-field xl:col-span-1">
+                <span class="shift-filter-label">Lavozim</span>
+                <span class="shift-filter-control">
+                    <i class="fa-solid fa-briefcase shift-filter-icon"></i>
+                    <select id="shift-position-filter" class="shift-filter-input">
+                        <option value="all">Lavozim: barchasi</option>
+                    </select>
+                </span>
+            </label>
+            <div class="employee-filter-actions xl:col-span-2">
+                <span class="employee-filter-actions-label">Amallar</span>
+                <div class="employee-filter-actions-row">
+                    <button id="shift-reset-filters" type="button" class="employee-filter-btn is-secondary">
+                        <i class="fa-solid fa-rotate-left"></i>
+                        <span>{{ "Tozalash" if lang != "ru" else "Сбросить" }}</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="shift-bulk-bar" class="shift-bulk-bar">
+            <div class="shift-bulk-meta">
+                <span id="shift-selected-count" class="shift-bulk-chip is-primary">Tanlangan: 0</span>
+                <span id="shift-filtered-count" class="shift-bulk-chip">Filtrlangan: 0</span>
+                <span id="shift-bulk-hint" class="shift-bulk-hint">Bitta tashkilot bo'yicha tanlab, smenani bir zumda almashtiring.</span>
+            </div>
+            <div class="shift-bulk-actions">
+                <button id="shift-select-filtered" type="button" class="shift-bulk-btn">
+                    <i class="fa-solid fa-check-double"></i>
+                    <span>Barchasini tanlash</span>
+                </button>
+                <button id="shift-clear-selection" type="button" class="shift-bulk-btn">
+                    <i class="fa-solid fa-xmark"></i>
+                    <span>Tanlovni tozalash</span>
+                </button>
+                <button id="shift-bulk-change-selected" type="button" class="shift-bulk-btn is-primary">
+                    <i class="fa-solid fa-users-gear"></i>
+                    <span>Tanlanganga qo'llash</span>
+                </button>
+                <button id="shift-bulk-change-filtered" type="button" class="shift-bulk-btn is-dark">
+                    <i class="fa-solid fa-filter"></i>
+                    <span>Filtrlanganga qo'llash</span>
+                </button>
+            </div>
         </div>
     </section>
 
-    <section class="card-standard p-5   xl:col-span-6">
-        <div class="mb-4 flex flex-col gap-2 xl:flex-row xl:flex-nowrap xl:items-center xl:justify-between">
-            <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
-                <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">{{ "Dam olish kunlari" if lang != "ru" else "Праздники и выходные" }}</h3>
-                <p class="text-[11px] leading-5 text-slate-500 dark:text-slate-400">{{ "Global va tashkilotga xos dam olish kunlarini kalendar ko'rinishida boshqaring." if lang != "ru" else "Управляйте глобальными и организационными выходными в виде календаря." }}</p>
+    <section class="employee-panel overflow-hidden shift-table-panel">
+        <div class="shift-table-topbar">
+            <div>
+                <p id="shift-count-text" class="shift-table-count">{{ "Yuklanmoqda..." if lang != "ru" else "Загрузка..." }}</p>
+                <p id="shift-page-status" class="shift-table-status">-</p>
             </div>
-            <div class="flex shrink-0 flex-wrap items-center gap-2 xl:flex-nowrap">
-                <select id="holiday-manager-org" class="min-w-[190px] card-standard px-3.5 py-2 text-sm text-slate-900  focus:border-blue-500 focus:ring-blue-500  dark:text-white"></select>
-            </div>
+            <label class="shift-select-shell shift-table-size-shell">
+                <i class="fa-solid fa-table-list shift-select-icon"></i>
+                <span class="shift-size-label">Sahifada</span>
+                <select id="shift-page-size" class="shift-select-control">
+                    <option value="10">10</option>
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </label>
         </div>
-        <div class="mb-4 rounded-[30px] bg-[linear-gradient(135deg,#1d4ed8_0%,#2563eb_34%,#0ea5e9_100%)] p-4 text-white shadow-[0_24px_60px_-32px_rgba(29,78,216,0.78)] dark:bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_52%,#0284c7_100%)]">
-            <div class="flex items-center justify-between gap-3">
-            <button id="holiday-prev-month" type="button" class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-white/15 text-base font-bold text-white backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/25">‹</button>
-            <div class="text-center">
-                <div id="holiday-month-label" class="text-lg font-bold tracking-[0.02em] text-white">-</div>
-                <div id="holiday-scope-label" class="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/75">-</div>
-                <div id="holiday-monitor-status" class="mt-1 text-[11px] text-white/80">-</div>
-            </div>
-            <div class="flex items-center gap-2">
-                <button id="holiday-run-monitor" type="button" class="rounded-full border border-white/20 bg-white/14 px-4 py-2 text-xs font-semibold text-white backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/22">{{ "Tekshirgichni ishga tushirish" if lang != "ru" else "Запустить проверку" }}</button>
-                <button id="holiday-next-month" type="button" class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-white/15 text-base font-bold text-white backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/25">›</button>
-            </div>
+        <div class="overflow-x-auto">
+            <table class="table-standard employee-table shift-table">
+                <thead>
+                    <tr>
+                        <th class="px-4 py-4 font-semibold text-center">
+                            <input id="shift-select-visible" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+                        </th>
+                        <th class="px-6 py-4 font-semibold">#</th>
+                        <th class="px-6 py-4 font-semibold">{{ "Foydalanuvchi" if lang != "ru" else "Пользователь" }}</th>
+                        <th class="px-6 py-4 font-semibold">{{ "Tashkilot" if lang != "ru" else "Организация" }}</th>
+                        <th class="px-6 py-4 font-semibold">{{ "Tur" if lang != "ru" else "Тип" }}</th>
+                        <th class="px-6 py-4 font-semibold">{{ "Smena" if lang != "ru" else "Смена" }}</th>
+                        <th class="px-6 py-4 font-semibold">{{ "Manba" if lang != "ru" else "Источник" }}</th>
+                        <th class="px-6 py-4 font-semibold">{{ "Bo'lim / lavozim" if lang != "ru" else "Отдел / должность" }}</th>
+                        <th class="px-6 py-4 font-semibold text-right">{{ "Harakatlar" if lang != "ru" else "Действия" }}</th>
+                    </tr>
+                </thead>
+                <tbody id="shift-table-body" class="divide-y divide-gray-100 dark:divide-gray-800">
+                    <tr>
+                        <td colspan="9" class="shift-empty-cell">{{ "Yuklanmoqda..." if lang != "ru" else "Загрузка..." }}</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
-        </div>
-        <div class="mb-3 grid grid-cols-3 gap-2">
-            <div class="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-800/60">
-                <div class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">Oydagi yozuvlar</div>
-                <div id="holiday-summary-total" class="text-lg font-bold text-slate-900 dark:text-slate-100">0</div>
-            </div>
-            <div class="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 dark:border-amber-900/30 dark:bg-amber-900/20">
-                <div class="text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-700 dark:text-amber-300">Dam olish</div>
-                <div id="holiday-summary-weekends" class="text-lg font-bold text-amber-700 dark:text-amber-300">0</div>
-            </div>
-            <div class="flex items-center justify-between rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 dark:border-rose-900/30 dark:bg-rose-900/20">
-                <div class="text-[10px] font-semibold uppercase tracking-[0.14em] text-rose-700 dark:text-rose-300">Bayramlar</div>
-                <div id="holiday-summary-holidays" class="text-lg font-bold text-rose-700 dark:text-rose-300">0</div>
-            </div>
-        </div>
-        <div class="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-            <div class="flex flex-wrap items-center gap-2">
-                <span class="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">Bo'sh kun</span>
-                <span class="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">Dam olish</span>
-                <span class="inline-flex items-center rounded-full bg-rose-100 px-3 py-1 font-medium text-rose-700 dark:bg-rose-900/30 dark:text-rose-300">Bayram</span>
-                <span class="inline-flex items-center rounded-full bg-violet-100 px-3 py-1 font-medium text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">Aralash kun</span>
-            </div>
-            <div id="holiday-selected-date" class="rounded-full bg-blue-50 px-3 py-1 font-medium text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">Kun tanlanmagan</div>
-        </div>
-        <div class="mb-1 grid [grid-template-columns:repeat(7,minmax(0,1fr))] justify-items-center gap-3 rounded-[26px] border border-slate-200 bg-white/90 px-3 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 shadow-[0_16px_34px_-28px_rgba(15,23,42,0.45)] dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-500">
-            <div>Dush</div><div>Sesh</div><div>Chor</div><div>Pays</div><div>Juma</div><div>Shan</div><div class="text-amber-500 dark:text-amber-300">Yak</div>
-        </div>
-        <div id="holiday-calendar-grid" class="mt-4 grid [grid-template-columns:repeat(7,minmax(0,1fr))] justify-items-center gap-3.5 px-1 sm:gap-4"></div>
-        <div class="mt-4">
-            <div class="mb-2 flex items-center justify-between gap-3">
-                <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ "Oy yozuvlari" if lang != "ru" else "Записи за месяц" }}</h4>
-                <span id="holiday-count-text" class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">0 ta</span>
-            </div>
-            <div id="holiday-list" class="space-y-2">
-                <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300">{{ "Yuklanmoqda..." if lang != "ru" else "Загрузка..." }}</div>
+        <div class="shift-table-footer">
+            <div id="shift-pagination-pages" class="flex flex-wrap items-center gap-2"></div>
+            <div class="shift-pagination-actions">
+                <button id="shift-prev-page" type="button" class="shift-page-nav">
+                    <i class="fa-solid fa-chevron-left"></i>
+                    <span>Oldingi</span>
+                </button>
+                <button id="shift-next-page" type="button" class="shift-page-nav">
+                    <span>Keyingi</span>
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
             </div>
         </div>
     </section>
-</div>
-
-<div class="mb-4 card-standard p-4  ">
-    <div class="flex flex-wrap items-center gap-2.5">
-        <input id="shift-search" type="text" placeholder="{{ 'Qidiruv: F.I.Sh. yoki ID' if lang != 'ru' else 'Поиск: ФИО или ID' }}" class="min-w-[220px] flex-1 form-input">
-        <select id="shift-org-filter" class="min-w-[150px] form-input">
-            <option value="all">{{ "Barcha tashkilotlar" if lang != "ru" else "Все организации" }}</option>
-        </select>
-        <select id="shift-source-filter" class="min-w-[145px] form-input">
-            <option value="all">{{ "Smena manbasi: barchasi" if lang != "ru" else "Источник смены: все" }}</option>
-            <option value="custom">{{ "Shaxsiy smena" if lang != "ru" else "Персональная смена" }}</option>
-            <option value="schedule">{{ "Tayyor smena" if lang != "ru" else "Готовая смена" }}</option>
-            <option value="organization">{{ "Tashkilot default" if lang != "ru" else "По умолчанию организации" }}</option>
-        </select>
-        <select id="shift-type-filter" class="min-w-[120px] form-input">
-            <option value="all">Tur: barchasi</option>
-        </select>
-        <select id="shift-department-filter" class="min-w-[140px] form-input">
-            <option value="all">Bo'lim: barchasi</option>
-        </select>
-        <select id="shift-position-filter" class="min-w-[140px] form-input">
-            <option value="all">Lavozim: barchasi</option>
-        </select>
-        <button id="shift-reset-filters" type="button" title="{{ 'Filtrni tozalash' if lang != 'ru' else 'Сбросить фильтр' }}" aria-label="{{ 'Filtrni tozalash' if lang != 'ru' else 'Сбросить фильтр' }}" class="inline-flex h-10 w-10 items-center justify-center card-standard text-slate-700  transition hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-md  dark:text-slate-200 dark:hover:bg-slate-700">
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0A8.003 8.003 0 015.2 15m14.219 0H15"/></svg>
-        </button>
-    </div>
-</div>
-
-<div id="shift-bulk-bar" class="mb-4 card-standard px-4 py-3  ">
-    <div class="flex flex-wrap items-center justify-between gap-2.5">
-        <div class="flex flex-wrap items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-            <span id="shift-selected-count" class="inline-flex rounded-full bg-blue-50 px-3 py-1 font-semibold text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">Tanlangan: 0</span>
-            <span id="shift-filtered-count" class="inline-flex rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">Filtrlangan: 0</span>
-            <span id="shift-bulk-hint" class="text-xs text-slate-500 dark:text-slate-400">Bitta tashkilot bo'yicha tanlab, smenani bir zumda almashtiring.</span>
-        </div>
-        <div class="flex flex-wrap items-center gap-2">
-            <button id="shift-select-filtered" type="button" title="Barchasini tanlash" aria-label="Barchasini tanlash" class="inline-flex h-10 w-10 items-center justify-center card-standard text-slate-700  transition hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-md  dark:text-slate-200 dark:hover:bg-slate-700">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h12M4 12h12M4 17h12"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m18 9 2 2 4-4"/></svg>
-            </button>
-            <button id="shift-clear-selection" type="button" title="Barcha tanlanganlarni olib tashlash" aria-label="Barcha tanlanganlarni olib tashlash" class="inline-flex h-10 w-10 items-center justify-center card-standard text-slate-700  transition hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-md  dark:text-slate-200 dark:hover:bg-slate-700">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9l6 6m0-6-6 6"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 4h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5a1 1 0 011-1z"/></svg>
-            </button>
-            <button id="shift-bulk-change-selected" type="button" title="Tanlanganlarga smena qo'llash" aria-label="Tanlanganlarga smena qo'llash" class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-md">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h8M8 12h8M8 17h5"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m17 14 3 3-3 3"/></svg>
-            </button>
-            <button id="shift-bulk-change-filtered" type="button" title="Filtrlanganlarga smena qo'llash" aria-label="Filtrlanganlarga smena qo'llash" class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-700 hover:shadow-md dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5h16l-6 7v5l-4 2v-7L4 5z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m16 14 3 3-3 3"/></svg>
-            </button>
-        </div>
-    </div>
-</div>
-
-<div class="overflow-hidden card-standard  ">
-    <div class="flex flex-col gap-3 border-b border-gray-100 px-6 py-4 dark:border-gray-800 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-            <p id="shift-count-text" class="text-sm text-gray-500 dark:text-gray-400">{{ "Yuklanmoqda..." if lang != "ru" else "Загрузка..." }}</p>
-            <p id="shift-page-status" class="mt-1 text-xs text-gray-400 dark:text-gray-500">-</p>
-        </div>
-        <div class="flex items-center gap-2 self-start lg:self-auto">
-            <label for="shift-page-size" class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-gray-500">Sahifada</label>
-            <select id="shift-page-size" class="form-input">
-                <option value="10">10</option>
-                <option value="20">20</option>
-                <option value="50">50</option>
-                <option value="100">100</option>
-            </select>
-        </div>
-    </div>
-    <div class="overflow-x-auto">
-        <table class="table-standard">
-            <thead>
-                <tr>
-                    <th class="px-4 py-4 font-semibold text-center">
-                        <input id="shift-select-visible" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500">
-                    </th>
-                    <th class="px-6 py-4 font-semibold">#</th>
-                    <th class="px-6 py-4 font-semibold">{{ "Foydalanuvchi" if lang != "ru" else "Пользователь" }}</th>
-                    <th class="px-6 py-4 font-semibold">{{ "Tashkilot" if lang != "ru" else "Организация" }}</th>
-                    <th class="px-6 py-4 font-semibold">{{ "Tur" if lang != "ru" else "Тип" }}</th>
-                    <th class="px-6 py-4 font-semibold">{{ "Smena" if lang != "ru" else "Смена" }}</th>
-                    <th class="px-6 py-4 font-semibold">{{ "Manba" if lang != "ru" else "Источник" }}</th>
-                    <th class="px-6 py-4 font-semibold">{{ "Bo'lim / lavozim" if lang != "ru" else "Отдел / должность" }}</th>
-                    <th class="px-6 py-4 font-semibold text-right">{{ "Harakatlar" if lang != "ru" else "Действия" }}</th>
-                </tr>
-            </thead>
-            <tbody id="shift-table-body" class="divide-y divide-gray-100 dark:divide-gray-800">
-                <tr><td colspan="9" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">{{ "Yuklanmoqda..." if lang != "ru" else "Загрузка..." }}</td></tr>
-            </tbody>
-        </table>
-    </div>
-    <div class="flex flex-col gap-3 border-t border-gray-100 px-6 py-4 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-between">
-        <div id="shift-pagination-pages" class="flex flex-wrap items-center gap-2"></div>
-        <div class="flex items-center gap-2">
-            <button id="shift-prev-page" type="button" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">Oldingi</button>
-            <button id="shift-next-page" type="button" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">Keyingi</button>
-        </div>
-    </div>
 </div>
 
 <script>
@@ -344,6 +519,40 @@ function uniqueSortedValues(rows, field) {
     ).sort((a, b) => a.localeCompare(b, 'uz'));
 }
 
+function setButtonsDisabled(selector, disabled) {
+    document.querySelectorAll(selector).forEach((button) => {
+        setButtonDisabled(button, disabled);
+    });
+}
+
+function shiftInitials(value) {
+    const parts = String(value || '').trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return '??';
+    return parts.slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join('');
+}
+
+function shiftTypeTone(label) {
+    const token = String(label || '').trim().toLowerCase();
+    if (token.includes("o'qituvchi") || token.includes('oqituvchi')) return 'is-indigo';
+    if (token.includes("o'quvchi") || token.includes('oquvchi')) return 'is-sky';
+    if (token.includes('hodim') || token.includes('xodim')) return 'is-emerald';
+    return 'is-neutral';
+}
+
+function shiftSourceTone(source) {
+    const token = String(source || '').trim().toLowerCase();
+    if (token === 'custom') return 'is-custom';
+    if (token === 'schedule') return 'is-schedule';
+    return 'is-organization';
+}
+
+function shiftSourceIcon(source) {
+    const token = String(source || '').trim().toLowerCase();
+    if (token === 'custom') return 'fa-user-clock';
+    if (token === 'schedule') return 'fa-clock-rotate-left';
+    return 'fa-building';
+}
+
 function currentFilteredRowsBase() {
     const orgId = String(document.getElementById("shift-org-filter")?.value || "all");
     const source = String(document.getElementById("shift-source-filter")?.value || "all");
@@ -420,15 +629,13 @@ function renderShiftBulkState() {
 function populateManagerOrganizations() {
     const scheduleSelect = document.getElementById('schedule-manager-org');
     const holidaySelect = document.getElementById('holiday-manager-org');
-    const scheduleButton = document.getElementById('add-schedule-btn');
-    const holidayButton = document.getElementById('add-holiday-btn');
     const optionsHtml = SHIFT_ORGANIZATIONS.map((org) => `<option value="${shiftEscapeHtml(org.id)}">${shiftEscapeHtml(org.name)}</option>`).join('');
     if (scheduleSelect) {
         scheduleSelect.innerHTML = optionsHtml || '<option value="">Tashkilot topilmadi</option>';
         if (!scheduleSelect.value && SHIFT_ORGANIZATIONS.length) {
             scheduleSelect.value = String(SHIFT_ORGANIZATIONS[0].id);
         }
-        setButtonDisabled(scheduleButton, !SHIFT_ORGANIZATIONS.length);
+        setButtonsDisabled('[data-shift-open-schedule]', !SHIFT_ORGANIZATIONS.length);
     }
     if (holidaySelect) {
         const holidayOptions = [];
@@ -440,7 +647,7 @@ function populateManagerOrganizations() {
         if (!holidaySelect.value) {
             holidaySelect.value = IS_SUPER_ADMIN ? 'global' : (SHIFT_ORGANIZATIONS[0] ? String(SHIFT_ORGANIZATIONS[0].id) : '');
         }
-        setButtonDisabled(holidayButton, !holidayOptions.length);
+        setButtonsDisabled('[data-shift-open-holiday]', !holidayOptions.length);
     }
 }
 
@@ -470,38 +677,49 @@ async function loadScheduleManager() {
     const orgId = currentScheduleOrgId();
     const container = document.getElementById('schedule-manager-list');
     if (!orgId) {
-        container.innerHTML = '<div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300">Tashkilot tanlanmagan.</div>';
+        container.innerHTML = '<div class="shift-status-box"><i class="fa-solid fa-building"></i><span>Tashkilot tanlanmagan.</span></div>';
         return;
     }
-    container.innerHTML = '<div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300">Yuklanmoqda...</div>';
+    container.innerHTML = '<div class="shift-status-box"><i class="fa-solid fa-loader animate-spin"></i><span>Yuklanmoqda...</span></div>';
     const response = await fetch(`/api/organizations/${encodeURIComponent(orgId)}/schedules`);
     const payload = await response.json().catch(() => ({}));
     if (!response.ok || payload.ok === false) {
-        container.innerHTML = `<div class="rounded-xl border border-red-200 bg-red-50 px-4 py-5 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300">${shiftEscapeHtml(payload.detail || 'Smenalarni yuklab bo\'lmadi')}</div>`;
+        container.innerHTML = `<div class="shift-status-box is-danger"><i class="fa-solid fa-xmark"></i><span>${shiftEscapeHtml(payload.detail || 'Smenalarni yuklab bo\'lmadi')}</span></div>`;
         return;
     }
     const items = Array.isArray(payload.items) ? payload.items : [];
     if (!items.length) {
-        container.innerHTML = '<div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300">Bu tashkilotda smena yo\'q.</div>';
+        container.innerHTML = '<div class="shift-status-box"><i class="fa-solid fa-clock-rotate-left"></i><span>Bu tashkilotda smena yo\'q.</span></div>';
         return;
     }
     container.innerHTML = items.map((item) => `
-        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                    <div class="flex flex-wrap items-center gap-2">
-                        <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">${shiftEscapeHtml(item.name || '-')}</h4>
-                        <span class="rounded-full px-2 py-0.5 text-[11px] font-semibold ${item.is_flexible ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300' : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200'}">${item.is_flexible ? 'Erkin' : 'Qat\'iy'}</span>
+        <article class="shift-stack-card">
+            <span class="shift-stack-icon ${item.is_flexible ? 'is-sky' : ''}">
+                <i class="fa-solid ${item.is_flexible ? 'fa-wave-pulse' : 'fa-clock-rotate-left'}"></i>
+            </span>
+            <div class="shift-stack-content">
+                <div class="shift-stack-top">
+                    <div>
+                        <div class="shift-stack-title-row">
+                            <h4 class="shift-stack-title">${shiftEscapeHtml(item.name || '-')}</h4>
+                            <span class="shift-chip ${item.is_flexible ? 'is-sky' : ''}">${item.is_flexible ? 'Erkin' : 'Qat\'iy'}</span>
+                        </div>
+                        <div class="shift-stack-subtitle">${shiftEscapeHtml(item.start_time || '09:00')} - ${shiftEscapeHtml(item.end_time || '18:00')}</div>
+                        <div class="shift-stack-meta">Biriktirilgan profil: ${shiftEscapeHtml(item.employee_count || 0)}</div>
                     </div>
-                    <div class="mt-2 text-sm text-slate-700 dark:text-slate-300">${shiftEscapeHtml(item.start_time || '09:00')} - ${shiftEscapeHtml(item.end_time || '18:00')}</div>
-                    <div class="mt-1 text-[11px] text-slate-500 dark:text-slate-400">Biriktirilgan xodimlar: ${shiftEscapeHtml(item.employee_count || 0)}</div>
-                </div>
-                <div class="flex items-center gap-2">
-                    <button type="button" data-edit-schedule="${item.id}" class="rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-300 dark:hover:bg-amber-900/30">Tahrirlash</button>
-                    <button type="button" data-delete-schedule="${item.id}" class="rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 dark:bg-rose-900/20 dark:text-rose-300 dark:hover:bg-rose-900/30">O'chirish</button>
+                    <div class="shift-stack-actions">
+                        <button type="button" data-edit-schedule="${item.id}" class="shift-mini-btn is-amber">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                            <span>Tahrirlash</span>
+                        </button>
+                        <button type="button" data-delete-schedule="${item.id}" class="shift-mini-btn is-rose">
+                            <i class="fa-solid fa-xmark"></i>
+                            <span>O'chirish</span>
+                        </button>
+                    </div>
                 </div>
             </div>
-        </div>
+        </article>
     `).join('');
 
     container.querySelectorAll('[data-edit-schedule]').forEach((button) => {
@@ -534,31 +752,46 @@ async function loadScheduleManager() {
 function openScheduleModal(item = null) {
     const orgId = currentScheduleOrgId();
     const body = document.createElement('div');
-    body.className = 'space-y-4';
+    body.className = 'shift-modal-shell';
     body.innerHTML = `
-        <form id="scheduleForm" class="space-y-4">
-            <div>
-                <label class="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100">Smena nomi</label>
-                <input id="scheduleName" type="text" class="block w-full card-standard px-4 py-3 text-sm text-slate-900  focus:border-blue-500 focus:ring-blue-500  dark:text-white" value="${shiftEscapeHtml(item?.name || '')}">
+        <form id="scheduleForm" class="shift-modal-surface shift-modal-form">
+            <div class="shift-modal-note">
+                <span class="shift-modal-note-icon"><i class="fa-solid fa-building"></i></span>
+                <span>Tashkilot ichidagi smena nomi, vaqt oralig'i va grafik turini shu blokda boshqarasiz.</span>
             </div>
-            <div class="grid gap-3 sm:grid-cols-2">
-                <div>
-                    <label class="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100">Boshlanish</label>
-                    <input id="scheduleStart" type="time" class="block w-full card-standard px-4 py-3 text-sm text-slate-900  focus:border-blue-500 focus:ring-blue-500  dark:text-white" value="${shiftEscapeHtml(item?.start_time || '09:00')}">
-                </div>
-                <div>
-                    <label class="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100">Tugash</label>
-                    <input id="scheduleEnd" type="time" class="block w-full card-standard px-4 py-3 text-sm text-slate-900  focus:border-blue-500 focus:ring-blue-500  dark:text-white" value="${shiftEscapeHtml(item?.end_time || '18:00')}">
+            <div class="shift-modal-fields">
+                <label class="shift-modal-field">
+                    <span class="shift-modal-label">Smena nomi</span>
+                    <span class="shift-modal-control">
+                        <i class="fa-solid fa-layer-group shift-modal-icon"></i>
+                        <input id="scheduleName" type="text" class="shift-modal-input" value="${shiftEscapeHtml(item?.name || '')}">
+                    </span>
+                </label>
+                <div class="shift-modal-grid">
+                    <label class="shift-modal-field">
+                        <span class="shift-modal-label">Boshlanish</span>
+                        <span class="shift-modal-control">
+                            <i class="fa-solid fa-clock-rotate-left shift-modal-icon"></i>
+                            <input id="scheduleStart" type="time" class="shift-modal-input" value="${shiftEscapeHtml(item?.start_time || '09:00')}">
+                        </span>
+                    </label>
+                    <label class="shift-modal-field">
+                        <span class="shift-modal-label">Tugash</span>
+                        <span class="shift-modal-control">
+                            <i class="fa-solid fa-clock-rotate-left shift-modal-icon"></i>
+                            <input id="scheduleEnd" type="time" class="shift-modal-input" value="${shiftEscapeHtml(item?.end_time || '18:00')}">
+                        </span>
+                    </label>
                 </div>
             </div>
-            <label class="inline-flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+            <label class="shift-modal-toggle">
                 <input id="scheduleFlexible" type="checkbox" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500" ${item?.is_flexible ? 'checked' : ''}>
-                Erkin grafik
+                <span>Erkin grafik</span>
             </label>
-            <div id="scheduleModalError" class="hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300"></div>
-            <div class="flex items-center justify-end gap-2">
-                <button type="button" id="scheduleModalCancel" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">Bekor qilish</button>
-                <button type="submit" class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700">${item ? 'Yangilash' : 'Saqlash'}</button>
+            <div id="scheduleModalError" class="shift-modal-error hidden"></div>
+            <div class="shift-modal-actions">
+                <button type="button" id="scheduleModalCancel" class="shift-modal-btn is-secondary">Bekor qilish</button>
+                <button type="submit" class="shift-modal-btn is-primary">${item ? 'Yangilash' : 'Saqlash'}</button>
             </div>
         </form>
     `;
@@ -713,26 +946,37 @@ function renderHolidayList() {
     const items = holidayManagerState.items || [];
     countEl.textContent = `${items.length} ta`;
     if (!items.length) {
-        listEl.innerHTML = '<div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300">Yozuv topilmadi.</div>';
+        listEl.innerHTML = '<div class="shift-status-box"><i class="fa-solid fa-calendar-days"></i><span>Yozuv topilmadi.</span></div>';
         return;
     }
     listEl.innerHTML = items.map((item) => `
-        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-blue-200 hover:bg-white dark:border-slate-700 dark:bg-slate-800/70 dark:hover:border-blue-900/40 dark:hover:bg-slate-800">
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                    <div class="flex flex-wrap items-center gap-2">
-                        <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">${shiftEscapeHtml(item.title || '-')}</h4>
-                        <span class="rounded-full px-2 py-0.5 text-[11px] font-semibold ${getHolidayKindTone(item)}">${getHolidayKindLabel(item)}</span>
+        <article class="shift-stack-card">
+            <span class="shift-stack-icon ${item.is_weekend ? 'is-amber' : 'is-rose'}">
+                <i class="fa-solid ${item.is_weekend ? 'fa-calendar-days' : 'fa-flag'}"></i>
+            </span>
+            <div class="shift-stack-content">
+                <div class="shift-stack-top">
+                    <div>
+                        <div class="shift-stack-title-row">
+                            <h4 class="shift-stack-title">${shiftEscapeHtml(item.title || '-')}</h4>
+                            <span class="shift-chip ${item.is_weekend ? 'is-amber' : 'is-rose'}">${getHolidayKindLabel(item)}</span>
+                        </div>
+                        <div class="shift-stack-subtitle">${shiftEscapeHtml(formatHolidayDateHuman(item.date || '-'))}</div>
+                        <div class="shift-stack-meta">${shiftEscapeHtml(item.organization_id ? getHolidayScopeLabel(item.organization_id) : 'Global bayramlar')}</div>
                     </div>
-                    <div class="mt-2 text-sm text-slate-700 dark:text-slate-300">${shiftEscapeHtml(formatHolidayDateHuman(item.date || '-'))}</div>
-                    <div class="mt-1 text-[11px] text-slate-500 dark:text-slate-400">${shiftEscapeHtml(item.organization_id ? getHolidayScopeLabel(item.organization_id) : 'Global bayramlar')}</div>
-                </div>
-                <div class="flex items-center gap-2">
-                    <button type="button" data-edit-holiday="${item.id}" class="rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-300 dark:hover:bg-amber-900/30">Tahrirlash</button>
-                    <button type="button" data-delete-holiday="${item.id}" class="rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 dark:bg-rose-900/20 dark:text-rose-300 dark:hover:bg-rose-900/30">O'chirish</button>
+                    <div class="shift-stack-actions">
+                        <button type="button" data-edit-holiday="${item.id}" class="shift-mini-btn is-amber">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                            <span>Tahrirlash</span>
+                        </button>
+                        <button type="button" data-delete-holiday="${item.id}" class="shift-mini-btn is-rose">
+                            <i class="fa-solid fa-xmark"></i>
+                            <span>O'chirish</span>
+                        </button>
+                    </div>
                 </div>
             </div>
-        </div>
+        </article>
     `).join('');
     listEl.querySelectorAll('[data-edit-holiday]').forEach((button) => {
         button.addEventListener('click', () => {
@@ -791,7 +1035,7 @@ async function loadHolidayManager() {
     const response = await fetch(`/api/holidays?${params.toString()}`);
     const payload = await response.json().catch(() => ({}));
     if (!response.ok || payload.ok === false) {
-        document.getElementById('holiday-list').innerHTML = `<div class="rounded-xl border border-red-200 bg-red-50 px-4 py-5 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300">${shiftEscapeHtml(payload.detail || 'Bayramlarni yuklab bo\'lmadi')}</div>`;
+        document.getElementById('holiday-list').innerHTML = `<div class="shift-status-box is-danger"><i class="fa-solid fa-xmark"></i><span>${shiftEscapeHtml(payload.detail || 'Bayramlarni yuklab bo\'lmadi')}</span></div>`;
         return;
     }
     holidayManagerState.items = Array.isArray(payload.items) ? payload.items : [];
@@ -807,11 +1051,11 @@ function openHolidayModal(item = null, presetDate = '') {
     holidayManagerState.selectedDate = activeDate;
     updateHolidaySummary();
     const body = document.createElement('div');
-    body.className = 'space-y-4';
+    body.className = 'shift-modal-shell shift-modal-shell-wide';
     body.innerHTML = `
         <div class="grid gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
             <div class="space-y-4">
-                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
+                <div class="shift-modal-surface">
                     <div class="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Tanlangan kun</div>
                     <div id="holidayModalDateLabel" class="mt-2 text-lg font-bold text-slate-900 dark:text-slate-100">-</div>
                     <div class="mt-3 flex flex-wrap items-center gap-2">
@@ -822,37 +1066,38 @@ function openHolidayModal(item = null, presetDate = '') {
                 <div>
                     <div class="mb-2 flex items-center justify-between gap-2">
                         <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Shu kun yozuvlari</h4>
-                        <button type="button" id="holidayModalAddNew" class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">Yangi holat</button>
+                        <button type="button" id="holidayModalAddNew" class="shift-mini-btn">Yangi holat</button>
                     </div>
                     <div id="holidayModalItems" class="space-y-2"></div>
                 </div>
             </div>
-            <form id="holidayForm" class="space-y-4 card-standard p-4  ">
+            <form id="holidayForm" class="shift-modal-surface shift-modal-form">
                 <div class="grid gap-3 sm:grid-cols-2">
                     <div class="sm:col-span-2">
                         <label class="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100">Nomi</label>
-                        <input id="holidayTitle" type="text" class="block w-full card-standard px-4 py-3 text-sm text-slate-900  focus:border-rose-500 focus:ring-rose-500  dark:text-white">
+                        <input id="holidayTitle" type="text" class="shift-modal-input">
                     </div>
                     <div>
                         <label class="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100">Sana</label>
-                        <input id="holidayDate" type="date" class="block w-full card-standard px-4 py-3 text-sm text-slate-900  focus:border-rose-500 focus:ring-rose-500  dark:text-white">
+                        <input id="holidayDate" type="date" class="shift-modal-input">
                     </div>
                     <div>
                         <label class="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100">Kun turi</label>
-                        <select id="holidayKind" class="block w-full card-standard px-4 py-3 text-sm text-slate-900  focus:border-rose-500 focus:ring-rose-500  dark:text-white">
+                        <select id="holidayKind" class="shift-modal-input">
                             <option value="holiday">Bayram</option>
                             <option value="weekend">Dam olish</option>
                         </select>
                     </div>
                 </div>
-                <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-300">
+                <div class="shift-modal-note">
+                    <span class="shift-modal-note-icon"><i class="fa-solid fa-globe"></i></span>
                     Scope: ${scope === 'global' ? 'Global bayramlar' : shiftEscapeHtml(getHolidayScopeLabel(scope))}
                 </div>
-                <div id="holidayModalError" class="hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300"></div>
-                <div class="flex flex-wrap items-center justify-end gap-2">
-                    <button type="button" id="holidayModalDelete" class="hidden rounded-xl border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 dark:border-rose-900/40 dark:bg-rose-900/20 dark:text-rose-300 dark:hover:bg-rose-900/30">O'chirish</button>
-                    <button type="button" id="holidayModalCancel" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">Bekor qilish</button>
-                    <button type="submit" class="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700"><span id="holidayModalSaveText">Saqlash</span></button>
+                <div id="holidayModalError" class="shift-modal-error hidden"></div>
+                <div class="shift-modal-actions">
+                    <button type="button" id="holidayModalDelete" class="shift-modal-btn is-danger hidden">O'chirish</button>
+                    <button type="button" id="holidayModalCancel" class="shift-modal-btn is-secondary">Bekor qilish</button>
+                    <button type="submit" class="shift-modal-btn is-danger"><span id="holidayModalSaveText">Saqlash</span></button>
                 </div>
             </form>
         </div>
@@ -896,21 +1141,21 @@ function openHolidayModal(item = null, presetDate = '') {
         refreshModalMeta();
         if (!rows.length) {
             listEl.innerHTML = isSundayHolidayDate(modalState.activeDate)
-                ? '<div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-5 text-sm text-amber-700 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-300">Yakshanba default dam olish kuni. Xohlasangiz shu kun uchun alohida yozuv qo\'shishingiz mumkin.</div>'
-                : '<div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300">Bu kun uchun yozuv yo\'q. Shu formadan yangi holat kiriting.</div>';
+                ? '<div class="shift-modal-empty is-amber">Yakshanba default dam olish kuni. Xohlasangiz shu kun uchun alohida yozuv qo\'shishingiz mumkin.</div>'
+                : '<div class="shift-modal-empty">Bu kun uchun yozuv yo\'q. Shu formadan yangi holat kiriting.</div>';
             return;
         }
         listEl.innerHTML = rows.map((row) => `
-            <button type="button" data-holiday-item="${row.id}" class="w-full rounded-2xl border p-4 text-left transition ${String(row.id) === modalState.editingId ? 'border-blue-300 bg-blue-50 shadow-sm dark:border-blue-900/40 dark:bg-blue-900/20' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600 dark:hover:bg-slate-800'}">
-                <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <button type="button" data-holiday-item="${row.id}" class="shift-modal-item ${String(row.id) === modalState.editingId ? 'is-active' : ''}">
+                <div class="shift-modal-item-top">
                     <div>
                         <div class="flex flex-wrap items-center gap-2">
-                            <span class="text-sm font-semibold text-slate-900 dark:text-slate-100">${shiftEscapeHtml(row.title || '-')}</span>
+                            <span class="shift-modal-item-title">${shiftEscapeHtml(row.title || '-')}</span>
                             <span class="rounded-full px-2 py-0.5 text-[11px] font-semibold ${getHolidayKindTone(row)}">${getHolidayKindLabel(row)}</span>
                         </div>
-                        <div class="mt-1 text-[11px] text-slate-500 dark:text-slate-400">${shiftEscapeHtml(formatHolidayDateHuman(row.date || modalState.activeDate))}</div>
+                        <div class="shift-modal-item-meta">${shiftEscapeHtml(formatHolidayDateHuman(row.date || modalState.activeDate))}</div>
                     </div>
-                    <span class="text-xs font-semibold ${String(row.id) === modalState.editingId ? 'text-blue-700 dark:text-blue-300' : 'text-slate-400 dark:text-slate-500'}">${String(row.id) === modalState.editingId ? 'Tahrirlanmoqda' : 'Tahrirlash'}</span>
+                    <span class="shift-modal-item-state">${String(row.id) === modalState.editingId ? 'Tahrirlanmoqda' : 'Tahrirlash'}</span>
                 </div>
             </button>
         `).join('');
@@ -1081,7 +1326,7 @@ function renderShiftPagination(totalRows, totalPages) {
             return '<span class="px-1 text-sm text-slate-400 dark:text-slate-500">...</span>';
         }
         const page = Number(item);
-        return `<button type="button" data-shift-page="${page}" class="rounded-xl px-3 py-2 text-sm font-semibold transition ${page === shiftTableState.page ? 'bg-blue-600 text-white shadow-sm' : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700'}">${page}</button>`;
+        return `<button type="button" data-shift-page="${page}" class="shift-pagination-btn ${page === shiftTableState.page ? 'is-active' : ''}">${page}</button>`;
     }).join('');
     pagesEl.querySelectorAll('[data-shift-page]').forEach((button) => {
         button.addEventListener('click', () => {
@@ -1110,7 +1355,7 @@ function renderShiftRows() {
         : `{{ "Mos smena topilmadi." if lang != "ru" else "Подходящие смены не найдены." }}`;
 
     if (!rows.length) {
-        tbody.innerHTML = `<tr><td colspan="9" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">{{ "Mos smena topilmadi." if lang != "ru" else "Подходящие смены не найдены." }}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="shift-empty-cell">{{ "Mos smena topilmadi." if lang != "ru" else "Подходящие смены не найдены." }}</td></tr>`;
         if (selectVisible) selectVisible.checked = false;
         renderShiftPagination(0, 1);
         renderShiftBulkState();
@@ -1120,48 +1365,67 @@ function renderShiftRows() {
     tbody.innerHTML = visibleRows.map((row, index) => {
         const profileUrl = `/employees/${encodeURIComponent(row.id)}`;
         const editUrl = `/employees/${encodeURIComponent(row.id)}/edit`;
-        const sourceTone = row.shift_source === "custom"
-            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
-            : row.shift_source === "schedule"
-            ? "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300"
-            : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300";
+        const sourceTone = shiftSourceTone(row.shift_source);
+        const sourceIcon = shiftSourceIcon(row.shift_source);
         const shiftLabel = `${shiftEscapeHtml(row.start_time || "09:00")} - ${shiftEscapeHtml(row.end_time || "18:00")}`;
         const defaultHint = row.shift_source === "custom"
-            ? `<div class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">Default: ${shiftEscapeHtml(row.default_start_time || "09:00")} - ${shiftEscapeHtml(row.default_end_time || "18:00")}</div>`
+            ? `Default: ${shiftEscapeHtml(row.default_start_time || "09:00")} - ${shiftEscapeHtml(row.default_end_time || "18:00")}`
             : row.shift_source === "schedule"
-            ? `<div class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">${shiftEscapeHtml(row.schedule_name || "Smena")} ${row.schedule_is_flexible ? "• Erkin" : ""}</div>`
-            : "";
+            ? `${shiftEscapeHtml(row.schedule_name || "Smena")}${row.schedule_is_flexible ? " • Erkin" : ""}`
+            : `Default: ${shiftEscapeHtml(row.default_start_time || row.start_time || "09:00")} - ${shiftEscapeHtml(row.default_end_time || row.end_time || "18:00")}`;
         const department = row.department ? shiftEscapeHtml(row.department) : " - ";
         const position = row.position ? shiftEscapeHtml(row.position) : " - ";
-        const personalId = row.personal_id ? `<div class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">ID: ${shiftEscapeHtml(row.personal_id)}</div>` : "";
+        const personalId = row.personal_id ? `ID: ${shiftEscapeHtml(row.personal_id)}` : "ID biriktirilmagan";
+        const typeTone = shiftTypeTone(row.employee_type_label);
         const isChecked = shiftSelectionState.selectedIds.has(Number(row.id));
         return `
-            <tr class="transition hover:bg-gray-50 dark:hover:bg-gray-800/50">
+            <tr class="transition">
                 <td class="px-4 py-4 text-center">
                     <input type="checkbox" data-shift-select-row="${row.id}" class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" ${isChecked ? 'checked' : ''}>
                 </td>
-                <td class="px-6 py-4 font-medium text-gray-600 dark:text-gray-300">${start + index + 1}</td>
+                <td class="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400">${start + index + 1}</td>
                 <td class="px-6 py-4">
-                    <div class="font-semibold text-gray-900 dark:text-white">${shiftEscapeHtml(row.full_name || "-")}</div>
-                    ${personalId}
-                </td>
-                <td class="px-6 py-4 text-gray-700 dark:text-gray-300">${shiftEscapeHtml(row.organization_name || "-")}</td>
-                <td class="px-6 py-4 text-gray-700 dark:text-gray-300">${shiftEscapeHtml(row.employee_type_label || "Tanlanmagan")}</td>
-                <td class="px-6 py-4">
-                    <div class="font-semibold text-gray-900 dark:text-white">${shiftLabel}</div>
-                    ${defaultHint}
-                </td>
-                <td class="px-6 py-4"><span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${sourceTone}">${shiftEscapeHtml(row.shift_source_label || "-")}</span></td>
-                <td class="px-6 py-4 text-gray-700 dark:text-gray-300">
-                    <div>${department}</div>
-                    <div class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">${position}</div>
+                    <div class="shift-user-cell">
+                        <span class="shift-user-avatar">${shiftInitials(row.full_name)}</span>
+                        <div class="shift-value-stack">
+                            <a href="${profileUrl}" class="shift-primary-link">${shiftEscapeHtml(row.full_name || "-")}</a>
+                            <span class="shift-secondary-text">${personalId}</span>
+                        </div>
+                    </div>
                 </td>
                 <td class="px-6 py-4">
-                    <div class="flex items-center justify-end gap-2">
-                        <a href="${profileUrl}" class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-600 transition hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600" title="{{ 'Profil' if lang != 'ru' else 'Профиль' }}">
+                    <div class="shift-value-stack">
+                        <span class="shift-primary-text">${shiftEscapeHtml(row.organization_name || "-")}</span>
+                        <span class="shift-secondary-text">${shiftEscapeHtml(row.schedule_name || "Tashkilot default")}</span>
+                    </div>
+                </td>
+                <td class="px-6 py-4">
+                    <span class="shift-type-badge ${typeTone}">${shiftEscapeHtml(row.employee_type_label || "Tanlanmagan")}</span>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="shift-value-stack">
+                        <span class="shift-primary-text">${shiftLabel}</span>
+                        <span class="shift-secondary-text">${defaultHint}</span>
+                    </div>
+                </td>
+                <td class="px-6 py-4">
+                    <span class="shift-source-badge ${sourceTone}">
+                        <i class="fa-solid ${sourceIcon}"></i>
+                        <span>${shiftEscapeHtml(row.shift_source_label || "-")}</span>
+                    </span>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="shift-value-stack">
+                        <span class="shift-primary-text">${department}</span>
+                        <span class="shift-secondary-text">${position}</span>
+                    </div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="shift-table-actions">
+                        <a href="${profileUrl}" class="shift-table-action" title="{{ 'Profil' if lang != 'ru' else 'Профиль' }}">
                             <i class="fa-solid fa-user"></i>
                         </a>
-                        <a href="${editUrl}" class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 transition hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-300 dark:hover:bg-blue-500/20" title="{{ 'Tahrirlash' if lang != 'ru' else 'Редактировать' }}">
+                        <a href="${editUrl}" class="shift-table-action is-primary" title="{{ 'Tahrirlash' if lang != 'ru' else 'Редактировать' }}">
                             <i class="fa-solid fa-pen-to-square"></i>
                         </a>
                     </div>
@@ -1229,28 +1493,28 @@ async function openBulkScheduleModal(scope) {
     const schedules = Array.isArray(schedulesPayload.items) ? schedulesPayload.items : [];
     const scopeLabel = scope === 'selected' ? 'Tanlanganlar' : 'Filtrlanganlar';
     const body = document.createElement('div');
-    body.className = 'space-y-4';
+    body.className = 'shift-modal-shell';
     body.innerHTML = `
-        <form id="bulkScheduleForm" class="space-y-4">
-            <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-200">
-                <div class="font-semibold">${scopeLabel}: ${targetRows.length} ta</div>
-                <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">Tashkilot: ${shiftEscapeHtml(targetRows[0]?.organization_name || '-')}</div>
+        <form id="bulkScheduleForm" class="shift-modal-surface shift-modal-form">
+            <div class="shift-modal-note">
+                <span class="shift-modal-note-icon"><i class="fa-solid fa-users-gear"></i></span>
+                <span>${scopeLabel}: ${targetRows.length} ta • Tashkilot: ${shiftEscapeHtml(targetRows[0]?.organization_name || '-')}</span>
             </div>
-            <div>
-                <label class="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100">Yangi smena</label>
-                <select id="bulkScheduleSelect" class="block w-full card-standard px-4 py-3 text-sm text-slate-900  focus:border-blue-500 focus:ring-blue-500  dark:text-white">
+            <div class="shift-modal-field">
+                <label class="shift-modal-label">Yangi smena</label>
+                <select id="bulkScheduleSelect" class="shift-modal-input">
                     <option value="">Tashkilot defaultiga qaytarish</option>
                     ${schedules.map((item) => `<option value="${shiftEscapeHtml(item.id)}">${shiftEscapeHtml(item.name)} • ${shiftEscapeHtml(item.start_time)}-${shiftEscapeHtml(item.end_time)}${item.is_flexible ? ' • Erkin' : ''}</option>`).join('')}
                 </select>
             </div>
-            <label class="inline-flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+            <label class="shift-modal-toggle">
                 <input id="bulkClearOverrides" type="checkbox" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500" checked>
-                Shaxsiy vaqt override'larini tozalab, yangi smenani majburan qo'llash
+                <span>Shaxsiy vaqt override'larini tozalab, yangi smenani majburan qo'llash</span>
             </label>
-            <div id="bulkScheduleError" class="hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300"></div>
-            <div class="flex items-center justify-end gap-2">
-                <button type="button" id="bulkScheduleCancel" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">Bekor qilish</button>
-                <button type="submit" class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700">Qo'llash</button>
+            <div id="bulkScheduleError" class="shift-modal-error hidden"></div>
+            <div class="shift-modal-actions">
+                <button type="button" id="bulkScheduleCancel" class="shift-modal-btn is-secondary">Bekor qilish</button>
+                <button type="submit" class="shift-modal-btn is-primary">Qo'llash</button>
             </div>
         </form>
     `;
@@ -1392,19 +1656,23 @@ async function initializeShiftPage() {
             notifyShiftPage(error?.message || 'Bayramlarni yuklab bo\'lmadi', 'error');
         });
     });
-    document.getElementById('add-schedule-btn')?.addEventListener('click', () => {
-        if (!currentScheduleOrgId()) {
-            notifyShiftPage('Avval tashkilotni tanlang', 'warning');
-            return;
-        }
-        openScheduleModal(null);
+    document.querySelectorAll('[data-shift-open-schedule]').forEach((button) => {
+        button.addEventListener('click', () => {
+            if (!currentScheduleOrgId()) {
+                notifyShiftPage('Avval tashkilotni tanlang', 'warning');
+                return;
+            }
+            openScheduleModal(null);
+        });
     });
-    document.getElementById('add-holiday-btn')?.addEventListener('click', () => {
-        if (!currentHolidayScope()) {
-            notifyShiftPage('Avval scope tanlang', 'warning');
-            return;
-        }
-        openHolidayModal(null, holidayManagerState.selectedDate || `${holidayManagerState.year}-${String(holidayManagerState.month).padStart(2, '0')}-01`);
+    document.querySelectorAll('[data-shift-open-holiday]').forEach((button) => {
+        button.addEventListener('click', () => {
+            if (!currentHolidayScope()) {
+                notifyShiftPage('Avval scope tanlang', 'warning');
+                return;
+            }
+            openHolidayModal(null, holidayManagerState.selectedDate || `${holidayManagerState.year}-${String(holidayManagerState.month).padStart(2, '0')}-01`);
+        });
     });
     document.getElementById('holiday-prev-month')?.addEventListener('click', async () => {
         holidayManagerState.month -= 1;

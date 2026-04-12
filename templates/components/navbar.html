@@ -24,8 +24,6 @@
 
 {% set lang = request.cookies.get('lang', 'uz') %}
 {% set auth_user = request.session.get('auth_user') %}
-{% set nav_user_name = (auth_user.get('display_name') if auth_user and auth_user.get('display_name') else (auth_user.get('name') if auth_user else 'Admin')) %}
-{% set nav_user_email = (auth_user.get('email') if auth_user else 'admin@bioface.local') %}
 {% set nav_user_role_raw = (auth_user.get('role') if auth_user else '') %}
 {% set nav_role_map = {
     'SuperAdmin': (t.get('super_admin') if t else 'Asosiy Administrator'),
@@ -37,42 +35,50 @@
 } %}
 {% set nav_user_role = nav_role_map.get(nav_user_role_raw, nav_user_role_raw or (t.get('role') if t else 'Administrator')) %}
 {% set nav_is_super_admin = nav_user_role_raw in ['SuperAdmin', 'superadmin', 'super_admin'] %}
-{% set nav_user_avatar = (auth_user.get('image_url') if auth_user else '') %}
-{% set nav_user_initial = (nav_user_name[:1] | upper) if nav_user_name else 'A' %}
 
-<header class="relative shrink-0 border-b border-gray-200 bg-white px-4 dark:border-gray-800 dark:bg-gray-900 sm:px-6">
-    <div class="flex min-h-14 items-center justify-between gap-4 py-2">
+<header class="app-navbar-shell shrink-0">
+    <div class="app-navbar-inner">
         <div class="flex min-w-0 flex-1 items-center gap-3">
             <button
-                data-drawer-target="sidebar"
-                data-drawer-toggle="sidebar"
+                id="sidebar-toggle-btn"
                 aria-controls="sidebar"
+                aria-expanded="true"
                 type="button"
-                class="rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 sm:hidden"
+                class="app-icon-btn app-sidebar-toggle-btn"
             >
-                <i class="fa-solid fa-bars"></i>
+                <i class="fa-duotone fa-bars text-[1rem]"></i>
             </button>
-            <h1 class="hidden truncate text-base font-semibold text-gray-900 dark:text-white sm:block">{{ page_title }}</h1>
+
+            <div class="app-navbar-heading">
+                <h1 class="app-navbar-title truncate">{{ page_title }}</h1>
+                <p class="app-navbar-subtitle hidden sm:block">{{ nav_user_role }}</p>
+            </div>
         </div>
 
-        <div class="ml-auto flex shrink-0 items-center justify-end gap-1.5">
-            <div id="service-status-bar" class="flex max-w-full items-center gap-1.5">
-                <span data-service-root="telegram" class="inline-flex items-center rounded-full border border-gray-200 bg-white p-1 text-[0.8rem] shadow-sm transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700/70" title="Telegram">
-                    <span data-service-icon-wrap class="relative flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 dark:bg-gray-700/70">
-                        <img data-service-icon src="/static/img/telegram.svg" class="h-4 w-4" alt="Telegram">
+        <div class="app-navbar-tools">
+            <div id="service-status-bar" class="app-status-cluster">
+                <span data-service-root="telegram" class="app-service-pill is-loading" title="Telegram">
+                    <span data-service-icon-wrap class="app-service-icon is-loading">
+                        <i class="fa-duotone fa-paper-plane-top text-[0.95rem]" aria-hidden="true"></i>
                     </span>
+                    <span class="app-service-label hidden xl:inline">Telegram</span>
+                    <span data-service-text class="app-service-text is-loading hidden 2xl:inline">Tekshirilmoqda</span>
                 </span>
-                
-                <span data-service-root="isup" class="inline-flex items-center rounded-full border border-gray-200 bg-white p-1 text-[0.8rem] shadow-sm transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700/70" title="ISUP">
-                    <span data-service-icon-wrap class="relative flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 dark:bg-gray-700/70">
-                        <img data-service-icon src="/static/img/isup.svg" class="h-4 w-4 grayscale opacity-80 dark:invert dark:grayscale-0 dark:brightness-200" alt="ISUP">
+
+                <span data-service-root="isup" class="app-service-pill is-loading" title="ISUP">
+                    <span data-service-icon-wrap class="app-service-icon is-loading">
+                        <i class="fa-duotone fa-tower-broadcast text-[0.95rem]" aria-hidden="true"></i>
                     </span>
+                    <span class="app-service-label hidden xl:inline">ISUP</span>
+                    <span data-service-text class="app-service-text is-loading hidden 2xl:inline">Tekshirilmoqda</span>
                 </span>
-                
-                <span data-service-root="redis" class="inline-flex items-center rounded-full border border-gray-200 bg-white p-1 text-[0.8rem] shadow-sm transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700/70" title="Redis">
-                    <span data-service-icon-wrap class="relative flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 dark:bg-gray-700/70">
-                        <img data-service-icon src="/static/img/redis.svg" class="h-4 w-4 grayscale opacity-80 dark:invert dark:grayscale-0 dark:brightness-200" alt="Redis">
+
+                <span data-service-root="redis" class="app-service-pill is-loading" title="Redis">
+                    <span data-service-icon-wrap class="app-service-icon is-loading">
+                        <i class="fa-duotone fa-database text-[0.95rem]" aria-hidden="true"></i>
                     </span>
+                    <span class="app-service-label hidden xl:inline">Redis</span>
+                    <span data-service-text class="app-service-text is-loading hidden 2xl:inline">Tekshirilmoqda</span>
                 </span>
             </div>
 
@@ -80,48 +86,50 @@
                 <button
                     id="lang-btn"
                     data-dropdown-toggle="lang-drop"
-                    class="flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm text-gray-600 transition hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+                    class="app-pill-btn"
                 >
+                    <i class="fa-duotone fa-globe"></i>
                     <span>{% if lang == 'ru' %}RU{% else %}UZ{% endif %}</span>
                     <span class="hidden text-xs font-medium sm:inline">{% if lang == 'ru' %}Russkiy{% else %}O'zbekcha{% endif %}</span>
-                    <i class="fa-solid fa-chevron-down text-gray-400"></i>
+                    <i class="fa-duotone fa-chevron-down text-[0.8rem] opacity-70"></i>
                 </button>
-                <div id="lang-drop" class="absolute right-0 z-50 mt-2 hidden w-36 rounded-xl border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800">
-                    <a href="javascript:void(0)" onclick="setLang('uz')" class="flex items-center gap-2 px-4 py-2 text-sm {% if lang == 'uz' %}bg-blue-50 font-semibold text-blue-600 dark:bg-blue-900/30 dark:text-blue-400{% else %}text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700{% endif %}">UZ O'zbekcha</a>
-                    <a href="javascript:void(0)" onclick="setLang('ru')" class="flex items-center gap-2 px-4 py-2 text-sm {% if lang == 'ru' %}bg-blue-50 font-semibold text-blue-600 dark:bg-blue-900/30 dark:text-blue-400{% else %}text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700{% endif %}">RU Russkiy</a>
+                <div id="lang-drop" class="app-dropdown-menu absolute right-0 z-50 mt-2 hidden w-40 py-1">
+                    <a href="javascript:void(0)" onclick="setLang('uz')" class="app-dropdown-item {% if lang == 'uz' %}is-active{% endif %}">UZ O'zbekcha</a>
+                    <a href="javascript:void(0)" onclick="setLang('ru')" class="app-dropdown-item {% if lang == 'ru' %}is-active{% endif %}">RU Russkiy</a>
                 </div>
             </div>
 
             <button
                 onclick="toggleDarkMode()"
                 title="Kun/Tun rejimi"
-                class="rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+                class="app-icon-btn"
             >
-                <i id="icon-sun" class="fa-solid fa-sun hidden text-[1.15rem] text-yellow-400 drop-shadow-sm"></i>
-                <i id="icon-moon" class="fa-solid fa-moon text-[1.15rem] text-slate-600 dark:text-slate-300"></i>
+                <i id="icon-sun" class="fa-duotone fa-sun hidden text-[1.1rem] text-yellow-400 drop-shadow-sm"></i>
+                <i id="icon-moon" class="fa-duotone fa-moon-stars text-[1.1rem] text-slate-600 dark:text-slate-300"></i>
             </button>
 
             <div class="relative shrink-0">
                 <button
                     type="button"
                     data-dropdown-toggle="notif-drop"
-                    class="relative rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+                    class="app-icon-btn relative"
                 >
-                    <i class="fa-solid fa-bell text-[1.15rem]"></i>
+                    <i class="fa-duotone fa-bell text-[1.1rem]"></i>
                     {% if notifs and notifs.total > 0 %}
-                    <span class="absolute right-1.5 top-1.5 h-2 w-2 rounded-full border-2 border-white bg-red-500 dark:border-gray-900"></span>
+                    <span class="app-alert-badge"></span>
                     {% endif %}
                 </button>
-                <div id="notif-drop" class="absolute right-0 top-full z-50 mt-2 hidden w-72 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800">
-                    <div class="border-b border-gray-100 px-4 py-3 dark:border-gray-700">
+                <div id="notif-drop" class="app-dropdown-panel absolute right-0 top-full z-50 mt-2 hidden w-80">
+                    <div class="border-b border-gray-100 px-4 py-3 dark:border-gray-800">
                         <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ t.notifications }}</p>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Davomat va ogohlantirishlar sarhisobi</p>
                     </div>
                     {% if notifs and notifs.total > 0 %}
                     <div class="flex flex-col gap-3 px-4 py-3">
                         {% if notifs.late > 0 %}
-                        <div class="flex items-start gap-3">
-                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-500 dark:bg-amber-900/40">
-                                <i class="fa-solid fa-clock-rotate-left"></i>
+                        <div class="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 dark:border-amber-900/40 dark:bg-amber-900/20">
+                            <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-amber-500 dark:bg-amber-950/50">
+                                <i class="fa-duotone fa-clock-rotate-left"></i>
                             </div>
                             <div>
                                 <p class="text-sm text-gray-800 dark:text-gray-200">{% if lang == 'ru' %}Segodnya opozdali <strong class="text-amber-600 dark:text-amber-400">{{ notifs.late }} sotrudnikov</strong>.{% else %}Bugun <strong class="text-amber-600 dark:text-amber-400">{{ notifs.late }} ta xodim</strong> kech keldi.{% endif %}</p>
@@ -129,9 +137,9 @@
                         </div>
                         {% endif %}
                         {% if notifs.absent > 0 %}
-                        <div class="flex items-start gap-3">
-                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-500 dark:bg-red-900/40">
-                                <i class="fa-solid fa-triangle-exclamation"></i>
+                        <div class="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-3 dark:border-rose-900/40 dark:bg-rose-900/20">
+                            <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-rose-500 dark:bg-rose-950/50">
+                                <i class="fa-duotone fa-triangle-exclamation"></i>
                             </div>
                             <div>
                                 <p class="text-sm text-gray-800 dark:text-gray-200">{% if lang == 'ru' %}<strong class="text-red-600 dark:text-red-400">{{ notifs.absent }} sotrudnikov</strong> eshche ne pribili.{% else %}<strong class="text-red-600 dark:text-red-400">{{ notifs.absent }} ta xodim</strong> vaqtigacha kelmadi.{% endif %}</p>
@@ -140,11 +148,11 @@
                         {% endif %}
                     </div>
                     {% else %}
-                    <div class="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-                        {% if lang == 'ru' %}Yangi uvedomleniy net{% else %}Yangi bildirishnomalar yo'q{% endif %}
+                    <div class="px-4 py-4">
+                        <div class="app-dropdown-empty">{% if lang == 'ru' %}Yangi uvedomleniy net{% else %}Yangi bildirishnomalar yo'q{% endif %}</div>
                     </div>
                     {% endif %}
-                    <div class="border-t border-gray-100 bg-gray-50 px-4 py-2 dark:border-gray-700 dark:bg-gray-700/50">
+                    <div class="app-dropdown-section px-4 py-2">
                         <a href="/reports" class="text-xs font-medium text-blue-600 hover:underline dark:text-blue-400">{{ t.view_report }}</a>
                     </div>
                 </div>
@@ -156,65 +164,29 @@
                     id="camera-alert-btn"
                     type="button"
                     data-dropdown-toggle="camera-alert-drop"
-                    class="hidden relative rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+                    class="app-icon-btn hidden relative"
                     title="Kamera ogohlantirishlari"
                 >
-                    <i class="fa-solid fa-camera-cctv text-[1.15rem]"></i>
-                    <span id="camera-alert-badge" class="absolute right-1 top-1 hidden min-w-4 rounded-full border-2 border-white bg-red-500 px-1 text-[10px] font-bold leading-3 text-white dark:border-gray-900">0</span>
+                    <i class="fa-duotone fa-camera-cctv text-[1.1rem]"></i>
+                    <span id="camera-alert-badge" class="app-alert-badge hidden">0</span>
                 </button>
-                <div id="camera-alert-drop" class="absolute right-0 top-full z-50 mt-2 hidden w-80 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800">
-                    <div class="border-b border-gray-100 px-4 py-3 dark:border-gray-700">
+                <div id="camera-alert-drop" class="app-dropdown-panel absolute right-0 top-full z-50 mt-2 hidden w-80 overflow-hidden">
+                    <div class="border-b border-gray-100 px-4 py-3 dark:border-gray-800">
                         <p class="text-sm font-semibold text-gray-900 dark:text-white">Kamera ogohlantirishlari</p>
                         <p class="text-xs text-gray-500 dark:text-gray-400">Super admin uchun offline kameralar ro'yxati</p>
                     </div>
                     <div id="camera-alert-list" class="flex max-h-80 flex-col gap-2 overflow-y-auto px-4 py-3">
-                        <div id="camera-alert-empty" class="rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-500 dark:bg-gray-800 dark:text-gray-400">Hozircha kamera ogohlantirishlari yo'q.</div>
+                        <div id="camera-alert-empty" class="app-dropdown-empty">Hozircha kamera ogohlantirishlari yo'q.</div>
                     </div>
-                    <div class="border-t border-gray-100 bg-gray-50 px-4 py-2 dark:border-gray-700 dark:bg-gray-700/50">
+                    <div class="app-dropdown-section px-4 py-2">
                         <a href="/devices" class="text-xs font-medium text-blue-600 hover:underline dark:text-blue-400">Kameralar ro'yxati</a>
                     </div>
                 </div>
             </div>
             {% endif %}
 
-            <div class="relative shrink-0">
-                <button
-                    type="button"
-                    data-dropdown-toggle="user-drop"
-                    class="flex items-center gap-1.5 rounded-xl py-1.5 pl-2 pr-2.5 transition hover:bg-gray-100 dark:hover:bg-gray-800"
-                >
-                    {% if nav_user_avatar %}
-                    <img src="{{ nav_user_avatar }}" alt="user" class="h-7 w-7 rounded-full border border-gray-200 object-cover dark:border-gray-700">
-                    {% else %}
-                    <div class="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-xs font-bold text-white shadow-sm">{{ nav_user_initial }}</div>
-                    {% endif %}
-                    <span class="hidden text-sm font-medium text-gray-800 dark:text-gray-200 md:block">{{ nav_user_name }}</span>
-                    <i class="fa-solid fa-chevron-down hidden text-gray-400"></i>
-                </button>
-                <div id="user-drop" class="absolute right-0 top-full z-50 mt-2 hidden w-52 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
-                    <div class="bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3">
-                        <p class="text-sm font-semibold text-white">{{ nav_user_name }}</p>
-                        <p class="text-xs text-blue-200">{{ nav_user_email }}</p>
-                        <p class="mt-1 text-[11px] text-blue-100">{{ nav_user_role }}</p>
-                    </div>
-                    <div class="py-1">
-                        {% if nav_is_super_admin %}
-                        <a href="/settings" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700">
-                            <i class="fa-solid fa-eye text-gray-400"></i>
-                            {{ t.settings_menu }}
-                        </a>
-                        <div class="my-1 border-t border-gray-100 dark:border-gray-700"></div>
-                        {% endif %}
-                        <a href="/logout" class="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20">
-                            <i class="fa-solid fa-right-from-bracket"></i>
-                            {{ t.logout }}
-                        </a>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
-
 </header>
 
 <script>
@@ -259,27 +231,25 @@
         const cameraAlertEmpty = document.getElementById("camera-alert-empty");
 
         const rootClassMap = {
-            loading: "inline-flex items-center rounded-full border border-gray-200 bg-white p-1 text-[0.8rem] shadow-sm transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700/70",
-            online: "inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50/80 p-1 text-[0.8rem] shadow-sm transition hover:bg-emerald-100/70 dark:border-emerald-900/60 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/30",
-            offline: "inline-flex items-center rounded-full border border-rose-200 bg-rose-50/80 p-1 text-[0.8rem] shadow-sm transition hover:bg-rose-100/70 dark:border-rose-900/60 dark:bg-rose-900/20 dark:hover:bg-rose-900/30",
-            error: "inline-flex items-center rounded-full border border-amber-200 bg-amber-50/80 p-1 text-[0.8rem] shadow-sm transition hover:bg-amber-100/70 dark:border-amber-900/60 dark:bg-amber-900/20 dark:hover:bg-amber-900/30",
+            loading: "app-service-pill is-loading",
+            online: "app-service-pill is-online",
+            offline: "app-service-pill is-offline",
+            error: "app-service-pill is-error",
         };
 
         const iconWrapClassMap = {
-            loading: "relative flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-slate-500 dark:bg-gray-700/70 dark:text-gray-200",
-            online: "relative flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
-            offline: "relative flex h-5 w-5 items-center justify-center rounded-full bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
-            error: "relative flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+            loading: "app-service-icon is-loading",
+            online: "app-service-icon is-online",
+            offline: "app-service-icon is-offline",
+            error: "app-service-icon is-error",
         };
 
-        const dotClassMap = {
-            loading: "absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-slate-400 animate-pulse",
-            online: "absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse",
-            offline: "absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-rose-500",
-            error: "absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse",
+        const textClassMap = {
+            loading: "app-service-text is-loading hidden 2xl:inline",
+            online: "app-service-text is-online hidden 2xl:inline",
+            offline: "app-service-text is-offline hidden 2xl:inline",
+            error: "app-service-text is-error hidden 2xl:inline",
         };
-
-        const textClassMap = {};
 
         function getIndicator(key) {
             const root = document.querySelector(`[data-service-root="${key}"]`);
@@ -355,25 +325,25 @@
             const count = Number(alerts && alerts.count ? alerts.count : items.length || 0);
 
             if (count <= 0) {
-                cameraAlertButton.className = "hidden relative rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800";
-                cameraAlertBadge.className = "absolute right-1 top-1 hidden min-w-4 rounded-full border-2 border-white bg-red-500 px-1 text-[10px] font-bold leading-3 text-white dark:border-gray-900";
+                cameraAlertButton.className = "app-icon-btn hidden relative";
+                cameraAlertBadge.className = "app-alert-badge hidden";
                 if (cameraAlertEmpty) {
                     cameraAlertEmpty.classList.remove("hidden");
                 }
-                cameraAlertList.innerHTML = cameraAlertEmpty ? cameraAlertEmpty.outerHTML : '<div class="rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-500 dark:bg-gray-800 dark:text-gray-400">Hozircha kamera ogohlantirishlari yo\'q.</div>';
+                cameraAlertList.innerHTML = cameraAlertEmpty ? cameraAlertEmpty.outerHTML : '<div class="app-dropdown-empty">Hozircha kamera ogohlantirishlari yo\'q.</div>';
                 cameraAlertButton.title = "Kamera ogohlantirishlari";
                 return;
             }
 
-            cameraAlertButton.className = "relative rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800";
-            cameraAlertBadge.className = "absolute right-1 top-1 min-w-4 rounded-full border-2 border-white bg-red-500 px-1 text-[10px] font-bold leading-3 text-white dark:border-gray-900";
+            cameraAlertButton.className = "app-icon-btn relative";
+            cameraAlertBadge.className = "app-alert-badge";
             cameraAlertBadge.textContent = count > 99 ? "99+" : String(count);
             cameraAlertButton.title = `${count} ta kamera offline`;
 
             cameraAlertList.innerHTML = items.map((item) => {
                 const orgLabel = item.organization_name ? `<div class="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">${escapeHtml(item.organization_name)}</div>` : "";
                 return `
-                    <a href="/camera-info?id=${encodeURIComponent(item.id)}" class="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5 transition hover:bg-amber-100 dark:border-amber-900/40 dark:bg-amber-900/20 dark:hover:bg-amber-900/30">
+                    <a href="/camera-info?id=${encodeURIComponent(item.id)}" class="app-alert-item">
                         <span class="mt-1 h-2 w-2 shrink-0 rounded-full bg-red-500"></span>
                         <span class="min-w-0 flex-1 leading-tight">
                             <span class="block truncate text-xs font-semibold text-gray-900 dark:text-white">${escapeHtml(item.name || "Kamera")}</span>

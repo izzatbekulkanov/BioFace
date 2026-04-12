@@ -39,7 +39,7 @@
     <!-- FontAwesome Premium Icons -->
     <link href="/static/fontawesome/css/all.min.css" rel="stylesheet">
     <link href="/static/css/output.css?v=20260317c" rel="stylesheet">
-    <link href="/static/css/global-overrides.css?v=20260407a" rel="stylesheet">
+    <link href="/static/css/global-overrides.css?v=20260413a" rel="stylesheet">
     <style>
         ::-webkit-scrollbar { width: 5px; height: 5px; }
         ::-webkit-scrollbar-track { background: #f1f5f9; }
@@ -47,10 +47,16 @@
         .card-hover { transition: box-shadow .2s, transform .2s; }
         .card-hover:hover { box-shadow: 0 10px 30px -5px rgba(0,0,0,.1); transform: translateY(-2px); }
         .glass { background: rgba(255,255,255,.15); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,.2); }
-        #sidebar { transition: transform .25s ease; }
+        #sidebar { transition: transform .25s ease, width .25s ease, min-width .25s ease, padding .25s ease; }
     </style>
 </head>
-<body class="ui-scale-xs ui-density-compact ui-width-ultra ui-wide bg-slate-50 dark:bg-gray-950 flex h-screen overflow-hidden font-sans antialiased">
+<body class="app-shell-body ui-scale-xs ui-density-compact ui-width-ultra ui-wide bg-slate-50 dark:bg-gray-950 flex h-screen overflow-hidden font-sans antialiased">
+
+    <div class="app-shell-backdrop" aria-hidden="true">
+        <div class="app-shell-orb orb-a"></div>
+        <div class="app-shell-orb orb-b"></div>
+        <div class="app-shell-orb orb-c"></div>
+    </div>
 
     <!-- Global Page Loader -->
     <div id="page-loader" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-50 dark:bg-gray-950 transition-opacity duration-300">
@@ -64,39 +70,154 @@
 
     <!-- Global Reusable Modal -->
     <div id="global-modal" class="fixed inset-0 z-[200] hidden items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-        <div id="global-modal-panel" class="relative z-[201] w-full max-w-md rounded-2xl border border-gray-200 bg-white p-5 shadow-2xl dark:border-gray-800 dark:bg-gray-900 max-h-[88vh] overflow-y-auto">
-            <div class="mb-4 flex items-center justify-between">
-                <h3 id="global-modal-title" class="text-lg font-bold text-gray-900 dark:text-white">Modal</h3>
-                <button id="global-modal-close" type="button" class="text-gray-400 transition hover:text-gray-900 dark:hover:text-white" aria-label="Close modal">
+        <div id="global-modal-panel" class="relative z-[201] w-full max-w-md rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-900 max-h-[88vh] overflow-y-auto">
+            <div class="global-modal-header">
+                <h3 id="global-modal-title" class="global-modal-title">Modal</h3>
+                <button id="global-modal-close" type="button" class="global-modal-close" aria-label="Close modal">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
-            <div id="global-modal-body"></div>
+            <div id="global-modal-body" class="global-modal-body"></div>
         </div>
     </div>
     <div id="app-toast-root" class="app-toast-container" aria-live="polite" aria-atomic="true"></div>
 
     <!-- ── Sidebar ── -->
     {% include "components/sidebar.html" %}
+    <div id="sidebar-backdrop" class="app-sidebar-backdrop" aria-hidden="true"></div>
 
     <!-- ── Content Wrapper ── -->
-    <div class="flex-1 flex flex-col min-h-screen overflow-hidden">
+    <div class="app-layout-column flex-1 flex flex-col min-h-screen overflow-hidden">
         {% include "components/navbar.html" %}
 
         <!-- ── Main Content ── -->
-        <main id="app-main" class="flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-3 lg:p-4 transition-all duration-300">
+        <main id="app-main" class="app-main-shell flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-3 lg:p-4 transition-all duration-300">
             <div class="app-main-container mx-auto w-full max-w-[2048px] animate-[fadeIn_.35s_ease_both]">
                 {% block content %}{% endblock %}
             </div>
 
-            <!-- Footer -->
-            <footer class="mt-8 pb-4 text-center text-xs text-gray-400 dark:text-gray-600">
-                {{ menus.app_name|default('BioFace') }} &copy; 2026
-            </footer>
+            {% include "components/footer.html" %}
         </main>
     </div>
 
     <script src="/static/js/flowbite.min.js"></script>
+    <script>
+        (function () {
+            const STORAGE_KEY = 'app_sidebar_collapsed_v1';
+            const DESKTOP_QUERY = window.matchMedia('(min-width: 640px)');
+            const root = document.body;
+            const sidebar = document.getElementById('sidebar');
+            const toggleButton = document.getElementById('sidebar-toggle-btn');
+            const backdrop = document.getElementById('sidebar-backdrop');
+
+            if (!root || !sidebar || !toggleButton) {
+                return;
+            }
+
+            function isDesktop() {
+                return DESKTOP_QUERY.matches;
+            }
+
+            function readCollapsedState() {
+                try {
+                    return localStorage.getItem(STORAGE_KEY) === '1';
+                } catch (_) {
+                    return false;
+                }
+            }
+
+            function writeCollapsedState(value) {
+                try {
+                    localStorage.setItem(STORAGE_KEY, value ? '1' : '0');
+                } catch (_) {
+                    // localStorage can be blocked; keep UI functional without persistence.
+                }
+            }
+
+            function isMobileOpen() {
+                return root.classList.contains('sidebar-mobile-open');
+            }
+
+            function closeMobileSidebar() {
+                root.classList.remove('sidebar-mobile-open');
+                syncToggleButton();
+            }
+
+            function openMobileSidebar() {
+                root.classList.add('sidebar-mobile-open');
+                syncToggleButton();
+            }
+
+            function applyDesktopCollapse(value) {
+                root.classList.toggle('sidebar-collapsed', !!value);
+                syncToggleButton();
+            }
+
+            function syncToggleButton() {
+                const expanded = isDesktop() ? !root.classList.contains('sidebar-collapsed') : isMobileOpen();
+                const label = isDesktop()
+                    ? (expanded ? 'Sidebarni qisqartirish' : 'Sidebarni kengaytirish')
+                    : (expanded ? 'Sidebarni yopish' : 'Sidebarni ochish');
+
+                toggleButton.setAttribute('aria-expanded', String(expanded));
+                toggleButton.setAttribute('aria-label', label);
+                toggleButton.setAttribute('title', label);
+                toggleButton.classList.toggle('is-collapsed', isDesktop() && !expanded);
+                if (backdrop) {
+                    backdrop.setAttribute('aria-hidden', String(!isMobileOpen()));
+                }
+            }
+
+            function syncForViewport() {
+                if (isDesktop()) {
+                    root.classList.remove('sidebar-mobile-open');
+                    applyDesktopCollapse(readCollapsedState());
+                    return;
+                }
+                syncToggleButton();
+            }
+
+            toggleButton.addEventListener('click', function () {
+                if (isDesktop()) {
+                    const nextState = !root.classList.contains('sidebar-collapsed');
+                    applyDesktopCollapse(nextState);
+                    writeCollapsedState(nextState);
+                    return;
+                }
+
+                if (isMobileOpen()) {
+                    closeMobileSidebar();
+                } else {
+                    openMobileSidebar();
+                }
+            });
+
+            if (backdrop) {
+                backdrop.addEventListener('click', closeMobileSidebar);
+            }
+
+            sidebar.addEventListener('click', function (event) {
+                if (!isDesktop() && event.target.closest('a')) {
+                    closeMobileSidebar();
+                }
+            });
+
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape' && !isDesktop() && isMobileOpen()) {
+                    closeMobileSidebar();
+                }
+            });
+
+            if (typeof DESKTOP_QUERY.addEventListener === 'function') {
+                DESKTOP_QUERY.addEventListener('change', syncForViewport);
+            } else if (typeof DESKTOP_QUERY.addListener === 'function') {
+                DESKTOP_QUERY.addListener(syncForViewport);
+            }
+
+            syncForViewport();
+        })();
+
+    </script>
     <script>
         (function () {
             const UI_PREFS_VERSION = '20260406-dense-main-ui';

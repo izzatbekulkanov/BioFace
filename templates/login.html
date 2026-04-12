@@ -516,31 +516,76 @@
             100% { box-shadow: 0 0 0 0 rgba(20, 184, 166, 0); }
         }
 
+        /* ─── RESPONSIVE ─── */
+
+        /* Tablet: ≤ 980px */
         @media (max-width: 980px) {
             .shell {
                 grid-template-columns: 1fr;
-                max-width: 620px;
+                max-width: 580px;
             }
             .overview { order: 2; }
             .auth { order: 1; }
-            .nav-links { display: none; }
-            .brand-top-title { display: none; }
-            .brand-top-logo { width: 44px; height: 44px; }
         }
 
-        @media (max-width: 540px) {
-            .site-inner {
-                padding-left: 10px;
-                padding-right: 10px;
-            }
-            .page { padding: 12px; }
-            .overview, .auth { border-radius: 14px; }
-            .overview { padding: 18px 16px; }
-            .overview h1 { font-size: 24px; }
-            .stats { grid-template-columns: 1fr 1fr; }
+        /* Small tablet / Large mobile: ≤ 768px */
+        @media (max-width: 768px) {
+            .nav-links { gap: 6px; font-size: 12px; }
+            .nav-links a { padding: 5px 8px; }
+            .brand-top-title { font-size: 13px; }
+            .header-right { gap: 8px; }
+            .lang button { padding: 4px 8px; font-size: 10px; }
+            .overview h1 { font-size: 22px; }
+        }
+
+        /* Mobile: ≤ 600px */
+        @media (max-width: 600px) {
+            .site-inner { padding: 8px 12px; gap: 8px; }
+            .nav-links { gap: 4px; }       /* nav yashirilmaydi — faqat matn yashiriladi */
+            .nav-text { display: none; }
+            .nav-links a { padding: 7px 9px; }
+            .brand-top-title { display: none; }
+            .brand-top-logo { width: 38px; height: 38px; }
+            .lang button { padding: 4px 7px; font-size: 10px; }
+
+            .page { padding: 10px; }
+            .shell { gap: 12px; }
+
+            /* Overview */
+            .overview { padding: 20px 16px; border-radius: 16px; }
+            .overview h1 { font-size: 20px; margin-bottom: 8px; }
+            .overview-desc { font-size: 13px; }
+            .stats { grid-template-columns: 1fr 1fr; gap: 8px; }
             .stat:last-child { grid-column: span 2; }
-            .auth { padding: 18px 14px 14px; }
-            .footer-links { display: none; }
+            .stat-value { font-size: 18px; }
+            .stat-label { font-size: 10px; }
+            .features { margin-top: 16px; gap: 8px; }
+            .feature { font-size: 12px; gap: 6px; }
+            .feature-icon { width: 28px; height: 28px; font-size: 11px; }
+
+            /* Auth */
+            .auth { padding: 20px 16px 16px; border-radius: 16px; }
+            .auth-title { font-size: 20px; }
+            .auth-desc { font-size: 12px; }
+            .form-group { margin-bottom: 14px; }
+            .form-label { font-size: 11px; }
+            .form-input { padding: 10px 12px; font-size: 13px; }
+            .sign-in-btn { padding: 12px; font-size: 14px; }
+
+            /* Footer */
+            .site-footer .site-inner { flex-direction: column; gap: 6px; text-align: center; }
+            .footer-links { display: flex; justify-content: center; }
+        }
+
+        /* Extra small: ≤ 400px */
+        @media (max-width: 400px) {
+            .page { padding: 8px; }
+            .overview h1 { font-size: 18px; }
+            .stats { grid-template-columns: 1fr; }
+            .stat:last-child { grid-column: span 1; }
+            .auth { padding: 16px 12px; }
+            .form-input { font-size: 12px; }
+            .lang { display: none; }
         }
     </style>
 </head>
@@ -577,9 +622,9 @@
     {% set err_captcha_required = "Решите captcha" %}
     {% set show_pass = "Показать" %}
     {% set hide_pass = "Скрыть" %}
-    {% set nav_about = "О системе" %}
-    {% set nav_help = "Помощь" %}
-    {% set nav_contact = "Контакт" %}
+    {% set nav_about = "O sisteme" %}
+    {% set nav_contact = "Kontakt" %}
+    {% set nav_map = "Na karte" %}
     {% set footer_text = "Все права защищены." %}
     {% else %}
     {% set system_title = app_title ~ " Davomat Boshqaruvi" %}
@@ -613,8 +658,8 @@
     {% set show_pass = "Ko'rsat" %}
     {% set hide_pass = "Yashir" %}
     {% set nav_about = "Tizim haqida" %}
-    {% set nav_help = "Yordam" %}
     {% set nav_contact = "Bog'lanish" %}
+    {% set nav_map = "Xaritada" %}
     {% set footer_text = "Barcha huquqlar himoyalangan." %}
     {% endif %}
 
@@ -622,9 +667,9 @@
         <header class="site-header">
             <div class="site-inner">
                 <nav class="nav-links">
-                    <a href="#">{{ nav_about }}</a>
-                    <a href="#">{{ nav_help }}</a>
-                    <a href="#">{{ nav_contact }}</a>
+                    <a href="/about"><i class="fa-solid fa-circle-info" style="margin-right:4px"></i><span class="nav-text">{{ nav_about }}</span></a>
+                    <a href="/contact"><i class="fa-solid fa-headset" style="margin-right:4px"></i><span class="nav-text">{{ nav_contact }}</span></a>
+                    <a href="/map"><i class="fa-solid fa-map" style="margin-right:4px"></i><span class="nav-text">{{ nav_map }}</span></a>
                 </nav>
 
                 <div class="header-right">
@@ -744,8 +789,9 @@
             <div class="site-inner">
                 <div class="footer-text">&copy; 2026 {{ app_title }}. {{ footer_text }}</div>
                 <div class="footer-links">
-                    <a href="#">{{ nav_help }}</a>
-                    <a href="#">{{ nav_contact }}</a>
+                    <a href="/about">{{ nav_about }}</a>
+                    <a href="/contact">{{ nav_contact }}</a>
+                    <a href="/map">{{ nav_map }}</a>
                 </div>
             </div>
         </footer>

@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ app_name|default('BioFace') }} — Xaritada</title>
+    {% if favicon_url %}<link rel="icon" href="{{ favicon_url }}" />{% endif %}
+    <link href="/static/fontawesome/css/all.min.css" rel="stylesheet">
+    <link href="/static/css/output.css?v=20260317c" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --brand-1:#1d4ed8; --brand-2:#2563eb; --brand-3:#60a5fa;
+            --surface:#f3f6fa; --ink:#0f172a; --muted:#64748b;
+        }
+        *{box-sizing:border-box;}
+        body{
+            margin:0; min-height:100vh;
+            font-family:"Plus Jakarta Sans","Segoe UI",sans-serif;
+            background:
+                radial-gradient(85rem 40rem at -10% -20%,#dbeafe 0%,transparent 45%),
+                radial-gradient(70rem 40rem at 120% 120%,#ede9fe 0%,transparent 42%),
+                var(--surface);
+            color:var(--ink);
+        }
+        .app-wrap{min-height:100vh;display:flex;flex-direction:column;}
+
+        /* ── HEADER ── */
+        .site-header{position:sticky;top:0;z-index:20;backdrop-filter:blur(8px);background:rgba(243,246,250,.88);border-bottom:1px solid #e2e8f0;}
+        .site-inner{width:100%;max-width:1260px;margin:0 auto;padding:10px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+        .brand-top{display:inline-flex;align-items:center;gap:10px;}
+        .brand-top-logo{width:42px;height:42px;display:grid;place-items:center;flex-shrink:0;}
+        .brand-top-logo img{width:100%;height:100%;object-fit:contain;}
+        .brand-top-title{font-size:15px;font-weight:700;color:#0f172a;white-space:nowrap;}
+        .nav-links{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#475569;}
+        .nav-links a{color:inherit;text-decoration:none;padding:6px 10px;border-radius:8px;display:inline-flex;align-items:center;gap:5px;transition:background .15s,color .15s;}
+        .nav-links a:hover{background:#e2e8f0;color:#0f172a;}
+        .nav-links a.active{background:var(--brand-2);color:#fff!important;}
+        .lang{display:inline-flex;border:1px solid #cbd5e1;border-radius:999px;padding:2px;background:#f8fafc;gap:2px;flex-shrink:0;}
+        .lang button{border:0;border-radius:999px;padding:5px 10px;font-size:11px;font-weight:700;color:#475569;background:transparent;cursor:pointer;}
+        .lang button.active{background:var(--brand-2);color:#fff;}
+        .back-btn{display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:#475569;font-size:13px;font-weight:600;padding:6px 12px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;transition:all .15s;white-space:nowrap;}
+        .back-btn:hover{border-color:#94a3b8;color:#0f172a;transform:translateX(-2px);}
+
+        /* ── PAGE ── */
+        .page{flex:1;padding:28px 16px 60px;}
+        .container{max-width:1260px;margin:0 auto;}
+
+        /* ── HERO ── */
+        .hero{text-align:center;margin-bottom:24px;}
+        .hero-badge{display:inline-flex;align-items:center;gap:7px;background:linear-gradient(135deg,#eff6ff,#dbeafe);border:1px solid #bfdbfe;border-radius:999px;padding:5px 14px;font-size:12px;font-weight:700;color:#1d4ed8;margin-bottom:10px;}
+        .hero h1{margin:0 0 8px;font-size:32px;font-weight:800;background:linear-gradient(135deg,#0f172a 0%,var(--brand-1) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+        .hero p{margin:0;font-size:14px;color:var(--muted);}
+
+        /* ── LAYOUT ── */
+        .map-layout{display:grid;grid-template-columns:1fr 320px;gap:20px;align-items:start;}
+
+        /* ── MAP CARD ── */
+        .map-card{background:rgba(255,255,255,.92);border:1px solid #e2e8f0;border-radius:22px;padding:20px;box-shadow:0 8px 32px rgba(15,23,42,.07);}
+        .map-card svg{width:100%;height:auto;display:block;}
+
+        /* SVG region styles */
+        #uzbekistan-map path{
+            fill:#bfdbfe;
+            stroke:#fff;
+            stroke-width:.6;
+            cursor:pointer;
+            transition:fill .18s,filter .18s;
+        }
+        #uzbekistan-map path:hover{
+            fill:#2563eb;
+            filter:drop-shadow(0 3px 10px rgba(37,99,235,.35));
+        }
+        #uzbekistan-map path.selected{
+            fill:#1d4ed8;
+            filter:drop-shadow(0 4px 14px rgba(37,99,235,.45));
+        }
+
+        /* Toshkent shahri alohida rang */
+        #uzbekistan-map #UZTK{fill:#93c5fd;}
+        #uzbekistan-map #UZTK:hover{fill:#1d4ed8;}
+
+        /* ── TOOLTIP ── */
+        #map-tooltip{
+            position:fixed;z-index:999;pointer-events:none;
+            background:rgba(15,23,42,.92);backdrop-filter:blur(10px);
+            color:#fff;border-radius:12px;padding:10px 14px;
+            border:1px solid rgba(96,165,250,.28);
+            box-shadow:0 8px 28px rgba(0,0,0,.22);
+            font-size:13px;opacity:0;transition:opacity .15s;
+            min-width:170px;
+        }
+        #map-tooltip.show{opacity:1;}
+        .tt-name{font-size:14px;font-weight:800;margin-bottom:3px;}
+        .tt-cap{font-size:11px;color:#93c5fd;font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:4px;}
+        .tt-divider{height:1px;background:rgba(255,255,255,.12);margin:5px 0;}
+        .tt-row{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:2px;}
+        .tt-label{font-size:11px;color:rgba(255,255,255,.55);font-weight:500;}
+        .tt-val{font-size:11px;color:#e2e8f0;font-weight:700;}
+
+        /* ── INFO PANEL ── */
+        .info-panel{display:flex;flex-direction:column;gap:14px;}
+        .info-card{background:rgba(255,255,255,.92);border:1px solid #e2e8f0;border-radius:18px;padding:18px;box-shadow:0 4px 16px rgba(15,23,42,.06);transition:border-color .2s;}
+        .info-card.active{border-color:#2563eb;}
+        .panel-lbl{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:5px;}
+        .sel-name{font-size:19px;font-weight:800;color:#0f172a;margin-bottom:4px;}
+        .sel-cap{font-size:13px;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:5px;}
+        .r-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+        .rstat{background:#f8fafc;border-radius:10px;padding:10px;text-align:center;}
+        .rstat-val{font-size:15px;font-weight:800;color:#1d4ed8;}
+        .rstat-lbl{font-size:10px;color:var(--muted);font-weight:600;margin-top:2px;}
+
+        /* Region list */
+        .r-list{display:flex;flex-direction:column;gap:4px;max-height:340px;overflow-y:auto;}
+        .r-list::-webkit-scrollbar{width:4px;}
+        .r-list::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px;}
+        .r-item{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:9px;cursor:pointer;font-size:13px;font-weight:600;color:#0f172a;border:1px solid transparent;transition:background .13s,border-color .13s;}
+        .r-item:hover{background:#eff6ff;border-color:#bfdbfe;}
+        .r-item.active{background:#eff6ff;border-color:#2563eb;color:#1d4ed8;}
+        .r-dot{width:9px;height:9px;border-radius:50%;background:#bfdbfe;flex-shrink:0;}
+        .r-item.active .r-dot{background:#2563eb;}
+
+        /* ── FOOTER ── */
+        .site-footer{border-top:1px solid #e2e8f0;background:rgba(255,255,255,.72);backdrop-filter:blur(8px);}
+        .site-footer .site-inner{padding-top:10px;padding-bottom:10px;}
+        .footer-text{font-size:12px;color:#64748b;}
+        .footer-links{display:inline-flex;gap:10px;font-size:12px;}
+        .footer-links a{color:#475569;text-decoration:none;}
+        .footer-links a:hover{text-decoration:underline;}
+
+        /* Animations */
+        @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+        .fade-up{animation:fadeUp .4s ease both;}
+        .d1{animation-delay:.06s}.d2{animation-delay:.12s}
+
+        /* Responsive */
+        @media(max-width:960px){.map-layout{grid-template-columns:1fr;}.info-panel{flex-direction:row;flex-wrap:wrap;}.info-card{flex:1;min-width:240px;}}
+        @media(max-width:600px){.site-inner{padding:8px 12px;}.nav-links .nav-text{display:none;}.brand-top-title{display:none;}.hero h1{font-size:22px;}.page{padding:16px 10px 40px;}}
+    </style>
+</head>
+<body>
+{% set app_title = app_name|default("BioFace") %}
+{% set lang = lang|default("uz") %}
+{% if lang == "ru" %}
+  {% set nav_about = "О системе" %}
+  {% set nav_contact = "Контакт" %}
+  {% set nav_map = "На карте" %}
+  {% set back_text = "Войти" %}
+  {% set footer_text = "Все права защищены." %}
+  {% set hero_badge_txt = "Интерактивная карта" %}
+  {% set hero_title = "Регионы Узбекистана" %}
+  {% set hero_desc = "Наведите или нажмите на регион — увидите подробную информацию" %}
+  {% set lbl_selected = "Выбранный регион" %}
+  {% set lbl_regions = "Все регионы" %}
+  {% set lbl_capital = "Центр" %}
+  {% set lbl_area = "Площадь" %}
+  {% set lbl_pop = "Население" %}
+  {% set lbl_hint = "Нажмите на регион" %}
+{% else %}
+  {% set nav_about = "Tizim haqida" %}
+  {% set nav_contact = "Bog'lanish" %}
+  {% set nav_map = "Xaritada" %}
+  {% set back_text = "Kirish" %}
+  {% set footer_text = "Barcha huquqlar himoyalangan." %}
+  {% set hero_badge_txt = "Interaktiv xarita" %}
+  {% set hero_title = "O'zbekiston viloyatlari" %}
+  {% set hero_desc = "Viloyat ustiga sichqoncha oling yoki bosing — batafsil ma'lumot ko'ring" %}
+  {% set lbl_selected = "Tanlangan viloyat" %}
+  {% set lbl_regions = "Barcha viloyatlar" %}
+  {% set lbl_capital = "Markaz" %}
+  {% set lbl_area = "Maydoni" %}
+  {% set lbl_pop = "Aholisi" %}
+  {% set lbl_hint = "Viloyat ustiga bosing" %}
+{% endif %}
+
+<div class="app-wrap">
+    <!-- HEADER -->
+    <header class="site-header">
+        <div class="site-inner">
+            <a href="/login" class="back-btn">
+                <i class="fa-solid fa-arrow-right-to-bracket"></i>
+                <span>{{ back_text }}</span>
+            </a>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <nav class="nav-links">
+                    <a href="/about"><i class="fa-solid fa-circle-info"></i><span class="nav-text"> {{ nav_about }}</span></a>
+                    <a href="/contact"><i class="fa-solid fa-headset"></i><span class="nav-text"> {{ nav_contact }}</span></a>
+                    <a href="/map" class="active"><i class="fa-solid fa-map"></i><span class="nav-text"> {{ nav_map }}</span></a>
+                </nav>
+                <div class="lang">
+                    <button type="button" class="{% if lang != 'ru' %}active{% endif %}" onclick="setLang('uz')">UZ</button>
+                    <button type="button" class="{% if lang == 'ru' %}active{% endif %}" onclick="setLang('ru')">RU</button>
+                </div>
+                <div class="brand-top">
+                    <div class="brand-top-logo">
+                        {% if logo_url %}<img src="{{ logo_url }}" alt="{{ app_title }}">
+                        {% else %}<i class="fa-solid fa-eye" style="font-size:22px;color:#334155;"></i>{% endif %}
+                    </div>
+                    <div class="brand-top-title">{{ app_title }}</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN -->
+    <main class="page">
+        <div class="container">
+            <div class="hero fade-up">
+                <div class="hero-badge"><i class="fa-solid fa-map-location-dot"></i> {{ hero_badge_txt }}</div>
+                <h1>{{ hero_title }}</h1>
+                <p>{{ hero_desc }}</p>
+            </div>
+
+            <div class="map-layout">
+                <!-- MAP -->
+                <div class="map-card fade-up d1">
+                    <!-- Haqiqiy uz.svg inline -->
+                    <svg id="uzbekistan-map" viewBox="0 0 1000 652" xmlns="http://www.w3.org/2000/svg">
+                        <!-- SVG mazmuni inline yuklanadi JS orqali -->
+                    </svg>
+                </div>
+
+                <!-- RIGHT PANEL -->
+                <div class="info-panel fade-up d2">
+                    <!-- Selected region -->
+                    <div class="info-card active" id="selected-card">
+                        <div class="panel-lbl"><i class="fa-solid fa-location-dot" style="color:#2563eb;"></i> {{ lbl_selected }}</div>
+                        <div class="sel-name" id="sel-name">—</div>
+                        <div class="sel-cap" id="sel-cap">
+                            <i class="fa-solid fa-building-columns" style="color:#94a3b8;font-size:11px;"></i>
+                            <span>{{ lbl_hint }}</span>
+                        </div>
+                        <div class="r-stats" id="sel-stats" style="display:none;">
+                            <div class="rstat"><div class="rstat-val" id="sel-area">—</div><div class="rstat-lbl">{{ lbl_area }}</div></div>
+                            <div class="rstat"><div class="rstat-val" id="sel-pop">—</div><div class="rstat-lbl">{{ lbl_pop }}</div></div>
+                        </div>
+                    </div>
+                    <!-- Region list -->
+                    <div class="info-card">
+                        <div class="panel-lbl"><i class="fa-solid fa-list-ul" style="color:#2563eb;"></i> {{ lbl_regions }}</div>
+                        <div class="r-list" id="r-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="site-footer">
+        <div class="site-inner">
+            <div class="footer-text">&copy; 2026 {{ app_title }}. {{ footer_text }}</div>
+            <div class="footer-links">
+                <a href="/about">{{ nav_about }}</a>
+                <a href="/contact">{{ nav_contact }}</a>
+                <a href="/map">{{ nav_map }}</a>
+            </div>
+        </div>
+    </footer>
+</div>
+
+<!-- TOOLTIP -->
+<div id="map-tooltip"></div>
+
+<script>
+const LANG = "{{ lang }}";
+
+async function setLang(code) {
+    await fetch(`/api/set_language?lang=${code}`);
+    window.location.reload();
+}
+
+// Region data (ID → info)
+const REGIONS = {
+    UZFA: { uz:"Farg'ona viloyati",      ru:"Ферганская область",         cap_uz:"Farg'ona",  cap_ru:"Фергана",     area:"6,800 km²",  pop:"3.8 mln" },
+    UZTO: { uz:"Toshkent viloyati",      ru:"Ташкентская область",        cap_uz:"Toshkent",  cap_ru:"Ташкент",     area:"15,100 km²", pop:"2.9 mln" },
+    UZNG: { uz:"Namangan viloyati",      ru:"Наманганская область",       cap_uz:"Namangan",  cap_ru:"Наманган",    area:"7,900 km²",  pop:"3.2 mln" },
+    UZAN: { uz:"Andijon viloyati",       ru:"Андижанская область",        cap_uz:"Andijon",   cap_ru:"Андижан",     area:"4,200 km²",  pop:"3.5 mln" },
+    UZSI: { uz:"Sirdaryo viloyati",      ru:"Сырдарьинская область",      cap_uz:"Guliston",  cap_ru:"Гулистан",    area:"5,100 km²",  pop:"0.9 mln" },
+    UZJI: { uz:"Jizzax viloyati",        ru:"Джизакская область",         cap_uz:"Jizzax",    cap_ru:"Джизак",      area:"20,500 km²", pop:"1.3 mln" },
+    UZSA: { uz:"Samarqand viloyati",     ru:"Самаркандская область",      cap_uz:"Samarqand", cap_ru:"Самарканд",   area:"16,400 km²", pop:"3.9 mln" },
+    UZQA: { uz:"Qashqadaryo viloyati",   ru:"Кашкадарьинская область",    cap_uz:"Qarshi",    cap_ru:"Карши",       area:"28,400 km²", pop:"3.4 mln" },
+    UZSU: { uz:"Surxondaryo viloyati",   ru:"Сурхандарьинская область",   cap_uz:"Termiz",    cap_ru:"Термез",      area:"20,800 km²", pop:"2.5 mln" },
+    UZQR: { uz:"Qoraqalpog'iston R.",   ru:"Республика Каракалпакстан",  cap_uz:"Nukus",     cap_ru:"Нукус",       area:"165,600 km²",pop:"1.9 mln" },
+    UZNW: { uz:"Navoiy viloyati",        ru:"Навоийская область",         cap_uz:"Navoiy",    cap_ru:"Навои",       area:"110,800 km²",pop:"1.1 mln" },
+    UZXO: { uz:"Xorazm viloyati",        ru:"Хорезмская область",         cap_uz:"Urganch",   cap_ru:"Ургенч",      area:"6,300 km²",  pop:"1.9 mln" },
+    UZBU: { uz:"Buxoro viloyati",        ru:"Бухарская область",          cap_uz:"Buxoro",    cap_ru:"Бухара",      area:"39,400 km²", pop:"2.0 mln" },
+    UZTK: { uz:"Toshkent shahri",        ru:"город Ташкент",              cap_uz:"Toshkent",  cap_ru:"Ташкент",     area:"335 km²",    pop:"2.8 mln" },
+};
+
+// Load real SVG via fetch
+fetch('/static/uz_map.svg')
+    .then(r => r.text())
+    .then(svgText => {
+        // Extract just the <g id="features"> contents
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(svgText, 'image/svg+xml');
+        const featuresG = doc.getElementById('features');
+        const mapSvg = document.getElementById('uzbekistan-map');
+        if (featuresG && mapSvg) {
+            // Import all children paths
+            Array.from(featuresG.children).forEach(child => {
+                const imported = document.importNode(child, true);
+                mapSvg.appendChild(imported);
+            });
+            initMap();
+        }
+    })
+    .catch(() => {
+        console.error('SVG yuklanmadi');
+    });
+
+const tooltip = document.getElementById('map-tooltip');
+let activeId = null;
+
+function getName(d)    { return LANG === 'ru' ? d.ru : d.uz; }
+function getCapital(d) { return LANG === 'ru' ? d.cap_ru : d.cap_uz; }
+
+function initMap() {
+    // Build region list
+    const listEl = document.getElementById('r-list');
+    const mapSvg = document.getElementById('uzbekistan-map');
+
+    // Sorted by name
+    const sorted = Object.entries(REGIONS).sort((a,b) => getName(a[1]).localeCompare(getName(b[1])));
+    sorted.forEach(([id, d]) => {
+        const item = document.createElement('div');
+        item.className = 'r-item';
+        item.dataset.id = id;
+        item.innerHTML = `<span class="r-dot"></span>${getName(d)}`;
+        item.addEventListener('click', () => selectRegion(id));
+        listEl.appendChild(item);
+    });
+
+    // Attach events to SVG paths
+    mapSvg.querySelectorAll('path[id]').forEach(el => {
+        const d = REGIONS[el.id];
+        if (!d) return;
+
+        el.addEventListener('mousemove', e => {
+            tooltip.innerHTML = `
+                <div class="tt-name">${getName(d)}</div>
+                <div class="tt-cap"><i class="fa-solid fa-building-columns"></i>${getCapital(d)}</div>
+                <div class="tt-divider"></div>
+                <div class="tt-row"><span class="tt-label">${LANG==='ru'?'Площадь':'Maydoni'}</span><span class="tt-val">${d.area}</span></div>
+                <div class="tt-row"><span class="tt-label">${LANG==='ru'?'Население':'Aholisi'}</span><span class="tt-val">${d.pop}</span></div>
+            `;
+            tooltip.classList.add('show');
+            posTooltip(e);
+        });
+        el.addEventListener('mousemove', posTooltip);
+        el.addEventListener('mouseleave', () => tooltip.classList.remove('show'));
+        el.addEventListener('click', () => selectRegion(el.id));
+    });
+}
+
+function posTooltip(e) {
+    const tw = 190, th = 110;
+    let x = e.clientX + 16, y = e.clientY - 18;
+    if (x + tw > window.innerWidth - 10) x = e.clientX - tw - 14;
+    if (y + th > window.innerHeight - 10) y = e.clientY - th - 10;
+    tooltip.style.left = x + 'px';
+    tooltip.style.top  = y + 'px';
+}
+
+function selectRegion(id) {
+    const d = REGIONS[id];
+    if (!d) return;
+
+    // Deselect previous
+    if (activeId) {
+        const prev = document.getElementById(activeId);
+        if (prev) prev.classList.remove('selected');
+        const prevItem = document.querySelector(`#r-list [data-id="${activeId}"]`);
+        if (prevItem) prevItem.classList.remove('active');
+    }
+
+    activeId = id;
+    const el = document.getElementById(id);
+    if (el) el.classList.add('selected');
+    const item = document.querySelector(`#r-list [data-id="${id}"]`);
+    if (item) { item.classList.add('active'); item.scrollIntoView({block:'nearest',behavior:'smooth'}); }
+
+    // Update panel
+    document.getElementById('sel-name').textContent = getName(d);
+    document.getElementById('sel-cap').innerHTML =
+        `<i class="fa-solid fa-building-columns" style="color:#2563eb;font-size:11px;"></i> ${getCapital(d)}`;
+    document.getElementById('sel-area').textContent = d.area;
+    document.getElementById('sel-pop').textContent  = d.pop;
+    document.getElementById('sel-stats').style.display = 'grid';
+}
+</script>
+</body>
+</html>
