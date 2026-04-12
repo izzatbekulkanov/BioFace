@@ -113,13 +113,20 @@
                         <span class="text-gray-700 dark:text-gray-200">Firmware</span>
                         <b id="bi-firmware" class="text-gray-900 dark:text-gray-100">-</b>
                     </div>
+                    <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/80">
+                        <span class="text-gray-700 dark:text-gray-200">Protocol</span>
+                        <b id="bi-protocol" class="text-gray-900 dark:text-gray-100">-</b>
+                    </div>
                     <div class="mt-3 rounded-xl border border-blue-100 bg-blue-50 px-3 py-3 text-xs dark:border-blue-900/40 dark:bg-blue-900/20">
                         <div class="mb-1 font-semibold text-blue-700 dark:text-blue-300">Device Capacity</div>
                         <div id="bi-capacity" class="text-blue-700/90 dark:text-blue-200">Person 0/0, Face 0/0, Card 0/0, Event 0/0</div>
                     </div>
                     <div class="rounded-xl bg-gray-50 px-3 py-2 text-xs dark:bg-gray-800/80">
-                        <div><span class="text-gray-500 dark:text-gray-400">IP:</span> <b id="bi-ip" class="text-gray-800 dark:text-gray-100">-</b></div>
+                        <div><span class="text-gray-500 dark:text-gray-400">Tashqi IP:</span> <b id="bi-ip" class="text-gray-800 dark:text-gray-100">-</b></div>
                         <div><span class="text-gray-500 dark:text-gray-400">MAC:</span> <b id="bi-mac" class="text-gray-800 dark:text-gray-100">-</b></div>
+                        <div><span class="text-gray-500 dark:text-gray-400">Webhook:</span> <b id="bi-webhook-status" class="text-gray-800 dark:text-gray-100">-</b></div>
+                        <div class="break-all"><span class="text-gray-500 dark:text-gray-400">Webhook URL:</span> <b id="bi-webhook-url" class="text-gray-800 dark:text-gray-100">-</b></div>
+                        <div><span class="text-gray-500 dark:text-gray-400">Rasm yuborish:</span> <b id="bi-webhook-picture" class="text-gray-800 dark:text-gray-100">-</b></div>
                     </div>
                 </div>
             </section>
@@ -547,6 +554,7 @@ function renderSnapshot(data) {
     const subtitleParts = [];
     if (camera.isup_device_id) subtitleParts.push(`Device ID: ${camera.isup_device_id}`);
     if (camera.mac_address) subtitleParts.push(`MAC: ${camera.mac_address}`);
+    if (camera.serial_number) subtitleParts.push(`Serial: ${camera.serial_number}`);
     subtitleParts.push(`ISUP source: ${data.isup_source || "-"}`);
     document.getElementById("camera-subtitle").textContent = subtitleParts.join(" | ");
     updateOnlinePill(Boolean(live.online));
@@ -572,13 +580,17 @@ function renderSnapshot(data) {
     const bi = snapshot.basic_information || {};
     const cap = snapshot.capacity || {};
     const net = snapshot.network || {};
-    document.getElementById("bi-model").textContent = bi.model || "-";
-    document.getElementById("bi-serial").textContent = bi.serial_no || "-";
-    document.getElementById("bi-firmware").textContent = bi.firmware_version || "-";
+    document.getElementById("bi-model").textContent = bi.model || camera.model || "-";
+    document.getElementById("bi-serial").textContent = bi.serial_no || camera.serial_number || "-";
+    document.getElementById("bi-firmware").textContent = bi.firmware_version || camera.firmware_version || "-";
+    document.getElementById("bi-protocol").textContent = camera.protocol_version || live.isup_version || "-";
     document.getElementById("bi-capacity").textContent =
         `Person ${cap.person_count ?? 0}/${cap.person_max ?? 0}, Face ${cap.face_count ?? 0}/${cap.face_max ?? 0}, Card ${cap.card_count ?? 0}/${cap.card_max ?? 0}, Event ${cap.event_count ?? 0}/${cap.event_max ?? 0}`;
-    document.getElementById("bi-ip").textContent = net.ip || "-";
-    document.getElementById("bi-mac").textContent = net.mac || "-";
+    document.getElementById("bi-ip").textContent = camera.external_ip || net.ip || live.remote_ip || "-";
+    document.getElementById("bi-mac").textContent = net.mac || camera.mac_address || "-";
+    document.getElementById("bi-webhook-status").textContent = camera.webhook_enabled ? "Yoqilgan" : "O'chirilgan";
+    document.getElementById("bi-webhook-url").textContent = camera.webhook_target_url || "-";
+    document.getElementById("bi-webhook-picture").textContent = camera.webhook_picture_sending ? "Yuboradi" : "Yubormaydi";
 }
 
 function renderUsers(users) {

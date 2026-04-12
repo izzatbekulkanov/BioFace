@@ -48,6 +48,7 @@ from routers.cameras_parts import (
     WebhookPayload,
     _extract_command_camera_info,
     _is_generic_camera_model,
+    _is_probable_mac_address,
     _normalize_mac_address,
     _pick_first_nonempty,
     _prefer_persistent_model,
@@ -205,7 +206,7 @@ def _resolve_event_wellbeing_snapshot(
 
 def _get_today_attendance_summary(db: Session, cam: Device) -> dict[str, Any]:
     start, end = _today_local_range()
-    total = int(
+    raw_total = int(
         db.query(func.count(AttendanceLog.id))
         .filter(
             AttendanceLog.device_id == cam.id,
@@ -215,18 +216,25 @@ def _get_today_attendance_summary(db: Session, cam: Device) -> dict[str, Any]:
         .scalar()
         or 0
     )
-    known = int(
-        db.query(func.count(AttendanceLog.id))
+
+    known_logs = (
+        db.query(AttendanceLog)
         .filter(
             AttendanceLog.device_id == cam.id,
             AttendanceLog.timestamp >= start,
             AttendanceLog.timestamp < end,
             AttendanceLog.employee_id.isnot(None),
+            AttendanceLog.status != "noma'lum",
         )
-        .scalar()
-        or 0
+        .order_by(AttendanceLog.timestamp.asc(), AttendanceLog.id.asc())
+        .all()
     )
-    unknown = max(0, total - known)
+    sessions = build_attendance_sessions(known_logs)
+    unique_employee_count = len({int(log.employee_id) for log in known_logs if log.employee_id is not None})
+    known_session_count = len(sessions)
+    known_log_count = len(known_logs)
+    unknown = max(0, raw_total - known_log_count)
+    latest_known = known_logs[-1].timestamp if known_logs else None
     latest = (
         db.query(AttendanceLog.timestamp)
         .filter(
@@ -239,10 +247,17 @@ def _get_today_attendance_summary(db: Session, cam: Device) -> dict[str, Any]:
     )
     return {
         "date": start.strftime("%Y-%m-%d"),
-        "count": total,
-        "known_count": known,
+        "count": unique_employee_count,
+        "known_count": unique_employee_count,
+        "known_session_count": known_session_count,
+        "known_log_count": known_log_count,
+        "raw_event_count": raw_total,
         "unknown_count": unknown,
-        "latest_timestamp": latest[0].isoformat() if latest and latest[0] else None,
+        "latest_timestamp": (
+            latest_known.isoformat()
+            if latest_known is not None
+            else (latest[0].isoformat() if latest and latest[0] else None)
+        ),
     }
 
 
@@ -763,11 +778,11 @@ def _read_face_capabilities(target_id: str) -> dict[str, Any]:
 
 def _resolve_device_identifier(raw: Optional[str], db: Session) -> str:
     """
-    MAC/serial majburiy emas:
-    - berilsa o'shani ishlatadi;
+    MAC majburiy emas:
+    - berilsa normalizatsiya qilib ishlatadi;
     - bo'sh bo'lsa avtomatik unik identifier beradi.
     """
-    candidate = (_strip_or_none(raw) or "").upper()
+    candidate = _normalize_mac_address(_strip_or_none(raw))
     if candidate:
         return candidate
 
@@ -776,6 +791,115 @@ def _resolve_device_identifier(raw: Optional[str], db: Session) -> str:
         exists = db.query(Device).filter(Device.mac_address == generated).first()
         if not exists:
             return generated
+
+
+def _resolve_camera_identity_inputs(
+    *,
+    mac_address: Optional[str],
+    serial_number: Optional[str],
+    db: Session,
+) -> tuple[str, Optional[str]]:
+    raw_mac = _strip_or_none(mac_address)
+    raw_serial = _strip_or_none(serial_number)
+    normalized_mac = _normalize_mac_address(raw_mac) if raw_mac and _is_probable_mac_address(raw_mac) else None
+    normalized_serial = raw_serial.upper() if raw_serial else None
+
+    # Backward compatibility: eski caller MAC inputiga serial yuborishi mumkin.
+    if raw_mac and normalized_mac is None and not normalized_serial:
+        normalized_serial = raw_mac.upper()
+
+    return _resolve_device_identifier(normalized_mac, db), normalized_serial
+
+
+def _resolve_camera_webhook_target_url(request: Request, raw_url: Optional[str]) -> Optional[str]:
+    value = str(raw_url or "").strip()
+    if not value:
+        return None
+    if value.startswith("http://") or value.startswith("https://"):
+        return value
+    base_url = str(_build_camera_event_push_target(request).get("webhook_base_url") or "").rstrip("/")
+    if not base_url:
+        return value
+    return f"{base_url}/{value.lstrip('/')}"
+
+
+def _as_status_text(value: Any) -> Optional[str]:
+    text = str(value or "").strip()
+    return text if text else None
+
+
+def _derive_hik_connect_status(raw_response: Any) -> Optional[str]:
+    if raw_response is None:
+        return None
+
+    def _status_from_mapping(mapping: dict[str, Any]) -> Optional[str]:
+        if not isinstance(mapping, dict):
+            return None
+        enabled_val = None
+        for enabled_key in ("enabled", "enable", "isEnabled", "Enable"):
+            if enabled_key in mapping:
+                enabled_val = mapping.get(enabled_key)
+                break
+        enabled_text = str(enabled_val).strip().lower() if enabled_val is not None else None
+
+        for status_key in ("registerStatus", "status", "connectionStatus", "serviceStatus", "state"):
+            status_text = _as_status_text(mapping.get(status_key))
+            if not status_text:
+                continue
+            lowered = status_text.lower()
+            if lowered in {"online", "connected", "registered", "active", "enable"}:
+                return "Connected"
+            if lowered in {"offline", "disconnected", "unregistered", "inactive"}:
+                return "Offline"
+            if lowered in {"disabled", "disable"}:
+                return "Disabled"
+            if lowered in {"true", "1", "yes", "on"}:
+                return "Connected" if status_key == "registerStatus" else "Enabled"
+            if lowered in {"false", "0", "no", "off"}:
+                if status_key == "registerStatus":
+                    return "Disabled" if enabled_text in {"false", "0", "no", "off"} else "Offline"
+                return "Disabled"
+            return status_text
+
+        if enabled_val is not None:
+            if enabled_text in {"true", "1", "yes", "on"}:
+                return "Enabled"
+            if enabled_text in {"false", "0", "no", "off"}:
+                return "Disabled"
+        return None
+
+    if isinstance(raw_response, dict):
+        for key in ("EZVIZ", "Ezviz", "HikConnect", "hikConnect", "hik_connect"):
+            nested = raw_response.get(key)
+            derived = _status_from_mapping(nested if isinstance(nested, dict) else raw_response)
+            if derived:
+                return derived
+        return _status_from_mapping(raw_response)
+
+    text = str(raw_response or "").strip()
+    if not text:
+        return None
+    try:
+        parsed = json.loads(text)
+        derived = _derive_hik_connect_status(parsed)
+        if derived:
+            return derived
+    except Exception:
+        pass
+
+    try:
+        import xml.etree.ElementTree as ET
+
+        clean_xml = re.sub(r'\sxmlns="[^"]+"', '', text, count=1)
+        root = ET.fromstring(clean_xml)
+        fields = {}
+        for tag in ("enabled", "enable", "registerStatus", "status", "connectionStatus", "serviceStatus", "state"):
+            node = root.find(f".//{tag}")
+            if node is not None and (node.text or "").strip():
+                fields[tag] = (node.text or "").strip()
+        return _status_from_mapping(fields)
+    except Exception:
+        return None
 
 
 def _normalize_live_devices(payload: list) -> dict[str, dict]:
@@ -813,12 +937,14 @@ def _extract_device_list(payload: Any) -> list[dict]:
 
 
 def _find_live_device_for_camera(cam: Device, isup_map: dict[str, dict]) -> Optional[dict]:
-    # Priority: explicit ISUP ID -> MAC -> camera name
+    # Priority: explicit ISUP ID -> MAC -> serial -> camera name
     candidates = []
     if cam.isup_device_id:
         candidates.append(cam.isup_device_id.strip())
     if cam.mac_address:
         candidates.append(cam.mac_address.strip())
+    if cam.serial_number:
+        candidates.append(cam.serial_number.strip())
     if cam.name:
         candidates.append(cam.name.strip())
 
@@ -877,7 +1003,7 @@ def _resolve_online_command_target(cam: Device) -> tuple[str, dict, str]:
     if not _is_live_device_online(live_info):
         raise HTTPException(status_code=409, detail="Kamera offline, buyruq yuborib bo'lmaydi")
 
-    target_id = _pick_first_nonempty(live_info, ("device_id", "id", "deviceId")) or cam.isup_device_id or cam.mac_address
+    target_id = _pick_first_nonempty(live_info, ("device_id", "id", "deviceId")) or cam.isup_device_id or cam.serial_number or cam.mac_address
     if not target_id:
         raise HTTPException(status_code=400, detail="ISUP Device ID topilmadi")
 
@@ -925,12 +1051,24 @@ def list_cameras(request: Request, db: Session = Depends(get_db)):
                 info,
                 ("device_model", "model", "model_name", "product", "deviceType"),
             )
+            live_serial = _pick_first_nonempty(info, ("serial", "serial_no", "serialNumber", "device_serial"))
+            live_firmware = _pick_first_nonempty(info, ("firmware_version", "firmware"))
+            live_external_ip = _pick_first_nonempty(info, ("remote_ip", "ip"))
+            live_protocol_version = _pick_first_nonempty(info, ("isup_version", "protocol_version"))
 
             if live_device_id and c.isup_device_id != live_device_id:
                 c.isup_device_id = live_device_id
             resolved_model = _prefer_persistent_model(c.model, live_model)
             if resolved_model and c.model != resolved_model:
                 c.model = resolved_model
+            if live_serial and c.serial_number != live_serial:
+                c.serial_number = live_serial
+            if live_firmware and c.firmware_version != live_firmware:
+                c.firmware_version = live_firmware
+            if live_external_ip and c.external_ip != live_external_ip:
+                c.external_ip = live_external_ip
+            if live_protocol_version and c.protocol_version != live_protocol_version:
+                c.protocol_version = live_protocol_version
         elif isup_available and c.isup_device_id:
             isup_online = False
 
@@ -941,19 +1079,22 @@ def list_cameras(request: Request, db: Session = Depends(get_db)):
         # DB dagi is_online ni ham sinxron yangilaymiz (ixtiyoriy, lekin foydali)
         if c.is_online != dynamic_online:
             c.is_online = dynamic_online
-        today_count = db.query(AttendanceLog).filter(
-            AttendanceLog.device_id == c.id,
-            AttendanceLog.timestamp >= day_start,
-            AttendanceLog.timestamp < day_end,
-        ).count()
+        today_summary = _get_today_attendance_summary(db, c)
 
         result.append({
             "id": c.id,
             "name": c.name,
             "mac_address": c.mac_address,
+            "serial_number": c.serial_number,
             "isup_device_id": c.isup_device_id,
             "location": c.location,
             "model": c.model,
+            "firmware_version": c.firmware_version,
+            "external_ip": c.external_ip,
+            "protocol_version": c.protocol_version,
+            "webhook_enabled": bool(c.webhook_enabled),
+            "webhook_target_url": c.webhook_target_url,
+            "webhook_picture_sending": bool(c.webhook_picture_sending),
             "max_memory": c.max_memory,
             "used_faces": c.used_faces,
             "organization_id": c.organization_id,
@@ -964,8 +1105,10 @@ def list_cameras(request: Request, db: Session = Depends(get_db)):
             "last_seen_at": c.last_seen_at.isoformat() if c.last_seen_at else None,
             "created_at": c.created_at.isoformat() if c.created_at else None,
             **push_target,
-            "events_today": today_count,
-            "today_attendance_count": today_count,
+            "events_today": int(today_summary.get("count") or 0),
+            "today_attendance_count": int(today_summary.get("count") or 0),
+            "today_raw_event_count": int(today_summary.get("raw_event_count") or 0),
+            "today_unknown_event_count": int(today_summary.get("unknown_count") or 0),
         })
     db.commit()
     return result
@@ -979,11 +1122,19 @@ def add_camera(request: Request, data: CameraCreate, db: Session = Depends(get_d
     if not name:
         raise HTTPException(status_code=400, detail="Kamera nomi majburiy")
 
-    mac_or_serial = _resolve_device_identifier(data.mac_address, db)
+    mac_value, serial_value = _resolve_camera_identity_inputs(
+        mac_address=data.mac_address,
+        serial_number=data.serial_number,
+        db=db,
+    )
     isup_device_id = data.isup_device_id.strip() if data.isup_device_id else None
-    existing = db.query(Device).filter(Device.mac_address == mac_or_serial).first()
+    existing = db.query(Device).filter(Device.mac_address == mac_value).first()
     if existing:
         raise HTTPException(status_code=409, detail="Bu MAC manzil allaqachon ro'yxatdan o'tgan")
+    if serial_value:
+        existing_serial = db.query(Device).filter(Device.serial_number == serial_value).first()
+        if existing_serial:
+            raise HTTPException(status_code=409, detail="Bu seriya raqam allaqachon ro'yxatdan o'tgan")
     if isup_device_id:
         existing_isup = db.query(Device).filter(Device.isup_device_id == isup_device_id).first()
         if existing_isup:
@@ -994,8 +1145,15 @@ def add_camera(request: Request, data: CameraCreate, db: Session = Depends(get_d
     isup_password = _strip_or_none(data.isup_password) or ISUP_KEY
     
     # ISUP orqali avtomatik ma'lumotlarni tortib olish
-    mac_val = mac_or_serial
-    model_val = data.model
+    mac_val = mac_value
+    serial_val = serial_value
+    model_val = _strip_or_none(data.model)
+    firmware_val = _strip_or_none(data.firmware_version)
+    external_ip_val = _strip_or_none(data.external_ip)
+    protocol_version_val = _strip_or_none(data.protocol_version)
+    webhook_enabled_val = bool(data.webhook_enabled) if data.webhook_enabled is not None else False
+    webhook_target_url_val = _strip_or_none(data.webhook_target_url)
+    webhook_picture_sending_val = bool(data.webhook_picture_sending) if data.webhook_picture_sending is not None else False
     max_memory_val = data.max_memory or 1500
 
     if isup_device_id:
@@ -1006,13 +1164,29 @@ def add_camera(request: Request, data: CameraCreate, db: Session = Depends(get_d
                 c_info = res.get("camera_info", {})
                 d_info = res.get("device", {})
                 
-                fetched_mac = c_info.get("macAddress")
-                if fetched_mac and not mac_val:
-                    mac_val = fetched_mac.upper()
+                fetched_mac = _normalize_mac_address(_pick_first_nonempty(c_info, ("macAddress", "MACAddress")))
+                if fetched_mac and (not _is_probable_mac_address(mac_val) or str(mac_val).startswith("AUTO-")):
+                    mac_val = fetched_mac
+
+                fetched_serial = _pick_first_nonempty(c_info, ("serialNumber",)) or _pick_first_nonempty(d_info, ("serial", "serial_no"))
+                if fetched_serial and not serial_val:
+                    serial_val = fetched_serial
 
                 fetched_model = c_info.get("model") or d_info.get("model") or d_info.get("device_model")
                 if fetched_model and not model_val:
                     model_val = fetched_model
+
+                fetched_firmware = _pick_first_nonempty(c_info, ("firmwareVersion",)) or _pick_first_nonempty(d_info, ("firmware_version", "firmware"))
+                if fetched_firmware and not firmware_val:
+                    firmware_val = fetched_firmware
+
+                fetched_external_ip = _pick_first_nonempty(d_info, ("remote_ip", "ip"))
+                if fetched_external_ip and not external_ip_val:
+                    external_ip_val = fetched_external_ip
+
+                fetched_protocol_version = _pick_first_nonempty(d_info, ("isup_version", "protocol_version"))
+                if fetched_protocol_version and not protocol_version_val:
+                    protocol_version_val = fetched_protocol_version
                     
                 # Modellarga qarab avtomatik memory hajmini aniqlash
                 if model_val:
@@ -1036,12 +1210,27 @@ def add_camera(request: Request, data: CameraCreate, db: Session = Depends(get_d
             print(f"[API] add_camera ISUP auto-fetch error: {e}")
             pass
 
+    mac_conflict = db.query(Device).filter(Device.mac_address == mac_val).first()
+    if mac_conflict:
+        raise HTTPException(status_code=409, detail="Aniqlangan MAC manzil allaqachon boshqa kameraga biriktirilgan")
+    if serial_val:
+        serial_conflict = db.query(Device).filter(Device.serial_number == serial_val).first()
+        if serial_conflict:
+            raise HTTPException(status_code=409, detail="Aniqlangan seriya raqam allaqachon boshqa kameraga biriktirilgan")
+
     cam = Device(
         name=name,
         mac_address=mac_val or f"TEMP-{uuid.uuid4().hex[:8].upper()}",
+        serial_number=serial_val,
         isup_device_id=isup_device_id,
         location=data.location,
         model=model_val,
+        firmware_version=firmware_val,
+        external_ip=external_ip_val,
+        protocol_version=protocol_version_val,
+        webhook_enabled=webhook_enabled_val,
+        webhook_target_url=webhook_target_url_val,
+        webhook_picture_sending=webhook_picture_sending_val,
         max_memory=max_memory_val,
         organization_id=data.organization_id,
         username=username,
@@ -1093,11 +1282,30 @@ def update_camera(request: Request, cam_id: int, data: CameraUpdate, db: Session
     if not cam:
         raise HTTPException(status_code=404, detail="Kamera topilmadi")
     
-    if data.mac_address and data.mac_address != cam.mac_address:
-        existing = db.query(Device).filter(Device.mac_address == data.mac_address).first()
-        if existing:
-            raise HTTPException(status_code=409, detail="Bu MAC manzil allaqachon mavjud")
-        cam.mac_address = data.mac_address
+    if data.mac_address is not None:
+        incoming_mac_raw = _strip_or_none(data.mac_address)
+        if incoming_mac_raw:
+            incoming_mac = _normalize_mac_address(incoming_mac_raw) if _is_probable_mac_address(incoming_mac_raw) else None
+            if incoming_mac is None:
+                raise HTTPException(status_code=422, detail="MAC manzil formati noto'g'ri")
+            if incoming_mac != cam.mac_address:
+                existing = db.query(Device).filter(Device.mac_address == incoming_mac).first()
+                if existing:
+                    raise HTTPException(status_code=409, detail="Bu MAC manzil allaqachon mavjud")
+                cam.mac_address = incoming_mac
+
+    if data.serial_number is not None:
+        incoming_serial = _strip_or_none(data.serial_number)
+        if incoming_serial:
+            existing_serial = db.query(Device).filter(
+                Device.serial_number == incoming_serial,
+                Device.id != cam_id,
+            ).first()
+            if existing_serial:
+                raise HTTPException(status_code=409, detail="Bu seriya raqam allaqachon mavjud")
+            cam.serial_number = incoming_serial
+        else:
+            cam.serial_number = None
 
     if data.isup_device_id is not None:
         isup_device_id = data.isup_device_id.strip() if data.isup_device_id else None
@@ -1116,6 +1324,18 @@ def update_camera(request: Request, cam_id: int, data: CameraUpdate, db: Session
         cam.location = data.location
     if data.model is not None:
         cam.model = data.model
+    if data.firmware_version is not None:
+        cam.firmware_version = _strip_or_none(data.firmware_version)
+    if data.external_ip is not None:
+        cam.external_ip = _strip_or_none(data.external_ip)
+    if data.protocol_version is not None:
+        cam.protocol_version = _strip_or_none(data.protocol_version)
+    if data.webhook_enabled is not None:
+        cam.webhook_enabled = bool(data.webhook_enabled)
+    if data.webhook_target_url is not None:
+        cam.webhook_target_url = _strip_or_none(data.webhook_target_url)
+    if data.webhook_picture_sending is not None:
+        cam.webhook_picture_sending = bool(data.webhook_picture_sending)
     if data.max_memory is not None:
         cam.max_memory = data.max_memory
     if data.organization_id is not None:
@@ -1139,7 +1359,13 @@ def camera_webhook(payload: WebhookPayload, db: Session = Depends(get_db)):
     Tizim kamerani MAC manzil bo'yicha topadi.
     Agar TOPILMASA, xabarni qabul qilmaydi (403 xavfsizlik).
     """
-    device = db.query(Device).filter(Device.mac_address == payload.camera_mac).first()
+    device = db.query(Device).filter(
+        or_(
+            Device.mac_address == payload.camera_mac,
+            Device.serial_number == payload.camera_mac,
+            Device.isup_device_id == payload.camera_mac,
+        )
+    ).first()
     if not device:
         raise HTTPException(status_code=403, detail="Ruxsat etilmagan kamera (MAC manzil ro'yxatda yo'q)")
 
@@ -1264,11 +1490,30 @@ def update_camera(request: Request, cam_id: int, data: CameraUpdate, db: Session
     if not cam:
         raise HTTPException(status_code=404, detail="Kamera topilmadi")
     
-    if data.mac_address and data.mac_address != cam.mac_address:
-        existing = db.query(Device).filter(Device.mac_address == data.mac_address).first()
-        if existing:
-            raise HTTPException(status_code=409, detail="Bu MAC manzil allaqachon mavjud")
-        cam.mac_address = data.mac_address
+    if data.mac_address is not None:
+        incoming_mac_raw = _strip_or_none(data.mac_address)
+        if incoming_mac_raw:
+            incoming_mac = _normalize_mac_address(incoming_mac_raw) if _is_probable_mac_address(incoming_mac_raw) else None
+            if incoming_mac is None:
+                raise HTTPException(status_code=422, detail="MAC manzil formati noto'g'ri")
+            if incoming_mac != cam.mac_address:
+                existing = db.query(Device).filter(Device.mac_address == incoming_mac).first()
+                if existing:
+                    raise HTTPException(status_code=409, detail="Bu MAC manzil allaqachon mavjud")
+                cam.mac_address = incoming_mac
+
+    if data.serial_number is not None:
+        incoming_serial = _strip_or_none(data.serial_number)
+        if incoming_serial:
+            existing_serial = db.query(Device).filter(
+                Device.serial_number == incoming_serial,
+                Device.id != cam_id,
+            ).first()
+            if existing_serial:
+                raise HTTPException(status_code=409, detail="Bu seriya raqam allaqachon mavjud")
+            cam.serial_number = incoming_serial
+        else:
+            cam.serial_number = None
 
     if data.isup_device_id is not None:
         isup_device_id = data.isup_device_id.strip() if data.isup_device_id else None
@@ -1287,6 +1532,18 @@ def update_camera(request: Request, cam_id: int, data: CameraUpdate, db: Session
         cam.location = data.location
     if data.model is not None:
         cam.model = data.model
+    if data.firmware_version is not None:
+        cam.firmware_version = _strip_or_none(data.firmware_version)
+    if data.external_ip is not None:
+        cam.external_ip = _strip_or_none(data.external_ip)
+    if data.protocol_version is not None:
+        cam.protocol_version = _strip_or_none(data.protocol_version)
+    if data.webhook_enabled is not None:
+        cam.webhook_enabled = bool(data.webhook_enabled)
+    if data.webhook_target_url is not None:
+        cam.webhook_target_url = _strip_or_none(data.webhook_target_url)
+    if data.webhook_picture_sending is not None:
+        cam.webhook_picture_sending = bool(data.webhook_picture_sending)
     if data.max_memory is not None:
         cam.max_memory = data.max_memory
     if data.organization_id is not None:
@@ -1310,7 +1567,13 @@ def camera_webhook(payload: WebhookPayload, db: Session = Depends(get_db)):
     Tizim kamerani MAC manzil bo'yicha topadi.
     Agar TOPILMASA, xabarni qabul qilmaydi (403 xavfsizlik).
     """
-    device = db.query(Device).filter(Device.mac_address == payload.camera_mac).first()
+    device = db.query(Device).filter(
+        or_(
+            Device.mac_address == payload.camera_mac,
+            Device.serial_number == payload.camera_mac,
+            Device.isup_device_id == payload.camera_mac,
+        )
+    ).first()
     if not device:
         raise HTTPException(status_code=403, detail="Ruxsat etilmagan kamera (MAC manzil ro'yxatda yo'q)")
 
@@ -1648,6 +1911,76 @@ def get_camera_snapshot(request: Request, cam_id: int, db: Session = Depends(get
             "transport": info_response.get("transport"),
             "source_transports": {"info": info_response.get("transport")},
         }
+
+    snapshot_payload = snapshot_response.get("snapshot") if isinstance(snapshot_response, dict) else {}
+    if not isinstance(snapshot_payload, dict):
+        snapshot_payload = {}
+        if isinstance(snapshot_response, dict):
+            snapshot_response["snapshot"] = snapshot_payload
+    network_status = snapshot_payload.setdefault("network_status", {})
+    alarm_summary: dict[str, Any] = {}
+    hik_connect_status: Optional[str] = None
+    changed = False
+
+    try:
+        alarm_response = _send_isup_command_or_raise(
+            target_id,
+            "get_alarm_server",
+            {},
+            timeout=10.0,
+        )
+        if isinstance(alarm_response, dict) and isinstance(alarm_response.get("summary"), dict):
+            alarm_summary = dict(alarm_response.get("summary") or {})
+    except HTTPException:
+        alarm_summary = {}
+
+    try:
+        ezviz_response = _send_isup_command_or_raise(
+            target_id,
+            "raw_get",
+            {
+                "path": "/ISAPI/System/Network/EZVIZ",
+                "allow_http_fallback": True,
+            },
+            timeout=8.0,
+        )
+        hik_connect_status = _derive_hik_connect_status(
+            ezviz_response.get("response") if isinstance(ezviz_response, dict) else ezviz_response
+        )
+    except HTTPException:
+        hik_connect_status = None
+
+    current_hik = str(network_status.get("hik_connect") or "").strip()
+    if hik_connect_status:
+        network_status["hik_connect"] = hik_connect_status
+    elif current_hik.lower() in {"offline", "unknown", ""}:
+        network_status["hik_connect"] = "Unknown"
+
+    if isinstance(alarm_summary.get("webhook_enabled"), bool) and cam.webhook_enabled != alarm_summary.get("webhook_enabled"):
+        cam.webhook_enabled = bool(alarm_summary.get("webhook_enabled"))
+        changed = True
+    resolved_webhook_url = _resolve_camera_webhook_target_url(request, alarm_summary.get("webhook_url"))
+    if resolved_webhook_url and cam.webhook_target_url != resolved_webhook_url:
+        cam.webhook_target_url = resolved_webhook_url
+        changed = True
+    elif alarm_summary and not resolved_webhook_url and cam.webhook_target_url:
+        cam.webhook_target_url = None
+        changed = True
+    if isinstance(alarm_summary.get("webhook_picture_sending"), bool) and cam.webhook_picture_sending != alarm_summary.get("webhook_picture_sending"):
+        cam.webhook_picture_sending = bool(alarm_summary.get("webhook_picture_sending"))
+        changed = True
+    live_external_ip = _pick_first_nonempty(live_info or {}, ("remote_ip", "ip"))
+    if live_external_ip and cam.external_ip != live_external_ip:
+        cam.external_ip = live_external_ip
+        changed = True
+    live_protocol_version = _pick_first_nonempty(live_info or {}, ("isup_version", "protocol_version"))
+    if live_protocol_version and cam.protocol_version != live_protocol_version:
+        cam.protocol_version = live_protocol_version
+        changed = True
+    if changed:
+        db.commit()
+        db.refresh(cam)
+
     return {
         "ok": True,
         "camera": {
@@ -1655,12 +1988,19 @@ def get_camera_snapshot(request: Request, cam_id: int, db: Session = Depends(get
             "name": cam.name,
             "isup_device_id": cam.isup_device_id,
             "mac_address": cam.mac_address,
+            "serial_number": cam.serial_number,
             "model": cam.model,
+            "firmware_version": cam.firmware_version,
+            "external_ip": cam.external_ip,
+            "protocol_version": cam.protocol_version,
+            "webhook_enabled": bool(cam.webhook_enabled),
+            "webhook_target_url": cam.webhook_target_url,
+            "webhook_picture_sending": bool(cam.webhook_picture_sending),
             "organization_id": cam.organization_id,
         },
         "live": live_info,
         "isup_source": source,
-        "snapshot": snapshot_response.get("snapshot", {}),
+        "snapshot": snapshot_payload,
         "warnings": snapshot_response.get("warnings", []),
     }
 
@@ -1670,7 +2010,7 @@ def sync_camera_metadata(request: Request, cam_id: int, db: Session = Depends(ge
     _assert_camera_manage_access(request)
     cam, _ = _get_camera_for_request(request, db, cam_id)
 
-    target_id, _, source = _resolve_online_command_target(cam)
+    target_id, live_info, source = _resolve_online_command_target(cam)
     info_response = _send_isup_command_or_raise(
         target_id,
         "get_info",
@@ -1678,9 +2018,23 @@ def sync_camera_metadata(request: Request, cam_id: int, db: Session = Depends(ge
         timeout=12.0,
     )
     camera_info = _extract_command_camera_info(info_response)
+    device_info = info_response.get("device") if isinstance(info_response, dict) else {}
 
-    updated: dict[str, str] = {}
+    alarm_summary: dict[str, Any] = {}
+    updated: dict[str, Any] = {}
     skipped: list[str] = []
+
+    try:
+        alarm_response = _send_isup_command_or_raise(
+            target_id,
+            "get_alarm_server",
+            {},
+            timeout=12.0,
+        )
+        if isinstance(alarm_response, dict) and isinstance(alarm_response.get("summary"), dict):
+            alarm_summary = dict(alarm_response.get("summary") or {})
+    except HTTPException as exc:
+        skipped.append(f"Webhook konfiguratsiyasi o'qilmadi: {exc.detail}")
 
     incoming_model = _pick_first_nonempty(camera_info, ("model", "deviceName"))
     if incoming_model:
@@ -1714,6 +2068,53 @@ def sync_camera_metadata(request: Request, cam_id: int, db: Session = Depends(ge
             cam.mac_address = incoming_mac
             updated["mac_address"] = incoming_mac
 
+    incoming_serial = _pick_first_nonempty(camera_info, ("serialNumber",)) or _pick_first_nonempty(device_info, ("serial", "serial_no"))
+    if incoming_serial and cam.serial_number != incoming_serial:
+        serial_conflict = db.query(Device).filter(
+            Device.serial_number == incoming_serial,
+            Device.id != cam.id,
+        ).first()
+        if serial_conflict:
+            skipped.append(f"Serial yangilanmadi: '{incoming_serial}' boshqa kamerada mavjud.")
+        else:
+            cam.serial_number = incoming_serial
+            updated["serial_number"] = incoming_serial
+
+    incoming_firmware = _pick_first_nonempty(camera_info, ("firmwareVersion",)) or _pick_first_nonempty(device_info, ("firmware_version", "firmware"))
+    if incoming_firmware and cam.firmware_version != incoming_firmware:
+        cam.firmware_version = incoming_firmware
+        updated["firmware_version"] = incoming_firmware
+
+    incoming_external_ip = _pick_first_nonempty(live_info or {}, ("remote_ip", "ip")) or _pick_first_nonempty(device_info, ("remote_ip", "ip"))
+    if incoming_external_ip and cam.external_ip != incoming_external_ip:
+        cam.external_ip = incoming_external_ip
+        updated["external_ip"] = incoming_external_ip
+
+    incoming_protocol_version = (
+        _pick_first_nonempty(live_info or {}, ("isup_version", "protocol_version"))
+        or _pick_first_nonempty(device_info, ("isup_version", "protocol_version"))
+        or _pick_first_nonempty(camera_info, ("protocolVersion",))
+    )
+    if incoming_protocol_version and cam.protocol_version != incoming_protocol_version:
+        cam.protocol_version = incoming_protocol_version
+        updated["protocol_version"] = incoming_protocol_version
+
+    if alarm_summary:
+        incoming_webhook_enabled = alarm_summary.get("webhook_enabled")
+        if isinstance(incoming_webhook_enabled, bool) and cam.webhook_enabled != incoming_webhook_enabled:
+            cam.webhook_enabled = incoming_webhook_enabled
+            updated["webhook_enabled"] = incoming_webhook_enabled
+
+        incoming_webhook_url = _resolve_camera_webhook_target_url(request, alarm_summary.get("webhook_url"))
+        if incoming_webhook_url and cam.webhook_target_url != incoming_webhook_url:
+            cam.webhook_target_url = incoming_webhook_url
+            updated["webhook_target_url"] = incoming_webhook_url
+
+        incoming_picture_sending = alarm_summary.get("webhook_picture_sending")
+        if isinstance(incoming_picture_sending, bool) and cam.webhook_picture_sending != incoming_picture_sending:
+            cam.webhook_picture_sending = incoming_picture_sending
+            updated["webhook_picture_sending"] = incoming_picture_sending
+
     if updated:
         db.commit()
         db.refresh(cam)
@@ -1727,12 +2128,19 @@ def sync_camera_metadata(request: Request, cam_id: int, db: Session = Depends(ge
         "detected": {
             "device_name": _pick_first_nonempty(camera_info, ("deviceName",)),
             "model": _pick_first_nonempty(camera_info, ("model",)),
-            "serial_number": _pick_first_nonempty(camera_info, ("serialNumber",)),
-            "firmware_version": _pick_first_nonempty(camera_info, ("firmwareVersion",)),
+            "serial_number": incoming_serial,
+            "firmware_version": incoming_firmware,
             "device_uuid": _pick_first_nonempty(camera_info, ("deviceID",)),
             "mac_address": incoming_mac or _pick_first_nonempty(camera_info, ("macAddress", "MACAddress")),
+            "external_ip": incoming_external_ip,
+            "protocol_version": incoming_protocol_version,
+            "webhook_enabled": alarm_summary.get("webhook_enabled"),
+            "webhook_target_url": _resolve_camera_webhook_target_url(request, alarm_summary.get("webhook_url")),
+            "webhook_picture_sending": alarm_summary.get("webhook_picture_sending"),
         },
         "camera_info": camera_info,
+        "device_info": device_info,
+        "webhook_summary": alarm_summary,
         "message": "Kamera metadata sinxronlandi." if updated else "Yangi metadata topilmadi.",
     }
 
@@ -4799,7 +5207,12 @@ async def hik_event_webhook(
         if not candidate:
             continue
         device = db.query(Device).filter(
-            or_(Device.isup_device_id == candidate, Device.mac_address == candidate, Device.name == candidate)
+            or_(
+                Device.isup_device_id == candidate,
+                Device.mac_address == candidate,
+                Device.serial_number == candidate,
+                Device.name == candidate,
+            )
         ).first()
         if device is not None:
             break
@@ -4809,7 +5222,11 @@ async def hik_event_webhook(
         client_ip = forwarded_for or real_ip or (request.client.host if request.client else None)
         if client_ip:
             device = db.query(Device).filter(
-                or_(Device.mac_address.contains(client_ip), Device.isup_device_id.contains(client_ip))
+                or_(
+                    Device.mac_address.contains(client_ip),
+                    Device.isup_device_id.contains(client_ip),
+                    Device.external_ip.contains(client_ip),
+                )
             ).first()
 
     # Timestamp

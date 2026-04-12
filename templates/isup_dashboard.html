@@ -70,11 +70,16 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">MAC Manzili yoki Seriya raqami</label>
-                    <input type="text" id="sc-mac" required class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-mono rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition uppercase">
-                    <p id="sc-mac-help" class="mt-1 text-xs text-gray-400">ISUP dan MAC topilmasa namunaviy format ko'rsatiladi.</p>
+                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">MAC Manzili</label>
+                    <input type="text" id="sc-mac" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-mono rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition uppercase">
+                    <p id="sc-mac-help" class="mt-1 text-xs text-gray-400">ISUP dan aniqlangan MAC shu yerga qo'yiladi.</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Seriya Raqami</label>
+                    <input type="text" id="sc-serial" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-mono rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition">
+                    <p id="sc-serial-help" class="mt-1 text-xs text-gray-400">Kamera serial raqami alohida saqlanadi.</p>
                 </div>
                 <div>
                     <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Tashkilot</label>
@@ -896,10 +901,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const info = deviceInfo || {};
         const deviceId = String(info.deviceId || "").trim();
-        const detectedIdentifier = resolveDeviceIdentifier({
-            mac_address: info.mac,
-            serial: info.serial,
-        });
+        const detectedMac = firstNonEmptyValue(info.mac);
+        const detectedSerial = firstNonEmptyValue(info.serial);
         const detectedModel = firstNonEmptyValue(info.model);
 
         const bodyNode = saveTemplate.content.firstElementChild.cloneNode(true);
@@ -908,19 +911,27 @@ document.addEventListener("DOMContentLoaded", () => {
         const scOrgSelect = scForm.querySelector("#sc-org");
         const scCloseBtn = scForm.querySelector("#sc-close-btn");
         const scMacInput = scForm.querySelector("#sc-mac");
+        const scSerialInput = scForm.querySelector("#sc-serial");
         const scMacHelp = scForm.querySelector("#sc-mac-help");
+        const scSerialHelp = scForm.querySelector("#sc-serial-help");
         const scModelInput = scForm.querySelector("#sc-model");
         const scModelHelp = scForm.querySelector("#sc-model-help");
 
         scForm.querySelector("#sc-isup-device-id").value = deviceId;
         scForm.querySelector("#sc-isup-device-id-display").value = deviceId;
         scForm.querySelector("#sc-name").value = `Kamera ${deviceId}`;
-        scMacInput.value = detectedIdentifier.value ? detectedIdentifier.value.toUpperCase() : "";
-        scMacInput.placeholder = detectedIdentifier.value ? "" : detectedIdentifier.placeholder;
+        scMacInput.value = detectedMac ? detectedMac.toUpperCase() : "";
+        scMacInput.placeholder = SAMPLE_MAC_PLACEHOLDER;
+        scSerialInput.value = detectedSerial || "";
         if (scMacHelp) {
-            scMacHelp.textContent = detectedIdentifier.value
-                ? "ISUP ro'yxatidan aniqlangan MAC/serial qo'yildi."
-                : `MAC topilmadi. Masalan: ${detectedIdentifier.placeholder}`;
+            scMacHelp.textContent = detectedMac
+                ? "ISUP ro'yxatidan aniqlangan MAC qo'yildi."
+                : `MAC topilmadi. Masalan: ${SAMPLE_MAC_PLACEHOLDER}`;
+        }
+        if (scSerialHelp) {
+            scSerialHelp.textContent = detectedSerial
+                ? "ISUP ro'yxatidan aniqlangan serial qo'yildi."
+                : "Serial topilmasa keyin metadata sync orqali yangilanadi.";
         }
         scForm.querySelector("#sc-memory").value = "1500";
         scForm.querySelector("#sc-location").value = "";
@@ -963,6 +974,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const payload = {
                 name: scForm.querySelector("#sc-name").value.trim(),
                 mac_address: scForm.querySelector("#sc-mac").value.trim(),
+                serial_number: scForm.querySelector("#sc-serial").value.trim() || null,
                 isup_device_id: scForm.querySelector("#sc-isup-device-id").value.trim(),
                 max_memory: Number.isFinite(memoryVal) && memoryVal > 0 ? memoryVal : 1500,
                 location: scForm.querySelector("#sc-location").value.trim() || null,

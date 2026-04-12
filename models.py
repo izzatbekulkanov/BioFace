@@ -90,9 +90,16 @@ class Device(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)                        # "Rakat mahallasi 1-kirish"
     mac_address = Column(String, unique=True, index=True, nullable=False)  # "AA:BB:CC:11:22:33"
+    serial_number = Column(String, index=True, nullable=True)
     isup_device_id = Column(String, unique=True, index=True, nullable=True)  # ISUP Device ID (CAM1111)
     location = Column(String, nullable=True)
     model = Column(String, nullable=True)                        # "DS-K1T343"
+    firmware_version = Column(String, nullable=True)
+    external_ip = Column(String, nullable=True)
+    protocol_version = Column(String, nullable=True)
+    webhook_enabled = Column(Boolean, default=False)
+    webhook_target_url = Column(String, nullable=True)
+    webhook_picture_sending = Column(Boolean, default=False)
     username = Column(String, nullable=True, default="admin")
     password = Column(String, nullable=True)
     isup_password = Column(String, nullable=True, default="facex2024")

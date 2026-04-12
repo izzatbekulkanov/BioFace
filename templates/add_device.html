@@ -19,11 +19,19 @@
                     class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition">
             </div>
             
-            <div>
-                <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">MAC Manzili yoki Seriya raqami</label>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mb-2 border-l-2 border-blue-500 pl-2">Ixtiyoriy. Bo'sh qoldirilsa tizim avtomatik ID beradi.</p>
-                <input id="inp-mac" type="text" placeholder="Masalan: AA:BB:CC:11:22:33"
-                    class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-mono rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition uppercase">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">MAC Manzili</label>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-2 border-l-2 border-blue-500 pl-2">Ixtiyoriy. Masalan: AA:BB:CC:11:22:33</p>
+                    <input id="inp-mac" type="text" placeholder="Masalan: AA:BB:CC:11:22:33"
+                        class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-mono rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition uppercase">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Seriya Raqami</label>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-2 border-l-2 border-violet-500 pl-2">Ixtiyoriy. ISUP yoki qurilma yorlig'idagi serial.</p>
+                    <input id="inp-serial" type="text" placeholder="Masalan: DS3B24123456"
+                        class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-mono rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition">
+                </div>
             </div>
             
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -151,6 +159,7 @@
 async function saveCamera() {
     const name = document.getElementById('inp-name').value.trim();
     const mac_address = document.getElementById('inp-mac').value.trim().toUpperCase();
+    const serial_number = document.getElementById('inp-serial').value.trim();
     const org_id = document.getElementById('inp-org').value;
     const organization_id = org_id ? parseInt(org_id) : null;
     const username = document.getElementById('inp-username').value.trim();
@@ -171,6 +180,7 @@ async function saveCamera() {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
                 name, mac_address: mac_address || null,
+                serial_number: serial_number || null,
                 organization_id: organization_id,
                 model: document.getElementById('inp-model').value.trim(),
                 username: username || null,

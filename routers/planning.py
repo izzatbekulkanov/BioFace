@@ -6,13 +6,13 @@ from typing import Optional
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import func, or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from attendance_monitor import attendance_monitor, get_attendance_monitor_status
 from database import get_db
 from models import Employee, Holiday, Schedule, TelegramContact
 from routers.employees_parts.common import get_accessible_organization_or_raise, resolve_allowed_org_ids
-from schedule_utils import normalize_hhmm, serialize_holiday_row, serialize_schedule_row
+from schedule_utils import normalize_hhmm, resolve_employee_schedule, serialize_holiday_row, serialize_schedule_row
 
 
 router = APIRouter()
@@ -72,6 +72,27 @@ class TelegramContactPayload(BaseModel):
     label: Optional[str] = None
     language: Optional[str] = "uz"
     is_active: bool = True
+
+
+class BulkScheduleAssignPayload(BaseModel):
+    employee_ids: list[int] = Field(default_factory=list)
+    schedule_id: Optional[int] = None
+    clear_overrides: bool = True
+
+
+def _serialize_shift_row(employee: Employee) -> dict:
+    schedule_payload = resolve_employee_schedule(employee)
+    source = str(schedule_payload.get("source") or "organization_default")
+    return {
+        "id": int(employee.id),
+        "schedule_id": schedule_payload.get("schedule_id"),
+        "schedule_name": schedule_payload.get("schedule_name"),
+        "schedule_is_flexible": bool(schedule_payload.get("is_flexible")),
+        "start_time": str(schedule_payload.get("start_time") or "09:00"),
+        "end_time": str(schedule_payload.get("end_time") or "18:00"),
+        "shift_source": "custom" if source == "employee_override" else ("schedule" if source == "schedule" else "organization"),
+        "shift_source_label": "Shaxsiy" if source == "employee_override" else ("Smena" if source == "schedule" else "Tashkilot"),
+    }
 
 
 @router.get("/api/organizations/{organization_id}/schedules")
@@ -192,6 +213,70 @@ def delete_schedule(
     return {"ok": True, "message": "Smena o'chirildi"}
 
 
+@router.post("/api/schedules/bulk-assign")
+def bulk_assign_schedule(
+    request: Request,
+    payload: BulkScheduleAssignPayload,
+    db: Session = Depends(get_db),
+):
+    employee_ids = sorted({int(employee_id) for employee_id in payload.employee_ids if int(employee_id) > 0})
+    if not employee_ids:
+        raise HTTPException(status_code=422, detail="Kamida bitta xodim tanlanishi kerak")
+
+    employees = (
+        db.query(Employee)
+        .options(selectinload(Employee.organization), selectinload(Employee.schedule))
+        .filter(Employee.id.in_(employee_ids))
+        .order_by(Employee.id.asc())
+        .all()
+    )
+    if len(employees) != len(employee_ids):
+        raise HTTPException(status_code=404, detail="Ba'zi xodimlar topilmadi")
+
+    organization_ids = {int(employee.organization_id) for employee in employees if employee.organization_id is not None}
+    if not organization_ids:
+        raise HTTPException(status_code=422, detail="Tanlangan xodimlarda tashkilot bog'lanmagan")
+
+    if payload.schedule_id is not None and len(organization_ids) != 1:
+        raise HTTPException(status_code=422, detail="Tayyor smena bir vaqtning o'zida faqat bitta tashkilot uchun qo'llanadi")
+
+    for organization_id in organization_ids:
+        get_accessible_organization_or_raise(request, db, int(organization_id))
+
+    schedule_item: Optional[Schedule] = None
+    if payload.schedule_id is not None:
+        schedule_item = _get_schedule_or_raise(db, int(payload.schedule_id))
+        schedule_org_id = int(schedule_item.organization_id)
+        if organization_ids != {schedule_org_id}:
+            raise HTTPException(status_code=422, detail="Tanlangan smena boshqa tashkilotga tegishli")
+        get_accessible_organization_or_raise(request, db, schedule_org_id)
+
+    clear_overrides = bool(payload.clear_overrides)
+    for employee in employees:
+        employee.schedule_id = int(schedule_item.id) if schedule_item is not None else None
+        employee.schedule = schedule_item
+        if clear_overrides:
+            employee.start_time = None
+            employee.end_time = None
+
+    db.commit()
+
+    refreshed = (
+        db.query(Employee)
+        .options(selectinload(Employee.organization), selectinload(Employee.schedule))
+        .filter(Employee.id.in_(employee_ids))
+        .order_by(Employee.id.asc())
+        .all()
+    )
+    return {
+        "ok": True,
+        "updated_count": len(refreshed),
+        "schedule": serialize_schedule_row(schedule_item) if schedule_item is not None else None,
+        "clear_overrides": clear_overrides,
+        "items": [_serialize_shift_row(employee) for employee in refreshed],
+    }
+
+
 @router.get("/api/holidays")
 def list_holidays(
     request: Request,
@@ -209,8 +294,11 @@ def list_holidays(
     query = db.query(Holiday)
     if organization_id is not None:
         query = query.filter(or_(Holiday.organization_id.is_(None), Holiday.organization_id == int(organization_id)))
-    elif allowed_org_ids and not is_super_admin:
-        query = query.filter(or_(Holiday.organization_id.is_(None), Holiday.organization_id.in_(allowed_org_ids)))
+    elif not is_super_admin:
+        if allowed_org_ids:
+            query = query.filter(or_(Holiday.organization_id.is_(None), Holiday.organization_id.in_(allowed_org_ids)))
+        else:
+            query = query.filter(Holiday.organization_id.is_(None))
 
     if year is not None:
         year_prefix = f"{int(year):04d}"
@@ -285,14 +373,33 @@ def update_holiday(
     elif not _is_super_admin(request):
         raise HTTPException(status_code=403, detail="Global bayramni faqat SuperAdmin tahrirlay oladi")
 
-    if payload.organization_id is not None:
-        get_accessible_organization_or_raise(request, db, int(payload.organization_id))
-    elif row.organization_id is None and not _is_super_admin(request):
+    new_org_id = int(payload.organization_id) if payload.organization_id is not None else None
+    if new_org_id is not None:
+        get_accessible_organization_or_raise(request, db, new_org_id)
+    elif (row.organization_id is None or row.organization_id is not None) and not _is_super_admin(request):
         raise HTTPException(status_code=403, detail="Global bayramni faqat SuperAdmin tahrirlay oladi")
 
-    row.title = str(payload.title or "").strip() or row.title
-    row.date = _parse_date_or_raise(payload.date)
-    row.organization_id = int(payload.organization_id) if payload.organization_id is not None else None
+    holiday_date = _parse_date_or_raise(payload.date)
+    title = str(payload.title or "").strip()
+    if not title:
+        raise HTTPException(status_code=422, detail="Bayram nomi bo'sh bo'lmasligi kerak")
+
+    duplicate = (
+        db.query(Holiday.id)
+        .filter(
+            Holiday.id != int(row.id),
+            Holiday.date == holiday_date,
+            func.lower(func.trim(Holiday.title)) == title.casefold(),
+            Holiday.organization_id.is_(None) if new_org_id is None else Holiday.organization_id == int(new_org_id),
+        )
+        .first()
+    )
+    if duplicate is not None:
+        raise HTTPException(status_code=409, detail="Bu sana uchun shunday bayram allaqachon mavjud")
+
+    row.title = title
+    row.date = holiday_date
+    row.organization_id = new_org_id
     row.is_weekend = bool(payload.is_weekend)
     row.updated_at = datetime.utcnow()
     db.commit()
@@ -493,4 +600,3 @@ def attendance_monitor_status():
 def attendance_monitor_run():
     result = attendance_monitor.run_once()
     return {"ok": True, "result": result, "status": get_attendance_monitor_status()}
-

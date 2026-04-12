@@ -1,4 +1,5 @@
 import os
+import re
 from sqlalchemy import create_engine, text, inspect
 from sqlalchemy.orm import sessionmaker, declarative_base
 import bcrypt
@@ -52,6 +53,44 @@ def ensure_schema() -> bool:
                 if "isup_device_id" not in cols:
                     conn.execute(text("ALTER TABLE devices ADD COLUMN isup_device_id VARCHAR"))
                     conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_devices_isup_device_id ON devices (isup_device_id)"))
+                device_alters = {
+                    "serial_number": "ALTER TABLE devices ADD COLUMN serial_number VARCHAR",
+                    "firmware_version": "ALTER TABLE devices ADD COLUMN firmware_version VARCHAR",
+                    "external_ip": "ALTER TABLE devices ADD COLUMN external_ip VARCHAR",
+                    "protocol_version": "ALTER TABLE devices ADD COLUMN protocol_version VARCHAR",
+                    "webhook_enabled": "ALTER TABLE devices ADD COLUMN webhook_enabled BOOLEAN DEFAULT 0",
+                    "webhook_target_url": "ALTER TABLE devices ADD COLUMN webhook_target_url VARCHAR",
+                    "webhook_picture_sending": "ALTER TABLE devices ADD COLUMN webhook_picture_sending BOOLEAN DEFAULT 0",
+                }
+                for col_name, sql in device_alters.items():
+                    if col_name not in cols:
+                        conn.execute(text(sql))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_devices_serial_number ON devices (serial_number)"))
+                conn.execute(
+                    text(
+                        "UPDATE devices SET "
+                        "webhook_enabled = COALESCE(webhook_enabled, 0), "
+                        "webhook_picture_sending = COALESCE(webhook_picture_sending, 0)"
+                    )
+                )
+
+                non_mac_pattern = re.compile(r"^(?:[0-9A-F]{12}|[0-9A-F]{2}(?:[-:][0-9A-F]{2}){5})$", re.IGNORECASE)
+                legacy_rows = conn.execute(
+                    text("SELECT id, mac_address, serial_number FROM devices")
+                ).mappings().all()
+                for row in legacy_rows:
+                    mac_value = str(row.get("mac_address") or "").strip()
+                    serial_value = str(row.get("serial_number") or "").strip()
+                    if (
+                        mac_value
+                        and not serial_value
+                        and not non_mac_pattern.fullmatch(mac_value)
+                        and not mac_value.upper().startswith(("AUTO-", "TEMP-"))
+                    ):
+                        conn.execute(
+                            text("UPDATE devices SET serial_number = :serial WHERE id = :id"),
+                            {"serial": mac_value, "id": int(row["id"])},
+                        )
 
             if "organizations" in inspector.get_table_names():
                 org_cols = {c["name"] for c in inspector.get_columns("organizations")}

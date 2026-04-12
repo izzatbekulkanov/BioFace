@@ -9,6 +9,8 @@ GENERIC_CAMERA_MODELS = {
     "isup",
 }
 
+MAC_ADDRESS_PATTERN = re.compile(r"(?:[0-9A-F]{12}|[0-9A-F]{2}(?:[-:][0-9A-F]{2}){5})$")
+
 
 def _pick_first_nonempty(device: dict, keys: tuple[str, ...]) -> Optional[str]:
     for key in keys:
@@ -66,6 +68,11 @@ def _normalize_mac_address(value: Optional[str]) -> Optional[str]:
     if re.fullmatch(r"[0-9A-F]{2}([-:][0-9A-F]{2}){5}", raw):
         return raw.replace("-", ":")
     return raw
+
+
+def _is_probable_mac_address(value: Optional[str]) -> bool:
+    raw = str(value or "").strip().upper()
+    return bool(raw and MAC_ADDRESS_PATTERN.fullmatch(raw))
 
 
 def _strip_or_none(value: Optional[str]) -> Optional[str]:

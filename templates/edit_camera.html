@@ -57,12 +57,13 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="xl:col-span-8">
-                    <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">
-                        MAC Manzil
-                        <span class="text-xs text-gray-400 font-normal ml-1">yoki Seriya raqami</span>
-                    </label>
+                <div class="xl:col-span-4">
+                    <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">MAC Manzil</label>
                     <input id="f-mac" type="text" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-mono rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition uppercase">
+                </div>
+                <div class="xl:col-span-4">
+                    <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">Seriya Raqami</label>
+                    <input id="f-serial" type="text" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-mono rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition">
                 </div>
             </div>
         </div>
@@ -118,6 +119,39 @@
             </div>
         </div>
 
+        <hr class="border-gray-100 dark:border-gray-800">
+
+        <div>
+            <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1">Avtomatik Metadata</h3>
+            <p class="text-xs text-gray-400 mb-4">ISUP va kamera sync orqali yangilanadigan ma'lumotlar</p>
+            <div class="grid grid-cols-1 gap-4 xl:grid-cols-12">
+                <div class="xl:col-span-4">
+                    <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">Firmware</label>
+                    <input id="f-firmware" type="text" readonly class="w-full bg-gray-100 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-sm rounded-xl px-4 py-2.5 outline-none">
+                </div>
+                <div class="xl:col-span-4">
+                    <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">Tashqi IP</label>
+                    <input id="f-external-ip" type="text" readonly class="w-full bg-gray-100 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-sm rounded-xl px-4 py-2.5 outline-none">
+                </div>
+                <div class="xl:col-span-4">
+                    <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">Protocol Versiyasi</label>
+                    <input id="f-protocol-version" type="text" readonly class="w-full bg-gray-100 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-sm rounded-xl px-4 py-2.5 outline-none">
+                </div>
+                <div class="xl:col-span-4">
+                    <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">Webhook Holati</label>
+                    <input id="f-webhook-enabled" type="text" readonly class="w-full bg-gray-100 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-sm rounded-xl px-4 py-2.5 outline-none">
+                </div>
+                <div class="xl:col-span-5">
+                    <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">Webhook URL</label>
+                    <input id="f-webhook-url" type="text" readonly class="w-full bg-gray-100 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-sm rounded-xl px-4 py-2.5 outline-none">
+                </div>
+                <div class="xl:col-span-3">
+                    <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">Rasm Yuborish</label>
+                    <input id="f-webhook-picture" type="text" readonly class="w-full bg-gray-100 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-sm rounded-xl px-4 py-2.5 outline-none">
+                </div>
+            </div>
+        </div>
+
         {# ── Error block ── #}
         <div id="form-error" class="hidden text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30 px-4 py-3 rounded-xl"></div>
         <div id="form-success" class="hidden text-sm text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-900/30 px-4 py-3 rounded-xl"></div>
@@ -146,15 +180,26 @@ async function loadCamera() {
         const cam = cams.find(c => c.id == camId);
         if (!cam) throw new Error('Kamera topilmadi');
 
-        document.getElementById('cam-subtitle').textContent = cam.mac_address + ' · ID: ' + cam.id;
+        const subtitleParts = [];
+        if (cam.mac_address) subtitleParts.push(cam.mac_address);
+        if (cam.serial_number) subtitleParts.push('S/N: ' + cam.serial_number);
+        subtitleParts.push('ID: ' + cam.id);
+        document.getElementById('cam-subtitle').textContent = subtitleParts.join(' · ');
         document.getElementById('f-name').value = cam.name || '';
         document.getElementById('f-location').value = cam.location || '';
         document.getElementById('f-model').value = cam.model || '';
         document.getElementById('f-mac').value = cam.mac_address || '';
+        document.getElementById('f-serial').value = cam.serial_number || '';
         document.getElementById('f-isup-device-id').value = cam.isup_device_id || '';
         document.getElementById('f-username').value = cam.username || 'admin';
         document.getElementById('f-isup-password').value = cam.isup_password || 'facex2024';
         document.getElementById('f-max-memory').value = cam.max_memory || 1500;
+        document.getElementById('f-firmware').value = cam.firmware_version || '';
+        document.getElementById('f-external-ip').value = cam.external_ip || '';
+        document.getElementById('f-protocol-version').value = cam.protocol_version || '';
+        document.getElementById('f-webhook-enabled').value = cam.webhook_enabled ? 'Yoqilgan' : 'O\'chiq';
+        document.getElementById('f-webhook-url').value = cam.webhook_target_url || '';
+        document.getElementById('f-webhook-picture').value = cam.webhook_picture_sending ? 'Ruxsat berilgan' : 'O\'chirilgan';
         if (cam.organization_id) {
             document.getElementById('f-org').value = cam.organization_id;
         }
@@ -180,6 +225,7 @@ async function saveCamera() {
         location: document.getElementById('f-location').value.trim(),
         model: document.getElementById('f-model').value.trim(),
         mac_address: document.getElementById('f-mac').value.trim().toUpperCase(),
+        serial_number: document.getElementById('f-serial').value.trim() || null,
         isup_device_id: document.getElementById('f-isup-device-id').value.trim() || null,
         username: document.getElementById('f-username').value.trim(),
         isup_password: document.getElementById('f-isup-password').value.trim(),

@@ -8,9 +8,16 @@ from system_config import ISUP_KEY
 class CameraCreate(BaseModel):
     name: str
     mac_address: Optional[str] = ""
+    serial_number: Optional[str] = None
     isup_device_id: Optional[str] = None
     location: Optional[str] = ""
     model: Optional[str] = ""
+    firmware_version: Optional[str] = None
+    external_ip: Optional[str] = None
+    protocol_version: Optional[str] = None
+    webhook_enabled: Optional[bool] = None
+    webhook_target_url: Optional[str] = None
+    webhook_picture_sending: Optional[bool] = None
     max_memory: Optional[int] = 1500
     organization_id: Optional[int] = None
     username: Optional[str] = None
@@ -21,9 +28,16 @@ class CameraCreate(BaseModel):
 class CameraUpdate(BaseModel):
     name: Optional[str] = None
     mac_address: Optional[str] = None
+    serial_number: Optional[str] = None
     isup_device_id: Optional[str] = None
     location: Optional[str] = None
     model: Optional[str] = None
+    firmware_version: Optional[str] = None
+    external_ip: Optional[str] = None
+    protocol_version: Optional[str] = None
+    webhook_enabled: Optional[bool] = None
+    webhook_target_url: Optional[str] = None
+    webhook_picture_sending: Optional[bool] = None
     max_memory: Optional[int] = None
     organization_id: Optional[int] = None
     username: Optional[str] = None

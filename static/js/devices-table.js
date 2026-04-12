@@ -262,8 +262,8 @@
                         <div class="mt-1 truncate text-sm font-medium text-gray-800 dark:text-gray-100">${escapeHtml(camera.model || "Noma'lum")}</div>
                     </div>
                     <div class="rounded-xl bg-gray-50 px-3 py-2.5 dark:bg-gray-800/80">
-                        <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Bugungi hodisa</div>
-                        <div class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">${Number(camera.events_today || 0)} ta</div>
+                        <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Bugungi davomat</div>
+                        <div class="mt-1 text-sm font-semibold text-gray-900 dark:text-white" title="Raw event: ${Number(camera.today_raw_event_count || 0)}">${Number(camera.today_attendance_count || camera.events_today || 0)} ta</div>
                     </div>
                 </div>
 

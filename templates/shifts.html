@@ -41,16 +41,15 @@
 
 <div class="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-12">
     <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900 xl:col-span-6">
-        <div class="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-            <div>
+        <div class="mb-4 flex flex-col gap-2 xl:flex-row xl:flex-nowrap xl:items-center xl:justify-between">
+            <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
                 <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">{{ "Smenalar boshqaruvi" if lang != "ru" else "Управление сменами" }}</h3>
-                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ "Tashkilot bo'yicha qat'iy va erkin smenalarni shu yerda boshqaring." if lang != "ru" else "Здесь управляйте фиксированными и гибкими сменами по организации." }}</p>
+                <p class="text-[11px] leading-5 text-slate-500 dark:text-slate-400">{{ "Tashkilot bo'yicha qat'iy va erkin smenalarni shu yerda boshqaring." if lang != "ru" else "Здесь управляйте фиксированными и гибкими сменами по организации." }}</p>
             </div>
-            <div class="flex flex-wrap items-center gap-2">
-                <select id="schedule-manager-org" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"></select>
-                <button id="add-schedule-btn" type="button" class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                    {{ "Smena qo'shish" if lang != "ru" else "Добавить смену" }}
+            <div class="flex shrink-0 flex-wrap items-center gap-2 xl:flex-nowrap">
+                <select id="schedule-manager-org" class="min-w-[190px] rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"></select>
+                <button id="add-schedule-btn" type="button" title="{{ "Smena qo'shish" if lang != 'ru' else 'Добавить смену' }}" aria-label="{{ "Smena qo'shish" if lang != 'ru' else 'Добавить смену' }}" class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-md">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M12 4v16m8-8H4"/></svg>
                 </button>
             </div>
         </div>
@@ -60,37 +59,59 @@
     </section>
 
     <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900 xl:col-span-6">
-        <div class="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-            <div>
+        <div class="mb-4 flex flex-col gap-2 xl:flex-row xl:flex-nowrap xl:items-center xl:justify-between">
+            <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
                 <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">{{ "Dam olish kunlari" if lang != "ru" else "Праздники и выходные" }}</h3>
-                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ "Global va tashkilotga xos dam olish kunlarini kalendar ko'rinishida boshqaring." if lang != "ru" else "Управляйте глобальными и организационными выходными в виде календаря." }}</p>
+                <p class="text-[11px] leading-5 text-slate-500 dark:text-slate-400">{{ "Global va tashkilotga xos dam olish kunlarini kalendar ko'rinishida boshqaring." if lang != "ru" else "Управляйте глобальными и организационными выходными в виде календаря." }}</p>
             </div>
-            <div class="flex flex-wrap items-center gap-2">
-                <select id="holiday-manager-org" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"></select>
-                <button id="add-holiday-btn" type="button" class="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10m-11 8h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                    {{ "Bayram qo'shish" if lang != "ru" else "Добавить праздник" }}
-                </button>
+            <div class="flex shrink-0 flex-wrap items-center gap-2 xl:flex-nowrap">
+                <select id="holiday-manager-org" class="min-w-[190px] rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"></select>
             </div>
         </div>
-        <div class="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/60">
-            <button id="holiday-prev-month" type="button" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">◀</button>
+        <div class="mb-4 rounded-[30px] bg-[linear-gradient(135deg,#1d4ed8_0%,#2563eb_34%,#0ea5e9_100%)] p-4 text-white shadow-[0_24px_60px_-32px_rgba(29,78,216,0.78)] dark:bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_52%,#0284c7_100%)]">
+            <div class="flex items-center justify-between gap-3">
+            <button id="holiday-prev-month" type="button" class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-white/15 text-base font-bold text-white backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/25">‹</button>
             <div class="text-center">
-                <div id="holiday-month-label" class="text-sm font-semibold text-slate-900 dark:text-slate-100">-</div>
-                <div id="holiday-monitor-status" class="mt-1 text-[11px] text-slate-500 dark:text-slate-400">-</div>
+                <div id="holiday-month-label" class="text-lg font-bold tracking-[0.02em] text-white">-</div>
+                <div id="holiday-scope-label" class="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/75">-</div>
+                <div id="holiday-monitor-status" class="mt-1 text-[11px] text-white/80">-</div>
             </div>
             <div class="flex items-center gap-2">
-                <button id="holiday-run-monitor" type="button" class="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-300 dark:hover:bg-emerald-900/30">{{ "Tekshirgichni ishga tushirish" if lang != "ru" else "Запустить проверку" }}</button>
-                <button id="holiday-next-month" type="button" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">▶</button>
+                <button id="holiday-run-monitor" type="button" class="rounded-full border border-white/20 bg-white/14 px-4 py-2 text-xs font-semibold text-white backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/22">{{ "Tekshirgichni ishga tushirish" if lang != "ru" else "Запустить проверку" }}</button>
+                <button id="holiday-next-month" type="button" class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-white/15 text-base font-bold text-white backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/25">›</button>
             </div>
         </div>
-        <div class="grid grid-cols-7 gap-2 text-center text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-            <div>Dush</div><div>Sesh</div><div>Chor</div><div>Pays</div><div>Juma</div><div>Shan</div><div>Yak</div>
         </div>
-        <div id="holiday-calendar-grid" class="mt-3 grid grid-cols-7 gap-2"></div>
+        <div class="mb-3 grid grid-cols-3 gap-2">
+            <div class="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-800/60">
+                <div class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">Oydagi yozuvlar</div>
+                <div id="holiday-summary-total" class="text-lg font-bold text-slate-900 dark:text-slate-100">0</div>
+            </div>
+            <div class="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 dark:border-amber-900/30 dark:bg-amber-900/20">
+                <div class="text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-700 dark:text-amber-300">Dam olish</div>
+                <div id="holiday-summary-weekends" class="text-lg font-bold text-amber-700 dark:text-amber-300">0</div>
+            </div>
+            <div class="flex items-center justify-between rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 dark:border-rose-900/30 dark:bg-rose-900/20">
+                <div class="text-[10px] font-semibold uppercase tracking-[0.14em] text-rose-700 dark:text-rose-300">Bayramlar</div>
+                <div id="holiday-summary-holidays" class="text-lg font-bold text-rose-700 dark:text-rose-300">0</div>
+            </div>
+        </div>
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">Bo'sh kun</span>
+                <span class="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">Dam olish</span>
+                <span class="inline-flex items-center rounded-full bg-rose-100 px-3 py-1 font-medium text-rose-700 dark:bg-rose-900/30 dark:text-rose-300">Bayram</span>
+                <span class="inline-flex items-center rounded-full bg-violet-100 px-3 py-1 font-medium text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">Aralash kun</span>
+            </div>
+            <div id="holiday-selected-date" class="rounded-full bg-blue-50 px-3 py-1 font-medium text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">Kun tanlanmagan</div>
+        </div>
+        <div class="mb-1 grid [grid-template-columns:repeat(7,minmax(0,1fr))] justify-items-center gap-3 rounded-[26px] border border-slate-200 bg-white/90 px-3 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 shadow-[0_16px_34px_-28px_rgba(15,23,42,0.45)] dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-500">
+            <div>Dush</div><div>Sesh</div><div>Chor</div><div>Pays</div><div>Juma</div><div>Shan</div><div class="text-amber-500 dark:text-amber-300">Yak</div>
+        </div>
+        <div id="holiday-calendar-grid" class="mt-4 grid [grid-template-columns:repeat(7,minmax(0,1fr))] justify-items-center gap-3.5 px-1 sm:gap-4"></div>
         <div class="mt-4">
             <div class="mb-2 flex items-center justify-between gap-3">
-                <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ "Tanlangan oy yozuvlari" if lang != "ru" else "Записи за выбранный месяц" }}</h4>
+                <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ "Oy yozuvlari" if lang != "ru" else "Записи за месяц" }}</h4>
                 <span id="holiday-count-text" class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">0 ta</span>
             </div>
             <div id="holiday-list" class="space-y-2">
@@ -100,29 +121,80 @@
     </section>
 </div>
 
-<div class="mb-4 rounded-2xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-    <div class="flex flex-col gap-3 lg:flex-row lg:items-center">
-        <input id="shift-search" type="text" placeholder="{{ 'Qidiruv: F.I.Sh. yoki ID' if lang != 'ru' else 'Поиск: ФИО или ID' }}" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40 lg:max-w-sm">
-        <select id="shift-org-filter" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40 lg:max-w-xs">
+<div class="mb-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+    <div class="flex flex-wrap items-center gap-2.5">
+        <input id="shift-search" type="text" placeholder="{{ 'Qidiruv: F.I.Sh. yoki ID' if lang != 'ru' else 'Поиск: ФИО или ID' }}" class="min-w-[220px] flex-1 rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
+        <select id="shift-org-filter" class="min-w-[150px] rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
             <option value="all">{{ "Barcha tashkilotlar" if lang != "ru" else "Все организации" }}</option>
         </select>
-        <select id="shift-source-filter" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40 lg:max-w-xs">
+        <select id="shift-source-filter" class="min-w-[145px] rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
             <option value="all">{{ "Smena manbasi: barchasi" if lang != "ru" else "Источник смены: все" }}</option>
             <option value="custom">{{ "Shaxsiy smena" if lang != "ru" else "Персональная смена" }}</option>
             <option value="schedule">{{ "Tayyor smena" if lang != "ru" else "Готовая смена" }}</option>
             <option value="organization">{{ "Tashkilot default" if lang != "ru" else "По умолчанию организации" }}</option>
         </select>
+        <select id="shift-type-filter" class="min-w-[120px] rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
+            <option value="all">Tur: barchasi</option>
+        </select>
+        <select id="shift-department-filter" class="min-w-[140px] rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
+            <option value="all">Bo'lim: barchasi</option>
+        </select>
+        <select id="shift-position-filter" class="min-w-[140px] rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
+            <option value="all">Lavozim: barchasi</option>
+        </select>
+        <button id="shift-reset-filters" type="button" title="{{ 'Filtrni tozalash' if lang != 'ru' else 'Сбросить фильтр' }}" aria-label="{{ 'Filtrni tozalash' if lang != 'ru' else 'Сбросить фильтр' }}" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-md dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0A8.003 8.003 0 015.2 15m14.219 0H15"/></svg>
+        </button>
+    </div>
+</div>
+
+<div id="shift-bulk-bar" class="mb-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+    <div class="flex flex-wrap items-center justify-between gap-2.5">
+        <div class="flex flex-wrap items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+            <span id="shift-selected-count" class="inline-flex rounded-full bg-blue-50 px-3 py-1 font-semibold text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">Tanlangan: 0</span>
+            <span id="shift-filtered-count" class="inline-flex rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">Filtrlangan: 0</span>
+            <span id="shift-bulk-hint" class="text-xs text-slate-500 dark:text-slate-400">Bitta tashkilot bo'yicha tanlab, smenani bir zumda almashtiring.</span>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            <button id="shift-select-filtered" type="button" title="Barchasini tanlash" aria-label="Barchasini tanlash" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-md dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h12M4 12h12M4 17h12"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m18 9 2 2 4-4"/></svg>
+            </button>
+            <button id="shift-clear-selection" type="button" title="Barcha tanlanganlarni olib tashlash" aria-label="Barcha tanlanganlarni olib tashlash" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-md dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9l6 6m0-6-6 6"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 4h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5a1 1 0 011-1z"/></svg>
+            </button>
+            <button id="shift-bulk-change-selected" type="button" title="Tanlanganlarga smena qo'llash" aria-label="Tanlanganlarga smena qo'llash" class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-md">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h8M8 12h8M8 17h5"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m17 14 3 3-3 3"/></svg>
+            </button>
+            <button id="shift-bulk-change-filtered" type="button" title="Filtrlanganlarga smena qo'llash" aria-label="Filtrlanganlarga smena qo'llash" class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-700 hover:shadow-md dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5h16l-6 7v5l-4 2v-7L4 5z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m16 14 3 3-3 3"/></svg>
+            </button>
+        </div>
     </div>
 </div>
 
 <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
-    <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4 dark:border-gray-800">
-        <p id="shift-count-text" class="text-sm text-gray-500 dark:text-gray-400">{{ "Yuklanmoqda..." if lang != "ru" else "Загрузка..." }}</p>
+    <div class="flex flex-col gap-3 border-b border-gray-100 px-6 py-4 dark:border-gray-800 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+            <p id="shift-count-text" class="text-sm text-gray-500 dark:text-gray-400">{{ "Yuklanmoqda..." if lang != "ru" else "Загрузка..." }}</p>
+            <p id="shift-page-status" class="mt-1 text-xs text-gray-400 dark:text-gray-500">-</p>
+        </div>
+        <div class="flex items-center gap-2 self-start lg:self-auto">
+            <label for="shift-page-size" class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-gray-500">Sahifada</label>
+            <select id="shift-page-size" class="rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+            </select>
+        </div>
     </div>
     <div class="overflow-x-auto">
         <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
             <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-600 dark:bg-gray-800 dark:text-gray-300">
                 <tr>
+                    <th class="px-4 py-4 font-semibold text-center">
+                        <input id="shift-select-visible" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+                    </th>
                     <th class="px-6 py-4 font-semibold">#</th>
                     <th class="px-6 py-4 font-semibold">{{ "Foydalanuvchi" if lang != "ru" else "Пользователь" }}</th>
                     <th class="px-6 py-4 font-semibold">{{ "Tashkilot" if lang != "ru" else "Организация" }}</th>
@@ -134,9 +206,16 @@
                 </tr>
             </thead>
             <tbody id="shift-table-body" class="divide-y divide-gray-100 dark:divide-gray-800">
-                <tr><td colspan="8" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">{{ "Yuklanmoqda..." if lang != "ru" else "Загрузка..." }}</td></tr>
+                <tr><td colspan="9" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">{{ "Yuklanmoqda..." if lang != "ru" else "Загрузка..." }}</td></tr>
             </tbody>
         </table>
+    </div>
+    <div class="flex flex-col gap-3 border-t border-gray-100 px-6 py-4 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-between">
+        <div id="shift-pagination-pages" class="flex flex-wrap items-center gap-2"></div>
+        <div class="flex items-center gap-2">
+            <button id="shift-prev-page" type="button" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">Oldingi</button>
+            <button id="shift-next-page" type="button" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">Keyingi</button>
+        </div>
     </div>
 </div>
 
@@ -152,6 +231,15 @@ const holidayManagerState = {
     year: new Date().getFullYear(),
     month: new Date().getMonth() + 1,
     items: [],
+    selectedDate: '',
+};
+const shiftTableState = {
+    page: 1,
+    pageSize: 10,
+};
+const SHIFT_PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+const shiftSelectionState = {
+    selectedIds: new Set(),
 };
 
 function shiftEscapeHtml(value) {
@@ -163,15 +251,184 @@ function shiftEscapeHtml(value) {
         .replace(/'/g, "&#39;");
 }
 
+function notifyShiftPage(message, tone = 'info') {
+    const api = window.AppNotify;
+    if (api && typeof api[tone] === 'function') {
+        api[tone](message);
+        return;
+    }
+    alert(message);
+}
+
+function setButtonDisabled(button, disabled) {
+    if (!button) return;
+    button.disabled = Boolean(disabled);
+    button.classList.toggle('opacity-50', Boolean(disabled));
+    button.classList.toggle('cursor-not-allowed', Boolean(disabled));
+}
+
+async function shiftConfirm(options) {
+    const api = window.AppDialog;
+    if (api && typeof api.confirm === 'function') {
+        return Boolean(await api.confirm(options || {}));
+    }
+    return confirm(String(options?.message || 'Tasdiqlaysizmi?'));
+}
+
+function formatHolidayDateHuman(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '-';
+    const date = new Date(`${raw}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return raw;
+    return new Intl.DateTimeFormat('uz-UZ', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+    }).format(date);
+}
+
+function getHolidayScopeLabel(scope = currentHolidayScope()) {
+    if (scope === 'global') return 'Global bayramlar';
+    const org = SHIFT_ORGANIZATIONS.find((item) => String(item.id) === String(scope));
+    return org?.name || 'Tashkilot';
+}
+
+function getHolidayItemsForDate(dateKey) {
+    const target = String(dateKey || '').trim();
+    if (!target) return [];
+    return (holidayManagerState.items || []).filter((item) => String(item.date || '').trim() === target);
+}
+
+function isSundayHolidayDate(dateKey) {
+    const raw = String(dateKey || '').trim();
+    if (!raw) return false;
+    const date = new Date(`${raw}T00:00:00`);
+    return !Number.isNaN(date.getTime()) && date.getDay() === 0;
+}
+
+function getSundayKeysForCurrentHolidayMonth() {
+    const keys = new Set();
+    const daysInMonth = new Date(holidayManagerState.year, holidayManagerState.month, 0).getDate();
+    for (let day = 1; day <= daysInMonth; day += 1) {
+        const dateKey = `${holidayManagerState.year}-${String(holidayManagerState.month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        if (isSundayHolidayDate(dateKey)) {
+            keys.add(dateKey);
+        }
+    }
+    return keys;
+}
+
+function isCurrentHolidayMonth(dateKey) {
+    const prefix = `${holidayManagerState.year}-${String(holidayManagerState.month).padStart(2, '0')}-`;
+    return String(dateKey || '').startsWith(prefix);
+}
+
+function getHolidayKindLabel(item) {
+    return item?.is_weekend ? 'Dam olish' : 'Bayram';
+}
+
+function getHolidayKindTone(item) {
+    return item?.is_weekend
+        ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+        : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300';
+}
+
+function uniqueSortedValues(rows, field) {
+    return Array.from(
+        new Set(
+            (Array.isArray(rows) ? rows : [])
+                .map((row) => String(row?.[field] || '').trim())
+                .filter(Boolean)
+        )
+    ).sort((a, b) => a.localeCompare(b, 'uz'));
+}
+
+function currentFilteredRowsBase() {
+    const orgId = String(document.getElementById("shift-org-filter")?.value || "all");
+    const source = String(document.getElementById("shift-source-filter")?.value || "all");
+    return (Array.isArray(SHIFT_ROWS) ? SHIFT_ROWS : []).filter((row) => {
+        if (orgId !== "all" && String(row.organization_id ?? "") !== orgId) return false;
+        if (source !== "all" && String(row.shift_source || "") !== source) return false;
+        return true;
+    });
+}
+
+function populateShiftAdvancedFilters() {
+    const baseRows = currentFilteredRowsBase();
+    const typeSelect = document.getElementById('shift-type-filter');
+    const departmentSelect = document.getElementById('shift-department-filter');
+    const positionSelect = document.getElementById('shift-position-filter');
+    const previousType = String(typeSelect?.value || 'all');
+    const previousDepartment = String(departmentSelect?.value || 'all');
+    const previousPosition = String(positionSelect?.value || 'all');
+
+    const types = uniqueSortedValues(baseRows, 'employee_type_label');
+    const departments = uniqueSortedValues(baseRows, 'department');
+    const positions = uniqueSortedValues(baseRows, 'position');
+
+    if (typeSelect) {
+        typeSelect.innerHTML = ['<option value="all">Tur: barchasi</option>']
+            .concat(types.map((value) => `<option value="${shiftEscapeHtml(value)}">${shiftEscapeHtml(value)}</option>`))
+            .join('');
+        typeSelect.value = types.includes(previousType) ? previousType : 'all';
+    }
+    if (departmentSelect) {
+        departmentSelect.innerHTML = ['<option value="all">Bo\'lim: barchasi</option>']
+            .concat(departments.map((value) => `<option value="${shiftEscapeHtml(value)}">${shiftEscapeHtml(value)}</option>`))
+            .join('');
+        departmentSelect.value = departments.includes(previousDepartment) ? previousDepartment : 'all';
+    }
+    if (positionSelect) {
+        positionSelect.innerHTML = ['<option value="all">Lavozim: barchasi</option>']
+            .concat(positions.map((value) => `<option value="${shiftEscapeHtml(value)}">${shiftEscapeHtml(value)}</option>`))
+            .join('');
+        positionSelect.value = positions.includes(previousPosition) ? previousPosition : 'all';
+    }
+}
+
+function getSelectedShiftRows() {
+    const ids = shiftSelectionState.selectedIds;
+    return (Array.isArray(SHIFT_ROWS) ? SHIFT_ROWS : []).filter((row) => ids.has(Number(row.id)));
+}
+
+function renderShiftBulkState() {
+    const filteredRows = getFilteredShiftRows();
+    const selectedRows = getSelectedShiftRows();
+    const selectedCountEl = document.getElementById('shift-selected-count');
+    const filteredCountEl = document.getElementById('shift-filtered-count');
+    const hintEl = document.getElementById('shift-bulk-hint');
+    const selectedBtn = document.getElementById('shift-bulk-change-selected');
+    const filteredBtn = document.getElementById('shift-bulk-change-filtered');
+    const clearBtn = document.getElementById('shift-clear-selection');
+    if (selectedCountEl) selectedCountEl.textContent = `Tanlangan: ${selectedRows.length}`;
+    if (filteredCountEl) filteredCountEl.textContent = `Filtrlangan: ${filteredRows.length}`;
+    const selectedOrgCount = new Set(selectedRows.map((row) => String(row.organization_id || ''))).size;
+    const filteredOrgCount = new Set(filteredRows.map((row) => String(row.organization_id || ''))).size;
+    if (hintEl) {
+        hintEl.textContent = selectedRows.length && selectedOrgCount > 1
+            ? 'Tanlangan xodimlar bir nechta tashkilotdan. Avval bitta tashkilotni filtrlang.'
+            : filteredRows.length && filteredOrgCount > 1
+            ? 'Filtrlangan natijalar bir nechta tashkilotdan. Bulk smena uchun bitta tashkilot qoldiring.'
+            : 'Tanlangan yoki filtrlangan xodimlarga smenani bir zumda qo\'llang.';
+    }
+    setButtonDisabled(selectedBtn, !selectedRows.length);
+    setButtonDisabled(filteredBtn, !filteredRows.length);
+    setButtonDisabled(clearBtn, !selectedRows.length);
+}
+
 function populateManagerOrganizations() {
     const scheduleSelect = document.getElementById('schedule-manager-org');
     const holidaySelect = document.getElementById('holiday-manager-org');
+    const scheduleButton = document.getElementById('add-schedule-btn');
+    const holidayButton = document.getElementById('add-holiday-btn');
     const optionsHtml = SHIFT_ORGANIZATIONS.map((org) => `<option value="${shiftEscapeHtml(org.id)}">${shiftEscapeHtml(org.name)}</option>`).join('');
     if (scheduleSelect) {
-        scheduleSelect.innerHTML = optionsHtml;
+        scheduleSelect.innerHTML = optionsHtml || '<option value="">Tashkilot topilmadi</option>';
         if (!scheduleSelect.value && SHIFT_ORGANIZATIONS.length) {
             scheduleSelect.value = String(SHIFT_ORGANIZATIONS[0].id);
         }
+        setButtonDisabled(scheduleButton, !SHIFT_ORGANIZATIONS.length);
     }
     if (holidaySelect) {
         const holidayOptions = [];
@@ -179,10 +436,11 @@ function populateManagerOrganizations() {
             holidayOptions.push('<option value="global">Global bayramlar</option>');
         }
         holidayOptions.push(...SHIFT_ORGANIZATIONS.map((org) => `<option value="${shiftEscapeHtml(org.id)}">${shiftEscapeHtml(org.name)}</option>`));
-        holidaySelect.innerHTML = holidayOptions.join('');
+        holidaySelect.innerHTML = holidayOptions.join('') || '<option value="">Scope topilmadi</option>';
         if (!holidaySelect.value) {
             holidaySelect.value = IS_SUPER_ADMIN ? 'global' : (SHIFT_ORGANIZATIONS[0] ? String(SHIFT_ORGANIZATIONS[0].id) : '');
         }
+        setButtonDisabled(holidayButton, !holidayOptions.length);
     }
 }
 
@@ -192,6 +450,20 @@ function currentScheduleOrgId() {
 
 function currentHolidayScope() {
     return String(document.getElementById('holiday-manager-org')?.value || '').trim();
+}
+
+function syncScheduleIntoShiftRows(scheduleItem) {
+    if (!scheduleItem || scheduleItem.id == null) return;
+    const scheduleId = String(scheduleItem.id);
+    (Array.isArray(SHIFT_ROWS) ? SHIFT_ROWS : []).forEach((row) => {
+        if (String(row.schedule_id ?? '') !== scheduleId) return;
+        row.schedule_name = scheduleItem.name || row.schedule_name;
+        row.schedule_is_flexible = Boolean(scheduleItem.is_flexible);
+        if (String(row.shift_source || '') === 'schedule') {
+            row.start_time = scheduleItem.start_time || row.start_time;
+            row.end_time = scheduleItem.end_time || row.end_time;
+        }
+    });
 }
 
 async function loadScheduleManager() {
@@ -205,7 +477,7 @@ async function loadScheduleManager() {
     const response = await fetch(`/api/organizations/${encodeURIComponent(orgId)}/schedules`);
     const payload = await response.json().catch(() => ({}));
     if (!response.ok || payload.ok === false) {
-        container.innerHTML = `<div class="rounded-xl border border-red-200 bg-red-50 px-4 py-5 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300">${shiftEscapeHtml(payload.detail || 'Smenalarni yuklab bo\\'lmadi')}</div>`;
+        container.innerHTML = `<div class="rounded-xl border border-red-200 bg-red-50 px-4 py-5 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300">${shiftEscapeHtml(payload.detail || 'Smenalarni yuklab bo\'lmadi')}</div>`;
         return;
     }
     const items = Array.isArray(payload.items) ? payload.items : [];
@@ -240,13 +512,20 @@ async function loadScheduleManager() {
     });
     container.querySelectorAll('[data-delete-schedule]').forEach((button) => {
         button.addEventListener('click', async () => {
-            if (!confirm('Smenani o\'chirishni tasdiqlaysizmi?')) return;
+            const confirmed = await shiftConfirm({
+                title: 'Smenani o\'chirish',
+                message: 'Smenani o\'chirishni tasdiqlaysizmi?',
+                confirmText: 'O\'chirish',
+                cancelText: 'Bekor qilish',
+            });
+            if (!confirmed) return;
             const deleteResponse = await fetch(`/api/schedules/${encodeURIComponent(button.dataset.deleteSchedule)}`, { method: 'DELETE' });
             const deletePayload = await deleteResponse.json().catch(() => ({}));
             if (!deleteResponse.ok || deletePayload.ok === false) {
-                alert(deletePayload.detail || 'Smenani o\'chirib bo\'lmadi');
+                notifyShiftPage(deletePayload.detail || 'Smenani o\'chirib bo\'lmadi', 'error');
                 return;
             }
+            notifyShiftPage('Smena o\'chirildi', 'success');
             await loadScheduleManager();
         });
     });
@@ -313,6 +592,8 @@ function openScheduleModal(item = null) {
             errorEl.classList.remove('hidden');
             return;
         }
+        syncScheduleIntoShiftRows(responseBody.item || payload);
+        renderShiftRows();
         window.AppModal?.close('saved');
         await loadScheduleManager();
     });
@@ -320,17 +601,52 @@ function openScheduleModal(item = null) {
 
 function updateHolidayMonthLabel() {
     const monthLabel = document.getElementById('holiday-month-label');
-    const formatter = new Intl.DateTimeFormat('uz-UZ', { month: 'long', year: 'numeric' });
-    monthLabel.textContent = formatter.format(new Date(holidayManagerState.year, holidayManagerState.month - 1, 1));
+    const scopeLabel = document.getElementById('holiday-scope-label');
+    monthLabel.textContent = `${holidayManagerState.year}-${holidayManagerState.month}`;
+    if (scopeLabel) {
+        scopeLabel.textContent = getHolidayScopeLabel();
+    }
+}
+
+function updateHolidaySummary() {
+    const items = holidayManagerState.items || [];
+    const selectedDateEl = document.getElementById('holiday-selected-date');
+    const totalEl = document.getElementById('holiday-summary-total');
+    const weekendsEl = document.getElementById('holiday-summary-weekends');
+    const holidaysEl = document.getElementById('holiday-summary-holidays');
+    const weekendDates = getSundayKeysForCurrentHolidayMonth();
+    items
+        .filter((item) => Boolean(item.is_weekend))
+        .forEach((item) => {
+            const key = String(item.date || '').trim();
+            if (key) weekendDates.add(key);
+        });
+    if (totalEl) totalEl.textContent = String(items.length);
+    if (weekendsEl) weekendsEl.textContent = String(weekendDates.size);
+    if (holidaysEl) holidaysEl.textContent = String(items.filter((item) => !Boolean(item.is_weekend)).length);
+    if (selectedDateEl) {
+        if (!holidayManagerState.selectedDate) {
+            selectedDateEl.textContent = 'Kun tanlanmagan';
+        } else {
+            selectedDateEl.textContent = isSundayHolidayDate(holidayManagerState.selectedDate)
+                ? `Tanlangan kun: ${formatHolidayDateHuman(holidayManagerState.selectedDate)} • Yakshanba dam olish`
+                : `Tanlangan kun: ${formatHolidayDateHuman(holidayManagerState.selectedDate)}`;
+        }
+    }
 }
 
 function renderHolidayCalendar() {
     const grid = document.getElementById('holiday-calendar-grid');
     grid.innerHTML = '';
     updateHolidayMonthLabel();
+    if (holidayManagerState.selectedDate && !isCurrentHolidayMonth(holidayManagerState.selectedDate)) {
+        holidayManagerState.selectedDate = '';
+    }
     const firstDay = new Date(holidayManagerState.year, holidayManagerState.month - 1, 1);
     const offset = (firstDay.getDay() + 6) % 7;
     const daysInMonth = new Date(holidayManagerState.year, holidayManagerState.month, 0).getDate();
+    const today = new Date();
+    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     const holidayMap = new Map();
     for (const item of holidayManagerState.items) {
         const key = String(item.date || '').trim();
@@ -339,25 +655,56 @@ function renderHolidayCalendar() {
     }
     for (let i = 0; i < offset; i += 1) {
         const placeholder = document.createElement('div');
-        placeholder.className = 'h-20 rounded-xl border border-transparent';
+        placeholder.className = 'mx-auto aspect-square w-full max-w-[76px] place-self-center rounded-full border border-transparent opacity-0';
         grid.appendChild(placeholder);
     }
     for (let day = 1; day <= daysInMonth; day += 1) {
         const dateKey = `${holidayManagerState.year}-${String(holidayManagerState.month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         const items = holidayMap.get(dateKey) || [];
+        const isSunday = isSundayHolidayDate(dateKey);
+        const hasExplicitWeekend = items.some((item) => Boolean(item.is_weekend));
+        const hasWeekend = isSunday || hasExplicitWeekend;
+        const hasHoliday = items.some((item) => !Boolean(item.is_weekend));
+        const isSelected = holidayManagerState.selectedDate === dateKey;
+        const isToday = todayKey === dateKey;
+        const tone = hasHoliday && hasWeekend
+            ? 'border-violet-200 bg-[radial-gradient(circle_at_top,_rgba(237,233,254,0.98),_rgba(245,243,255,0.9)_58%,_rgba(255,255,255,0.98)_100%)] text-violet-700 shadow-[0_14px_34px_-22px_rgba(109,40,217,0.55)] hover:border-violet-300 hover:shadow-[0_20px_38px_-22px_rgba(109,40,217,0.62)] dark:border-violet-900/40 dark:bg-[radial-gradient(circle_at_top,_rgba(76,29,149,0.35),_rgba(30,41,59,0.92)_70%)] dark:text-violet-200'
+            : hasHoliday
+            ? 'border-rose-200 bg-[radial-gradient(circle_at_top,_rgba(255,228,230,0.98),_rgba(255,241,242,0.92)_60%,_rgba(255,255,255,0.98)_100%)] text-rose-700 shadow-[0_14px_34px_-22px_rgba(225,29,72,0.5)] hover:border-rose-300 hover:shadow-[0_20px_38px_-22px_rgba(225,29,72,0.58)] dark:border-rose-900/40 dark:bg-[radial-gradient(circle_at_top,_rgba(136,19,55,0.34),_rgba(30,41,59,0.92)_72%)] dark:text-rose-200'
+            : hasWeekend
+            ? 'border-amber-200 bg-[radial-gradient(circle_at_top,_rgba(254,243,199,0.98),_rgba(255,251,235,0.92)_60%,_rgba(255,255,255,0.98)_100%)] text-amber-700 shadow-[0_14px_34px_-22px_rgba(217,119,6,0.5)] hover:border-amber-300 hover:shadow-[0_20px_38px_-22px_rgba(217,119,6,0.58)] dark:border-amber-900/40 dark:bg-[radial-gradient(circle_at_top,_rgba(120,53,15,0.34),_rgba(30,41,59,0.92)_72%)] dark:text-amber-200'
+            : 'border-slate-200 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,1),_rgba(248,250,252,0.96)_60%,_rgba(241,245,249,0.98)_100%)] text-slate-700 shadow-[0_16px_36px_-24px_rgba(15,23,42,0.42)] hover:border-slate-300 hover:-translate-y-0.5 hover:shadow-[0_22px_40px_-24px_rgba(15,23,42,0.52)] dark:border-slate-700 dark:bg-[radial-gradient(circle_at_top,_rgba(51,65,85,0.78),_rgba(15,23,42,0.98)_72%)] dark:text-slate-200 dark:hover:border-slate-600';
         const cell = document.createElement('button');
         cell.type = 'button';
-        cell.className = `h-20 rounded-2xl border p-2 text-left transition ${items.length ? 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/40 dark:bg-rose-900/20 dark:text-rose-300' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800'}`;
+        cell.className = `group relative mx-auto aspect-square w-full max-w-[76px] place-self-center overflow-hidden rounded-full border transition-all duration-200 ${tone} ${isSelected ? 'ring-2 ring-blue-500 ring-offset-2 dark:ring-blue-400 dark:ring-offset-slate-900' : ''} ${isToday ? 'ring-1 ring-blue-200 dark:ring-blue-700/60' : ''}`;
+        const labels = [];
+        if (hasWeekend) labels.push('<span class="h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_0_3px_rgba(251,191,36,0.18)] dark:bg-amber-300 dark:shadow-[0_0_0_3px_rgba(251,191,36,0.12)]"></span>');
+        if (hasHoliday) labels.push('<span class="h-2.5 w-2.5 rounded-full bg-rose-400 shadow-[0_0_0_3px_rgba(251,113,133,0.18)] dark:bg-rose-300 dark:shadow-[0_0_0_3px_rgba(251,113,133,0.12)]"></span>');
+        const titleList = items.map((entry) => entry.title).filter(Boolean).join(', ');
+        const countBadge = items.length
+            ? `<span class="absolute right-1.5 top-1.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full border border-white/70 bg-white/92 px-1 py-0 text-[9px] font-bold text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900/88 dark:text-slate-100">${items.length}</span>`
+            : '';
+        const statusRow = labels.length ? `<div class="mt-2 flex items-center justify-center gap-1.5">${labels.join('')}</div>` : '';
+        const defaultHint = isSunday ? 'Yakshanba dam olish kuni' : 'Kun holatini boshqarish';
+        cell.title = titleList || defaultHint;
+        cell.setAttribute('aria-label', titleList ? `${dateKey}: ${titleList}` : `${dateKey}: ${defaultHint}`);
         cell.innerHTML = `
-            <div class="flex items-center justify-between">
-                <span class="text-sm font-semibold">${day}</span>
-                ${items.length ? `<span class="rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-semibold dark:bg-slate-900/60">${items.length}</span>` : ''}
+            <div class="absolute inset-[4px] rounded-full bg-white/28 dark:bg-white/[0.02]"></div>
+            ${countBadge}
+            <span class="absolute left-2 top-2 h-2.5 w-2.5 rounded-full ${isToday ? 'bg-blue-500 shadow-[0_0_0_4px_rgba(59,130,246,0.18)] dark:shadow-[0_0_0_4px_rgba(59,130,246,0.14)]' : 'bg-transparent'}"></span>
+            <div class="pointer-events-none relative flex h-full flex-col items-center justify-center px-2 text-center">
+                <span class="text-[19px] font-black leading-none tracking-[-0.03em] ${isSelected ? 'text-blue-700 dark:text-blue-200' : ''}">${day}</span>
+                ${statusRow}
             </div>
-            <div class="mt-2 line-clamp-2 text-[11px]">${shiftEscapeHtml(items.map((item) => item.title).join(', ') || 'Qo\\'shish')}</div>
         `;
-        cell.addEventListener('click', () => openHolidayModal(items[0] || null, dateKey));
+        cell.addEventListener('click', () => {
+            holidayManagerState.selectedDate = dateKey;
+            updateHolidaySummary();
+            openHolidayModal(items[0] || null, dateKey);
+        });
         grid.appendChild(cell);
     }
+    updateHolidaySummary();
 }
 
 function renderHolidayList() {
@@ -370,14 +717,15 @@ function renderHolidayList() {
         return;
     }
     listEl.innerHTML = items.map((item) => `
-        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
+        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-blue-200 hover:bg-white dark:border-slate-700 dark:bg-slate-800/70 dark:hover:border-blue-900/40 dark:hover:bg-slate-800">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                     <div class="flex flex-wrap items-center gap-2">
                         <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">${shiftEscapeHtml(item.title || '-')}</h4>
-                        <span class="rounded-full px-2 py-0.5 text-[11px] font-semibold ${item.is_weekend ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'}">${item.is_weekend ? 'Dam olish' : 'Bayram'}</span>
+                        <span class="rounded-full px-2 py-0.5 text-[11px] font-semibold ${getHolidayKindTone(item)}">${getHolidayKindLabel(item)}</span>
                     </div>
-                    <div class="mt-2 text-sm text-slate-700 dark:text-slate-300">${shiftEscapeHtml(item.date || '-')}</div>
+                    <div class="mt-2 text-sm text-slate-700 dark:text-slate-300">${shiftEscapeHtml(formatHolidayDateHuman(item.date || '-'))}</div>
+                    <div class="mt-1 text-[11px] text-slate-500 dark:text-slate-400">${shiftEscapeHtml(item.organization_id ? getHolidayScopeLabel(item.organization_id) : 'Global bayramlar')}</div>
                 </div>
                 <div class="flex items-center gap-2">
                     <button type="button" data-edit-holiday="${item.id}" class="rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-300 dark:hover:bg-amber-900/30">Tahrirlash</button>
@@ -389,18 +737,30 @@ function renderHolidayList() {
     listEl.querySelectorAll('[data-edit-holiday]').forEach((button) => {
         button.addEventListener('click', () => {
             const item = items.find((row) => String(row.id) === String(button.dataset.editHoliday));
+            holidayManagerState.selectedDate = item?.date || holidayManagerState.selectedDate;
+            updateHolidaySummary();
             openHolidayModal(item || null, item?.date || '');
         });
     });
     listEl.querySelectorAll('[data-delete-holiday]').forEach((button) => {
         button.addEventListener('click', async () => {
-            if (!confirm('Bayram yozuvini o\'chirishni tasdiqlaysizmi?')) return;
+            const currentItem = items.find((row) => String(row.id) === String(button.dataset.deleteHoliday));
+            const confirmed = await shiftConfirm({
+                title: 'Bayram yozuvini o\'chirish',
+                message: currentItem
+                    ? `${formatHolidayDateHuman(currentItem.date)} uchun "${currentItem.title}" yozuvini o\'chirasizmi?`
+                    : 'Bayram yozuvini o\'chirishni tasdiqlaysizmi?',
+                confirmText: 'O\'chirish',
+                cancelText: 'Bekor qilish',
+            });
+            if (!confirmed) return;
             const response = await fetch(`/api/holidays/${encodeURIComponent(button.dataset.deleteHoliday)}`, { method: 'DELETE' });
             const payload = await response.json().catch(() => ({}));
             if (!response.ok || payload.ok === false) {
-                alert(payload.detail || 'Bayram yozuvini o\'chirib bo\'lmadi');
+                notifyShiftPage(payload.detail || 'Bayram yozuvini o\'chirib bo\'lmadi', 'error');
                 return;
             }
+            notifyShiftPage('Bayram yozuvi o\'chirildi', 'success');
             await loadHolidayManager();
         });
     });
@@ -431,7 +791,7 @@ async function loadHolidayManager() {
     const response = await fetch(`/api/holidays?${params.toString()}`);
     const payload = await response.json().catch(() => ({}));
     if (!response.ok || payload.ok === false) {
-        document.getElementById('holiday-list').innerHTML = `<div class="rounded-xl border border-red-200 bg-red-50 px-4 py-5 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300">${shiftEscapeHtml(payload.detail || 'Bayramlarni yuklab bo\\'lmadi')}</div>`;
+        document.getElementById('holiday-list').innerHTML = `<div class="rounded-xl border border-red-200 bg-red-50 px-4 py-5 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300">${shiftEscapeHtml(payload.detail || 'Bayramlarni yuklab bo\'lmadi')}</div>`;
         return;
     }
     holidayManagerState.items = Array.isArray(payload.items) ? payload.items : [];
@@ -442,50 +802,177 @@ async function loadHolidayManager() {
 
 function openHolidayModal(item = null, presetDate = '') {
     const scope = currentHolidayScope();
+    const fallbackDate = `${holidayManagerState.year}-${String(holidayManagerState.month).padStart(2, '0')}-01`;
+    const activeDate = String(item?.date || presetDate || holidayManagerState.selectedDate || fallbackDate).trim();
+    holidayManagerState.selectedDate = activeDate;
+    updateHolidaySummary();
     const body = document.createElement('div');
     body.className = 'space-y-4';
     body.innerHTML = `
-        <form id="holidayForm" class="space-y-4">
-            <div>
-                <label class="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100">Nomi</label>
-                <input id="holidayTitle" type="text" class="block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-rose-500 focus:ring-rose-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white" value="${shiftEscapeHtml(item?.title || '')}">
+        <div class="grid gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+            <div class="space-y-4">
+                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
+                    <div class="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Tanlangan kun</div>
+                    <div id="holidayModalDateLabel" class="mt-2 text-lg font-bold text-slate-900 dark:text-slate-100">-</div>
+                    <div class="mt-3 flex flex-wrap items-center gap-2">
+                        <span id="holidayModalScopeLabel" class="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">-</span>
+                        <span id="holidayModalCountLabel" class="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">0 ta</span>
+                    </div>
+                </div>
+                <div>
+                    <div class="mb-2 flex items-center justify-between gap-2">
+                        <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Shu kun yozuvlari</h4>
+                        <button type="button" id="holidayModalAddNew" class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">Yangi holat</button>
+                    </div>
+                    <div id="holidayModalItems" class="space-y-2"></div>
+                </div>
             </div>
-            <div>
-                <label class="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100">Sana</label>
-                <input id="holidayDate" type="date" class="block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-rose-500 focus:ring-rose-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white" value="${shiftEscapeHtml(item?.date || presetDate || '')}">
-            </div>
-            <label class="inline-flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                <input id="holidayWeekend" type="checkbox" class="rounded border-slate-300 text-rose-600 focus:ring-rose-500" ${item?.is_weekend ? 'checked' : ''}>
-                Dam olish kuni sifatida belgilash
-            </label>
-            <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-300">
-                Scope: ${scope === 'global' ? 'Global' : shiftEscapeHtml((SHIFT_ORGANIZATIONS.find((org) => String(org.id) === scope) || {}).name || 'Tashkilot')}
-            </div>
-            <div id="holidayModalError" class="hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300"></div>
-            <div class="flex items-center justify-end gap-2">
-                <button type="button" id="holidayModalCancel" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">Bekor qilish</button>
-                <button type="submit" class="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700">${item ? 'Yangilash' : 'Saqlash'}</button>
-            </div>
-        </form>
+            <form id="holidayForm" class="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                <div class="grid gap-3 sm:grid-cols-2">
+                    <div class="sm:col-span-2">
+                        <label class="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100">Nomi</label>
+                        <input id="holidayTitle" type="text" class="block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-rose-500 focus:ring-rose-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                    </div>
+                    <div>
+                        <label class="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100">Sana</label>
+                        <input id="holidayDate" type="date" class="block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-rose-500 focus:ring-rose-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                    </div>
+                    <div>
+                        <label class="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100">Kun turi</label>
+                        <select id="holidayKind" class="block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-rose-500 focus:ring-rose-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                            <option value="holiday">Bayram</option>
+                            <option value="weekend">Dam olish</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-300">
+                    Scope: ${scope === 'global' ? 'Global bayramlar' : shiftEscapeHtml(getHolidayScopeLabel(scope))}
+                </div>
+                <div id="holidayModalError" class="hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300"></div>
+                <div class="flex flex-wrap items-center justify-end gap-2">
+                    <button type="button" id="holidayModalDelete" class="hidden rounded-xl border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 dark:border-rose-900/40 dark:bg-rose-900/20 dark:text-rose-300 dark:hover:bg-rose-900/30">O'chirish</button>
+                    <button type="button" id="holidayModalCancel" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">Bekor qilish</button>
+                    <button type="submit" class="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700"><span id="holidayModalSaveText">Saqlash</span></button>
+                </div>
+            </form>
+        </div>
     `;
+    const modalState = {
+        activeDate,
+        editingId: item?.id != null ? String(item.id) : '',
+    };
+
+    function refreshModalMeta() {
+        const dateLabel = body.querySelector('#holidayModalDateLabel');
+        const scopeLabel = body.querySelector('#holidayModalScopeLabel');
+        const countLabel = body.querySelector('#holidayModalCountLabel');
+        const rows = getHolidayItemsForDate(modalState.activeDate);
+        if (dateLabel) dateLabel.textContent = formatHolidayDateHuman(modalState.activeDate);
+        if (scopeLabel) scopeLabel.textContent = getHolidayScopeLabel(scope);
+        if (countLabel) {
+            countLabel.textContent = rows.length
+                ? `${rows.length} ta yozuv`
+                : (isSundayHolidayDate(modalState.activeDate) ? 'Yakshanba dam olish' : '0 ta yozuv');
+        }
+    }
+
+    function setHolidayFormState(row = null) {
+        const titleInput = body.querySelector('#holidayTitle');
+        const dateInput = body.querySelector('#holidayDate');
+        const kindSelect = body.querySelector('#holidayKind');
+        const deleteBtn = body.querySelector('#holidayModalDelete');
+        const saveText = body.querySelector('#holidayModalSaveText');
+        if (titleInput) titleInput.value = row?.title || '';
+        if (dateInput) dateInput.value = row?.date || modalState.activeDate;
+        if (kindSelect) kindSelect.value = row ? (row?.is_weekend ? 'weekend' : 'holiday') : (isSundayHolidayDate(modalState.activeDate) ? 'weekend' : 'holiday');
+        if (deleteBtn) deleteBtn.classList.toggle('hidden', !row);
+        if (saveText) saveText.textContent = row ? 'Yangilash' : 'Saqlash';
+        modalState.editingId = row?.id != null ? String(row.id) : '';
+    }
+
+    function renderHolidayModalItems() {
+        const listEl = body.querySelector('#holidayModalItems');
+        const rows = getHolidayItemsForDate(modalState.activeDate);
+        refreshModalMeta();
+        if (!rows.length) {
+            listEl.innerHTML = isSundayHolidayDate(modalState.activeDate)
+                ? '<div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-5 text-sm text-amber-700 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-300">Yakshanba default dam olish kuni. Xohlasangiz shu kun uchun alohida yozuv qo\'shishingiz mumkin.</div>'
+                : '<div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300">Bu kun uchun yozuv yo\'q. Shu formadan yangi holat kiriting.</div>';
+            return;
+        }
+        listEl.innerHTML = rows.map((row) => `
+            <button type="button" data-holiday-item="${row.id}" class="w-full rounded-2xl border p-4 text-left transition ${String(row.id) === modalState.editingId ? 'border-blue-300 bg-blue-50 shadow-sm dark:border-blue-900/40 dark:bg-blue-900/20' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600 dark:hover:bg-slate-800'}">
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="text-sm font-semibold text-slate-900 dark:text-slate-100">${shiftEscapeHtml(row.title || '-')}</span>
+                            <span class="rounded-full px-2 py-0.5 text-[11px] font-semibold ${getHolidayKindTone(row)}">${getHolidayKindLabel(row)}</span>
+                        </div>
+                        <div class="mt-1 text-[11px] text-slate-500 dark:text-slate-400">${shiftEscapeHtml(formatHolidayDateHuman(row.date || modalState.activeDate))}</div>
+                    </div>
+                    <span class="text-xs font-semibold ${String(row.id) === modalState.editingId ? 'text-blue-700 dark:text-blue-300' : 'text-slate-400 dark:text-slate-500'}">${String(row.id) === modalState.editingId ? 'Tahrirlanmoqda' : 'Tahrirlash'}</span>
+                </div>
+            </button>
+        `).join('');
+        listEl.querySelectorAll('[data-holiday-item]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const target = rows.find((row) => String(row.id) === String(button.dataset.holidayItem));
+                setHolidayFormState(target || null);
+                renderHolidayModalItems();
+            });
+        });
+    }
+
     window.AppModal?.open({
-        title: item ? 'Bayramni tahrirlash' : 'Yangi bayram',
-        size: 'lg',
+        title: 'Kun holatini boshqarish',
+        size: 'xl',
         bodyNode: body,
     });
+    refreshModalMeta();
+    setHolidayFormState(item || null);
+    renderHolidayModalItems();
+    body.querySelector('#holidayModalAddNew')?.addEventListener('click', () => {
+        setHolidayFormState(null);
+        renderHolidayModalItems();
+    });
     body.querySelector('#holidayModalCancel')?.addEventListener('click', () => window.AppModal?.close('cancel'));
+    body.querySelector('#holidayModalDelete')?.addEventListener('click', async () => {
+        const currentItem = getHolidayItemsForDate(modalState.activeDate).find((row) => String(row.id) === modalState.editingId);
+        if (!currentItem) return;
+        const confirmed = await shiftConfirm({
+            title: 'Yozuvni o\'chirish',
+            message: `${formatHolidayDateHuman(currentItem.date)} uchun "${currentItem.title}" yozuvini o\'chirasizmi?`,
+            confirmText: 'O\'chirish',
+            cancelText: 'Bekor qilish',
+        });
+        if (!confirmed) return;
+        const response = await fetch(`/api/holidays/${encodeURIComponent(currentItem.id)}`, { method: 'DELETE' });
+        const responseBody = await response.json().catch(() => ({}));
+        if (!response.ok || responseBody.ok === false) {
+            const errorEl = body.querySelector('#holidayModalError');
+            errorEl.textContent = responseBody.detail || 'Bayram yozuvini o\'chirib bo\'lmadi';
+            errorEl.classList.remove('hidden');
+            return;
+        }
+        await loadHolidayManager();
+        window.AppModal?.close('deleted');
+        notifyShiftPage('Bayram yozuvi o\'chirildi', 'success');
+    });
     body.querySelector('#holidayForm')?.addEventListener('submit', async (event) => {
         event.preventDefault();
         const errorEl = body.querySelector('#holidayModalError');
         errorEl.classList.add('hidden');
+        const title = String(body.querySelector('#holidayTitle')?.value || '').trim();
+        const dateValue = String(body.querySelector('#holidayDate')?.value || '').trim() || modalState.activeDate;
+        const kind = String(body.querySelector('#holidayKind')?.value || 'holiday');
         const payload = {
-            title: String(body.querySelector('#holidayTitle')?.value || '').trim(),
-            date: String(body.querySelector('#holidayDate')?.value || '').trim(),
-            is_weekend: Boolean(body.querySelector('#holidayWeekend')?.checked),
+            title: title || (kind === 'weekend' ? 'Dam olish kuni' : 'Bayram'),
+            date: dateValue,
+            is_weekend: kind === 'weekend',
             organization_id: scope && scope !== 'global' ? Number(scope) : null,
         };
-        const response = await fetch(item ? `/api/holidays/${encodeURIComponent(item.id)}` : '/api/holidays', {
-            method: item ? 'PUT' : 'POST',
+        const response = await fetch(modalState.editingId ? `/api/holidays/${encodeURIComponent(modalState.editingId)}` : '/api/holidays', {
+            method: modalState.editingId ? 'PUT' : 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
         });
@@ -495,31 +982,72 @@ function openHolidayModal(item = null, presetDate = '') {
             errorEl.classList.remove('hidden');
             return;
         }
+        holidayManagerState.selectedDate = payload.date;
         window.AppModal?.close('saved');
         await loadHolidayManager();
+        notifyShiftPage(modalState.editingId ? 'Bayram yozuvi yangilandi' : 'Yangi kun holati saqlandi', 'success');
     });
 }
 
 function populateShiftOrganizations() {
     const orgSelect = document.getElementById("shift-org-filter");
     const seen = new Set();
+    const options = [];
+    SHIFT_ORGANIZATIONS.forEach((org) => {
+        const orgId = String(org.id ?? "").trim();
+        const orgName = String(org.name ?? "").trim();
+        if (!orgId || !orgName || seen.has(orgId)) return;
+        seen.add(orgId);
+        options.push(`<option value="${shiftEscapeHtml(orgId)}">${shiftEscapeHtml(orgName)}</option>`);
+    });
     const rows = Array.isArray(SHIFT_ROWS) ? SHIFT_ROWS : [];
     rows.forEach((row) => {
         const orgId = String(row.organization_id ?? "").trim();
         const orgName = String(row.organization_name ?? "").trim();
         if (!orgId || !orgName || seen.has(orgId)) return;
         seen.add(orgId);
-        orgSelect.insertAdjacentHTML("beforeend", `<option value="${shiftEscapeHtml(orgId)}">${shiftEscapeHtml(orgName)}</option>`);
+        options.push(`<option value="${shiftEscapeHtml(orgId)}">${shiftEscapeHtml(orgName)}</option>`);
     });
+    orgSelect.insertAdjacentHTML("beforeend", options.join(""));
+}
+
+function buildShiftPagination(totalPages, currentPage) {
+    if (totalPages <= 1) return [1];
+    const pages = new Set([1, totalPages, currentPage, currentPage - 1, currentPage + 1]);
+    if (currentPage <= 3) {
+        pages.add(2);
+        pages.add(3);
+    }
+    if (currentPage >= totalPages - 2) {
+        pages.add(totalPages - 1);
+        pages.add(totalPages - 2);
+    }
+    return Array.from(pages)
+        .filter((page) => page >= 1 && page <= totalPages)
+        .sort((a, b) => a - b)
+        .reduce((acc, page) => {
+            const previous = acc.length ? acc[acc.length - 1] : null;
+            if (typeof previous === 'number' && page - previous > 1) {
+                acc.push('ellipsis');
+            }
+            acc.push(page);
+            return acc;
+        }, []);
 }
 
 function getFilteredShiftRows() {
     const query = String(document.getElementById("shift-search")?.value || "").trim().toLowerCase();
     const orgId = String(document.getElementById("shift-org-filter")?.value || "all");
     const source = String(document.getElementById("shift-source-filter")?.value || "all");
+    const typeValue = String(document.getElementById("shift-type-filter")?.value || "all");
+    const departmentValue = String(document.getElementById("shift-department-filter")?.value || "all");
+    const positionValue = String(document.getElementById("shift-position-filter")?.value || "all");
     return (Array.isArray(SHIFT_ROWS) ? SHIFT_ROWS : []).filter((row) => {
         if (orgId !== "all" && String(row.organization_id ?? "") !== orgId) return false;
         if (source !== "all" && String(row.shift_source || "") !== source) return false;
+        if (typeValue !== "all" && String(row.employee_type_label || "") !== typeValue) return false;
+        if (departmentValue !== "all" && String(row.department || "") !== departmentValue) return false;
+        if (positionValue !== "all" && String(row.position || "") !== positionValue) return false;
         if (!query) return true;
         const haystack = [
             row.full_name,
@@ -535,20 +1063,61 @@ function getFilteredShiftRows() {
     });
 }
 
+function renderShiftPagination(totalRows, totalPages) {
+    const prevBtn = document.getElementById('shift-prev-page');
+    const nextBtn = document.getElementById('shift-next-page');
+    const pagesEl = document.getElementById('shift-pagination-pages');
+    const statusEl = document.getElementById('shift-page-status');
+    setButtonDisabled(prevBtn, shiftTableState.page <= 1);
+    setButtonDisabled(nextBtn, shiftTableState.page >= totalPages);
+    const from = totalRows ? ((shiftTableState.page - 1) * shiftTableState.pageSize) + 1 : 0;
+    const to = Math.min(totalRows, shiftTableState.page * shiftTableState.pageSize);
+    statusEl.textContent = totalRows
+        ? `${from}-${to} / ${totalRows} yozuv • ${shiftTableState.page}-sahifa / ${totalPages}`
+        : 'Natija topilmadi';
+    const items = buildShiftPagination(totalPages, shiftTableState.page);
+    pagesEl.innerHTML = items.map((item) => {
+        if (item === 'ellipsis') {
+            return '<span class="px-1 text-sm text-slate-400 dark:text-slate-500">...</span>';
+        }
+        const page = Number(item);
+        return `<button type="button" data-shift-page="${page}" class="rounded-xl px-3 py-2 text-sm font-semibold transition ${page === shiftTableState.page ? 'bg-blue-600 text-white shadow-sm' : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700'}">${page}</button>`;
+    }).join('');
+    pagesEl.querySelectorAll('[data-shift-page]').forEach((button) => {
+        button.addEventListener('click', () => {
+            shiftTableState.page = Number(button.dataset.shiftPage || 1);
+            renderShiftRows();
+        });
+    });
+}
+
 function renderShiftRows() {
     const tbody = document.getElementById("shift-table-body");
     const countEl = document.getElementById("shift-count-text");
+    const selectVisible = document.getElementById('shift-select-visible');
     const rows = getFilteredShiftRows();
+    const totalPages = Math.max(1, Math.ceil(rows.length / shiftTableState.pageSize));
+    if (shiftTableState.page > totalPages) {
+        shiftTableState.page = totalPages;
+    }
+    if (shiftTableState.page < 1) {
+        shiftTableState.page = 1;
+    }
+    const start = (shiftTableState.page - 1) * shiftTableState.pageSize;
+    const visibleRows = rows.slice(start, start + shiftTableState.pageSize);
     countEl.textContent = rows.length
-        ? `${rows.length} ta yozuv`
+        ? `${rows.length} ta yozuv topildi`
         : `{{ "Mos smena topilmadi." if lang != "ru" else "Подходящие смены не найдены." }}`;
 
     if (!rows.length) {
-        tbody.innerHTML = `<tr><td colspan="8" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">{{ "Mos smena topilmadi." if lang != "ru" else "Подходящие смены не найдены." }}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">{{ "Mos smena topilmadi." if lang != "ru" else "Подходящие смены не найдены." }}</td></tr>`;
+        if (selectVisible) selectVisible.checked = false;
+        renderShiftPagination(0, 1);
+        renderShiftBulkState();
         return;
     }
 
-    tbody.innerHTML = rows.map((row, index) => {
+    tbody.innerHTML = visibleRows.map((row, index) => {
         const profileUrl = `/employees/${encodeURIComponent(row.id)}`;
         const editUrl = `/employees/${encodeURIComponent(row.id)}/edit`;
         const sourceTone = row.shift_source === "custom"
@@ -565,9 +1134,13 @@ function renderShiftRows() {
         const department = row.department ? shiftEscapeHtml(row.department) : " - ";
         const position = row.position ? shiftEscapeHtml(row.position) : " - ";
         const personalId = row.personal_id ? `<div class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">ID: ${shiftEscapeHtml(row.personal_id)}</div>` : "";
+        const isChecked = shiftSelectionState.selectedIds.has(Number(row.id));
         return `
             <tr class="transition hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                <td class="px-6 py-4 font-medium text-gray-600 dark:text-gray-300">${index + 1}</td>
+                <td class="px-4 py-4 text-center">
+                    <input type="checkbox" data-shift-select-row="${row.id}" class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" ${isChecked ? 'checked' : ''}>
+                </td>
+                <td class="px-6 py-4 font-medium text-gray-600 dark:text-gray-300">${start + index + 1}</td>
                 <td class="px-6 py-4">
                     <div class="font-semibold text-gray-900 dark:text-white">${shiftEscapeHtml(row.full_name || "-")}</div>
                     ${personalId}
@@ -596,12 +1169,286 @@ function renderShiftRows() {
             </tr>
         `;
     }).join("");
+    tbody.querySelectorAll('[data-shift-select-row]').forEach((checkbox) => {
+        checkbox.addEventListener('change', () => {
+            const employeeId = Number(checkbox.dataset.shiftSelectRow || 0);
+            if (!employeeId) return;
+            if (checkbox.checked) {
+                shiftSelectionState.selectedIds.add(employeeId);
+            } else {
+                shiftSelectionState.selectedIds.delete(employeeId);
+            }
+            renderShiftBulkState();
+            const visibleIds = visibleRows.map((row) => Number(row.id));
+            if (selectVisible) {
+                selectVisible.checked = visibleIds.length > 0 && visibleIds.every((id) => shiftSelectionState.selectedIds.has(id));
+            }
+        });
+    });
+    if (selectVisible) {
+        const visibleIds = visibleRows.map((row) => Number(row.id));
+        selectVisible.checked = visibleIds.length > 0 && visibleIds.every((id) => shiftSelectionState.selectedIds.has(id));
+    }
+    renderShiftPagination(rows.length, totalPages);
+    renderShiftBulkState();
 }
 
-populateShiftOrganizations();
-renderShiftRows();
-document.getElementById("shift-search")?.addEventListener("input", renderShiftRows);
-document.getElementById("shift-org-filter")?.addEventListener("change", renderShiftRows);
-document.getElementById("shift-source-filter")?.addEventListener("change", renderShiftRows);
+function mergeUpdatedShiftRows(items) {
+    const map = new Map((Array.isArray(items) ? items : []).map((item) => [Number(item.id), item]));
+    (Array.isArray(SHIFT_ROWS) ? SHIFT_ROWS : []).forEach((row) => {
+        const updated = map.get(Number(row.id));
+        if (!updated) return;
+        row.schedule_id = updated.schedule_id;
+        row.schedule_name = updated.schedule_name;
+        row.schedule_is_flexible = Boolean(updated.schedule_is_flexible);
+        row.start_time = updated.start_time;
+        row.end_time = updated.end_time;
+        row.shift_source = updated.shift_source;
+        row.shift_source_label = updated.shift_source_label;
+    });
+}
+
+async function openBulkScheduleModal(scope) {
+    const targetRows = scope === 'selected' ? getSelectedShiftRows() : getFilteredShiftRows();
+    if (!targetRows.length) {
+        notifyShiftPage('Avval xodimlarni tanlang', 'warning');
+        return;
+    }
+    const orgIds = Array.from(new Set(targetRows.map((row) => String(row.organization_id || '')).filter(Boolean)));
+    if (orgIds.length !== 1) {
+        notifyShiftPage('Bulk smena faqat bitta tashkilot bo\'yicha qo\'llanadi. Avval tashkilotni filtrlang.', 'warning');
+        return;
+    }
+    const orgId = Number(orgIds[0]);
+    const schedulesResponse = await fetch(`/api/organizations/${encodeURIComponent(orgId)}/schedules`);
+    const schedulesPayload = await schedulesResponse.json().catch(() => ({}));
+    if (!schedulesResponse.ok || schedulesPayload.ok === false) {
+        notifyShiftPage(schedulesPayload.detail || 'Smenalar ro\'yxatini yuklab bo\'lmadi', 'error');
+        return;
+    }
+    const schedules = Array.isArray(schedulesPayload.items) ? schedulesPayload.items : [];
+    const scopeLabel = scope === 'selected' ? 'Tanlanganlar' : 'Filtrlanganlar';
+    const body = document.createElement('div');
+    body.className = 'space-y-4';
+    body.innerHTML = `
+        <form id="bulkScheduleForm" class="space-y-4">
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-200">
+                <div class="font-semibold">${scopeLabel}: ${targetRows.length} ta</div>
+                <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">Tashkilot: ${shiftEscapeHtml(targetRows[0]?.organization_name || '-')}</div>
+            </div>
+            <div>
+                <label class="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100">Yangi smena</label>
+                <select id="bulkScheduleSelect" class="block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                    <option value="">Tashkilot defaultiga qaytarish</option>
+                    ${schedules.map((item) => `<option value="${shiftEscapeHtml(item.id)}">${shiftEscapeHtml(item.name)} • ${shiftEscapeHtml(item.start_time)}-${shiftEscapeHtml(item.end_time)}${item.is_flexible ? ' • Erkin' : ''}</option>`).join('')}
+                </select>
+            </div>
+            <label class="inline-flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                <input id="bulkClearOverrides" type="checkbox" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500" checked>
+                Shaxsiy vaqt override'larini tozalab, yangi smenani majburan qo'llash
+            </label>
+            <div id="bulkScheduleError" class="hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300"></div>
+            <div class="flex items-center justify-end gap-2">
+                <button type="button" id="bulkScheduleCancel" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">Bekor qilish</button>
+                <button type="submit" class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700">Qo'llash</button>
+            </div>
+        </form>
+    `;
+    window.AppModal?.open({
+        title: 'Bulk smena almashtirish',
+        size: 'lg',
+        bodyNode: body,
+    });
+    body.querySelector('#bulkScheduleCancel')?.addEventListener('click', () => window.AppModal?.close('cancel'));
+    body.querySelector('#bulkScheduleForm')?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const errorEl = body.querySelector('#bulkScheduleError');
+        errorEl.classList.add('hidden');
+        const payload = {
+            employee_ids: targetRows.map((row) => Number(row.id)).filter(Boolean),
+            schedule_id: (() => {
+                const raw = String(body.querySelector('#bulkScheduleSelect')?.value || '').trim();
+                return raw ? Number(raw) : null;
+            })(),
+            clear_overrides: Boolean(body.querySelector('#bulkClearOverrides')?.checked),
+        };
+        const response = await fetch('/api/schedules/bulk-assign', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        const responseBody = await response.json().catch(() => ({}));
+        if (!response.ok || responseBody.ok === false) {
+            errorEl.textContent = responseBody.detail || 'Bulk smena almashtirib bo\'lmadi';
+            errorEl.classList.remove('hidden');
+            return;
+        }
+        mergeUpdatedShiftRows(responseBody.items || []);
+        populateShiftAdvancedFilters();
+        renderShiftRows();
+        window.AppModal?.close('saved');
+        notifyShiftPage(`${Number(responseBody.updated_count || 0)} ta xodimning smenasi yangilandi`, 'success');
+    });
+}
+
+function resetShiftFilters() {
+    const searchInput = document.getElementById('shift-search');
+    const orgFilter = document.getElementById('shift-org-filter');
+    const sourceFilter = document.getElementById('shift-source-filter');
+    const typeFilter = document.getElementById('shift-type-filter');
+    const departmentFilter = document.getElementById('shift-department-filter');
+    const positionFilter = document.getElementById('shift-position-filter');
+    if (searchInput) searchInput.value = '';
+    if (orgFilter) orgFilter.value = 'all';
+    if (sourceFilter) sourceFilter.value = 'all';
+    if (typeFilter) typeFilter.value = 'all';
+    if (departmentFilter) departmentFilter.value = 'all';
+    if (positionFilter) positionFilter.value = 'all';
+    shiftTableState.page = 1;
+    populateShiftAdvancedFilters();
+    renderShiftRows();
+}
+
+function handleShiftFilterChange() {
+    shiftTableState.page = 1;
+    populateShiftAdvancedFilters();
+    renderShiftRows();
+}
+
+async function initializeShiftPage() {
+    populateShiftOrganizations();
+    populateManagerOrganizations();
+    populateShiftAdvancedFilters();
+    document.getElementById('shift-page-size').value = String(shiftTableState.pageSize);
+    renderShiftRows();
+
+    document.getElementById("shift-search")?.addEventListener("input", handleShiftFilterChange);
+    document.getElementById("shift-org-filter")?.addEventListener("change", handleShiftFilterChange);
+    document.getElementById("shift-source-filter")?.addEventListener("change", handleShiftFilterChange);
+    document.getElementById("shift-type-filter")?.addEventListener("change", handleShiftFilterChange);
+    document.getElementById("shift-department-filter")?.addEventListener("change", handleShiftFilterChange);
+    document.getElementById("shift-position-filter")?.addEventListener("change", handleShiftFilterChange);
+    document.getElementById("shift-reset-filters")?.addEventListener("click", resetShiftFilters);
+    document.getElementById('shift-select-visible')?.addEventListener('change', (event) => {
+        const checked = Boolean(event.target?.checked);
+        const visibleRows = getFilteredShiftRows().slice((shiftTableState.page - 1) * shiftTableState.pageSize, shiftTableState.page * shiftTableState.pageSize);
+        visibleRows.forEach((row) => {
+            const employeeId = Number(row.id);
+            if (!employeeId) return;
+            if (checked) {
+                shiftSelectionState.selectedIds.add(employeeId);
+            } else {
+                shiftSelectionState.selectedIds.delete(employeeId);
+            }
+        });
+        renderShiftRows();
+    });
+    document.getElementById('shift-select-filtered')?.addEventListener('click', () => {
+        getFilteredShiftRows().forEach((row) => {
+            const employeeId = Number(row.id);
+            if (employeeId) {
+                shiftSelectionState.selectedIds.add(employeeId);
+            }
+        });
+        renderShiftRows();
+    });
+    document.getElementById('shift-clear-selection')?.addEventListener('click', () => {
+        shiftSelectionState.selectedIds.clear();
+        renderShiftRows();
+    });
+    document.getElementById('shift-bulk-change-selected')?.addEventListener('click', () => {
+        openBulkScheduleModal('selected').catch((error) => {
+            notifyShiftPage(error?.message || 'Bulk smena oynasini ochib bo\'lmadi', 'error');
+        });
+    });
+    document.getElementById('shift-bulk-change-filtered')?.addEventListener('click', () => {
+        openBulkScheduleModal('filtered').catch((error) => {
+            notifyShiftPage(error?.message || 'Bulk smena oynasini ochib bo\'lmadi', 'error');
+        });
+    });
+    document.getElementById('shift-page-size')?.addEventListener('change', (event) => {
+        const pageSize = Number(event.target?.value || shiftTableState.pageSize);
+        shiftTableState.pageSize = SHIFT_PAGE_SIZE_OPTIONS.includes(pageSize) ? pageSize : 10;
+        shiftTableState.page = 1;
+        renderShiftRows();
+    });
+    document.getElementById('shift-prev-page')?.addEventListener('click', () => {
+        if (shiftTableState.page <= 1) return;
+        shiftTableState.page -= 1;
+        renderShiftRows();
+    });
+    document.getElementById('shift-next-page')?.addEventListener('click', () => {
+        shiftTableState.page += 1;
+        renderShiftRows();
+    });
+
+    document.getElementById('schedule-manager-org')?.addEventListener('change', () => {
+        loadScheduleManager().catch((error) => {
+            notifyShiftPage(error?.message || 'Smenalarni yuklab bo\'lmadi', 'error');
+        });
+    });
+    document.getElementById('holiday-manager-org')?.addEventListener('change', () => {
+        loadHolidayManager().catch((error) => {
+            notifyShiftPage(error?.message || 'Bayramlarni yuklab bo\'lmadi', 'error');
+        });
+    });
+    document.getElementById('add-schedule-btn')?.addEventListener('click', () => {
+        if (!currentScheduleOrgId()) {
+            notifyShiftPage('Avval tashkilotni tanlang', 'warning');
+            return;
+        }
+        openScheduleModal(null);
+    });
+    document.getElementById('add-holiday-btn')?.addEventListener('click', () => {
+        if (!currentHolidayScope()) {
+            notifyShiftPage('Avval scope tanlang', 'warning');
+            return;
+        }
+        openHolidayModal(null, holidayManagerState.selectedDate || `${holidayManagerState.year}-${String(holidayManagerState.month).padStart(2, '0')}-01`);
+    });
+    document.getElementById('holiday-prev-month')?.addEventListener('click', async () => {
+        holidayManagerState.month -= 1;
+        if (holidayManagerState.month < 1) {
+            holidayManagerState.month = 12;
+            holidayManagerState.year -= 1;
+        }
+        await loadHolidayManager();
+    });
+    document.getElementById('holiday-next-month')?.addEventListener('click', async () => {
+        holidayManagerState.month += 1;
+        if (holidayManagerState.month > 12) {
+            holidayManagerState.month = 1;
+            holidayManagerState.year += 1;
+        }
+        await loadHolidayManager();
+    });
+    document.getElementById('holiday-run-monitor')?.addEventListener('click', async (event) => {
+        const button = event.currentTarget;
+        setButtonDisabled(button, true);
+        try {
+            const response = await fetch('/api/attendance-monitor/run', { method: 'POST' });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok || payload.ok === false) {
+                throw new Error(payload.detail || 'Tekshirgichni ishga tushirib bo\'lmadi');
+            }
+            await refreshMonitorStatus();
+            const result = payload.result || {};
+            notifyShiftPage(`Tekshirildi: ${Number(result.checked || 0)} • Xabar yuborildi: ${Number(result.notified || 0)}`, 'success');
+        } catch (error) {
+            notifyShiftPage(error?.message || 'Tekshirgichni ishga tushirib bo\'lmadi', 'error');
+        } finally {
+            setButtonDisabled(button, false);
+        }
+    });
+
+    try {
+        await loadScheduleManager();
+        await loadHolidayManager();
+    } catch (error) {
+        notifyShiftPage(error?.message || 'Sahifa boshqaruv ma\'lumotlarini yuklab bo\'lmadi', 'error');
+    }
+}
+
+initializeShiftPage();
 </script>
 {% endblock %}

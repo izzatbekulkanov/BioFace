@@ -2487,7 +2487,7 @@ class RedisCommandBridge:
                 "isup": "Registered" if state.online else "Not Registered",
                 "otap1": "Not Registered",
                 "otap2": "Not Registered",
-                "hik_connect": "Offline",
+                "hik_connect": "Unknown",
                 "voip": "Not Registered",
             },
             "basic_information": {
