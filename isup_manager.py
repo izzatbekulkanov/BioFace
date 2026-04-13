@@ -32,6 +32,8 @@ def _ensure_runtime_dir() -> None:
 
 
 def _binary_candidates() -> list[Path]:
+    if ISUP_IMPLEMENTATION_MODE == "disabled":
+        return []  # disabled — binary kerak emas
     if ISUP_IMPLEMENTATION_MODE == "hikvision_sdk":
         return [ISUP_SDK_SERVER_SCRIPT]
 
@@ -298,6 +300,12 @@ def get_process_status() -> dict:
 
 
 def start_isup_server() -> dict:
+    if ISUP_IMPLEMENTATION_MODE == "disabled":
+        return {
+            "running": False,
+            "disabled": True,
+            "message": "ISUP o'chirilgan (ISUP_IMPLEMENTATION_MODE=disabled)",
+        }
     status = get_process_status()
     if status["running"]:
         return status

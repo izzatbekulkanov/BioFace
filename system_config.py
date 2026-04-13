@@ -294,5 +294,5 @@ ISUP_API_URL = os.getenv("ISUP_API_URL", f"http://127.0.0.1:{ISUP_API_PORT}")
 # - "emulated": custom lightweight C++ server
 # - "hikvision_sdk": requires official Hikvision EHome/ISUP SDK DLL package
 _mode = os.getenv("ISUP_IMPLEMENTATION_MODE", "hikvision_sdk").strip().lower()
-ISUP_IMPLEMENTATION_MODE = _mode if _mode in {"emulated", "hikvision_sdk"} else "emulated"
+ISUP_IMPLEMENTATION_MODE = _mode if _mode in {"emulated", "hikvision_sdk", "disabled"} else "emulated"
 HIKVISION_SDK_DIR = Path(os.getenv("HIKVISION_SDK_DIR", str(BASE_DIR / "hikvision_sdk")))
