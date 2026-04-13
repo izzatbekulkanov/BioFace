@@ -3942,8 +3942,10 @@ def get_attendance_groups(
                     employee_image_url = f"{base_url}{employee.image_url}" if not employee.image_url.startswith("http") else employee.image_url
                 employee_name = f"{employee.first_name} {employee.last_name}".strip()
                 if row.first_timestamp:
-                    late_minutes = get_late_minutes(employee, row.first_timestamp.date(), row.first_timestamp)
-
+                    first_dt = _parse_camera_timestamp(row.first_timestamp)
+                    if first_dt:
+                        late_minutes = get_late_minutes(employee, first_dt.date(), first_dt)
+                        
         group_identity = str(row.group_identity or "")
         detail_query = _apply_attendance_filters(
             db.query(AttendanceLog),
