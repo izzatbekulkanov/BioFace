@@ -2,26 +2,26 @@
 
 {% block content %}
 <div class="animate-fade-in space-y-6">
-    <section class="camera-hero">
-        <div class="camera-hero-grid">
+    <section class="overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 to-indigo-600 shadow-xl">
+        <div class="grid gap-4 p-5 xl:grid-cols-3">
             <div class="min-w-0">
-                <span class="camera-hero-badge">
+                <span class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white/80 backdrop-blur-sm w-max mb-4">
                     <i class="fa-duotone fa-camera-cctv"></i>
                     Camera Fleet
                 </span>
-                <h1 class="camera-hero-title">Kameralar ro'yxati</h1>
-                <p id="cam-count" class="camera-hero-text">Kameralar yuklanmoqda...</p>
-                <div class="camera-hero-actions">
-                    <a href="/devices/guide" class="camera-soft-chip camera-soft-chip-light">
+                <h1 class="text-3xl font-bold tracking-tight text-white">Kameralar ro'yxati</h1>
+                <p id="cam-count" class="max-w-3xl text-sm leading-6 text-blue-100 mt-2">Kameralar yuklanmoqda...</p>
+                <div class="mt-4 flex flex-wrap items-center gap-3">
+                    <a href="/devices/guide" class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white/90 hover:bg-white/20 transition">
                         <i class="fa-duotone fa-book-open-cover"></i>
                         Qo'llanma
                     </a>
-                    <span class="camera-soft-chip camera-soft-chip-light">
+                    <span class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white/90 hover:bg-white/20 transition">
                         <i class="fa-duotone fa-wave-pulse"></i>
                         Real-time monitoring
                     </span>
                     {% if camera_scope_limited %}
-                    <span class="camera-soft-chip camera-soft-chip-light">
+                    <span class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white/90 hover:bg-white/20 transition">
                         <i class="fa-duotone fa-lock-keyhole"></i>
                         Faqat biriktirilgan kameralar
                     </span>
@@ -35,60 +35,60 @@
                 </div>
             </div>
 
-            <div class="camera-summary-grid">
-                <article class="camera-summary-card">
-                    <div class="camera-summary-top">
-                        <span class="camera-summary-icon"><i class="fa-duotone fa-camera"></i></span>
+            <div class="grid gap-3 sm:grid-cols-2 xl:col-span-2">
+                <article class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm relative overflow-hidden">
+                    <div class="absolute right-4 top-4 text-white/20 text-4xl">
+                        <span class="block"><i class="fa-duotone fa-camera"></i></span>
                     </div>
-                    <div class="camera-summary-label">Jami</div>
-                    <div id="stat-total" class="camera-summary-value">0</div>
-                    <div class="camera-summary-meta">Ro'yxatdagi barcha qurilmalar</div>
+                    <div class="text-xs font-semibold uppercase tracking-wide text-white/80">Jami</div>
+                    <div id="stat-total" class="mt-2 text-2xl font-bold text-white">0</div>
+                    <div class="mt-1 text-xs text-white/80">Ro'yxatdagi barcha qurilmalar</div>
                 </article>
-                <article class="camera-summary-card">
-                    <div class="camera-summary-top">
-                        <span class="camera-summary-icon"><i class="fa-duotone fa-signal-stream"></i></span>
+                <article class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm relative overflow-hidden">
+                    <div class="absolute right-4 top-4 text-white/20 text-4xl">
+                        <span class="block"><i class="fa-duotone fa-signal-stream"></i></span>
                     </div>
-                    <div class="camera-summary-label">Faol</div>
-                    <div id="stat-online" class="camera-summary-value">0</div>
-                    <div class="camera-summary-meta">Ayni vaqtda bog'langan kameralar</div>
+                    <div class="text-xs font-semibold uppercase tracking-wide text-white/80">Faol</div>
+                    <div id="stat-online" class="mt-2 text-2xl font-bold text-white">0</div>
+                    <div class="mt-1 text-xs text-white/80">Ayni vaqtda bog'langan kameralar</div>
                 </article>
-                <article class="camera-summary-card">
-                    <div class="camera-summary-top">
-                        <span class="camera-summary-icon"><i class="fa-duotone fa-router"></i></span>
+                <article class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm relative overflow-hidden">
+                    <div class="absolute right-4 top-4 text-white/20 text-4xl">
+                        <span class="block"><i class="fa-duotone fa-router"></i></span>
                     </div>
-                    <div class="camera-summary-label">Offline</div>
-                    <div id="stat-offline" class="camera-summary-value">0</div>
-                    <div class="camera-summary-meta">E'tibor talab qiladigan kameralar</div>
+                    <div class="text-xs font-semibold uppercase tracking-wide text-white/80">Offline</div>
+                    <div id="stat-offline" class="mt-2 text-2xl font-bold text-white">0</div>
+                    <div class="mt-1 text-xs text-white/80">E'tibor talab qiladigan kameralar</div>
                 </article>
-                <article class="camera-summary-card">
-                    <div class="camera-summary-top">
-                        <span class="camera-summary-icon"><i class="fa-duotone fa-filter-list"></i></span>
+                <article class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm relative overflow-hidden">
+                    <div class="absolute right-4 top-4 text-white/20 text-4xl">
+                        <span class="block"><i class="fa-duotone fa-filter-list"></i></span>
                     </div>
-                    <div class="camera-summary-label">Filter</div>
-                    <div id="stat-filtered" class="camera-summary-value">0</div>
-                    <div class="camera-summary-meta">Joriy qidiruv natijasi</div>
+                    <div class="text-xs font-semibold uppercase tracking-wide text-white/80">Filter</div>
+                    <div id="stat-filtered" class="mt-2 text-2xl font-bold text-white">0</div>
+                    <div class="mt-1 text-xs text-white/80">Joriy qidiruv natijasi</div>
                 </article>
             </div>
         </div>
     </section>
 
-    <section class="camera-panel overflow-hidden">
+    <section class="rounded-3xl border border-gray-200 bg-white/80 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80 overflow-hidden">
         <div class="border-b border-slate-200 p-4 dark:border-slate-800">
-            <div class="camera-panel-header">
+            <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between mb-4">
                 <div>
-                    <div class="camera-panel-eyebrow">
+                    <div class="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400 mb-1">
                         <i class="fa-duotone fa-sliders-up"></i>
                         Monitoring paneli
                     </div>
-                    <h2 class="camera-panel-title">Qidiruv va boshqaruv</h2>
-                    <p class="camera-panel-text">Kameralarni nomi, model, tashkilot va holati bo'yicha tez filtrlash mumkin.</p>
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Qidiruv va boshqaruv</h2>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Kameralarni nomi, model, tashkilot va holati bo'yicha tez filtrlash mumkin.</p>
                 </div>
                 <div class="hidden lg:flex items-center gap-2">
-                    <span class="camera-soft-chip">
+                    <span class="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
                         <i class="fa-duotone fa-grid-2"></i>
                         Card view
                     </span>
-                    <span class="camera-soft-chip">
+                    <span class="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
                         <i class="fa-duotone fa-bolt"></i>
                         Tez amallar
                     </span>
@@ -148,13 +148,13 @@
         </div>
 
         {% if camera_scope_limited %}
-        <div class="camera-readonly-banner border-b px-4 py-3 text-sm dark:border-amber-900/40">
+        <div class="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-200">
             Kamera boshqaruvi asosiy administrator uchun ochiq. Siz bu yerda faqat o'zingizga biriktirilgan tashkilot kameralarini ko'rasiz.
         </div>
         {% endif %}
 
         <div id="cam-cards" class="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-            <div class="camera-panel p-6 text-center sm:col-span-2 xl:col-span-3 2xl:col-span-4">
+            <div class="rounded-3xl border border-gray-200 bg-white/80 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80 p-6 text-center sm:col-span-2 xl:col-span-3 2xl:col-span-4">
                 <i class="fa-duotone fa-loader mx-auto mb-3 animate-spin text-2xl text-blue-500"></i>
                 <p class="text-sm text-gray-500 dark:text-gray-400">Kameralar yuklanmoqda...</p>
             </div>
@@ -188,5 +188,5 @@ window.__DEVICE_PERMISSIONS__ = {
     scopeLimited: {{ camera_scope_limited | tojson }}
 };
 </script>
-<script src="/static/js/devices-table.js?v=20260412b"></script>
+<script src="/static/js/devices-table.js?v=20260413c"></script>
 {% endblock %}

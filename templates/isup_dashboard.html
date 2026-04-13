@@ -5,40 +5,32 @@
     <div class="mb-6 flex flex-col justify-between gap-4">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-                <p class="text-xs font-semibold uppercase tracking-widest text-blue-600 dark:text-blue-400">ISUP control</p>
-                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ page_title }}</h1>
-                <p class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+                <p class="text-xs font-semibold uppercase tracking-widest text-indigo-600 dark:text-indigo-400"><i class="fa-duotone fa-bolt text-amber-500 mr-1.5"></i>ISUP control</p>
+                <h1 class="text-2xl font-bold text-slate-900 dark:text-white mt-1">{{ page_title }}</h1>
+                <p class="mt-1 text-[0.85rem] text-slate-500 dark:text-slate-400 tracking-wide">
                     ISUP process, API, portlar va ulangan kameralar holatini shu sahifada real kuzatish va boshqarish mumkin.
                 </p>
             </div>
 
-            <div class="flex flex-wrap items-center gap-2 card-standard/90 p-2  ">
-                <label class="inline-flex items-center gap-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm transition hover:border-blue-300 hover:bg-blue-50 dark:hover:border-blue-700/60 dark:hover:bg-blue-900/20">
-                    <input id="auto-refresh-input" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" checked>
+            <div class="flex flex-wrap items-center gap-2 rounded-[0.85rem] border border-slate-200/90 bg-white/60 p-1.5 shadow-sm backdrop-blur-xl dark:border-slate-800/90 dark:bg-slate-900/50">
+                <label class="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 px-3 py-1.5 text-[0.8rem] font-medium text-slate-700 dark:text-slate-200 shadow-sm transition hover:border-indigo-300 hover:bg-indigo-50 dark:hover:border-indigo-700/60 dark:hover:bg-indigo-900/20">
+                    <input id="auto-refresh-input" type="checkbox" class="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" checked>
                     Auto refresh
                 </label>
-                <button id="refresh-btn" class="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
-                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-200" aria-hidden="true">
-                        <i class="fa-solid fa-rotate"></i>
-                    </span>
+                <button id="refresh-btn" class="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1.5 text-[0.8rem] font-bold tracking-wide text-slate-700 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
+                    <i class="fa-duotone fa-rotate text-slate-500 dark:text-slate-400"></i>
                     <span class="whitespace-nowrap">Yangilash</span>
                 </button>
-                <button id="start-btn" class="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-sm font-medium text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-900/40 dark:bg-gray-800 dark:text-emerald-300 dark:hover:bg-emerald-900/20">
-                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300" aria-hidden="true">
-                        <i class="fa-solid fa-play"></i>
-                    </span>
+                <button id="start-btn" class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-[0.8rem] font-bold tracking-wide text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 dark:hover:bg-emerald-900/50">
+                    <i class="fa-duotone fa-play text-emerald-500"></i>
                     <span class="whitespace-nowrap">Start</span>
                 </button>
-                <button id="restart-btn" class="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-white px-4 py-2.5 text-sm font-medium text-amber-700 transition hover:bg-amber-50 dark:border-amber-900/40 dark:bg-gray-800 dark:text-amber-300 dark:hover:bg-amber-900/20">
-                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300" aria-hidden="true">
-                        <i class="fa-solid fa-clock-rotate-left"></i>
-                    </span>
+                <button id="restart-btn" class="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-1.5 text-[0.8rem] font-bold tracking-wide text-amber-700 transition hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-900/50">
+                    <i class="fa-duotone fa-clock-rotate-left text-amber-500"></i>
                     <span class="whitespace-nowrap">Restart</span>
                 </button>
-                <button id="stop-btn" class="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-white px-4 py-2.5 text-sm font-medium text-rose-700 transition hover:bg-rose-50 dark:border-rose-900/40 dark:bg-gray-800 dark:text-rose-300 dark:hover:bg-rose-900/20">
-                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-300" aria-hidden="true">
-                        <i class="fa-solid fa-stop"></i>
-                    </span>
+                <button id="stop-btn" class="inline-flex items-center gap-1.5 rounded-lg bg-rose-50 px-3 py-1.5 text-[0.8rem] font-bold tracking-wide text-rose-700 transition hover:bg-rose-100 dark:bg-rose-900/30 dark:text-rose-300 dark:hover:bg-rose-900/50">
+                    <i class="fa-duotone fa-circle-stop text-rose-500"></i>
                     <span class="whitespace-nowrap">Stop</span>
                 </button>
             </div>
@@ -142,48 +134,48 @@
     </template>
 
     <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4 mb-6">
-        <article class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 shadow-sm card-hover">
-            <p class="text-xs font-medium uppercase tracking-widest text-gray-500 dark:text-gray-400">ISUP holati</p>
-            <div class="mt-3 flex items-center gap-3">
-                <span id="status-dot" class="w-3 h-3 rounded-full bg-gray-300"></span>
-                <strong id="status-text" class="text-2xl font-bold text-gray-900 dark:text-white">Tekshirilmoqda...</strong>
+        <article class="relative flex flex-col gap-2 rounded-[1.35rem] border border-slate-200/90 bg-white/60 p-5 shadow-[0_10px_20px_-15px_rgba(0,0,0,0.1)] backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_15px_30px_-15px_rgba(0,0,0,0.15)] dark:border-slate-800/90 dark:bg-slate-900/50 dark:hover:bg-slate-900">
+            <p class="text-xs font-semibold flex items-center justify-between uppercase tracking-widest text-slate-500 dark:text-slate-400">ISUP holati <i class="fa-duotone fa-server text-indigo-500"></i></p>
+            <div class="mt-2 flex items-center gap-3">
+                <span id="status-dot" class="w-3.5 h-3.5 rounded-full bg-slate-300 shadow-[0_0_10px_rgba(0,0,0,0.2)]"></span>
+                <strong id="status-text" class="text-2xl font-black tracking-tight text-slate-900 dark:text-white shadow-sm">Tekshirilmoqda...</strong>
             </div>
-            <p id="server-url" class="mt-3 text-sm text-gray-500 dark:text-gray-400">API: -</p>
-            <p id="sdk-mode" class="mt-1 text-xs text-gray-400 dark:text-gray-500">SDK mode: -</p>
-            <p id="last-checked" class="mt-1 text-xs text-gray-400 dark:text-gray-500">So'nggi tekshiruv: -</p>
+            <p id="server-url" class="mt-2 text-[0.8rem] font-medium tracking-wide text-slate-600 dark:text-slate-400">API: -</p>
+            <p id="sdk-mode" class="mt-1 text-xs text-slate-400 dark:text-slate-500">SDK mode: -</p>
+            <p id="last-checked" class="mt-1 text-[11px] text-slate-400/80 dark:text-slate-500">So'nggi tekshiruv: -</p>
         </article>
 
-        <article class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 shadow-sm card-hover">
-            <p class="text-xs font-medium uppercase tracking-widest text-gray-500 dark:text-gray-400">Process</p>
-            <div class="mt-3 flex items-end gap-3">
-                <strong id="pid-value" class="text-3xl font-bold text-gray-900 dark:text-white">-</strong>
-                <span class="pb-1 text-sm text-gray-500 dark:text-gray-400">PID</span>
+        <article class="relative flex flex-col gap-2 rounded-[1.35rem] border border-slate-200/90 bg-white/60 p-5 shadow-[0_10px_20px_-15px_rgba(0,0,0,0.1)] backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_15px_30px_-15px_rgba(0,0,0,0.15)] dark:border-slate-800/90 dark:bg-slate-900/50 dark:hover:bg-slate-900">
+            <p class="text-xs font-semibold flex items-center justify-between uppercase tracking-widest text-slate-500 dark:text-slate-400">Process <i class="fa-duotone fa-microchip text-rose-500"></i></p>
+            <div class="mt-2 flex items-end gap-3">
+                <strong id="pid-value" class="text-3xl font-black tracking-tight text-slate-900 dark:text-white">-</strong>
+                <span class="pb-1 text-[0.8rem] font-bold text-slate-500 dark:text-slate-400">PID</span>
             </div>
-            <p id="uptime-value" class="mt-3 text-sm text-gray-500 dark:text-gray-400">Uptime: -</p>
+            <p id="uptime-value" class="mt-2 text-[0.8rem] font-medium tracking-wide text-slate-600 dark:text-slate-400">Uptime: -</p>
         </article>
 
-        <article class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 shadow-sm card-hover">
-            <p class="text-xs font-medium uppercase tracking-widest text-gray-500 dark:text-gray-400">Resurs sarfi</p>
-            <div class="mt-3 grid grid-cols-2 gap-3">
-                <div class="rounded-xl bg-gray-50 dark:bg-gray-800 p-3">
-                    <p class="text-xs text-gray-500 dark:text-gray-400">RAM</p>
-                    <strong id="ram-value" class="text-xl font-bold text-gray-900 dark:text-white">0 MB</strong>
+        <article class="relative flex flex-col gap-2 rounded-[1.35rem] border border-slate-200/90 bg-white/60 p-5 shadow-[0_10px_20px_-15px_rgba(0,0,0,0.1)] backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_15px_30px_-15px_rgba(0,0,0,0.15)] dark:border-slate-800/90 dark:bg-slate-900/50 dark:hover:bg-slate-900">
+            <p class="text-xs font-semibold flex items-center justify-between uppercase tracking-widest text-slate-500 dark:text-slate-400">Resurs sarfi <i class="fa-duotone fa-memory text-emerald-500"></i></p>
+            <div class="mt-2 grid grid-cols-2 gap-3">
+                <div class="rounded-xl border border-slate-200/60 bg-slate-50/60 dark:border-slate-700/60 dark:bg-slate-800/60 p-3 shadow-inner">
+                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">RAM</p>
+                    <strong id="ram-value" class="text-lg font-black text-slate-900 dark:text-white">0 MB</strong>
                 </div>
-                <div class="rounded-xl bg-gray-50 dark:bg-gray-800 p-3">
-                    <p class="text-xs text-gray-500 dark:text-gray-400">CPU</p>
-                    <strong id="cpu-value" class="text-xl font-bold text-gray-900 dark:text-white">0%</strong>
+                <div class="rounded-xl border border-slate-200/60 bg-slate-50/60 dark:border-slate-700/60 dark:bg-slate-800/60 p-3 shadow-inner">
+                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">CPU</p>
+                    <strong id="cpu-value" class="text-lg font-black text-slate-900 dark:text-white">0%</strong>
                 </div>
             </div>
         </article>
 
-        <article class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 shadow-sm card-hover">
-            <p class="text-xs font-medium uppercase tracking-widest text-gray-500 dark:text-gray-400">Qurilmalar va portlar</p>
-            <div class="mt-3 flex items-end gap-3">
-                <strong id="device-count" class="text-3xl font-bold text-gray-900 dark:text-white">0</strong>
-                <span class="pb-1 text-sm text-gray-500 dark:text-gray-400">ta qurilma</span>
+        <article class="relative flex flex-col gap-2 rounded-[1.35rem] border border-slate-200/90 bg-white/60 p-5 shadow-[0_10px_20px_-15px_rgba(0,0,0,0.1)] backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_15px_30px_-15px_rgba(0,0,0,0.15)] dark:border-slate-800/90 dark:bg-slate-900/50 dark:hover:bg-slate-900">
+            <p class="text-xs font-semibold flex items-center justify-between uppercase tracking-widest text-slate-500 dark:text-slate-400">Qurilmalar va portlar <i class="fa-duotone fa-cameras text-cyan-500"></i></p>
+            <div class="mt-2 flex items-end gap-3">
+                <strong id="device-count" class="text-3xl font-black tracking-tight text-slate-900 dark:text-white">0</strong>
+                <span class="pb-1 text-[0.8rem] font-bold text-slate-500 dark:text-slate-400">ta qurilma</span>
             </div>
-            <p id="port-summary" class="mt-3 text-sm text-gray-500 dark:text-gray-400">Portlar: -</p>
-            <p id="panel-bind" class="mt-1 text-xs text-gray-400 dark:text-gray-500">BioFace: -</p>
+            <p id="port-summary" class="mt-2 text-[0.8rem] font-medium tracking-wide text-slate-600 dark:text-slate-400">Portlar: -</p>
+            <p id="panel-bind" class="mt-1 text-[11px] text-slate-400/80 dark:text-slate-500">BioFace: -</p>
         </article>
     </div>
 
@@ -257,40 +249,38 @@
             </article>
         </div>
 
-        <article class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
-            <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+        <article class="rounded-[1.35rem] border border-slate-200/90 bg-white/60 shadow-[0_10px_20px_-15px_rgba(0,0,0,0.1)] backdrop-blur-xl dark:border-slate-800/90 dark:bg-slate-900/50 overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-100/50 bg-white/40 dark:border-slate-800/50 dark:bg-slate-900/30">
                 <div>
-                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Ulangan ISUP qurilmalar</h2>
-                    <p id="isup-device-summary" class="mt-1 text-sm text-gray-500 dark:text-gray-400">ISUP Registry</p>
+                    <h2 class="text-[1.1rem] font-bold tracking-tight text-slate-900 dark:text-white select-none">Ulangan ISUP qurilmalar</h2>
+                    <p id="isup-device-summary" class="mt-0.5 text-[0.8rem] font-medium tracking-wide text-slate-500 dark:text-slate-400">ISUP Registry</p>
                 </div>
                 <div class="mt-4 overflow-x-auto">
                     <div class="flex min-w-max items-end gap-3">
                         <label class="block w-[25rem]">
-                            <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">Qidiruv</span>
-                            <span class="flex overflow-hidden rounded-xl border border-gray-200 bg-gray-50 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                                <span class="flex w-11 shrink-0 items-center justify-center border-r border-gray-200 text-gray-400 dark:border-gray-700">
-                                    <i class="fa-solid fa-magnifying-glass"></i>
+                            <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Qidiruv</span>
+                            <span class="flex overflow-hidden rounded-[0.85rem] border border-slate-300 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800/50">
+                                <span class="flex w-11 shrink-0 items-center justify-center border-r border-slate-200 text-slate-400 dark:border-slate-700">
+                                    <i class="fa-duotone fa-magnifying-glass"></i>
                                 </span>
-                                <input id="isup-device-search" type="text" placeholder="Device ID, IP, model, MAC..." class="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:text-white">
+                                <input id="isup-device-search" type="text" placeholder="Device ID, IP, model, MAC..." class="min-w-0 flex-1 bg-transparent px-3 py-2 text-[0.85rem] text-slate-900 outline-none placeholder:text-slate-400 dark:text-white">
                             </span>
                         </label>
                         <label class="block xl:min-w-[10rem]">
-                            <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">Sahifa hajmi</span>
-                            <select id="isup-device-page-size" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40">
+                            <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Sahifa hajmi</span>
+                            <select id="isup-device-page-size" class="w-full rounded-[0.85rem] border border-slate-300 bg-white px-4 py-2.5 text-[0.85rem] text-slate-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-800/50 dark:text-white dark:focus:ring-indigo-900/40">
                                 <option value="25">25 ta</option>
                                 <option value="50" selected>50 ta</option>
                                 <option value="100">100 ta</option>
                             </select>
                         </label>
-                        <div class="grid w-[15rem] grid-cols-2 overflow-hidden card-standard  ">
-                                <button id="isup-device-apply" type="button" class="inline-flex items-center justify-center gap-2 border-r border-gray-300 px-4 py-2.5 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 dark:border-gray-700 dark:text-blue-300 dark:hover:bg-blue-900/20">
-                                    <i class="fa-solid fa-check"></i>
+                        <div class="grid w-[15rem] grid-cols-2 overflow-hidden rounded-[0.85rem] border border-slate-300 shadow-sm">
+                                <button id="isup-device-apply" type="button" class="inline-flex items-center justify-center gap-2 border-r border-slate-300 bg-white px-4 py-2.5 text-[0.8rem] font-bold tracking-wide text-indigo-700 transition hover:bg-indigo-50 dark:border-slate-700 dark:bg-slate-800/50 dark:text-indigo-300 dark:hover:bg-indigo-900/20">
+                                    <i class="fa-duotone fa-check"></i>
                                     Qo'llash
                                 </button>
-                                <button id="isup-device-reset" type="button" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700">
-                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 6l12 12M18 6L6 18"></path>
-                                    </svg>
+                                <button id="isup-device-reset" type="button" class="inline-flex items-center justify-center gap-2 bg-slate-50 px-4 py-2.5 text-[0.8rem] font-bold tracking-wide text-slate-700 transition hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
+                                    <i class="fa-duotone fa-eraser"></i>
                                     Tozalash
                                 </button>
                         </div>
@@ -617,12 +607,12 @@ document.addEventListener("DOMContentLoaded", () => {
             const isSaved = !!device.db_camera_id;
             const absoluteIndex = startIndex + index + 1;
 
-            const saveAction = isSaved ? '' : `<button class="save-cam-btn inline-flex items-center gap-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1.5 text-[11px] font-semibold text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition border border-blue-200 dark:border-blue-900/30 whitespace-nowrap" title="Kamerani bazaga saqlash" data-device-id="${escapeHtml(device.device_id || "")}" data-mac="${escapeHtml(firstNonEmptyValue(device.mac_address, device.mac, device.macAddress))}" data-serial="${escapeHtml(firstNonEmptyValue(device.serial, device.serial_no, device.serialNumber, device.device_serial))}" data-model="${escapeHtml(resolveDeviceModel(device))}"><i class="fa-solid fa-download"></i>Saqlash</button>`;
+            const saveAction = isSaved ? '' : `<button class="save-cam-btn inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 px-2.5 py-1.5 text-[11px] font-bold tracking-wide text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition border border-indigo-200 dark:border-indigo-900/30 whitespace-nowrap" title="Kamerani bazaga saqlash" data-device-id="${escapeHtml(device.device_id || "")}" data-mac="${escapeHtml(firstNonEmptyValue(device.mac_address, device.mac, device.macAddress))}" data-serial="${escapeHtml(firstNonEmptyValue(device.serial, device.serial_no, device.serialNumber, device.device_serial))}" data-model="${escapeHtml(resolveDeviceModel(device))}"><i class="fa-duotone fa-download"></i>Saqlash</button>`;
             const disconnectAction = isConfiguredOnly
-                ? '<span class="text-xs text-gray-400 dark:text-gray-500 italic">DB dagi yozuv</span>'
+                ? '<span class="text-xs text-slate-400 dark:text-slate-500 italic">DB dagi yozuv</span>'
                 : (!isOnline
-                    ? '<span class="text-xs text-gray-400 dark:text-gray-500 italic">O\'chirilgan</span>'
-                    : `<button class="disconnect-btn inline-flex items-center gap-1.5 rounded-lg bg-rose-50 dark:bg-rose-900/20 px-2.5 py-1.5 text-[11px] font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition border border-rose-200 dark:border-rose-900/30 whitespace-nowrap" title="Qurilma ulanishini serverdan uzadi" data-device-id="${escapeHtml(device.device_id || "")}"><i class="fa-solid fa-ban"></i>Uzish</button>`);
+                    ? '<span class="text-xs text-slate-400 dark:text-slate-500 italic">O\'chirilgan</span>'
+                    : `<button class="disconnect-btn inline-flex items-center gap-1.5 rounded-lg bg-rose-50 dark:bg-rose-900/20 px-2.5 py-1.5 text-[11px] font-bold tracking-wide text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition border border-rose-200 dark:border-rose-900/30 whitespace-nowrap" title="Qurilma ulanishini serverdan uzadi" data-device-id="${escapeHtml(device.device_id || "")}"><i class="fa-duotone fa-ban"></i>Uzish</button>`);
 
             return `
                 <tr class="align-top hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">

@@ -7,27 +7,27 @@
 <!-- Page Header -->
 <div class="mb-4 flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center">
     <div>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t.settings_title }}</h1>
+        <h1 class="text-3xl font-extrabold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">{{ t.settings_title }}</h1>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{% if lang == 'ru' %}Редактирование настроек системы, меню и интеграций{% else %}Tizim, menyu va integratsiyalar bo'yicha sozlamalarni tahrirlang{% endif %}</p>
     </div>
     <button id="save-btn" onclick="handleSave()"
-        class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-xl transition shadow-sm">
+        class="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-95 rounded-xl transition-all duration-300 shadow-md shadow-blue-500/20">
         <i class="fa-solid fa-download"></i>
         <span id="save-label">{{ t.save_settings }}</span>
     </button>
 </div>
 
 <!-- TABS NAVIGATION -->
-<div class="mb-6 border-b border-gray-200 dark:border-gray-800">
+<div class="mb-6 border-b border-gray-200/50 dark:border-gray-800/50 flex space-x-1">
     <ul class="flex flex-wrap -mb-px text-sm font-medium text-center">
         <li class="mr-2">
-            <button onclick="switchTab('system')" id="tab-btn-system" class="inline-block p-4 text-blue-600 border-b-2 border-blue-600 rounded-t-lg font-semibold dark:text-blue-400 dark:border-blue-400" aria-current="page">{{ t.settings_general }}</button>
+            <button onclick="switchTab('system')" id="tab-btn-system" class="inline-block px-5 py-3 text-blue-600 border-b-2 border-blue-600 rounded-t-xl font-semibold dark:text-blue-400 dark:border-blue-400 transition-all bg-blue-50/50 dark:bg-blue-900/10" aria-current="page">{{ t.settings_general }}</button>
         </li>
         <li class="mr-2">
-            <button onclick="switchTab('menus')" id="tab-btn-menus" class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300 font-medium text-gray-500 dark:text-gray-400">{{ t.settings_menus }}</button>
+            <button onclick="switchTab('menus')" id="tab-btn-menus" class="inline-block px-5 py-3 border-b-2 border-transparent rounded-t-xl hover:text-gray-700 hover:border-gray-300 dark:hover:text-gray-300 font-medium text-gray-500 dark:text-gray-400 transition-all hover:bg-gray-50 dark:hover:bg-gray-800/50">{{ t.settings_menus }}</button>
         </li>
         <li class="mr-2">
-            <button onclick="switchTab('integrations')" id="tab-btn-integrations" class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300 font-medium text-gray-500 dark:text-gray-400">{{ t.settings_integrations }}</button>
+            <button onclick="switchTab('integrations')" id="tab-btn-integrations" class="inline-block px-5 py-3 border-b-2 border-transparent rounded-t-xl hover:text-gray-700 hover:border-gray-300 dark:hover:text-gray-300 font-medium text-gray-500 dark:text-gray-400 transition-all hover:bg-gray-50 dark:hover:bg-gray-800/50">{{ t.settings_integrations }}</button>
         </li>
     </ul>
 </div>
@@ -41,10 +41,10 @@
 <!-- ══════════════════════════════════════
      WORKING HOURS CARD
 ══════════════════════════════════════ -->
-<div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm mb-5 overflow-hidden">
+<div class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-gray-200/50 dark:border-gray-800/50 rounded-3xl shadow-sm mb-6 overflow-hidden ring-1 ring-white/50 dark:ring-white/5 transition-all hover:shadow-md">
     <div class="px-6 py-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-800">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center shrink-0">
+            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500/10 to-indigo-500/10 border border-purple-500/20 flex items-center justify-center shrink-0 shadow-inner">
                 <i class="fa-solid fa-clock-rotate-left text-purple-600 dark:text-purple-400"></i>
             </div>
             <div>
@@ -59,7 +59,7 @@
             <label for="app_name" class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">{% if lang == 'ru' %}Название программы{% else %}Dastur Nomi{% endif %}</label>
             <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">{% if lang == 'ru' %}Отображается в логотипе и на вкладках браузера{% else %}Logotip va brauzer oynasida ko'rinadi{% endif %}</p>
             <input type="text" id="app_name" value="{{ menus.app_name | default('BioFace') }}" placeholder="BioFace"
-                class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/80 dark:border-gray-700/80 hover:border-gray-300 dark:hover:border-gray-600 shadow-sm text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
         </div>
         <div class="mb-2">
             <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">{% if lang == 'ru' %}Логотип программы{% else %}Dastur Logotipi{% endif %}</label>
@@ -92,26 +92,26 @@
             <label for="default_start_time" class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">{{ t.default_start }}</label>
             <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Masalan: 09:00</p>
             <input type="time" id="default_start_time" value="09:00"
-                class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/80 dark:border-gray-700/80 hover:border-gray-300 dark:hover:border-gray-600 shadow-sm text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
         </div>
         <div>
             <label for="default_end_time" class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">{{ t.default_end }}</label>
             <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Masalan: 18:00</p>
             <input type="time" id="default_end_time" value="18:00"
-                class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/80 dark:border-gray-700/80 hover:border-gray-300 dark:hover:border-gray-600 shadow-sm text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
         </div>
         <div class="md:col-span-2 border-t border-gray-100 dark:border-gray-800 pt-4">
             <label for="isup_public_host" class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">ISUP Server Host (Local/Global)</label>
             <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Kamera ichida `Server Address` sifatida yoziladi: masalan `10.10.1.10` yoki `203.0.113.10`.</p>
             <input type="text" id="isup_public_host" placeholder="10.10.1.10 yoki 203.0.113.10"
-                class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/80 dark:border-gray-700/80 hover:border-gray-300 dark:hover:border-gray-600 shadow-sm text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
             <p id="isup_public_host_hint" class="mt-2 text-xs text-gray-500 dark:text-gray-400">Bo'sh qoldirsangiz server avtomatik lokal IP ishlatadi.</p>
         </div>
         <div class="md:col-span-2">
             <label for="public_web_base_url" class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">Public Web Base URL</label>
             <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Kamera rasmni shu manzildan oladi. Masalan: <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">https://example.com</code>.</p>
             <input type="text" id="public_web_base_url" placeholder="https://example.com"
-                class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/80 dark:border-gray-700/80 hover:border-gray-300 dark:hover:border-gray-600 shadow-sm text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
             <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Bo'sh qoldirsangiz joriy ochilgan host ishlatiladi; tashqi kamera uchun aniq public domain/URL tavsiya etiladi.</p>
         </div>
     </div>
@@ -123,10 +123,10 @@
 <!-- ══════════════════════════════════════
      MENU SETTINGS CARD
 ══════════════════════════════════════ -->
-<div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm mb-5 overflow-hidden">
+<div class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-gray-200/50 dark:border-gray-800/50 rounded-3xl shadow-sm mb-6 overflow-hidden ring-1 ring-white/50 dark:ring-white/5 transition-all hover:shadow-md">
     <div class="px-6 py-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-800">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center shrink-0">
+            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-500/10 to-amber-500/10 border border-orange-500/20 flex items-center justify-center shrink-0 shadow-inner">
                 <i class="fa-solid fa-bars text-orange-600 dark:text-orange-400"></i>
             </div>
             <div>
@@ -204,12 +204,12 @@
 <!-- ══════════════════════════════════════
      TELEGRAM BOT CARD
 ══════════════════════════════════════ -->
-<div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm mb-5 overflow-hidden">
+<div class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-gray-200/50 dark:border-gray-800/50 rounded-3xl shadow-sm mb-6 overflow-hidden ring-1 ring-white/50 dark:ring-white/5 transition-all hover:shadow-md">
 
     <!-- Card Header with Toggle -->
     <div class="px-6 py-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-800">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
+            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 flex items-center justify-center shrink-0 shadow-inner">
                 <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.888-.662 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
                 </svg>
@@ -238,7 +238,7 @@
             <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Telegram'dagi <strong class="text-gray-700 dark:text-gray-300">@BotFather</strong> botidan olingan maxfiy kalit.</p>
             <div class="relative">
                 <input type="password" id="bot_token" value=""
-                    class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 pr-12 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                    class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/80 dark:border-gray-700/80 hover:border-gray-300 dark:hover:border-gray-600 shadow-sm text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 pr-12 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
                     placeholder="123456789:AAH_...">
                 <button type="button" onclick="togglePassword('bot_token')"
                     class="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
@@ -252,7 +252,7 @@
             <label for="admin_chat_id" class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">Admin Chat ID</label>
             <p class="text-xs text-gray-500 dark:text-gray-400 mb-2"><strong>@userinfobot</strong> orqali olsa bo'ladi.</p>
             <input type="text" id="admin_chat_id" value=""
-                class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/80 dark:border-gray-700/80 hover:border-gray-300 dark:hover:border-gray-600 shadow-sm text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
                 placeholder="-100123456789">
         </div>
 
@@ -298,12 +298,12 @@
 <!-- ══════════════════════════════════════
      GOOGLE OAUTH CARD
 ══════════════════════════════════════ -->
-<div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm mb-5 overflow-hidden">
+<div class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-gray-200/50 dark:border-gray-800/50 rounded-3xl shadow-sm mb-6 overflow-hidden ring-1 ring-white/50 dark:ring-white/5 transition-all hover:shadow-md">
 
     <!-- Card Header with Toggle -->
     <div class="px-6 py-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-800">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center shrink-0">
+            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-500/10 to-amber-500/10 border border-orange-500/20 flex items-center justify-center shrink-0 shadow-inner">
                 <svg class="w-5 h-5 text-orange-600 dark:text-orange-400" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
                     <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -333,7 +333,7 @@
             <label for="google_client_id" class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">Google Client ID</label>
             <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Masalan: 123456...apps.googleusercontent.com</p>
             <input type="text" id="google_client_id" value=""
-                class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition"
+                class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/80 dark:border-gray-700/80 hover:border-gray-300 dark:hover:border-gray-600 shadow-sm text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition"
                 placeholder="Client ID kiriting">
         </div>
 
@@ -343,7 +343,7 @@
             <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Maxfiy kalitni kiriting</p>
             <div class="relative">
                 <input type="password" id="google_client_secret" value=""
-                    class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 pr-12 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition"
+                    class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/80 dark:border-gray-700/80 hover:border-gray-300 dark:hover:border-gray-600 shadow-sm text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 pr-12 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition"
                     placeholder="Client Secret">
                 <button type="button" onclick="togglePassword('google_client_secret')"
                     class="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
@@ -357,7 +357,7 @@
             <label for="google_redirect_uri" class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">Redirect URI</label>
             <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Google konsolida ruxsat etilgan URL: <strong>https://bioface.uz/auth/callback</strong></p>
             <input type="text" id="google_redirect_uri" value=""
-                class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition"
+                class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/80 dark:border-gray-700/80 hover:border-gray-300 dark:hover:border-gray-600 shadow-sm text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition"
                 placeholder="https://bioface.uz/auth/callback">
         </div>
 
@@ -368,12 +368,12 @@
 <!-- ══════════════════════════════════════
      SMS GATEWAY CARD
 ══════════════════════════════════════ -->
-<div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm mb-5 overflow-hidden">
+<div class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-gray-200/50 dark:border-gray-800/50 rounded-3xl shadow-sm mb-6 overflow-hidden ring-1 ring-white/50 dark:ring-white/5 transition-all hover:shadow-md">
 
     <!-- Card Header with Toggle -->
     <div class="px-6 py-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-800">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center shrink-0">
+            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 shadow-inner">
                 <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
                 </svg>
@@ -405,7 +405,7 @@
             <label for="sms_provider" class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">SMS Provayderi</label>
             <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Qaysi kompaniya orqali SMS yuborasiz?</p>
             <select id="sms_provider"
-                class="select-native w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition">
+                class="select-native w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/80 dark:border-gray-700/80 hover:border-gray-300 dark:hover:border-gray-600 shadow-sm text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition">
                 <option value="eskiz">Eskiz.uz — O'zbek provayderi (tavsiya etiladi)</option>
                 <option value="playmobile">PlayMobile.uz</option>
                 <option value="twilio">Twilio — Xalqaro (qimmatroq)</option>
@@ -417,7 +417,7 @@
             <label for="sms_email" class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">Login (Email)</label>
             <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">SMS xizmatiga ro'yxatdan o'tishda ishlatilgan email</p>
             <input type="email" id="sms_email" value=""
-                class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition"
+                class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/80 dark:border-gray-700/80 hover:border-gray-300 dark:hover:border-gray-600 shadow-sm text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition"
                 placeholder="info@korxona.uz">
         </div>
 
@@ -427,7 +427,7 @@
             <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Eskiz.uz kabinet ichidagi API kalitingiz</p>
             <div class="relative">
                 <input type="password" id="sms_password" value=""
-                    class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 pr-12 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition"
+                    class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/80 dark:border-gray-700/80 hover:border-gray-300 dark:hover:border-gray-600 shadow-sm text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 pr-12 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition"
                     placeholder="••••••••">
                 <button type="button" onclick="togglePassword('sms_password')"
                     class="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
@@ -485,11 +485,11 @@
             if (t === tabId) {
                 // Active state
                 pane.classList.remove('hidden');
-                btn.className = "inline-block p-4 text-blue-600 border-b-2 border-blue-600 rounded-t-lg font-semibold dark:text-blue-400 dark:border-blue-400";
+                btn.className = "inline-block px-5 py-3 text-blue-600 border-b-2 border-blue-600 rounded-t-xl font-semibold dark:text-blue-400 dark:border-blue-400 transition-all bg-blue-50/50 dark:bg-blue-900/10";
             } else {
                 // Inactive state
                 pane.classList.add('hidden');
-                btn.className = "inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300 font-medium text-gray-500 dark:text-gray-400";
+                btn.className = "inline-block px-5 py-3 border-b-2 border-transparent rounded-t-xl hover:text-gray-700 hover:border-gray-300 dark:hover:text-gray-300 font-medium text-gray-500 dark:text-gray-400 transition-all hover:bg-gray-50 dark:hover:bg-gray-800/50";
             }
         });
     }

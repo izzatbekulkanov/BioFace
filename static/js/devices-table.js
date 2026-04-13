@@ -135,7 +135,7 @@
 
     function renderEmptyCards() {
         $("cam-cards").innerHTML = `
-            <div class="camera-panel px-6 py-12 text-center text-sm text-gray-500 dark:text-gray-400 sm:col-span-2 xl:col-span-3 2xl:col-span-4">
+            <div class="rounded-3xl border border-gray-200 bg-white/80 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80 px-6 py-12 text-center text-sm text-gray-500 dark:text-gray-400 sm:col-span-2 xl:col-span-3 2xl:col-span-4">
                 <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 shadow-sm dark:bg-slate-800 dark:text-slate-400">
                     <i class="fa-duotone fa-video-slash text-2xl"></i>
                 </div>
@@ -152,7 +152,7 @@
             amber: "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-300",
             rose: "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:border-rose-900/40 dark:bg-rose-900/20 dark:text-rose-300",
         };
-        const sharedClass = `camera-action-btn ${toneClasses[tone] || toneClasses.blue}`;
+        const sharedClass = `inline-flex h-8 w-8 items-center justify-center rounded-lg border transition shadow-sm ${toneClasses[tone] || toneClasses.blue}`;
         if (href) {
             return `
                 <a href="${href}" class="${sharedClass}" title="${title}" aria-label="${title}">
@@ -179,7 +179,7 @@
         const tone = usageTone(percent);
         const orgName = organizationNames[String(camera.organization_id)] || "Biriktirilmagan";
         const online = Boolean(camera.is_online);
-        const statusClass = online ? "online" : "offline";
+        const statusClass = online ? "bg-emerald-500" : "bg-rose-500";
         const progressClass = tone === "rose"
             ? "linear-gradient(90deg, #f43f5e 0%, #fb7185 100%)"
             : (tone === "amber"
@@ -221,69 +221,69 @@
         }) : "";
 
         return `
-            <article class="camera-device-card ${online ? "is-online" : "is-offline"}">
-                <div class="camera-device-topline ${statusClass}"></div>
-                <div class="camera-device-head">
-                    <div class="camera-device-head-left min-w-0">
-                        <div class="camera-device-icon">
+            <article class="flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white/50 p-4 shadow-sm transition hover:bg-gray-50/50 dark:border-gray-700/50 dark:bg-gray-800/50 dark:hover:bg-gray-800/80 relative ${online ? "is-online" : "is-offline"}">
+                <div class="absolute left-0 top-0 h-1 w-full ${statusClass}"></div>
+                <div class="flex items-start justify-between gap-4 mb-4">
+                    <div class="flex items-start gap-3 min-w-0 min-w-0">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
                             <i class="fa-duotone fa-camera-cctv"></i>
                         </div>
                         <div class="min-w-0">
                             <div class="flex flex-wrap items-center gap-2">
-                                <span class="camera-soft-chip">#${absoluteIndex}</span>
-                                <span class="camera-soft-chip">
+                                <span class="inline-flex items-center gap-1.5 rounded-md bg-gray-100 px-2 py-1 text-[10px] font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">#${absoluteIndex}</span>
+                                <span class="inline-flex items-center gap-1.5 rounded-md bg-gray-100 px-2 py-1 text-[10px] font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
                                     <i class="fa-duotone fa-building"></i>
                                     ${escapeHtml(orgName)}
                                 </span>
                             </div>
-                            <div class="camera-device-name truncate" title="${escapeHtml(camera.name || "-")}">${escapeHtml(camera.name || "-")}</div>
-                            <div class="camera-device-location truncate">${escapeHtml(camera.location || "Lokatsiya ko'rsatilmagan")}</div>
+                            <div class="text-sm font-semibold text-gray-900 dark:text-white truncate truncate" title="${escapeHtml(camera.name || "-")}">${escapeHtml(camera.name || "-")}</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5 truncate">${escapeHtml(camera.location || "Lokatsiya ko'rsatilmagan")}</div>
                         </div>
                     </div>
-                    <span class="camera-status-pill ${statusClass}">
+                    <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${online ? "border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800/30 dark:bg-emerald-900/20 dark:text-emerald-400" : "border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-800/30 dark:bg-rose-900/20 dark:text-rose-400"}">
                         <span class="h-2 w-2 rounded-full ${online ? "bg-emerald-500" : "bg-rose-500"}"></span>
                         ${online ? "Online" : "Offline"}
                     </span>
                 </div>
 
-                <div class="camera-device-grid">
-                    <div class="camera-device-metric">
-                        <div class="camera-device-metric-label">
+                <div class="grid grid-cols-2 gap-3 rounded-xl border border-gray-100 bg-gray-50/50 p-3 dark:border-gray-700/50 dark:bg-gray-800/50 mb-4">
+                    <div class="flex flex-col gap-1">
+                        <div class="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                             <i class="fa-duotone fa-id-badge"></i>
                             Device ID
                         </div>
-                        <div class="camera-device-metric-value truncate font-mono" title="${escapeHtml(camera.isup_device_id || "—")}">${escapeHtml(camera.isup_device_id || "—")}</div>
+                        <div class="text-sm font-semibold text-gray-900 dark:text-white truncate truncate font-mono" title="${escapeHtml(camera.isup_device_id || "—")}">${escapeHtml(camera.isup_device_id || "—")}</div>
                     </div>
-                    <div class="camera-device-metric">
-                        <div class="camera-device-metric-label">
+                    <div class="flex flex-col gap-1">
+                        <div class="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                             <i class="fa-duotone fa-network-wired"></i>
                             MAC
                         </div>
-                        <div class="camera-device-metric-value truncate font-mono" title="${escapeHtml(camera.mac_address || "—")}">${escapeHtml(camera.mac_address || "—")}</div>
+                        <div class="text-sm font-semibold text-gray-900 dark:text-white truncate truncate font-mono" title="${escapeHtml(camera.mac_address || "—")}">${escapeHtml(camera.mac_address || "—")}</div>
                     </div>
-                    <div class="camera-device-metric">
-                        <div class="camera-device-metric-label">
+                    <div class="flex flex-col gap-1">
+                        <div class="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                             <i class="fa-duotone fa-microchip-ai"></i>
                             Model
                         </div>
-                        <div class="camera-device-metric-value truncate">${escapeHtml(camera.model || "Noma'lum")}</div>
+                        <div class="text-sm font-semibold text-gray-900 dark:text-white truncate truncate">${escapeHtml(camera.model || "Noma'lum")}</div>
                     </div>
-                    <div class="camera-device-metric">
-                        <div class="camera-device-metric-label">
+                    <div class="flex flex-col gap-1">
+                        <div class="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                             <i class="fa-duotone fa-calendar-lines-pen"></i>
                             Bugungi davomat
                         </div>
-                        <div class="camera-device-metric-value" title="Raw event: ${Number(camera.today_raw_event_count || 0)}">${Number(camera.today_attendance_count || camera.events_today || 0)} ta</div>
+                        <div class="text-sm font-semibold text-gray-900 dark:text-white truncate" title="Raw event: ${Number(camera.today_raw_event_count || 0)}">${Number(camera.today_attendance_count || camera.events_today || 0)} ta</div>
                     </div>
                 </div>
 
-                <div class="camera-usage-card">
+                <div class="rounded-xl border border-gray-100 bg-gray-50/50 p-3 dark:border-gray-700/50 dark:bg-gray-800/50 mb-4">
                     <div class="flex items-center justify-between gap-3 text-sm">
                         <span class="font-semibold text-gray-700 dark:text-gray-200">Yuz bazasi sig'imi</span>
                         <span class="text-xs font-semibold text-gray-500 dark:text-gray-400">${Number(camera.used_faces || 0)}/${Number(camera.max_memory || 0)} · ${percent}%</span>
                     </div>
-                    <div class="camera-usage-bar mt-3">
-                        <div class="camera-usage-fill" style="width:${percent}%; background:${progressClass};"></div>
+                    <div class="h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700 mt-3">
+                        <div class="h-full rounded-full transition-all duration-500" style="width:${percent}%; background:${progressClass};"></div>
                     </div>
                     <div class="mt-3 flex items-center justify-between gap-3 text-xs text-gray-500 dark:text-gray-400">
                         <span>${tone === "rose" ? "Xotira yuqori band" : (tone === "amber" ? "Bandlik nazoratda" : "Bandlik me'yorida")}</span>
@@ -294,15 +294,15 @@
                     </div>
                 </div>
 
-                <div class="camera-action-row">
-                    <div class="camera-action-row-left">
+                <div class="mt-auto flex items-center justify-between border-t border-gray-100 pt-3 dark:border-gray-700/50">
+                    <div class="flex items-center gap-2">
                         ${detailButton}
                         ${commandButton}
                         ${editButton}
                         ${deleteButton}
                     </div>
                     ${manageAllowed ? "" : `
-                        <span class="camera-soft-chip">
+                        <span class="inline-flex items-center gap-1.5 rounded-md bg-gray-100 px-2 py-1 text-[10px] font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
                             <i class="fa-duotone fa-eye"></i>
                             Read only
                         </span>
@@ -397,7 +397,7 @@
             applyFilters();
         } catch (error) {
             $("cam-cards").innerHTML = `
-                <div class="camera-panel px-6 py-12 text-center text-sm text-rose-700 dark:text-rose-300 sm:col-span-2 xl:col-span-3 2xl:col-span-4">
+                <div class="rounded-3xl border border-gray-200 bg-white/80 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80 px-6 py-12 text-center text-sm text-rose-700 dark:text-rose-300 sm:col-span-2 xl:col-span-3 2xl:col-span-4">
                     Kameralarni yuklashda xatolik: ${escapeHtml(error.message || "noma'lum xato")}
                 </div>
             `;

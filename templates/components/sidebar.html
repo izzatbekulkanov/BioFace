@@ -16,44 +16,31 @@
 {% set side_is_super_admin = side_user_role_raw in ['SuperAdmin', 'superadmin', 'super_admin'] %}
 
 <aside id="sidebar"
-    class="app-sidebar-shell fixed inset-y-0 left-0 z-40 flex -translate-x-full flex-col sm:translate-x-0 sm:relative sm:inset-auto"
+    class="sidebar-shell fixed inset-y-0 left-0 z-40 w-[26rem] flex flex-col -translate-x-full sm:translate-x-0 sm:relative sm:inset-auto transition-all duration-300 ease-in-out py-2 pl-2"
     aria-label="Sidebar">
 
-    <div class="app-sidebar-frame flex flex-col">
-        <div class="sidebar-brand shrink-0 px-2.5 py-2.5">
-            <a href="/" class="sidebar-brand-link app-sidebar-brand-card">
+    <div class="flex flex-col h-full overflow-hidden rounded-[1.35rem] border border-slate-200/90 bg-white/80 shadow-[0_30px_60px_-38px_rgba(15,23,42,0.32)] backdrop-blur-xl dark:border-slate-800/90 dark:bg-slate-950/80 dark:shadow-[0_36px_70px_-38px_rgba(2,6,23,0.92)] transition-all">
+        <!-- Brand / Header -->
+        <div class="shrink-0 px-5 py-4 border-b border-slate-200/50 dark:border-slate-800/50">
+            <a href="/" class="flex items-center gap-4">
                 {% if menus.logo_url %}
-                <div class="sidebar-brand-logo flex h-9 w-9 items-center justify-center shrink-0">
+                <div class="flex h-11 w-11 items-center justify-center shrink-0">
                     <img src="{{ menus.logo_url }}" alt="Logo" class="max-w-full max-h-full object-contain drop-shadow">
                 </div>
                 {% else %}
-                <div class="sidebar-brand-logo flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 via-cyan-500 to-indigo-700 text-white shadow-md shrink-0">
-                    <i class="fa-duotone fa-shield-check text-lg"></i>
+                <div class="flex h-11 w-11 items-center justify-center rounded-[1rem] bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/30 shrink-0">
+                    <i class="fa-duotone fa-shield-check text-[1.25rem]"></i>
                 </div>
                 {% endif %}
-                <div class="app-sidebar-brand-text flex-1 min-w-0">
-                    <p class="sidebar-brand-title truncate text-sm font-bold text-gray-900 dark:text-white leading-none">{{ menus.app_name|default('BioFace') }}</p>
-                    <p class="sidebar-brand-subtitle mt-1 truncate text-[11px] text-gray-400 dark:text-gray-500">{% if lang == 'ru' %}Sistema poseshchaemosti{% else %}Davomat Tizimi{% endif %}</p>
-                    <span class="app-sidebar-kicker">
-                        <i class="fa-duotone fa-wave-pulse"></i>
-                        Premium Console
-                    </span>
+                <div class="flex-1 min-w-0">
+                    <h1 class="truncate text-[1.05rem] font-bold text-slate-900 dark:text-white leading-tight tracking-tight">{{ menus.app_name|default('BioFace') }}</h1>
+                    <p class="truncate text-[0.7rem] font-semibold tracking-widest text-slate-500 dark:text-slate-400 uppercase mt-0.5">{% if lang == 'ru' %}Sistema poseshchaemosti{% else %}Davomat Tizimi{% endif %}</p>
                 </div>
             </a>
-            <div class="app-sidebar-statusline">
-                <span class="app-sidebar-statusitem">
-                    <i class="fa-duotone fa-user-shield"></i>
-                    {{ side_user_role }}
-                </span>
-                <span class="app-sidebar-statusdot"></span>
-                <span class="app-sidebar-statusitem">
-                    <i class="fa-duotone fa-bell"></i>
-                    {{ notifs.total if notifs else 0 }} alert
-                </span>
-            </div>
         </div>
 
-        <div class="sidebar-scroll min-h-0 flex-1 overflow-y-auto px-2.5 py-2.5">
+        <!-- Navigation -->
+        <div class="sidebar-scroll min-h-0 flex-1 overflow-y-auto px-5 py-5 flex flex-col relative">
             {% macro nav_link(href, label, icon_path, exact=False, tone='default') %}
                 {% if href == '/' %}
                     {% set is_active = request.url.path == '/' %}
@@ -64,35 +51,40 @@
                 {% endif %}
                 <a href="{{ href }}"
                    title="{{ label }}"
-                   class="sidebar-nav-link app-sidebar-link {% if is_active %}is-active{% endif %} {% if tone == 'danger' %}is-danger{% endif %}">
-                    <span class="app-sidebar-icon-wrap">
-                        <i class="{{ icon_path }} w-4 text-center shrink-0 text-sm"></i>
+                   class="group flex items-center min-h-[3rem] gap-4 rounded-2xl px-4 py-2.5 text-[0.85rem] font-medium transition-all duration-200
+                          {% if is_active %} bg-blue-50 text-blue-700 font-semibold shadow-sm ring-1 ring-blue-500/10 dark:bg-blue-900/20 dark:text-blue-400 dark:ring-blue-500/20
+                          {% elif tone == 'danger' %} text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-400 dark:hover:bg-rose-900/20
+                          {% else %} text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white {% endif %}">
+                    <span class="flex items-center justify-center w-[1.5rem] transition-opacity {% if is_active %}opacity-100{% else %}opacity-60 group-hover:opacity-100{% endif %}">
+                        <i class="{{ icon_path }} text-[1.05rem] text-center shrink-0"></i>
                     </span>
-                    <span class="app-sidebar-link-label flex-1 truncate">{{ label }}</span>
+                    <span class="flex-1 truncate">{{ label }}</span>
                     {% if is_active %}
-                    <span class="app-sidebar-link-indicator ml-auto h-2 w-2 rounded-full bg-blue-500 shrink-0"></span>
+                    <span class="ml-auto h-1.5 w-1.5 rounded-full bg-blue-600 shrink-0 shadow-[0_0_8px_rgba(37,99,235,0.6)] dark:bg-blue-500"></span>
                     {% endif %}
                 </a>
             {% endmacro %}
 
-            <nav class="sidebar-nav flex flex-col gap-1">
+            <nav class="flex flex-col gap-1.5">
                 {% for item in menus.__list__ %}
                     {% if item.type == 'group' %}
-                        <p class="sidebar-group-title app-sidebar-group px-2.5 pt-3 pb-1 text-xs font-semibold uppercase tracking-widest">{{ item.title }}</p>
+                        <p class="px-4 pt-5 pb-2.5 text-[0.7rem] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">{{ item.title }}</p>
                     {% elif item.type == 'link' %}
                         {% if item.key == 'reports' %}
                             {% set is_reports = request.url.path.startswith('/reports') %}
                             <a href="{{ item.href }}"
                                title="{{ item.title }}"
-                               class="sidebar-nav-link app-sidebar-link is-danger {% if is_reports %}is-active{% endif %}">
-                                <span class="app-sidebar-icon-wrap">
-                                    <i class="{{ item.icon }} w-4 text-center text-sm shrink-0"></i>
+                               class="group flex items-center min-h-[3rem] gap-4 rounded-2xl px-4 py-2.5 text-[0.85rem] font-medium transition-all duration-200
+                                      {% if is_reports %} bg-rose-50 text-rose-700 font-semibold shadow-sm ring-1 ring-rose-500/10 dark:bg-rose-900/20 dark:text-rose-400 dark:ring-rose-500/20
+                                      {% else %} text-slate-600 hover:bg-rose-50 hover:text-rose-700 dark:text-slate-300 dark:hover:bg-rose-900/20 dark:hover:text-rose-300 {% endif %}">
+                                <span class="flex items-center justify-center w-[1.5rem] transition-opacity {% if is_reports %}opacity-100{% else %}opacity-60 group-hover:opacity-100{% endif %}">
+                                    <i class="{{ item.icon }} text-[1.05rem] text-center shrink-0"></i>
                                 </span>
-                                <span class="app-sidebar-link-label flex-1 truncate">{{ item.title }}</span>
+                                <span class="flex-1 truncate">{{ item.title }}</span>
                                 {% if notifs and notifs.total > 0 %}
-                                <span class="app-sidebar-link-indicator inline-flex items-center justify-center min-w-5 h-5 px-1 text-[11px] font-bold text-white bg-red-500 rounded-full shrink-0">{{ notifs.total }}</span>
+                                <span class="inline-flex items-center justify-center min-w-[1.25rem] h-[1.25rem] px-1.5 text-[10px] font-bold text-white bg-rose-500 rounded-full shrink-0 shadow-sm">{{ notifs.total }}</span>
                                 {% elif is_reports %}
-                                <span class="app-sidebar-link-indicator ml-auto h-2 w-2 rounded-full bg-rose-500 shrink-0"></span>
+                                <span class="ml-auto h-1.5 w-1.5 rounded-full bg-rose-600 shrink-0 shadow-[0_0_8px_rgba(225,29,72,0.6)] dark:bg-rose-500"></span>
                                 {% endif %}
                             </a>
                         {% elif item.key == 'attendance' %}
@@ -103,32 +95,43 @@
                     {% endif %}
                 {% endfor %}
             </nav>
+
+            <div class="flex-1"></div>
+
+            {% if side_is_super_admin %}
+            <!-- Moved Settings to the bottom of the navigation list -->
+            <div class="mt-4 pt-4 border-t border-slate-200/50 dark:border-slate-800/50">
+                <nav class="flex flex-col gap-1.5">
+                    {% set is_settings = request.url.path.startswith('/settings') %}
+                    <a href="/settings"
+                       title="{{ t.settings_menu }}"
+                       class="group flex items-center min-h-[3rem] gap-4 rounded-2xl px-4 py-2.5 text-[0.85rem] font-medium transition-all duration-200
+                              {% if is_settings %} bg-blue-50 text-blue-700 font-semibold shadow-sm ring-1 ring-blue-500/10 dark:bg-blue-900/20 dark:text-blue-400 dark:ring-blue-500/20
+                              {% else %} text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white {% endif %}">
+                        <span class="flex items-center justify-center w-[1.5rem] transition-opacity {% if is_settings %}opacity-100{% else %}opacity-60 group-hover:opacity-100{% endif %}">
+                            <i class="fa-duotone fa-gear text-[1.05rem] text-center shrink-0"></i>
+                        </span>
+                        <span class="flex-1 truncate">{{ t.settings_menu }}</span>
+                        {% if is_settings %}
+                        <span class="ml-auto h-1.5 w-1.5 rounded-full bg-blue-600 shrink-0 shadow-[0_0_8px_rgba(37,99,235,0.6)] dark:bg-blue-500"></span>
+                        {% endif %}
+                    </a>
+                </nav>
+            </div>
+            {% endif %}
         </div>
 
-        <div class="sidebar-user-panel shrink-0 px-2.5 py-2 border-t border-gray-100 dark:border-gray-800">
-            <div class="app-sidebar-user-stack">
-                <div class="app-sidebar-user-card">
-                    {% if side_user_avatar %}
-                    <img src="{{ side_user_avatar }}" alt="user" class="w-9 h-9 rounded-2xl object-cover border border-gray-200 dark:border-gray-700 shrink-0">
-                    {% else %}
-                    <div class="w-9 h-9 rounded-2xl bg-gradient-to-br from-blue-500 via-cyan-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm">{{ side_user_initial }}</div>
-                    {% endif %}
-                    <div class="app-sidebar-user-copy min-w-0 flex-1" title="{{ side_user_email }}">
-                        <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{ side_user_name }}</p>
-                        <p class="text-[11px] text-gray-500 dark:text-gray-400 truncate">{{ side_user_role }}</p>
-                    </div>
-                </div>
-                <div class="app-sidebar-user-actions">
-                    {% if side_is_super_admin %}
-                    <a href="/settings" class="app-sidebar-user-btn">
-                        <i class="fa-duotone fa-gear"></i>
-                        <span>{{ t.settings_menu }}</span>
-                    </a>
-                    {% endif %}
-                    <a href="/logout" class="app-sidebar-user-btn is-danger">
-                        <i class="fa-duotone fa-right-from-bracket"></i>
-                        <span>{{ t.logout }}</span>
-                    </a>
+        <!-- Footer / Profile Button (No dropdown anymore) -->
+        <div class="shrink-0 border-t border-slate-200/50 bg-slate-50/50 p-4 dark:border-slate-800/50 dark:bg-slate-900/30">
+            <div class="group flex w-full items-center gap-4 rounded-[1.25rem] p-1.5 transition-all">
+                {% if side_user_avatar %}
+                <img src="{{ side_user_avatar }}" alt="user" class="relative z-10 w-10 h-10 rounded-[0.8rem] object-cover ring-1 ring-slate-200 dark:ring-slate-700 shrink-0 shadow-sm">
+                {% else %}
+                <div class="relative z-10 w-10 h-10 rounded-[0.8rem] bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-[1rem] shrink-0 shadow-md shadow-blue-500/20">{{ side_user_initial }}</div>
+                {% endif %}
+                <div class="relative z-10 min-w-0 flex-1 text-left">
+                    <p class="truncate text-[0.85rem] font-bold text-slate-900 dark:text-white">{{ side_user_name }}</p>
+                    <p class="truncate text-[0.65rem] font-medium text-slate-500 dark:text-slate-400 mt-0.5">{{ side_user_role }}</p>
                 </div>
             </div>
         </div>

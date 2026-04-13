@@ -1,161 +1,299 @@
 {% extends "base.html" %}
-
 {% block content %}
-<div class="animate-fade-in mb-6 flex flex-col justify-between items-start gap-4">
-    <div>
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Yangi Kamera Qo'shish</h2>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Sistemaga yangi qurilmani ro'yxatdan o'tkazing</p>
-    </div>
-</div>
+<div class="animate-fade-in space-y-4">
 
-<div class="bg-white border border-gray-200 rounded-2xl shadow-sm dark:bg-gray-900 dark:border-gray-800 w-full overflow-hidden">
-    
-    <!-- STEP 1: FORM -->
-    <div id="add-step-1" class="flex flex-col">
-        <div class="p-6 md:p-8 space-y-6">
-            <div>
-                <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2"><i class="fa-solid fa-video text-gray-400 mr-2"></i>Kamera Nomi <span class="text-red-500">*</span></label>
-                <input id="inp-name" type="text" placeholder="Masalan: Asosiy kirish"
-                    class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition">
-            </div>
-            
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div>
-                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2"><i class="fa-solid fa-network-wired text-gray-400 mr-2"></i>MAC Manzili</label>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-2 border-l-2 border-blue-500 pl-2">Ixtiyoriy. Masalan: AA:BB:CC:11:22:33</p>
-                    <input id="inp-mac" type="text" placeholder="Masalan: AA:BB:CC:11:22:33"
-                        class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-mono rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition uppercase">
-                </div>
-                <div>
-                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2"><i class="fa-solid fa-barcode text-gray-400 mr-2"></i>Seriya Raqami</label>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-2 border-l-2 border-violet-500 pl-2">Ixtiyoriy. ISUP yoki qurilma yorlig'idagi serial.</p>
-                    <input id="inp-serial" type="text" placeholder="Masalan: DS3B24123456"
-                        class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-mono rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition">
-                </div>
-            </div>
-            
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div>
-                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2"><i class="fa-solid fa-layer-group text-gray-400 mr-2"></i>Model (Limit uchun)</label>
-                    <input id="inp-model" list="camera-model-suggestions" type="text" placeholder="Masalan: DS-K1T343"
-                        class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition">
-                    <datalist id="camera-model-suggestions">
-                        <option value="DS-K1T341CMF">
-                        <option value="DS-K1T343MFWX">
-                        <option value="DS-K1T342MFWX">
-                        <option value="DS-K1T671TM-3XF">
-                        <option value="DS-K1T320MFWX">
-                        <option value="DS-K1T607MF">
-                        <option value="DS-K1T321MFWX">
-                        <option value="DS-K1T680DFW">
-                    </datalist>
-                    <div class="mt-2 flex flex-wrap gap-2">
-                        <button type="button" onclick="setModel('DS-K1T343MFWX')" class="px-2.5 py-1 text-xs rounded-full border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 dark:border-blue-800 dark:text-blue-300 dark:bg-blue-900/20">DS-K1T343MFWX</button>
-                        <button type="button" onclick="setModel('DS-K1T341CMF')" class="px-2.5 py-1 text-xs rounded-full border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 dark:border-blue-800 dark:text-blue-300 dark:bg-blue-900/20">DS-K1T341CMF</button>
-                        <button type="button" onclick="setModel('DS-K1T671TM-3XF')" class="px-2.5 py-1 text-xs rounded-full border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 dark:border-blue-800 dark:text-blue-300 dark:bg-blue-900/20">DS-K1T671TM-3XF</button>
+    <!-- ── HERO BANNER ── -->
+    <section class="overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 to-indigo-600 shadow-xl">
+        <div class="grid gap-4 p-5 lg:grid-cols-3">
+            <div class="space-y-4 lg:col-span-2">
+                <div class="flex items-start gap-3">
+                    <a href="/devices" class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-white transition hover:bg-white/15">
+                        <i class="fa-duotone fa-arrow-left"></i>
+                    </a>
+                    <div>
+                        <div class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white/80 backdrop-blur-sm">
+                            <i class="fa-duotone fa-camera-cctv"></i>
+                            <span>{% if lang == "ru" %}Новая камера{% else %}Yangi kamera{% endif %}</span>
+                        </div>
+                        <h1 class="mt-3 text-3xl font-bold tracking-tight text-white">Kamera qo'shish</h1>
+                        <p class="mt-2 max-w-2xl text-sm leading-6 text-blue-100">
+                            {% if lang == "ru" %}
+                            Зарегистрируйте новое устройство в системе: название, сеть, авторизация и ISUP.
+                            {% else %}
+                            Tizimga yangi qurilmani ro'yxatdan o'tkazing: nomi, tarmoq, avtorizatsiya va ISUP ma'lumotlari.
+                            {% endif %}
+                        </p>
                     </div>
                 </div>
-                <div>
-                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2"><i class="fa-solid fa-building text-gray-400 mr-2"></i>Tashkilot</label>
-                    <select id="inp-org" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition">
-                        <option value="">Tanlang...</option>
-                        {% for org in organizations %}
-                        <option value="{{ org.id }}">{{ org.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
-            
-            <!-- Auth Fields -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-4">
-                <div>
-                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2"><i class="fa-solid fa-user text-gray-400 mr-2"></i>Kamera Logini</label>
-                    <input id="inp-username" type="text" placeholder="admin (ixtiyoriy)"
-                        class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition">
-                </div>
-                <div>
-                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2"><i class="fa-solid fa-key text-gray-400 mr-2"></i>Kamera Paroli</label>
-                    <input id="inp-password" type="password" placeholder="Ixtiyoriy"
-                        class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition">
-                </div>
             </div>
 
-            <!-- ISUP Auth Field -->
-            <div class="mt-4">
-                <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2"><i class="fa-solid fa-shield-halved text-gray-400 mr-2"></i>ISUP Paroli (Maxfiy) <span class="text-red-500">*</span></label>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mb-2 border-l-2 border-amber-500 pl-2">Kameraga o'rnatiladigan ISUP parolini kiriting. Odatda bu avtomatik o'rnatiladi.</p>
-                <input id="inp-isup-key" type="text" value="facex2024"
-                    class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-mono rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition">
+            <div class="rounded-3xl border border-white/10 bg-black/20 p-4 backdrop-blur-sm">
+                <p class="text-xs font-semibold uppercase tracking-wide text-white/80">{% if lang == "ru" %}Что заполняется{% else %}Nimalar kiritiladi{% endif %}</p>
+                <div class="mt-3 space-y-3 text-sm text-white/80">
+                    <div class="rounded-2xl border border-white/10 bg-white/10 p-3">
+                        <p class="font-semibold text-white">{% if lang == "ru" %}Основные данные{% else %}Asosiy ma'lumotlar{% endif %}</p>
+                        <p class="mt-1 text-xs leading-5 text-white/80">{% if lang == "ru" %}Название, модель, MAC и серийный номер.{% else %}Nomi, modeli, MAC va seriya raqami.{% endif %}</p>
+                    </div>
+                    <div class="rounded-2xl border border-white/10 bg-white/10 p-3">
+                        <p class="font-semibold text-white">{% if lang == "ru" %}Безопасность{% else %}Xavfsizlik{% endif %}</p>
+                        <p class="mt-1 text-xs leading-5 text-white/80">{% if lang == "ru" %}Логин и пароль самой камеры (если нужно).{% else %}Kameraning login va paroli (agar kerak bo'lsa).{% endif %}</p>
+                    </div>
+                    <div class="rounded-2xl border border-white/10 bg-white/10 p-3">
+                        <p class="font-semibold text-white">ISUP Protocol</p>
+                        <p class="mt-1 text-xs leading-5 text-white/80">{% if lang == "ru" %}Ключ шифрования и Device ID.{% else %}Shifrlash paroli (ISUP Key) va Device ID.{% endif %}</p>
+                    </div>
+                </div>
             </div>
-
-            <div class="mt-4">
-                <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2"><i class="fa-solid fa-id-badge text-gray-400 mr-2"></i>ISUP Device ID (ixtiyoriy)</label>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mb-2 border-l-2 border-indigo-500 pl-2">Kameradagi ISUP "Device ID" bilan bir xil bo'lsin (masalan: CAM1111). Bo'sh qoldirilsa online/offline webhook orqali aniqlanadi.</p>
-                <input id="inp-isup-device-id" type="text" placeholder="Masalan: CAM1111"
-                    class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-mono rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition">
-            </div>
-            
-            <div id="add-error" class="hidden mt-4 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-4 py-3 rounded-xl"></div>
         </div>
+    </section>
 
-        <div class="px-6 py-5 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row gap-3 justify-end items-center">
-            <a href="/devices" class="w-full sm:w-auto text-center px-6 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition">Bekor qilish</a>
-            <button onclick="saveCamera()" class="w-full sm:w-auto justify-center px-6 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition flex items-center gap-2">
-                <i id="save-spinner" class="fa-solid fa-circle-notch hidden animate-spin"></i>
-                Saqlash va Ulanish
-            </button>
-        </div>
-    </div>
+    <!-- ── STEP 1: FORM ── -->
+    <div id="add-step-1">
+        <!-- ── ERROR BOX ── -->
+        <div id="add-error" class="hidden mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300"></div>
 
-    <!-- STEP 2: WEBHOOK URL RESULT -->
-    <div id="add-step-2" class="hidden">
-        <div class="px-6 py-12 text-center">
-            <div class="w-20 h-20 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-6">
-                <i class="fa-solid fa-check"></i>
-            </div>
-            <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-3">Kamera Muvaffaqiyatli Qo'shildi!</h3>
-            <p class="text-base text-gray-500 dark:text-gray-400 mb-8 max-w-lg mx-auto">Endi kameradagi <strong class="text-gray-700 dark:text-gray-200">HTTP Listening</strong> maydonlarini alohida to'ldiring. URL maydoniga to'liq <code>http://...</code> emas, faqat path kiriting.</p>
+        <div class="grid gap-4 lg:grid-cols-3 xl:grid-cols-4">
+            <!-- ── LEFT: FORM ── -->
+            <section class="space-y-4 rounded-3xl border border-gray-200 bg-white/80 p-5 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80 lg:col-span-2 xl:col-span-3">
 
-            <div class="grid gap-4 max-w-lg mx-auto mb-2">
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div class="relative group">
-                        <div class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Server / IP</div>
-                        <input id="webhook-host" type="text" readonly value="94.141.85.147"
-                            class="w-full bg-gray-50 dark:bg-gray-900 border-2 border-emerald-500/30 text-emerald-700 dark:text-emerald-400 font-mono text-sm text-center rounded-xl p-4 pr-16 outline-none shadow-sm">
-                        <button onclick="copyField('webhook-host')" class="absolute right-3 top-9 p-2.5 text-gray-400 hover:text-emerald-600 dark:text-gray-500 dark:hover:text-emerald-400 transition bg-white dark:bg-gray-800 rounded-lg shadow-sm" title="Nusxa olish">
-                            <i class="fa-regular fa-copy text-lg"></i>
-                        </button>
+                <!-- Section: Asosiy ma'lumotlar -->
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">{% if lang == "ru" %}Основные данные{% else %}Asosiy ma'lumotlar{% endif %}</p>
+                    <h2 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">Qurilma haqida</h2>
+                </div>
+
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div class="sm:col-span-2">
+                        <label class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Kamera Nomi <span class="text-red-500">*</span></label>
+                        <div class="flex overflow-hidden rounded-2xl border border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-800 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 dark:focus-within:ring-blue-900/40 transition">
+                            <span class="flex w-10 shrink-0 items-center justify-center border-r border-gray-300 text-gray-400 dark:border-gray-700"><i class="fa-duotone fa-video text-xs"></i></span>
+                            <input type="text" id="inp-name" placeholder="Masalan: Asosiy kirish" class="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:text-white">
+                        </div>
                     </div>
-                    <div class="relative group">
-                        <div class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Port</div>
-                        <input id="webhook-port" type="text" readonly value="8000"
-                            class="w-full bg-gray-50 dark:bg-gray-900 border-2 border-emerald-500/30 text-emerald-700 dark:text-emerald-400 font-mono text-sm text-center rounded-xl p-4 pr-16 outline-none shadow-sm">
-                        <button onclick="copyField('webhook-port')" class="absolute right-3 top-9 p-2.5 text-gray-400 hover:text-emerald-600 dark:text-gray-500 dark:hover:text-emerald-400 transition bg-white dark:bg-gray-800 rounded-lg shadow-sm" title="Nusxa olish">
-                            <i class="fa-regular fa-copy text-lg"></i>
-                        </button>
+
+                    <div>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">MAC Manzili <span class="text-gray-400 text-xs font-normal">(Ixtiyoriy)</span></label>
+                        <div class="flex overflow-hidden rounded-2xl border border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-800 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 dark:focus-within:ring-blue-900/40 transition">
+                            <span class="flex w-10 shrink-0 items-center justify-center border-r border-gray-300 text-gray-400 dark:border-gray-700"><i class="fa-duotone fa-network-wired text-xs"></i></span>
+                            <input type="text" id="inp-mac" placeholder="AA:BB:CC:11:22:33" class="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm font-mono uppercase text-gray-900 outline-none placeholder:text-gray-400 dark:text-white">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Seriya Raqami <span class="text-gray-400 text-xs font-normal">(Ixtiyoriy)</span></label>
+                        <div class="flex overflow-hidden rounded-2xl border border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-800 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 dark:focus-within:ring-blue-900/40 transition">
+                            <span class="flex w-10 shrink-0 items-center justify-center border-r border-gray-300 text-gray-400 dark:border-gray-700"><i class="fa-duotone fa-barcode text-xs"></i></span>
+                            <input type="text" id="inp-serial" placeholder="DS3B24123456" class="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm font-mono text-gray-900 outline-none placeholder:text-gray-400 dark:text-white">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Model <span class="text-gray-400 text-xs font-normal">(Limit uchun)</span></label>
+                        <div class="flex overflow-hidden rounded-2xl border border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-800 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 dark:focus-within:ring-blue-900/40 transition">
+                            <span class="flex w-10 shrink-0 items-center justify-center border-r border-gray-300 text-gray-400 dark:border-gray-700"><i class="fa-duotone fa-layer-group text-xs"></i></span>
+                            <input type="text" id="inp-model" list="camera-model-suggestions" placeholder="DS-K1T343" class="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:text-white">
+                            <datalist id="camera-model-suggestions">
+                                <option value="DS-K1T341CMF">
+                                <option value="DS-K1T343MFWX">
+                                <option value="DS-K1T342MFWX">
+                                <option value="DS-K1T671TM-3XF">
+                                <option value="DS-K1T320MFWX">
+                                <option value="DS-K1T607MF">
+                                <option value="DS-K1T321MFWX">
+                                <option value="DS-K1T680DFW">
+                            </datalist>
+                        </div>
+                        <div class="mt-2 flex flex-wrap gap-1.5">
+                            <button type="button" onclick="setModel('DS-K1T343MFWX')" class="px-2 py-0.5 text-[10px] font-medium rounded-lg border border-gray-200 text-gray-600 bg-gray-50 hover:bg-gray-100 hover:text-blue-600 dark:border-gray-700 dark:text-gray-300 dark:bg-gray-800/50 dark:hover:text-blue-400 transition">DS-K1T343MFWX</button>
+                            <button type="button" onclick="setModel('DS-K1T341CMF')" class="px-2 py-0.5 text-[10px] font-medium rounded-lg border border-gray-200 text-gray-600 bg-gray-50 hover:bg-gray-100 hover:text-blue-600 dark:border-gray-700 dark:text-gray-300 dark:bg-gray-800/50 dark:hover:text-blue-400 transition">DS-K1T341CMF</button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Tashkilot</label>
+                        <select id="inp-org" class="w-full rounded-2xl border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40 transition">
+                            <option value="">Tanlang...</option>
+                            {% for org in organizations %}
+                            <option value="{{ org.id }}">{{ org.name }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
                 </div>
-                <div class="relative group">
-                    <div class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">URL Path</div>
-                    <input id="webhook-url" type="text" readonly value="/api/v1/httppost/"
-                        class="w-full bg-gray-50 dark:bg-gray-900 border-2 border-emerald-500/30 text-emerald-700 dark:text-emerald-400 font-mono text-sm sm:text-base text-center rounded-xl p-4 pr-16 outline-none shadow-sm">
-                    <button onclick="copyField('webhook-url')" class="absolute right-3 top-9 p-2.5 text-gray-400 hover:text-emerald-600 dark:text-gray-500 dark:hover:text-emerald-400 transition bg-white dark:bg-gray-800 rounded-lg shadow-sm" title="Nusxa olish">
-                        <i class="fa-regular fa-copy text-lg"></i>
+
+                <!-- Divider -->
+                <div class="border-t border-gray-100 pt-4 dark:border-gray-800">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">Avtorizatsiya</p>
+                    <h2 class="mt-1 text-base font-semibold text-gray-900 dark:text-white">Kamera hisob ma'lumotlari</h2>
+                </div>
+
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Kamera Logini <span class="text-gray-400 text-xs font-normal">(Ixtiyoriy)</span></label>
+                        <div class="flex overflow-hidden rounded-2xl border border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-800 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 dark:focus-within:ring-blue-900/40 transition">
+                            <span class="flex w-10 shrink-0 items-center justify-center border-r border-gray-300 text-gray-400 dark:border-gray-700"><i class="fa-duotone fa-user text-xs"></i></span>
+                            <input type="text" id="inp-username" placeholder="admin" class="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:text-white">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Kamera Paroli <span class="text-gray-400 text-xs font-normal">(Ixtiyoriy)</span></label>
+                        <div class="relative flex overflow-hidden rounded-2xl border border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-800 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 dark:focus-within:ring-blue-900/40 transition">
+                            <span class="flex w-10 shrink-0 items-center justify-center border-r border-gray-300 text-gray-400 dark:border-gray-700"><i class="fa-duotone fa-key text-xs"></i></span>
+                            <input type="password" id="inp-password" placeholder="Parol" class="min-w-0 flex-1 bg-transparent px-3 py-2.5 pr-9 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:text-white">
+                            <button type="button" id="toggle-password" class="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-blue-600 transition" aria-label="Ko'rsatish">
+                                <i class="fa-duotone fa-eye icon-eye text-xs"></i>
+                                <i class="fa-duotone fa-eye-slash icon-eye-off hidden text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Divider: ISUP -->
+                <div class="border-t border-gray-100 pt-4 dark:border-gray-800">
+                    <div class="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                        <i class="fa-duotone fa-shield-halved text-sm"></i>
+                        <p class="text-xs font-semibold uppercase tracking-wide">ISUP Sozlamalari</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">ISUP Paroli (Maxfiy) <span class="text-red-500">*</span></label>
+                        <div class="relative flex overflow-hidden rounded-2xl border border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-800 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 dark:focus-within:ring-blue-900/40 transition">
+                            <span class="flex w-10 shrink-0 items-center justify-center border-r border-gray-300 text-gray-400 dark:border-gray-700"><i class="fa-duotone fa-lock text-xs"></i></span>
+                            <input type="password" id="inp-isup-key" value="facex2024" class="min-w-0 flex-1 bg-transparent px-3 py-2.5 pr-9 text-sm font-mono text-gray-900 outline-none placeholder:text-gray-400 dark:text-white">
+                            <button type="button" id="toggle-isup-key" class="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-blue-600 transition" aria-label="Ko'rsatish">
+                                <i class="fa-duotone fa-eye icon-eye text-xs"></i>
+                                <i class="fa-duotone fa-eye-slash icon-eye-off hidden text-xs"></i>
+                            </button>
+                        </div>
+                        <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">Odatda avtomatik o'rnatiladi.</p>
+                    </div>
+
+                    <div>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">ISUP Device ID <span class="text-gray-400 text-xs font-normal">(Ixtiyoriy)</span></label>
+                        <div class="flex overflow-hidden rounded-2xl border border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-800 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 dark:focus-within:ring-blue-900/40 transition">
+                            <span class="flex w-10 shrink-0 items-center justify-center border-r border-gray-300 text-gray-400 dark:border-gray-700"><i class="fa-duotone fa-id-badge text-xs"></i></span>
+                            <input type="text" id="inp-isup-device-id" placeholder="CAM1111" class="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm font-mono uppercase text-gray-900 outline-none placeholder:text-gray-400 dark:text-white">
+                        </div>
+                        <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">Bo'sh qolsa avtomatik aniqlanadi.</p>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="mt-2 flex flex-col gap-3 border-t border-gray-100 pt-5 dark:border-gray-800 sm:flex-row sm:items-center">
+                    <a href="/devices" class="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
+                        <i class="fa-duotone fa-arrow-left"></i>
+                        <span>Bekor qilish</span>
+                    </a>
+                    <button id="save-btn" type="button" onclick="saveCamera()" class="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 shadow-sm shadow-blue-500/30 disabled:opacity-60 disabled:cursor-not-allowed">
+                        <i id="save-spinner" class="fa-duotone fa-circle-notch animate-spin" style="display:none"></i>
+                        <i id="save-disk-icon" class="fa-duotone fa-floppy-disk"></i>
+                        <span id="save-btn-text">Saqlash va Ulanish</span>
                     </button>
                 </div>
-            </div>
-            <p id="copy-msg" class="text-sm text-emerald-600 dark:text-emerald-400 h-6 transition-opacity opacity-0 font-medium">Qiymatdan nusxa olindi!</p>
-            
-            <div class="mt-10 mx-auto max-w-xs">
-                <a href="/devices" class="flex justify-center w-full px-6 py-3.5 text-sm font-bold text-white bg-gray-900 dark:bg-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 rounded-xl transition shadow-md">
-                    Yopish va Ro'yxatga qaytish
-                </a>
-            </div>
+            </section>
+
+            <!-- ── RIGHT: SIDEBAR ── -->
+            <aside class="space-y-4 xl:col-span-1">
+                <!-- Help card -->
+                <section class="rounded-3xl border border-gray-200 bg-white/80 p-5 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">{% if lang == "ru" %}Подсказка{% else %}Eslatma{% endif %}</p>
+                    <h2 class="mt-1 text-base font-semibold text-gray-900 dark:text-white">Majburiy maydonlar</h2>
+                    <div class="mt-4 space-y-3 text-sm text-gray-600 dark:text-gray-300">
+                        <div class="rounded-2xl bg-gray-50 px-4 py-3 dark:bg-gray-800">
+                            <p class="font-medium text-gray-900 dark:text-white"><i class="fa-duotone fa-video text-blue-500 mr-1.5"></i> Kamera nomi</p>
+                            <p class="mt-1 text-[11px] leading-5">Tizimda kamerani oson topish uchun aniq nom bering.</p>
+                        </div>
+                        <div class="rounded-2xl bg-gray-50 px-4 py-3 dark:bg-gray-800">
+                            <p class="font-medium text-gray-900 dark:text-white"><i class="fa-duotone fa-shield-check text-emerald-500 mr-1.5"></i> ISUP Paroli</p>
+                            <p class="mt-1 text-[11px] leading-5">Kamera bilan aloqa o'rnatish uchun zarur maxfiy kalit.</p>
+                        </div>
+                        <div class="rounded-2xl bg-gray-50 px-4 py-3 dark:bg-gray-800">
+                            <p class="font-medium text-gray-900 dark:text-white"><i class="fa-duotone fa-id-badge text-indigo-500 mr-1.5"></i> Device ID</p>
+                            <p class="mt-1 text-[11px] leading-5">Agar kiritmasangiz, birinchi ulanishda avtomatik olinadi.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Info card -->
+                <section class="rounded-3xl border border-blue-100 bg-blue-50/60 p-4 dark:border-blue-900/40 dark:bg-blue-950/20">
+                    <div class="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                        <i class="fa-duotone fa-webhook text-sm"></i>
+                        <p class="text-xs font-semibold uppercase tracking-wide">Webhook Setup</p>
+                    </div>
+                    <p class="mt-2 text-xs text-blue-700/80 dark:text-blue-300/80 leading-5">Saqlagandan so'ng sizga HTTP Listening (Webhook) sozlamalari taqdim etiladi. Ularni kameraning web-interfeysiga kiritishingiz kerak bo'ladi.</p>
+                </section>
+            </aside>
         </div>
     </div>
+
+    <!-- ── STEP 2: WEBHOOK URL RESULT ── -->
+    <div id="add-step-2" class="hidden animate-fade-in">
+        <section class="rounded-3xl border border-emerald-200 bg-white/80 shadow-sm backdrop-blur-sm dark:border-emerald-900/40 dark:bg-gray-900/80 overflow-hidden">
+            <div class="px-6 py-12 text-center">
+                <div class="w-20 h-20 bg-gradient-to-br from-emerald-400 to-emerald-600 text-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-500/30">
+                    <i class="fa-duotone fa-check text-3xl"></i>
+                </div>
+                <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-3">Kamera Muvaffaqiyatli Qo'shildi!</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-8 max-w-lg mx-auto leading-relaxed">Endi kameraning <strong class="text-gray-700 dark:text-gray-200 font-semibold">Web Interfeysiga</strong> kirib, <strong class="text-gray-700 dark:text-gray-200 font-semibold">HTTP Listening</strong> bo'limiga quyidagi ma'lumotlarni kiriting.</p>
+
+                <div class="grid gap-4 max-w-lg mx-auto mb-2 text-left">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="relative group">
+                            <div class="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-500 ml-1">Server / IP</div>
+                            <input id="webhook-host" type="text" readonly value="94.141.85.147"
+                                class="w-full bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/50 text-emerald-800 dark:text-emerald-300 font-mono text-sm rounded-2xl px-4 py-3.5 pr-12 outline-none transition-colors group-hover:border-emerald-300 dark:group-hover:border-emerald-700">
+                            <button onclick="copyField('webhook-host')" class="absolute right-2 top-8 p-2 text-emerald-500/70 hover:text-emerald-600 dark:text-emerald-400/60 dark:hover:text-emerald-300 transition-colors bg-white/50 dark:bg-black/20 rounded-xl" title="Nusxa olish">
+                                <i class="fa-duotone fa-copy"></i>
+                            </button>
+                        </div>
+                        <div class="relative group">
+                            <div class="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-500 ml-1">Port</div>
+                            <input id="webhook-port" type="text" readonly value="8000"
+                                class="w-full bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/50 text-emerald-800 dark:text-emerald-300 font-mono text-sm rounded-2xl px-4 py-3.5 pr-12 outline-none transition-colors group-hover:border-emerald-300 dark:group-hover:border-emerald-700">
+                            <button onclick="copyField('webhook-port')" class="absolute right-2 top-8 p-2 text-emerald-500/70 hover:text-emerald-600 dark:text-emerald-400/60 dark:hover:text-emerald-300 transition-colors bg-white/50 dark:bg-black/20 rounded-xl" title="Nusxa olish">
+                                <i class="fa-duotone fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="relative group">
+                        <div class="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-500 ml-1">URL Path</div>
+                        <input id="webhook-url" type="text" readonly value="/api/v1/httppost/"
+                            class="w-full bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/50 text-emerald-800 dark:text-emerald-300 font-mono text-sm rounded-2xl px-4 py-3.5 pr-12 outline-none transition-colors group-hover:border-emerald-300 dark:group-hover:border-emerald-700">
+                        <button onclick="copyField('webhook-url')" class="absolute right-2 top-8 p-2 text-emerald-500/70 hover:text-emerald-600 dark:text-emerald-400/60 dark:hover:text-emerald-300 transition-colors bg-white/50 dark:bg-black/20 rounded-xl" title="Nusxa olish">
+                            <i class="fa-duotone fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+                <p id="copy-msg" class="text-xs text-emerald-600 dark:text-emerald-400 h-5 transition-opacity opacity-0 font-medium mt-2">Nusxa olindi!</p>
+
+                <div class="mt-8 flex justify-center">
+                    <a href="/devices" class="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 shadow-md">
+                        Ro'yxatga qaytish
+                        <i class="fa-duotone fa-arrow-right ml-1"></i>
+                    </a>
+                </div>
+            </div>
+        </section>
+    </div>
+
 </div>
 
 <script>
+function wirePasswordToggle(buttonId, inputId) {
+    const btn = document.getElementById(buttonId);
+    const inp = document.getElementById(inputId);
+    if(!btn || !inp) return;
+    btn.addEventListener('click', () => {
+        const isHidden = inp.type === 'password';
+        inp.type = isHidden ? 'text' : 'password';
+        btn.querySelector('.icon-eye')?.classList.toggle('hidden', isHidden);
+        btn.querySelector('.icon-eye-off')?.classList.toggle('hidden', !isHidden);
+    });
+}
+wirePasswordToggle('toggle-password', 'inp-password');
+wirePasswordToggle('toggle-isup-key', 'inp-isup-key');
+
 async function saveCamera() {
     const name = document.getElementById('inp-name').value.trim();
     const mac_address = document.getElementById('inp-mac').value.trim().toUpperCase();
@@ -166,13 +304,29 @@ async function saveCamera() {
     const password = document.getElementById('inp-password').value.trim();
     const isup_password = document.getElementById('inp-isup-key').value.trim();
     const isup_device_id = document.getElementById('inp-isup-device-id').value.trim();
+
     const errEl = document.getElementById('add-error');
     
-    if (!name) { errEl.textContent = 'Kamera nomi majburiy'; errEl.classList.remove('hidden'); return; }
-    if (!isup_password) { errEl.textContent = 'ISUP paroli majburiy'; errEl.classList.remove('hidden'); return; }
+    if (!name) {
+        errEl.innerHTML = '<i class="fa-duotone fa-triangle-exclamation mr-1.5"></i> Kamera nomi majburiy.';
+        errEl.classList.remove('hidden');
+        return;
+    }
+    if (!isup_password) {
+        errEl.innerHTML = '<i class="fa-duotone fa-triangle-exclamation mr-1.5"></i> ISUP paroli majburiy.';
+        errEl.classList.remove('hidden');
+        return;
+    }
     
     errEl.classList.add('hidden');
-    document.getElementById('save-spinner').classList.remove('hidden');
+
+    const saveSpinner = document.getElementById('save-spinner');
+    const saveDiskIcon = document.getElementById('save-disk-icon');
+    const saveBtn = document.getElementById('save-btn');
+
+    if(saveSpinner) saveSpinner.style.display = 'inline-block';
+    if(saveDiskIcon) saveDiskIcon.style.display = 'none';
+    if(saveBtn) saveBtn.disabled = true;
     
     try {
         const res = await fetch('/api/cameras', {
@@ -190,18 +344,25 @@ async function saveCamera() {
             })
         });
         const data = await res.json();
-        if (!res.ok) { errEl.textContent = data.detail || 'Xato yuz berdi'; errEl.classList.remove('hidden'); return; }
+        if (!res.ok) {
+            errEl.innerHTML = `<i class="fa-duotone fa-triangle-exclamation mr-1.5"></i> ${data.detail || 'Xato yuz berdi'}`;
+            errEl.classList.remove('hidden');
+            return;
+        }
         
-        // Muvaffaqiyatli saqlandi — HTTP Listening maydonlarini ko'rsatamiz
+        // Muvaffaqiyatli saqlandi
         document.getElementById('webhook-host').value = data.webhook_host || '';
         document.getElementById('webhook-port').value = data.webhook_port || '';
         document.getElementById('webhook-url').value = data.webhook_path || '/api/v1/httppost/';
         document.getElementById('add-step-1').classList.add('hidden');
         document.getElementById('add-step-2').classList.remove('hidden');
     } catch(e) {
-        errEl.textContent = 'Tarmoq xatosi'; errEl.classList.remove('hidden');
+        errEl.innerHTML = '<i class="fa-duotone fa-wifi-slash mr-1.5"></i> Tarmoq xatosi';
+        errEl.classList.remove('hidden');
     } finally {
-        document.getElementById('save-spinner').classList.add('hidden');
+        if(saveSpinner) saveSpinner.style.display = 'none';
+        if(saveDiskIcon) saveDiskIcon.style.display = 'inline-block';
+        if(saveBtn) saveBtn.disabled = false;
     }
 }
 

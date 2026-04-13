@@ -74,74 +74,240 @@
         </article>
     </section>
 
-    <section class="employee-panel">
-        <div class="employee-panel-head">
-            <div>
-                <p class="employee-panel-kicker">Filtrlash paneli</p>
-                <h2 class="employee-panel-title">Hodim va o'quvchilar bo'yicha tez qidiruv</h2>
-            </div>
-        </div>
-        <div class="employee-filter-grid grid grid-cols-1 gap-3 xl:grid-cols-12">
-            <label class="block xl:col-span-2">
-                <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">Qidiruv</span>
-                <input id="employees-query-filter" type="text" placeholder="Qidiruv: F.I.Sh. yoki ID" class="form-input w-full">
-            </label>
-            <label class="block xl:col-span-2">
-                <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">Tashkilot</span>
-                <select id="employees-org-filter" class="form-input w-full">
-                    <option value="all">Tashkilot: barchasi</option>
-                </select>
-            </label>
-            <label class="block xl:col-span-2">
-                <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">Bo'lim</span>
-                <select id="employees-dept-filter" class="form-input w-full">
-                    <option value="all">Bo'lim: barchasi</option>
-                </select>
-            </label>
-            <label class="block xl:col-span-2">
-                <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">Lavozim</span>
-                <select id="employees-pos-filter" class="form-input w-full">
-                    <option value="all">Lavozim: barchasi</option>
-                </select>
-            </label>
-            <label class="block xl:col-span-1">
-                <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">Kamera</span>
-                <select id="employees-camera-filter" class="form-input w-full">
-                    <option value="all">Kamera: barchasi</option>
-                </select>
-            </label>
-            <label class="block xl:col-span-1">
-                <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">Tur</span>
-                <select id="employees-type-filter" class="form-input w-full">
-                    {% if employee_view_mode == 'staff' %}
-                    <option value="all">Tur: barchasi</option>
-                    <option value="oqituvchi">O'qituvchi</option>
-                    <option value="hodim">Xodim</option>
-                    {% elif employee_view_mode == 'students' %}
-                    <option value="all">Tur: barchasi</option>
-                    <option value="oquvchi">O'quvchi</option>
-                    <option value="none">Tanlanmagan</option>
-                    {% else %}
-                    <option value="all">Tur: barchasi</option>
-                    <option value="staff">Hodim / O'qituvchi</option>
-                    <option value="oquvchi">O'quvchi</option>
-                    <option value="oqituvchi">O'qituvchi</option>
-                    <option value="hodim">Xodim</option>
-                    <option value="none">Tanlanmagan</option>
-                    {% endif %}
-                </select>
-            </label>
-            <div class="employee-filter-actions xl:col-span-2">
-                <span class="employee-filter-actions-label">Amallar</span>
-                <div class="employee-filter-actions-row">
-                    <button id="employees-reset-filter" type="button" title="Filterlarni tozalash" aria-label="Filterlarni tozalash" class="employee-filter-btn is-secondary">
-                        <i class="fa-solid fa-xmark"></i>
-                        <span>Tozalash</span>
-                    </button>
+    <!-- Hidden native selects for JS compatibility -->
+    <select id="employees-org-filter" class="hidden">
+        <option value="all">Barchasi</option>
+    </select>
+    <select id="employees-dept-filter" class="hidden">
+        <option value="all">Barchasi</option>
+    </select>
+    <select id="employees-pos-filter" class="hidden">
+        <option value="all">Barchasi</option>
+    </select>
+    <select id="employees-camera-filter" class="hidden">
+        <option value="all">Barchasi</option>
+    </select>
+    <select id="employees-type-filter" class="hidden">
+        {% if employee_view_mode == 'staff' %}
+        <option value="all">Barchasi</option>
+        <option value="oqituvchi">O'qituvchi</option>
+        <option value="hodim">Xodim</option>
+        {% elif employee_view_mode == 'students' %}
+        <option value="all">Barchasi</option>
+        <option value="oquvchi">O'quvchi</option>
+        <option value="none">Tanlanmagan</option>
+        {% else %}
+        <option value="all">Barchasi</option>
+        <option value="staff">Hodim / O'qituvchi</option>
+        <option value="oquvchi">O'quvchi</option>
+        <option value="oqituvchi">O'qituvchi</option>
+        <option value="hodim">Xodim</option>
+        <option value="none">Tanlanmagan</option>
+        {% endif %}
+    </select>
+
+    <section class="employee-panel !p-0 overflow-visible">
+        <!-- Filter Panel Header -->
+        <div class="flex items-center justify-between gap-4 border-b border-gray-100 dark:border-gray-800/60 px-5 py-3.5">
+            <div class="flex items-center gap-3 min-w-0">
+                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+                    <i class="fa-duotone fa-sliders text-sm"></i>
+                </span>
+                <div class="min-w-0">
+                    <p class="employee-panel-kicker !mb-0 !leading-none">Filtrlash paneli</p>
+                    <h2 class="employee-panel-title !text-sm !mt-0.5">Hodim va o'quvchilar bo'yicha tez qidiruv</h2>
                 </div>
+            </div>
+            <button id="employees-reset-filter" type="button" title="Filterlarni tozalash" aria-label="Filterlarni tozalash"
+                class="inline-flex shrink-0 items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-gray-600 shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-400 dark:hover:border-red-800 dark:hover:bg-red-900/20 dark:hover:text-red-400">
+                <i class="fa-solid fa-xmark text-[10px]"></i>
+                Filterni tozalash
+            </button>
+        </div>
+
+        <!-- Filter Rows -->
+        <div class="px-5 py-4 space-y-3.5">
+            <!-- Row 1: Search + Org + Department + Position -->
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+
+                <!-- Search input (real input, always works fine) -->
+                <div class="block">
+                    <span class="mb-1.5 block text-[0.65rem] font-bold uppercase tracking-[0.18em] text-gray-400 dark:text-gray-500">
+                        <i class="fa-solid fa-magnifying-glass mr-1 opacity-70"></i>Qidiruv
+                    </span>
+                    <div class="relative">
+                        <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-[11px] text-gray-400 pointer-events-none"></i>
+                        <input id="employees-query-filter" type="text" placeholder="F.I.Sh. yoki ID bo'yicha..."
+                            class="form-input w-full !pl-8 !text-sm !h-[2.4rem]">
+                    </div>
+                </div>
+
+                <!-- Custom Dropdown: Tashkilot -->
+                <div class="block relative" data-custom-select="employees-org-filter">
+                    <span class="mb-1.5 block text-[0.65rem] font-bold uppercase tracking-[0.18em] text-gray-400 dark:text-gray-500">
+                        <i class="fa-solid fa-building mr-1 opacity-70"></i>Tashkilot
+                    </span>
+                    <button type="button" class="csel-trigger form-input w-full !text-sm !h-[2.4rem] flex items-center justify-between gap-2 cursor-pointer text-left">
+                        <span class="csel-label truncate">Barchasi</span>
+                        <i class="fa-solid fa-chevron-down text-[10px] opacity-50 shrink-0 transition-transform duration-200"></i>
+                    </button>
+                    <div class="csel-panel hidden absolute top-[calc(100%+4px)] left-0 right-0 z-[200] rounded-xl border border-slate-200/80 bg-white/95 p-1.5 shadow-xl backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/95 max-h-52 overflow-y-auto">
+                    </div>
+                </div>
+
+                <!-- Custom Dropdown: Bo'lim -->
+                <div class="block relative" data-custom-select="employees-dept-filter">
+                    <span class="mb-1.5 block text-[0.65rem] font-bold uppercase tracking-[0.18em] text-gray-400 dark:text-gray-500">
+                        <i class="fa-solid fa-layer-group mr-1 opacity-70"></i>Bo'lim
+                    </span>
+                    <button type="button" class="csel-trigger form-input w-full !text-sm !h-[2.4rem] flex items-center justify-between gap-2 cursor-pointer text-left">
+                        <span class="csel-label truncate">Barchasi</span>
+                        <i class="fa-solid fa-chevron-down text-[10px] opacity-50 shrink-0 transition-transform duration-200"></i>
+                    </button>
+                    <div class="csel-panel hidden absolute top-[calc(100%+4px)] left-0 right-0 z-[200] rounded-xl border border-slate-200/80 bg-white/95 p-1.5 shadow-xl backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/95 max-h-52 overflow-y-auto">
+                    </div>
+                </div>
+
+                <!-- Custom Dropdown: Lavozim -->
+                <div class="block relative" data-custom-select="employees-pos-filter">
+                    <span class="mb-1.5 block text-[0.65rem] font-bold uppercase tracking-[0.18em] text-gray-400 dark:text-gray-500">
+                        <i class="fa-solid fa-id-card-clip mr-1 opacity-70"></i>Lavozim
+                    </span>
+                    <button type="button" class="csel-trigger form-input w-full !text-sm !h-[2.4rem] flex items-center justify-between gap-2 cursor-pointer text-left">
+                        <span class="csel-label truncate">Barchasi</span>
+                        <i class="fa-solid fa-chevron-down text-[10px] opacity-50 shrink-0 transition-transform duration-200"></i>
+                    </button>
+                    <div class="csel-panel hidden absolute top-[calc(100%+4px)] left-0 right-0 z-[200] rounded-xl border border-slate-200/80 bg-white/95 p-1.5 shadow-xl backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/95 max-h-52 overflow-y-auto">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Separator -->
+            <div class="relative flex items-center gap-3">
+                <div class="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent dark:via-gray-700"></div>
+                <span class="shrink-0 rounded-full bg-gray-100 px-3 py-0.5 text-[0.6rem] font-bold uppercase tracking-widest text-gray-400 dark:bg-gray-800 dark:text-gray-500">
+                    Qo'shimcha saralash
+                </span>
+                <div class="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent dark:via-gray-700"></div>
+            </div>
+
+            <!-- Row 2: Camera + Type -->
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+
+                <!-- Custom Dropdown: Kamera -->
+                <div class="block relative" data-custom-select="employees-camera-filter">
+                    <span class="mb-1.5 block text-[0.65rem] font-bold uppercase tracking-[0.18em] text-gray-400 dark:text-gray-500">
+                        <i class="fa-solid fa-camera-cctv mr-1 opacity-70"></i>Kamera
+                    </span>
+                    <button type="button" class="csel-trigger form-input w-full !text-sm !h-[2.4rem] flex items-center justify-between gap-2 cursor-pointer text-left">
+                        <span class="csel-label truncate">Barchasi</span>
+                        <i class="fa-solid fa-chevron-down text-[10px] opacity-50 shrink-0 transition-transform duration-200"></i>
+                    </button>
+                    <div class="csel-panel hidden absolute top-[calc(100%+4px)] left-0 right-0 z-[200] rounded-xl border border-slate-200/80 bg-white/95 p-1.5 shadow-xl backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/95 max-h-52 overflow-y-auto">
+                    </div>
+                </div>
+
+                <!-- Custom Dropdown: Shaxs turi -->
+                <div class="block relative" data-custom-select="employees-type-filter">
+                    <span class="mb-1.5 block text-[0.65rem] font-bold uppercase tracking-[0.18em] text-gray-400 dark:text-gray-500">
+                        <i class="fa-solid fa-user-tag mr-1 opacity-70"></i>Shaxs turi
+                    </span>
+                    <button type="button" class="csel-trigger form-input w-full !text-sm !h-[2.4rem] flex items-center justify-between gap-2 cursor-pointer text-left">
+                        <span class="csel-label truncate">Barchasi</span>
+                        <i class="fa-solid fa-chevron-down text-[10px] opacity-50 shrink-0 transition-transform duration-200"></i>
+                    </button>
+                    <div class="csel-panel hidden absolute top-[calc(100%+4px)] left-0 right-0 z-[200] rounded-xl border border-slate-200/80 bg-white/95 p-1.5 shadow-xl backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/95 max-h-52 overflow-y-auto">
+                    </div>
+                </div>
+
+                <div class="hidden lg:block"></div>
+                <div class="hidden lg:block"></div>
             </div>
         </div>
     </section>
+
+    <script>
+    // ── Custom Select Dropdown Init ──────────────────────────────────────────
+    (function initCustomSelects() {
+        const isDark = () => document.documentElement.classList.contains('dark');
+        const ITEM_CLS = 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[0.82rem] font-medium text-slate-700 transition-colors hover:bg-slate-100 hover:text-slate-900 cursor-pointer dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-white';
+        const ITEM_ACTIVE = 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+
+        function buildPanel(container, selectEl) {
+            const panel = container.querySelector('.csel-panel');
+            const label = container.querySelector('.csel-label');
+            panel.innerHTML = '';
+            Array.from(selectEl.options).forEach(opt => {
+                const div = document.createElement('div');
+                div.className = ITEM_CLS;
+                if (opt.value === selectEl.value) div.classList.add(...ITEM_ACTIVE.split(' '));
+                div.textContent = opt.text;
+                div.dataset.value = opt.value;
+                div.addEventListener('click', () => {
+                    selectEl.value = opt.value;
+                    label.textContent = opt.text;
+                    panel.querySelectorAll('div').forEach(d => d.classList.remove(...ITEM_ACTIVE.split(' ')));
+                    div.classList.add(...ITEM_ACTIVE.split(' '));
+                    closePanel(container);
+                    selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+                });
+                panel.appendChild(div);
+            });
+        }
+
+        function openPanel(container) {
+            document.querySelectorAll('[data-custom-select]').forEach(c => {
+                if (c !== container) closePanel(c);
+            });
+            const panel = container.querySelector('.csel-panel');
+            const chevron = container.querySelector('.fa-chevron-down');
+            panel.classList.remove('hidden');
+            if (chevron) chevron.style.transform = 'rotate(180deg)';
+        }
+
+        function closePanel(container) {
+            const panel = container.querySelector('.csel-panel');
+            const chevron = container.querySelector('.fa-chevron-down');
+            panel.classList.add('hidden');
+            if (chevron) chevron.style.transform = '';
+        }
+
+        document.querySelectorAll('[data-custom-select]').forEach(container => {
+            const selectId = container.dataset.customSelect;
+            const selectEl = document.getElementById(selectId);
+            if (!selectEl) return;
+
+            // Observe option changes (JS adds options later)
+            const observer = new MutationObserver(() => buildPanel(container, selectEl));
+            observer.observe(selectEl, { childList: true, subtree: true });
+            buildPanel(container, selectEl);
+
+            const trigger = container.querySelector('.csel-trigger');
+            trigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const panel = container.querySelector('.csel-panel');
+                if (panel.classList.contains('hidden')) {
+                    openPanel(container);
+                } else {
+                    closePanel(container);
+                }
+            });
+
+            // Sync if hidden select value changed externally (e.g. reset)
+            selectEl.addEventListener('change', () => {
+                const label = container.querySelector('.csel-label');
+                const selected = selectEl.options[selectEl.selectedIndex];
+                if (selected) label.textContent = selected.text;
+                buildPanel(container, selectEl);
+            });
+        });
+
+        // Close all on outside click
+        document.addEventListener('click', () => {
+            document.querySelectorAll('[data-custom-select]').forEach(c => closePanel(c));
+        });
+    })();
+    </script>
 
     <section class="employee-panel overflow-hidden">
         <div class="overflow-x-auto">

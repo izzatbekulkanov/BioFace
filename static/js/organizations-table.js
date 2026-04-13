@@ -183,13 +183,13 @@
                 <td class="px-4 py-3">
                     <div class="flex justify-end gap-2">
                         <a href="/organization-info?id=${encodeURIComponent(org.id)}" class="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 text-blue-700 transition hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-300" title="Kirish">
-                            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                            <i class="fa-duotone fa-arrow-up-right-from-square"></i>
                         </a>
                         <a href="/organizations/${encodeURIComponent(org.id)}/edit" class="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 text-amber-700 transition hover:bg-amber-100 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-300" title="Tahrirlash">
-                            <i class="fa-solid fa-pen-to-square"></i>
+                            <i class="fa-duotone fa-pen-to-square"></i>
                         </a>
                         <button type="button" data-delete-id="${Number(org.id)}" data-delete-name="${escapeHtml(org.name || "Tashkilot")}" class="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100 dark:border-rose-900/40 dark:bg-rose-900/20 dark:text-rose-300" title="O'chirish">
-                            <i class="fa-solid fa-trash"></i>
+                            <i class="fa-duotone fa-trash"></i>
                         </button>
                     </div>
                 </td>
@@ -213,7 +213,7 @@
                     <td colspan="9" class="px-4 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
                         <div class="mx-auto max-w-sm space-y-2">
                             <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400 dark:bg-gray-800">
-                                <i class="fa-solid fa-buildings text-lg"></i>
+                                <i class="fa-duotone fa-buildings text-lg"></i>
                             </div>
                             <div class="font-semibold text-gray-700 dark:text-gray-200">Qidiruvga mos tashkilot topilmadi.</div>
                             <div class="text-xs text-gray-500 dark:text-gray-400">Filterlarni yengillashtiring yoki qidiruv matnini o'zgartiring.</div>

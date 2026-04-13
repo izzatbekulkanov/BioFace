@@ -1,0 +1,24 @@
+{
+  "name": "bioface",
+  "version": "1.0.0",
+  "description": "BioFace is a FastAPI-based attendance and camera management system with Hikvision iSUP integration.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/izzatbekulkanov/BioFace.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/izzatbekulkanov/BioFace/issues"
+  },
+  "homepage": "https://github.com/izzatbekulkanov/BioFace#readme",
+  "dependencies": {
+    "tailwindcss": "^4.2.2"
+  }
+}

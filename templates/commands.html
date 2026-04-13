@@ -2,87 +2,87 @@
 
 {% block content %}
 <div class="space-y-6">
-    <section class="camera-hero">
-        <div class="camera-hero-grid">
+    <section class="overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 to-indigo-600 shadow-xl">
+        <div class="grid gap-4 p-5 xl:grid-cols-3">
             <div class="min-w-0">
-                <span class="camera-hero-badge">
+                <span class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white/80 backdrop-blur-sm w-max mb-4">
                     <i class="fa-duotone fa-terminal"></i>
                     Remote Control
                 </span>
-                <h1 class="camera-hero-title">{{ t.commands_title }}</h1>
-                <p class="camera-hero-text">{% if lang == "ru" %}Удалённое управление и диагностика камер из единой операторской панели.{% else %}Kameralarni yagona operator panelidan masofadan boshqarish va diagnostika qilish.{% endif %}</p>
-                <div class="camera-hero-actions">
-                    <span class="camera-soft-chip camera-soft-chip-light">
+                <h1 class="text-3xl font-bold tracking-tight text-white">{{ t.commands_title }}</h1>
+                <p class="max-w-3xl text-sm leading-6 text-blue-100 mt-2">{% if lang == "ru" %}Удалённое управление и диагностика камер из единой операторской панели.{% else %}Kameralarni yagona operator panelidan masofadan boshqarish va diagnostika qilish.{% endif %}</p>
+                <div class="mt-4 flex flex-wrap items-center gap-3">
+                    <span class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white/90 hover:bg-white/20 transition">
                         <i class="fa-duotone fa-wave-pulse"></i>
                         Live operator flow
                     </span>
-                    <span class="camera-soft-chip camera-soft-chip-light">
+                    <span class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white/90 hover:bg-white/20 transition">
                         <i class="fa-duotone fa-shield-check"></i>
                         {% if camera_command_allowed %}To'liq ruxsat{% else %}Read only scope{% endif %}
                     </span>
                 </div>
             </div>
 
-            <div class="camera-summary-grid">
-                <article class="camera-summary-card">
-                    <div class="camera-summary-top">
-                        <span class="camera-summary-icon"><i class="fa-duotone fa-camera-cctv"></i></span>
+            <div class="grid gap-3 sm:grid-cols-2 xl:col-span-2">
+                <article class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm relative overflow-hidden">
+                    <div class="absolute right-4 top-4 text-white/20 text-4xl">
+                        <span class="block"><i class="fa-duotone fa-camera-cctv"></i></span>
                     </div>
-                    <div class="camera-summary-label">Kameralar</div>
-                    <div id="cmd-camera-count" class="camera-summary-value">0</div>
-                    <div class="camera-summary-meta">Buyruq uchun mavjud qurilmalar</div>
+                    <div class="text-xs font-semibold uppercase tracking-wide text-white/80">Kameralar</div>
+                    <div id="cmd-camera-count" class="mt-2 text-2xl font-bold text-white">0</div>
+                    <div class="mt-1 text-xs text-white/80">Buyruq uchun mavjud qurilmalar</div>
                 </article>
-                <article class="camera-summary-card">
-                    <div class="camera-summary-top">
-                        <span class="camera-summary-icon"><i class="fa-duotone fa-building"></i></span>
+                <article class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm relative overflow-hidden">
+                    <div class="absolute right-4 top-4 text-white/20 text-4xl">
+                        <span class="block"><i class="fa-duotone fa-building"></i></span>
                     </div>
-                    <div class="camera-summary-label">Tashkilotlar</div>
-                    <div class="camera-summary-value">{{ organizations|length }}</div>
-                    <div class="camera-summary-meta">Filtrlash uchun mavjud scope</div>
+                    <div class="text-xs font-semibold uppercase tracking-wide text-white/80">Tashkilotlar</div>
+                    <div class="mt-2 text-2xl font-bold text-white">{{ organizations|length }}</div>
+                    <div class="mt-1 text-xs text-white/80">Filtrlash uchun mavjud scope</div>
                 </article>
-                <article class="camera-summary-card">
-                    <div class="camera-summary-top">
-                        <span class="camera-summary-icon"><i class="fa-duotone fa-lock-keyhole"></i></span>
+                <article class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm relative overflow-hidden">
+                    <div class="absolute right-4 top-4 text-white/20 text-4xl">
+                        <span class="block"><i class="fa-duotone fa-lock-keyhole"></i></span>
                     </div>
-                    <div class="camera-summary-label">Ruxsat</div>
-                    <div class="camera-summary-value">{% if camera_command_allowed %}Full{% else %}Read{% endif %}</div>
-                    <div class="camera-summary-meta">{% if camera_command_allowed %}Buyruqlar yuborish yoqilgan{% else %}Faqat ko'rish rejimi{% endif %}</div>
+                    <div class="text-xs font-semibold uppercase tracking-wide text-white/80">Ruxsat</div>
+                    <div class="mt-2 text-2xl font-bold text-white">{% if camera_command_allowed %}Full{% else %}Read{% endif %}</div>
+                    <div class="mt-1 text-xs text-white/80">{% if camera_command_allowed %}Buyruqlar yuborish yoqilgan{% else %}Faqat ko'rish rejimi{% endif %}</div>
                 </article>
-                <article class="camera-summary-card">
-                    <div class="camera-summary-top">
-                        <span class="camera-summary-icon"><i class="fa-duotone fa-bolt"></i></span>
+                <article class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm relative overflow-hidden">
+                    <div class="absolute right-4 top-4 text-white/20 text-4xl">
+                        <span class="block"><i class="fa-duotone fa-bolt"></i></span>
                     </div>
-                    <div class="camera-summary-label">Amallar</div>
-                    <div class="camera-summary-value">8</div>
-                    <div class="camera-summary-meta">Standart operator buyruqlari</div>
+                    <div class="text-xs font-semibold uppercase tracking-wide text-white/80">Amallar</div>
+                    <div class="mt-2 text-2xl font-bold text-white">8</div>
+                    <div class="mt-1 text-xs text-white/80">Standart operator buyruqlari</div>
                 </article>
             </div>
         </div>
     </section>
 
     {% if not camera_command_allowed %}
-    <div class="camera-readonly-banner px-4 py-3 text-sm">
+    <div class="bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 px-4 py-3 text-sm border border-amber-200 dark:border-amber-900/40 rounded-2xl mb-6">
         Kamera buyruqlari asosiy administrator uchun ochiq. Siz bu sahifada faqat o'zingizga biriktirilgan kameralarni ko'rasiz.
     </div>
     {% endif %}
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div class="space-y-6 lg:col-span-1">
-            <section class="camera-panel p-5">
-                <div class="camera-panel-header">
+            <section class="rounded-3xl border border-gray-200 bg-white/80 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80 overflow-hidden p-5">
+                <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between mb-4">
                     <div>
-                        <div class="camera-panel-eyebrow">
+                        <div class="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400 mb-1">
                             <i class="fa-duotone fa-crosshairs-simple"></i>
                             {% if lang == "ru" %}Организация и камера{% else %}Tashkilot va kamera{% endif %}
                         </div>
-                        <h2 class="camera-panel-title">{% if lang == "ru" %}Цель команды{% else %}Buyruq yo'nalishi{% endif %}</h2>
+                        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{% if lang == "ru" %}Цель команды{% else %}Buyruq yo'nalishi{% endif %}</h2>
                     </div>
                 </div>
 
                 <div class="space-y-4">
-                    <div class="camera-field">
-                        <label class="camera-field-label text-sm">
-                            <span class="camera-field-icon"><i class="fa-duotone fa-building"></i></span>
+                    <div class="space-y-1.5">
+                        <label class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5">
+                            <span class="text-gray-400 dark:text-gray-500"><i class="fa-duotone fa-building"></i></span>
                             {% if lang == "ru" %}Организация{% else %}Tashkilot{% endif %}
                         </label>
                         <select id="sel-org" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition">
@@ -92,9 +92,9 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="camera-field">
-                        <label class="camera-field-label text-sm">
-                            <span class="camera-field-icon"><i class="fa-duotone fa-camera"></i></span>
+                    <div class="space-y-1.5">
+                        <label class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5">
+                            <span class="text-gray-400 dark:text-gray-500"><i class="fa-duotone fa-camera"></i></span>
                             {% if lang == "ru" %}Выберите камеру{% else %}Kamerani tanlang{% endif %}
                         </label>
                         <select id="sel-cam" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition">
@@ -104,19 +104,19 @@
                 </div>
 
                 <div class="mt-4 grid grid-cols-2 gap-3">
-                    <div class="camera-highlight-box text-center">
+                    <div class="rounded-2xl border border-gray-100 bg-gray-50/50 p-4 dark:border-gray-700/50 dark:bg-gray-800/50 text-center">
                         <div class="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700 dark:text-blue-300">Scope</div>
                         <div id="cmd-filtered-count" class="mt-2 text-lg font-bold text-blue-700 dark:text-blue-200">0</div>
                         <div class="mt-1 text-xs text-blue-700 dark:text-blue-200">Filterdagi kamera</div>
                     </div>
-                    <div class="camera-highlight-box text-center">
+                    <div class="rounded-2xl border border-gray-100 bg-gray-50/50 p-4 dark:border-gray-700/50 dark:bg-gray-800/50 text-center">
                         <div class="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700 dark:text-blue-300">Holat</div>
                         <div id="cmd-mode-label" class="mt-2 text-lg font-bold text-blue-700 dark:text-blue-200">{% if camera_command_allowed %}Active{% else %}Read{% endif %}</div>
                         <div class="mt-1 text-xs text-blue-700 dark:text-blue-200">Operator rejimi</div>
                     </div>
                 </div>
 
-                <div id="cam-info-mini" class="hidden mt-4 camera-highlight-box">
+                <div id="cam-info-mini" class="hidden mt-4 rounded-2xl border border-gray-100 bg-gray-50/50 p-4 dark:border-gray-700/50 dark:bg-gray-800/50">
                     <div class="mb-3 flex items-start justify-between gap-3">
                         <div class="min-w-0">
                             <div id="cam-name-mini" class="truncate text-sm font-bold text-blue-900 dark:text-blue-100">Tanlangan kamera</div>
@@ -144,87 +144,87 @@
                 </div>
             </section>
 
-            <section class="camera-panel p-5 disabled-section" id="cmd-section">
-                <div class="camera-panel-header">
+            <section class="rounded-3xl border border-gray-200 bg-white/80 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80 overflow-hidden p-5 disabled-section" id="cmd-section">
+                <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between mb-4">
                     <div>
-                        <div class="camera-panel-eyebrow">
+                        <div class="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400 mb-1">
                             <i class="fa-duotone fa-sliders-up"></i>
                             {% if lang == "ru" %}Выберите команду{% else %}Amal tanlang{% endif %}
                         </div>
-                        <h2 class="camera-panel-title">{% if lang == "ru" %}Операции устройства{% else %}Qurilma amallari{% endif %}</h2>
+                        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{% if lang == "ru" %}Операции устройства{% else %}Qurilma amallari{% endif %}</h2>
                     </div>
                 </div>
 
                 <div class="space-y-2 h-[360px] overflow-y-auto pr-2 custom-scrollbar">
-                    <label class="camera-command-option">
+                    <label class="group flex items-start gap-3 rounded-2xl border border-gray-100 bg-white p-3 cursor-pointer transition hover:bg-blue-50/50 hover:border-blue-200 dark:border-gray-700 dark:bg-gray-800/50 dark:hover:bg-blue-900/20 dark:hover:border-blue-800/50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/30">
                         <input type="radio" name="cmd" value="ping" class="mt-2 h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800">
-                        <span class="camera-command-icon"><i class="fa-duotone fa-signal-stream"></i></span>
+                        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 group-has-[:checked]:bg-blue-100 group-has-[:checked]:text-blue-600 dark:group-has-[:checked]:bg-blue-900/50 dark:group-has-[:checked]:text-blue-400 transition"><i class="fa-duotone fa-signal-stream"></i></span>
                         <span class="min-w-0">
-                            <span class="camera-command-title block text-sm">{% if lang == "ru" %}Проверить соединение{% else %}Ulanishni tekshirish{% endif %}</span>
-                            <span class="camera-command-desc block text-xs">{% if lang == "ru" %}Ping запрос к устройству{% else %}Ping orqali tezkor aloqani tekshiradi{% endif %}</span>
+                            <span class="font-semibold text-gray-900 dark:text-white block text-sm group-has-[:checked]:text-blue-700 dark:group-has-[:checked]:text-blue-300 transition">{% if lang == "ru" %}Проверить соединение{% else %}Ulanishni tekshirish{% endif %}</span>
+                            <span class="text-gray-500 dark:text-gray-400 mt-0.5 block text-xs">{% if lang == "ru" %}Ping запрос к устройству{% else %}Ping orqali tezkor aloqani tekshiradi{% endif %}</span>
                         </span>
                     </label>
 
-                    <label class="camera-command-option">
+                    <label class="group flex items-start gap-3 rounded-2xl border border-gray-100 bg-white p-3 cursor-pointer transition hover:bg-blue-50/50 hover:border-blue-200 dark:border-gray-700 dark:bg-gray-800/50 dark:hover:bg-blue-900/20 dark:hover:border-blue-800/50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/30">
                         <input type="radio" name="cmd" value="get_face_count" class="mt-2 h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800">
-                        <span class="camera-command-icon"><i class="fa-duotone fa-face-viewfinder"></i></span>
+                        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 group-has-[:checked]:bg-blue-100 group-has-[:checked]:text-blue-600 dark:group-has-[:checked]:bg-blue-900/50 dark:group-has-[:checked]:text-blue-400 transition"><i class="fa-duotone fa-face-viewfinder"></i></span>
                         <span class="min-w-0">
-                            <span class="camera-command-title block text-sm">{% if lang == "ru" %}Проверить количество лиц{% else %}Yuzlar sonini tekshirish{% endif %}</span>
-                            <span class="camera-command-desc block text-xs">{% if lang == "ru" %}Количество зарегистрированных лиц{% else %}Shaxslar sonini o'qiydi{% endif %}</span>
+                            <span class="font-semibold text-gray-900 dark:text-white block text-sm group-has-[:checked]:text-blue-700 dark:group-has-[:checked]:text-blue-300 transition">{% if lang == "ru" %}Проверить количество лиц{% else %}Yuzlar sonini tekshirish{% endif %}</span>
+                            <span class="text-gray-500 dark:text-gray-400 mt-0.5 block text-xs">{% if lang == "ru" %}Количество зарегистрированных лиц{% else %}Shaxslar sonini o'qiydi{% endif %}</span>
                         </span>
                     </label>
 
-                    <label class="camera-command-option">
+                    <label class="group flex items-start gap-3 rounded-2xl border border-gray-100 bg-white p-3 cursor-pointer transition hover:bg-blue-50/50 hover:border-blue-200 dark:border-gray-700 dark:bg-gray-800/50 dark:hover:bg-blue-900/20 dark:hover:border-blue-800/50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/30">
                         <input type="radio" name="cmd" value="get_today_attendance_count" class="mt-2 h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800">
-                        <span class="camera-command-icon"><i class="fa-duotone fa-calendar-lines-pen"></i></span>
+                        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 group-has-[:checked]:bg-blue-100 group-has-[:checked]:text-blue-600 dark:group-has-[:checked]:bg-blue-900/50 dark:group-has-[:checked]:text-blue-400 transition"><i class="fa-duotone fa-calendar-lines-pen"></i></span>
                         <span class="min-w-0">
-                            <span class="camera-command-title block text-sm">{% if lang == "ru" %}Количество посещений за сегодня (из базы){% else %}Bugungi attendance soni (bazadan){% endif %}</span>
-                            <span class="camera-command-desc block text-xs">{% if lang == "ru" %}Показывает записи, полученные через HTTP push{% else %}HTTP push orqali kelgan yozuvlarni ko'rsatadi{% endif %}</span>
+                            <span class="font-semibold text-gray-900 dark:text-white block text-sm group-has-[:checked]:text-blue-700 dark:group-has-[:checked]:text-blue-300 transition">{% if lang == "ru" %}Количество посещений за сегодня (из базы){% else %}Bugungi attendance soni (bazadan){% endif %}</span>
+                            <span class="text-gray-500 dark:text-gray-400 mt-0.5 block text-xs">{% if lang == "ru" %}Показывает записи, полученные через HTTP push{% else %}HTTP push orqali kelgan yozuvlarni ko'rsatadi{% endif %}</span>
                         </span>
                     </label>
 
-                    <label class="camera-command-option">
+                    <label class="group flex items-start gap-3 rounded-2xl border border-gray-100 bg-white p-3 cursor-pointer transition hover:bg-blue-50/50 hover:border-blue-200 dark:border-gray-700 dark:bg-gray-800/50 dark:hover:bg-blue-900/20 dark:hover:border-blue-800/50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/30">
                         <input type="radio" name="cmd" value="sync_faces" class="mt-2 h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800">
-                        <span class="camera-command-icon"><i class="fa-duotone fa-rotate"></i></span>
+                        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 group-has-[:checked]:bg-blue-100 group-has-[:checked]:text-blue-600 dark:group-has-[:checked]:bg-blue-900/50 dark:group-has-[:checked]:text-blue-400 transition"><i class="fa-duotone fa-rotate"></i></span>
                         <span class="min-w-0">
-                            <span class="camera-command-title block text-sm">{% if lang == "ru" %}Синхронизировать лица{% else %}Yuzlarni sinxronlash{% endif %}</span>
-                            <span class="camera-command-desc block text-xs">{% if lang == "ru" %}Загрузить новые лица из базы{% else %}Yangi yuzlarni yuklaydi{% endif %}</span>
+                            <span class="font-semibold text-gray-900 dark:text-white block text-sm group-has-[:checked]:text-blue-700 dark:group-has-[:checked]:text-blue-300 transition">{% if lang == "ru" %}Синхронизировать лица{% else %}Yuzlarni sinxronlash{% endif %}</span>
+                            <span class="text-gray-500 dark:text-gray-400 mt-0.5 block text-xs">{% if lang == "ru" %}Загрузить новые лица из базы{% else %}Yangi yuzlarni yuklaydi{% endif %}</span>
                         </span>
                     </label>
 
-                    <label class="camera-command-option">
+                    <label class="group flex items-start gap-3 rounded-2xl border border-gray-100 bg-white p-3 cursor-pointer transition hover:bg-blue-50/50 hover:border-blue-200 dark:border-gray-700 dark:bg-gray-800/50 dark:hover:bg-blue-900/20 dark:hover:border-blue-800/50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/30">
                         <input type="radio" name="cmd" value="open_door" class="mt-2 h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800">
-                        <span class="camera-command-icon"><i class="fa-duotone fa-lock-open"></i></span>
+                        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 group-has-[:checked]:bg-blue-100 group-has-[:checked]:text-blue-600 dark:group-has-[:checked]:bg-blue-900/50 dark:group-has-[:checked]:text-blue-400 transition"><i class="fa-duotone fa-lock-open"></i></span>
                         <span class="min-w-0">
-                            <span class="camera-command-title block text-sm">{% if lang == "ru" %}Открыть дверь{% else %}Eshikni ochish{% endif %}</span>
-                            <span class="camera-command-desc block text-xs">{% if lang == "ru" %}Открыть турникет на 5 секунд{% else %}5 soniyaga qulfni ochadi{% endif %}</span>
+                            <span class="font-semibold text-gray-900 dark:text-white block text-sm group-has-[:checked]:text-blue-700 dark:group-has-[:checked]:text-blue-300 transition">{% if lang == "ru" %}Открыть дверь{% else %}Eshikni ochish{% endif %}</span>
+                            <span class="text-gray-500 dark:text-gray-400 mt-0.5 block text-xs">{% if lang == "ru" %}Открыть турникет на 5 секунд{% else %}5 soniyaga qulfni ochadi{% endif %}</span>
                         </span>
                     </label>
 
-                    <label class="camera-command-option">
+                    <label class="group flex items-start gap-3 rounded-2xl border border-gray-100 bg-white p-3 cursor-pointer transition hover:bg-blue-50/50 hover:border-blue-200 dark:border-gray-700 dark:bg-gray-800/50 dark:hover:bg-blue-900/20 dark:hover:border-blue-800/50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/30">
                         <input type="radio" name="cmd" value="reboot" class="mt-2 h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800">
-                        <span class="camera-command-icon"><i class="fa-duotone fa-power-off"></i></span>
+                        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 group-has-[:checked]:bg-blue-100 group-has-[:checked]:text-blue-600 dark:group-has-[:checked]:bg-blue-900/50 dark:group-has-[:checked]:text-blue-400 transition"><i class="fa-duotone fa-power-off"></i></span>
                         <span class="min-w-0">
-                            <span class="camera-command-title block text-sm">{% if lang == "ru" %}Перезагрузить камеру{% else %}Qayta ishga tushirish{% endif %}</span>
-                            <span class="camera-command-desc block text-xs">{% if lang == "ru" %}Полная перезагрузка{% else %}To'liq reboot{% endif %}</span>
+                            <span class="font-semibold text-gray-900 dark:text-white block text-sm group-has-[:checked]:text-blue-700 dark:group-has-[:checked]:text-blue-300 transition">{% if lang == "ru" %}Перезагрузить камеру{% else %}Qayta ishga tushirish{% endif %}</span>
+                            <span class="text-gray-500 dark:text-gray-400 mt-0.5 block text-xs">{% if lang == "ru" %}Полная перезагрузка{% else %}To'liq reboot{% endif %}</span>
                         </span>
                     </label>
 
-                    <label class="camera-command-option">
+                    <label class="group flex items-start gap-3 rounded-2xl border border-gray-100 bg-white p-3 cursor-pointer transition hover:bg-blue-50/50 hover:border-blue-200 dark:border-gray-700 dark:bg-gray-800/50 dark:hover:bg-blue-900/20 dark:hover:border-blue-800/50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/30">
                         <input type="radio" name="cmd" value="get_alarm_server" class="mt-2 h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800">
-                        <span class="camera-command-icon"><i class="fa-duotone fa-bell-on"></i></span>
+                        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 group-has-[:checked]:bg-blue-100 group-has-[:checked]:text-blue-600 dark:group-has-[:checked]:bg-blue-900/50 dark:group-has-[:checked]:text-blue-400 transition"><i class="fa-duotone fa-bell-on"></i></span>
                         <span class="min-w-0">
-                            <span class="camera-command-title block text-sm">{% if lang == "ru" %}Настройки Webhook/Event{% else %}Webhook/Event sozlamalari{% endif %}</span>
-                            <span class="camera-command-desc block text-xs">{% if lang == "ru" %}Показать куда камера отправляет события{% else %}Kamera hodisalarni qayerga yuborishini ko'rish{% endif %}</span>
+                            <span class="font-semibold text-gray-900 dark:text-white block text-sm group-has-[:checked]:text-blue-700 dark:group-has-[:checked]:text-blue-300 transition">{% if lang == "ru" %}Настройки Webhook/Event{% else %}Webhook/Event sozlamalari{% endif %}</span>
+                            <span class="text-gray-500 dark:text-gray-400 mt-0.5 block text-xs">{% if lang == "ru" %}Показать куда камера отправляет события{% else %}Kamera hodisalarni qayerga yuborishini ko'rish{% endif %}</span>
                         </span>
                     </label>
 
-                    <label class="camera-command-option">
+                    <label class="group flex items-start gap-3 rounded-2xl border border-gray-100 bg-white p-3 cursor-pointer transition hover:bg-blue-50/50 hover:border-blue-200 dark:border-gray-700 dark:bg-gray-800/50 dark:hover:bg-blue-900/20 dark:hover:border-blue-800/50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/30">
                         <input type="radio" name="cmd" value="set_tashkent_timezone" class="mt-2 h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800">
-                        <span class="camera-command-icon"><i class="fa-duotone fa-clock"></i></span>
+                        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 group-has-[:checked]:bg-blue-100 group-has-[:checked]:text-blue-600 dark:group-has-[:checked]:bg-blue-900/50 dark:group-has-[:checked]:text-blue-400 transition"><i class="fa-duotone fa-clock"></i></span>
                         <span class="min-w-0">
-                            <span class="camera-command-title block text-sm">{% if lang == "ru" %}Синхронизировать время камеры{% else %}Kamera vaqtini sinxronlash{% endif %}</span>
-                            <span class="camera-command-desc block text-xs">{% if lang == "ru" %}Устанавливает Asia/Tashkent и текущее локальное время{% else %}Asia/Tashkent va joriy mahalliy vaqtni o'rnatadi{% endif %}</span>
+                            <span class="font-semibold text-gray-900 dark:text-white block text-sm group-has-[:checked]:text-blue-700 dark:group-has-[:checked]:text-blue-300 transition">{% if lang == "ru" %}Синхронизировать время камеры{% else %}Kamera vaqtini sinxronlash{% endif %}</span>
+                            <span class="text-gray-500 dark:text-gray-400 mt-0.5 block text-xs">{% if lang == "ru" %}Устанавливает Asia/Tashkent и текущее локальное время{% else %}Asia/Tashkent va joriy mahalliy vaqtni o'rnatadi{% endif %}</span>
                         </span>
                     </label>
                 </div>
@@ -238,8 +238,8 @@
         </div>
 
         <div class="lg:col-span-2">
-            <div class="camera-terminal-shell flex h-full min-h-[420px] flex-col">
-                <div class="camera-terminal-head shrink-0">
+            <div class="overflow-hidden rounded-3xl border border-gray-200 bg-slate-950 shadow-sm dark:border-gray-800 flex h-full min-h-[420px] flex-col">
+                <div class="flex items-center justify-between gap-3 border-b border-white/10 bg-white/5 px-4 py-3 shrink-0">
                     <div class="flex items-center gap-2">
                         <div class="h-3 w-3 rounded-full bg-red-500"></div>
                         <div class="h-3 w-3 rounded-full bg-amber-500"></div>
@@ -249,7 +249,7 @@
                     <button onclick="clearTerminal()" class="text-xs text-gray-500 transition hover:text-white">{% if lang == "ru" %}Очистить{% else %}Tozalash{% endif %}</button>
                 </div>
 
-                <div id="terminal-out" class="camera-terminal-body w-full h-full text-sm">
+                <div id="terminal-out" class="flex-1 overflow-auto p-4 font-mono text-sm text-gray-300">
                     <div class="mb-2 text-gray-500">{% if lang == "ru" %}Результаты команд здесь{% else %}Buyruq natijalari bu yerda{% endif %} ko'rinadi...</div>
                 </div>
             </div>

@@ -1,227 +1,254 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="animate-fade-in mb-6">
-    <div class="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-        <div>
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-                {% if lang == 'ru' %}Системные логи{% else %}Tizim Loglari{% endif %}
-            </h1>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {% if lang == 'ru' %}Все входящие HTTP-запросы в реальном времени{% else %}Serverga kelgan barcha HTTP so'rovlar — real vaqt{% endif %}
-            </p>
-        </div>
-        <div class="flex items-center gap-3">
-            <span id="live-indicator" class="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" style="opacity:0.6;transition:opacity 0.3s;">
-                <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500"></span> LIVE
-            </span>
-        </div>
-    </div>
-</div>
-
-{# ─── Stats — flex qatorda ─── #}
-<div class="mb-6 flex flex-row gap-4 overflow-x-auto">
-    <div class="flex-1 min-w-[120px] card-standard p-4  ">
-        <p class="mb-1 text-xs text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}Всего{% else %}Jami{% endif %}</p>
-        <p class="text-xl font-bold text-gray-900 dark:text-white" id="stat-total">—</p>
-    </div>
-    <div class="flex-1 min-w-[120px] card-standard p-4  ">
-        <p class="mb-1 text-xs text-emerald-500">2xx OK</p>
-        <p class="text-xl font-bold text-emerald-600 dark:text-emerald-400" id="stat-ok">—</p>
-    </div>
-    <div class="flex-1 min-w-[120px] card-standard p-4  ">
-        <p class="mb-1 text-xs text-amber-500">4xx</p>
-        <p class="text-xl font-bold text-amber-600 dark:text-amber-400" id="stat-4xx">—</p>
-    </div>
-    <div class="flex-1 min-w-[120px] card-standard p-4  ">
-        <p class="mb-1 text-xs text-red-500">5xx</p>
-        <p class="text-xl font-bold text-red-600 dark:text-red-400" id="stat-5xx">—</p>
-    </div>
-</div>
-
-{# ─── Chart — status breakdown ─── #}
-<div class="mb-6 overflow-hidden card-standard  ">
-    <div class="flex items-center justify-between border-b border-gray-100 bg-gray-50/50 px-6 py-4 dark:border-gray-800 dark:bg-gray-800/20">
-        <h3 class="font-semibold text-gray-900 dark:text-white text-sm">{% if lang == 'ru' %}Статусы запросов{% else %}So'rov statuslari{% endif %}</h3>
-        <span class="text-xs text-gray-400">{% if lang == 'ru' %}По коду ответа{% else %}Javob kodi bo'yicha{% endif %}</span>
-    </div>
-    <div class="p-6">
-        <div id="chart-bars" class="space-y-2">
-            <p class="text-sm text-gray-400 text-center py-4">Yuklanmoqda...</p>
-        </div>
-    </div>
-</div>
-
-{# ─── Filters ─── #}
-<div class="mb-4 overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
-    <div class="flex flex-wrap items-end gap-3 px-6 py-4">
-        <div class="flex-1 min-w-[180px]">
-            <label class="mb-1 block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}Поиск{% else %}Qidiruv{% endif %}</label>
-            <input id="f-search" type="text" placeholder="URL, ism, user-agent..." class="w-full form-input">
-        </div>
-        <div class="min-w-[150px]">
-            <label class="mb-1 block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">IP</label>
-            <select id="f-ip" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 pr-8 text-sm font-mono text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40 appearance-none" style="background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;">
-                <option value="">{% if lang == 'ru' %}Все IP{% else %}Barcha IP{% endif %}</option>
-            </select>
-        </div>
-        <div>
-            <label class="mb-1 block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Method</label>
-            <select id="f-method" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 pr-8 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40 appearance-none" style="background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;">
-                <option value="">Barchasi</option>
-                <option value="GET">GET</option>
-                <option value="POST">POST</option>
-                <option value="PUT">PUT</option>
-                <option value="DELETE">DELETE</option>
-            </select>
-        </div>
-        <div>
-            <label class="mb-1 block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Status</label>
-            <select id="f-status" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 pr-8 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40 appearance-none" style="background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;">
-                <option value="">Barchasi</option>
-                <option value="200">200 OK</option>
-                <option value="302">302 Redirect</option>
-                <option value="303">303 Redirect</option>
-                <option value="400">400 Bad</option>
-                <option value="401">401 Unauth</option>
-                <option value="403">403 Forbidden</option>
-                <option value="404">404 Not Found</option>
-                <option value="500">500 Error</option>
-            </select>
-        </div>
-        <div>
-            <label class="mb-1 block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}На стр.{% else %}Sahifada{% endif %}</label>
-            <select id="f-limit" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 pr-8 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900/40 appearance-none" style="background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;">
-                <option value="50">50</option>
-                <option value="100" selected>100</option>
-                <option value="200">200</option>
-                <option value="500">500</option>
-            </select>
-        </div>
-        <div class="flex items-center gap-2">
-            <div>
-                <label class="mb-1 block text-xs text-transparent select-none">_</label>
-                <button id="btn-reset" class="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
-                    <i class="fa-solid fa-rotate-right"></i>
-                    Reset
-                </button>
+<div class="animate-fade-in space-y-6">
+    <section class="overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 to-indigo-600 shadow-xl">
+        <div class="grid gap-4 p-5 xl:grid-cols-3">
+            <div class="min-w-0 xl:col-span-1 flex flex-col justify-center">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white/80 backdrop-blur-sm w-max">
+                        <i class="fa-duotone fa-server"></i>
+                        HTTP Traffic
+                    </span>
+                    <span id="live-indicator" class="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-300 transition-opacity duration-300 opacity-60">
+                        <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400"></span> LIVE
+                    </span>
+                </div>
+                <h1 class="text-3xl font-bold tracking-tight text-white">
+                    {% if lang == 'ru' %}Системные логи{% else %}Tizim Loglari{% endif %}
+                </h1>
+                <p class="max-w-3xl text-sm leading-6 text-blue-100 mt-2">
+                    {% if lang == 'ru' %}Все входящие HTTP-запросы в реальном времени. Контроль состояния API и защита от сбоев.{% else %}Serverga kelgan barcha HTTP so'rovlar — real vaqt monitoringi va API holati nazorati.{% endif %}
+                </p>
             </div>
-            <div>
-                <label class="mb-1 block text-xs text-transparent select-none">_</label>
-                <button id="btn-clear-all" class="inline-flex items-center gap-2 rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 dark:border-red-800 dark:bg-gray-800 dark:text-red-400 dark:hover:bg-red-900/20">
-                    <i class="fa-solid fa-trash-can"></i>
-                    {% if lang == 'ru' %}Очистить{% else %}Tozalash{% endif %}
-                </button>
+
+            <div class="grid gap-3 sm:grid-cols-2 xl:col-span-2">
+                <article class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm relative overflow-hidden">
+                    <div class="absolute right-4 top-4 text-white/20 text-4xl">
+                        <span class="block"><i class="fa-duotone fa-globe"></i></span>
+                    </div>
+                    <div class="text-xs font-semibold uppercase tracking-wide text-white/80">{% if lang == 'ru' %}Всего{% else %}Jami{% endif %}</div>
+                    <div id="stat-total" class="mt-2 text-2xl font-bold text-white">—</div>
+                    <div class="mt-1 text-xs text-white/80">{% if lang == 'ru' %}Все запросы{% else %}Barcha so'rovlar{% endif %}</div>
+                </article>
+                <article class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm relative overflow-hidden">
+                    <div class="absolute right-4 top-4 text-emerald-500/20 text-4xl">
+                        <span class="block"><i class="fa-duotone fa-circle-check"></i></span>
+                    </div>
+                    <div class="text-xs font-semibold uppercase tracking-wide text-emerald-300">2xx OK</div>
+                    <div id="stat-ok" class="mt-2 text-2xl font-bold text-emerald-100">—</div>
+                    <div class="mt-1 text-xs text-emerald-200/80">Muvaffaqiyatli</div>
+                </article>
+                <article class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm relative overflow-hidden">
+                    <div class="absolute right-4 top-4 text-amber-500/20 text-4xl">
+                        <span class="block"><i class="fa-duotone fa-triangle-exclamation"></i></span>
+                    </div>
+                    <div class="text-xs font-semibold uppercase tracking-wide text-amber-300">4xx Errors</div>
+                    <div id="stat-4xx" class="mt-2 text-2xl font-bold text-amber-100">—</div>
+                    <div class="mt-1 text-xs text-amber-200/80">Foydalanuvchi xatolari</div>
+                </article>
+                <article class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm relative overflow-hidden">
+                    <div class="absolute right-4 top-4 text-rose-500/20 text-4xl">
+                        <span class="block"><i class="fa-duotone fa-bug"></i></span>
+                    </div>
+                    <div class="text-xs font-semibold uppercase tracking-wide text-rose-300">5xx Errors</div>
+                    <div id="stat-5xx" class="mt-2 text-2xl font-bold text-rose-100">—</div>
+                    <div class="mt-1 text-xs text-rose-200/80">Server xatolari</div>
+                </article>
             </div>
         </div>
-    </div>
+    </section>
+
+    <section class="grid gap-6 xl:grid-cols-12">
+        <article class="rounded-3xl border border-gray-200 bg-white/80 p-5 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80 xl:col-span-4 flex flex-col">
+            <div class="flex items-center justify-between gap-3 mb-4">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">{% if lang == 'ru' %}Аналитика{% else %}Analitika{% endif %}</p>
+                    <h2 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{% if lang == 'ru' %}Статусы запросов{% else %}So'rov statuslari{% endif %}</h2>
+                </div>
+                <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-blue-50/80 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"><i class="fa-duotone fa-chart-pie"></i></span>
+            </div>
+            <div id="chart-bars" class="flex-1 space-y-3 overflow-y-auto pr-2 custom-scrollbar">
+                <p class="text-sm text-gray-500 dark:text-gray-400 text-center py-8">Yuklanmoqda...</p>
+            </div>
+        </article>
+
+        <article class="rounded-3xl border border-gray-200 bg-white/80 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80 xl:col-span-8 flex flex-col overflow-hidden">
+            <div class="border-b border-gray-200 p-5 dark:border-gray-800">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                    <div class="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
+                        <label class="block sm:col-span-2 lg:col-span-2">
+                            <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}Поиск{% else %}Qidiruv{% endif %}</span>
+                            <span class="flex overflow-hidden rounded-xl border border-gray-200 bg-gray-50/50 shadow-sm dark:border-gray-700/50 dark:bg-gray-800/50">
+                                <span class="flex w-10 shrink-0 items-center justify-center text-gray-400 dark:text-gray-500">
+                                    <i class="fa-duotone fa-magnifying-glass"></i>
+                                </span>
+                                <input id="f-search" type="text" placeholder="URL, ism, agent..." class="min-w-0 flex-1 bg-transparent py-2.5 pr-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:text-white">
+                            </span>
+                        </label>
+                        
+                        <label class="block">
+                            <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">IP</span>
+                            <select id="f-ip" class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-sm font-mono text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700/50 dark:bg-gray-800/50 dark:text-white dark:focus:ring-blue-900/40">
+                                <option value="">Barchasi</option>
+                            </select>
+                        </label>
+
+                        <label class="block">
+                            <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Method</span>
+                            <select id="f-method" class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700/50 dark:bg-gray-800/50 dark:text-white dark:focus:ring-blue-900/40">
+                                <option value="">Barchasi</option>
+                                <option value="GET">GET</option>
+                                <option value="POST">POST</option>
+                                <option value="PUT">PUT</option>
+                                <option value="DELETE">DELETE</option>
+                            </select>
+                        </label>
+
+                        <label class="block">
+                            <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Status</span>
+                            <select id="f-status" class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700/50 dark:bg-gray-800/50 dark:text-white dark:focus:ring-blue-900/40">
+                                <option value="">Barchasi</option>
+                                <option value="200">200 OK</option>
+                                <option value="302">302 Redirect</option>
+                                <option value="400">400 Bad</option>
+                                <option value="401">401 Unauth</option>
+                                <option value="403">403 Forbidden</option>
+                                <option value="404">404 Not Found</option>
+                                <option value="500">500 Error</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center gap-2 lg:shrink-0 mt-4 lg:mt-0">
+                        <select id="f-limit" title="Sahifada" class="rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-sm text-gray-900 outline-none transition focus:border-blue-500 dark:border-gray-700/50 dark:bg-gray-800/50 dark:text-white">
+                            <option value="50">50</option>
+                            <option value="100" selected>100</option>
+                            <option value="200">200</option>
+                            <option value="500">500</option>
+                        </select>
+                        <button id="btn-reset" title="Tozalash" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-gray-50/50 text-gray-600 transition hover:bg-gray-100 dark:border-gray-700/50 dark:bg-gray-800/50 dark:text-gray-400 dark:hover:bg-gray-700">
+                            <i class="fa-duotone fa-rotate-right"></i>
+                        </button>
+                        <button id="btn-clear-all" class="inline-flex h-10 items-center gap-2 rounded-xl border border-rose-200 bg-rose-50/80 px-4 text-sm font-semibold text-rose-600 transition hover:bg-rose-100 dark:border-rose-900/40 dark:bg-rose-900/20 dark:text-rose-400 dark:hover:bg-rose-900/40">
+                            <i class="fa-duotone fa-trash-can"></i>
+                            <span class="hidden sm:inline">{% if lang == 'ru' %}Очистить{% else %}Tozalash{% endif %}</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto flex-1">
+                <table class="min-w-full text-left text-sm whitespace-nowrap">
+                    <thead class="bg-gray-50/80 dark:bg-gray-900/40">
+                        <tr>
+                            <th class="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">#</th>
+                            <th class="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}Время{% else %}Vaqti{% endif %}</th>
+                            <th class="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">IP</th>
+                            <th class="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Method</th>
+                            <th class="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 max-w-[200px]">URL</th>
+                            <th class="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Content-Type</th>
+                            <th class="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Status</th>
+                            <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">MS</th>
+                        </tr>
+                    </thead>
+                    <tbody id="log-tbody" class="divide-y divide-gray-100 dark:divide-gray-800">
+                        <tr><td colspan="8" class="py-12 text-center text-gray-400"><i class="fa-duotone fa-loader animate-spin text-2xl mb-2 block"></i> Yuklanmoqda...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="flex flex-col items-center justify-between gap-4 border-t border-gray-200 bg-gray-50/30 px-5 py-3 dark:border-gray-800 dark:bg-gray-900/20 sm:flex-row">
+                <p id="page-info" class="text-sm font-medium text-gray-500 dark:text-gray-400">Natijalar: 0</p>
+                <div class="flex items-center gap-2">
+                    <button id="btn-prev" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
+                        <i class="fa-duotone fa-chevron-left"></i> {% if lang == 'ru' %}Назад{% else %}Oldingi{% endif %}
+                    </button>
+                    <div id="page-numbers" class="flex items-center gap-1"></div>
+                    <button id="btn-next" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
+                        {% if lang == 'ru' %}Вперёд{% else %}Keyingi{% endif %} <i class="fa-duotone fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </article>
+    </section>
 </div>
 
-{# ─── Table ─── #}
-<div class="overflow-hidden card-standard  ">
-    <div class="overflow-x-auto">
-        <table class="table-standard">
-            <thead>
-                <tr>
-                    <th class="px-4 py-4 font-semibold">#</th>
-                    <th class="px-4 py-4 font-semibold">{% if lang == 'ru' %}Время{% else %}Vaqti{% endif %}</th>
-                    <th class="px-4 py-4 font-semibold">IP</th>
-                    <th class="px-4 py-4 font-semibold">Method</th>
-                    <th class="px-4 py-4 font-semibold">URL</th>
-                    <th class="px-4 py-4 font-semibold">Content-Type</th>
-                    <th class="px-4 py-4 font-semibold">User-Agent</th>
-                    <th class="px-4 py-4 font-semibold">{% if lang == 'ru' %}Детали{% else %}Tafsilot{% endif %}</th>
-                    <th class="px-4 py-4 font-semibold">Status</th>
-                    <th class="px-4 py-4 font-semibold">ms</th>
-                </tr>
-            </thead>
-            <tbody id="log-tbody" class="divide-y divide-gray-100 dark:divide-gray-800">
-                <tr><td colspan="10" class="py-8 text-center text-gray-400">Yuklanmoqda...</td></tr>
-            </tbody>
-        </table>
-    </div>
-    <div class="flex flex-col items-center justify-between gap-3 border-t border-gray-100 px-6 py-4 dark:border-gray-800 sm:flex-row">
-        <p id="page-info" class="text-xs text-gray-500 dark:text-gray-400">—</p>
-        <div class="inline-flex items-center gap-2">
-            <button id="btn-prev" class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">← {% if lang == 'ru' %}Назад{% else %}Oldingi{% endif %}</button>
-            <div id="page-numbers" class="flex items-center gap-1"></div>
-            <button id="btn-next" class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">{% if lang == 'ru' %}Вперёд{% else %}Keyingi{% endif %} →</button>
-        </div>
-    </div>
-</div>
+<style>
+.custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+.dark .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #475569; }
+</style>
 
 <script>
 (function () {
     var state = { page: 1, pages: 1, total: 0 };
-    var searchTimer = null, ipTimer = null;
+    var searchTimer = null;
 
     function esc(s) {
         return String(s == null ? '' : s)
             .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     }
 
-    var SEL_ARROW = "background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;";
-
     function methodBadge(m) {
         var cls = {
             GET:    'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
             POST:   'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
             PUT:    'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-            DELETE: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+            DELETE: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
         };
         var c = cls[m] || 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400';
-        return '<span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ' + c + '">' + esc(m) + '</span>';
+        return '<span class="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ' + c + '">' + esc(m) + '</span>';
     }
 
-    function statusCls(s) {
-        if (!s) return 'text-gray-400';
-        if (s >= 500) return 'font-bold text-red-600 dark:text-red-400';
-        if (s >= 400) return 'font-semibold text-amber-600 dark:text-amber-400';
-        if (s >= 300) return 'text-blue-500 dark:text-blue-400';
-        return 'text-emerald-600 dark:text-emerald-400';
+    function statusBadge(s) {
+        if (!s) return '<span class="text-gray-400">—</span>';
+        let cls = 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
+        let dot = 'bg-emerald-500';
+        if (s >= 500) { cls = 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'; dot = 'bg-rose-500'; }
+        else if (s >= 400) { cls = 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'; dot = 'bg-amber-500'; }
+        else if (s >= 300) { cls = 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'; dot = 'bg-blue-500'; }
+        return '<span class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider ' + cls + '"><span class="h-1.5 w-1.5 rounded-full ' + dot + '"></span>' + s + '</span>';
     }
 
     function statusColor(code) {
-        if (code >= 500) return '#ef4444';
+        if (code >= 500) return '#f43f5e';
         if (code >= 400) return '#f59e0b';
         if (code >= 300) return '#3b82f6';
         if (code >= 200) return '#10b981';
-        return '#6b7280';
+        return '#64748b';
     }
 
     function msCls(ms) {
-        if (ms > 2000) return 'font-semibold text-red-500';
+        if (ms > 2000) return 'font-semibold text-rose-500';
         if (ms > 500) return 'text-amber-500';
-        return 'text-gray-400 dark:text-gray-500';
+        return 'text-gray-500 dark:text-gray-400';
     }
 
     function fmt(iso) {
         if (!iso) return '—';
         var dt = new Date(iso);
         if (Number.isNaN(dt.getTime())) return iso;
-        return dt.toLocaleString('uz-UZ', { timeZone: 'Asia/Tashkent' });
+        return dt.toLocaleString('uz-UZ', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' });
     }
 
-    // ─── Load stats + chart + IP select ───
     function loadStats() {
         fetch('/api/middleware-logs/stats')
             .then(function(r) { return r.json(); })
             .then(function(json) {
                 if (!json.ok) return;
 
-                // IP select
                 var ipSel = document.getElementById('f-ip');
                 var curVal = ipSel.value;
-                ipSel.innerHTML = '<option value="">{% if lang == "ru" %}Все IP{% else %}Barcha IP{% endif %}</option>';
+                ipSel.innerHTML = '<option value="">Barcha IP</option>';
                 (json.ips || []).forEach(function(ip) {
                     var opt = document.createElement('option');
                     opt.value = ip; opt.textContent = ip;
                     if (ip === curVal) opt.selected = true;
                     ipSel.appendChild(opt);
                 });
-                ipSel.style = SEL_ARROW;
 
-                // Chart
                 var breakdown = json.status_breakdown || [];
                 var chartEl = document.getElementById('chart-bars');
                 if (!breakdown.length) {
@@ -232,14 +259,14 @@
                 chartEl.innerHTML = breakdown.map(function(r) {
                     var pct = maxCount > 0 ? Math.round(r.count / maxCount * 100) : 0;
                     var color = statusColor(r.code);
-                    return '<div class="flex items-center gap-3">' +
-                        '<span class="w-12 text-right text-xs font-mono font-semibold" style="color:' + color + '">' + r.code + '</span>' +
-                        '<div class="flex-1 bg-gray-100 dark:bg-gray-800 rounded-full h-6 overflow-hidden">' +
-                            '<div class="h-full rounded-full flex items-center px-2 text-xs font-medium text-white transition-all duration-500" style="width:' + Math.max(pct, 4) + '%;background:' + color + '">' +
-                                (pct > 15 ? r.count : '') +
+                    return '<div class="flex items-center justify-between text-xs">' +
+                        '<div class="flex items-center gap-2 flex-1">' +
+                            '<span class="w-8 font-mono font-bold" style="color:' + color + '">' + r.code + '</span>' +
+                            '<div class="h-2 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">' +
+                                '<div class="h-full rounded-full transition-all duration-500" style="width:' + Math.max(pct, 2) + '%;background:' + color + '"></div>' +
                             '</div>' +
                         '</div>' +
-                        '<span class="w-12 text-xs font-semibold text-gray-600 dark:text-gray-300">' + r.count + '</span>' +
+                        '<span class="w-10 text-right font-medium text-gray-600 dark:text-gray-300">' + r.count + '</span>' +
                     '</div>';
                 }).join('');
             })
@@ -247,23 +274,16 @@
     }
 
     function buildRow(l) {
-        var ua = l.user_agent ? (l.user_agent.length > 38 ? l.user_agent.slice(0,36)+'…' : l.user_agent) : '—';
         var ct = l.content_type ? l.content_type.split(';')[0] : '—';
-        var detailHtml = l.details
-            ? '<span class="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">' + esc(l.details) + '</span>'
-            : '<span class="text-gray-300 dark:text-gray-700">—</span>';
-
-        return '<tr class="transition hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer log-row" data-log=\'' + esc(JSON.stringify(l)) + '\'>' +
-            '<td class="whitespace-nowrap px-4 py-3 font-mono text-xs text-gray-400">#' + l.id + '</td>' +
-            '<td class="whitespace-nowrap px-4 py-3 text-xs">' + fmt(l.created_at) + '</td>' +
-            '<td class="px-4 py-3 font-mono text-xs font-semibold text-gray-800 dark:text-gray-200">' + esc(l.client_ip || '—') + '</td>' +
-            '<td class="px-4 py-3">' + methodBadge(l.method) + '</td>' +
-            '<td class="px-4 py-3 max-w-[200px]"><span class="block truncate font-mono text-xs" title="' + esc(l.url) + '">' + esc(l.url) + '</span></td>' +
-            '<td class="px-4 py-3 max-w-[130px]"><span class="block truncate text-xs text-gray-500" title="' + esc(l.content_type) + '">' + esc(ct) + '</span></td>' +
-            '<td class="px-4 py-3 max-w-[160px]"><span class="block truncate text-xs text-gray-500" title="' + esc(l.user_agent) + '">' + esc(ua) + '</span></td>' +
-            '<td class="px-4 py-3">' + detailHtml + '</td>' +
-            '<td class="whitespace-nowrap px-4 py-3 text-xs ' + statusCls(l.status_code) + '">' + (l.status_code || '—') + '</td>' +
-            '<td class="whitespace-nowrap px-4 py-3 text-xs ' + msCls(l.response_time_ms) + '">' + (l.response_time_ms > 0 ? l.response_time_ms + ' ms' : '—') + '</td>' +
+        return '<tr class="transition hover:bg-blue-50/50 dark:hover:bg-blue-900/10 cursor-pointer log-row" data-log=\'' + esc(JSON.stringify(l)) + '\'>' +
+            '<td class="px-5 py-3 font-mono text-[11px] text-gray-400">#' + l.id + '</td>' +
+            '<td class="px-5 py-3 text-xs font-medium text-gray-600 dark:text-gray-300">' + fmt(l.created_at) + '</td>' +
+            '<td class="px-5 py-3 font-mono text-xs text-gray-800 dark:text-gray-200">' + esc(l.client_ip || '—') + '</td>' +
+            '<td class="px-5 py-3">' + methodBadge(l.method) + '</td>' +
+            '<td class="px-5 py-3 max-w-[200px]"><span class="block truncate font-mono text-xs text-gray-700 dark:text-gray-300" title="' + esc(l.url) + '">' + esc(l.url) + '</span></td>' +
+            '<td class="px-5 py-3"><span class="block truncate text-xs text-gray-500 dark:text-gray-400" title="' + esc(l.content_type) + '">' + esc(ct) + '</span></td>' +
+            '<td class="px-5 py-3">' + statusBadge(l.status_code) + '</td>' +
+            '<td class="px-5 py-3 text-right text-xs font-mono ' + msCls(l.response_time_ms) + '">' + (l.response_time_ms > 0 ? l.response_time_ms + 'ms' : '—') + '</td>' +
         '</tr>';
     }
 
@@ -281,16 +301,16 @@
     }
 
     function renderPagination(total, page, pages) {
-        document.getElementById('page-info').textContent = 'Jami: ' + total + ' ta | Sahifa: ' + page + ' / ' + pages;
+        document.getElementById('page-info').textContent = total + ' tadan ' + Math.min(total, page * parseInt(document.getElementById('f-limit').value)) + ' ta ko\'rsatilmoqda (Sahifa: ' + page + '/' + pages + ')';
         document.getElementById('btn-prev').disabled = page <= 1;
         document.getElementById('btn-next').disabled = page >= pages;
         var nums = document.getElementById('page-numbers');
         var html = '';
         var start = Math.max(1, page - 2), end = Math.min(pages, page + 2);
         for (var i = start; i <= end; i++) {
-            html += '<button data-p="' + i + '" class="px-2.5 py-1 text-xs rounded-lg border ' +
-                (i === page ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700') +
-                ' transition">' + i + '</button>';
+            html += '<button data-p="' + i + '" class="inline-flex h-8 min-w-[2rem] items-center justify-center rounded-lg border text-xs font-semibold transition ' +
+                (i === page ? 'border-blue-600 bg-blue-600 text-white shadow-sm' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700') +
+                '">' + i + '</button>';
         }
         nums.innerHTML = html;
         nums.querySelectorAll('button').forEach(function(b) {
@@ -315,16 +335,16 @@
 
     function load(silent) {
         var tbody = document.getElementById('log-tbody');
-        if (!silent) tbody.innerHTML = '<tr><td colspan="10" class="py-8 text-center text-gray-400">Yuklanmoqda...</td></tr>';
+        if (!silent) tbody.innerHTML = '<tr><td colspan="8" class="py-12 text-center text-gray-400"><i class="fa-duotone fa-loader animate-spin text-2xl mb-2 block"></i> Yuklanmoqda...</td></tr>';
 
         fetch('/api/middleware-logs?' + buildParams())
             .then(function(r) { return r.json(); })
             .then(function(json) {
-                if (!json.ok) { tbody.innerHTML = '<tr><td colspan="10" class="py-8 text-center text-red-400">API xatosi</td></tr>'; return; }
+                if (!json.ok) { tbody.innerHTML = '<tr><td colspan="8" class="py-12 text-center text-rose-400">API xatosi</td></tr>'; return; }
                 state.total = json.total; state.pages = json.pages; state.page = json.page;
 
                 if (!json.data || !json.data.length) {
-                    tbody.innerHTML = '<tr><td colspan="10" class="py-8 text-center text-gray-500 dark:text-gray-400">Log topilmadi</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="8" class="py-12 text-center text-gray-500 dark:text-gray-400"><div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500"><i class="fa-duotone fa-folder-open text-2xl"></i></div>Log topilmadi</td></tr>';
                     renderPagination(0, 1, 1);
                     setStats(0, []);
                     return;
@@ -343,35 +363,37 @@
                 });
 
                 var li = document.getElementById('live-indicator');
-                if (li) { li.style.opacity = '1'; setTimeout(function() { li.style.opacity = '0.6'; }, 800); }
+                if (li) { li.classList.remove('opacity-60'); setTimeout(function() { li.classList.add('opacity-60'); }, 800); }
             })
             .catch(function(e) {
-                tbody.innerHTML = '<tr><td colspan="10" class="py-8 text-center text-red-400">Xato: ' + esc(e.message) + '</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="py-12 text-center text-rose-400">Xato: ' + esc(e.message) + '</td></tr>';
             });
     }
 
     function showDetailModal(l) {
         var rows = [
-            ['#', l.id], ['Vaqti', fmt(l.created_at)], ['IP', l.client_ip || '—'],
-            ['Method', l.method], ['URL', l.url], ['Content-Type', l.content_type || '—'],
-            ['User-Agent', l.user_agent || '—'], ['Tafsilot', l.details || '—'],
-            ['Status', l.status_code || '—'], ['Vaqt', l.response_time_ms > 0 ? l.response_time_ms + ' ms' : '—']
+            ['ID', '#' + l.id], ['Vaqti', fmt(l.created_at)], ['IP', l.client_ip || '—'],
+            ['Method', l.method], ['URL', '<span class="break-all">' + esc(l.url) + '</span>'], 
+            ['Content-Type', l.content_type || '—'],
+            ['User-Agent', '<span class="break-all">' + esc(l.user_agent || '—') + '</span>'], 
+            ['Tafsilot', l.details || '—'],
+            ['Status', l.status_code || '—'], ['Kutish', l.response_time_ms > 0 ? l.response_time_ms + ' ms' : '—']
         ];
         window.AppModal.open({
-            title: '{% if lang == "ru" %}Детали запроса{% else %}So\'rov tafsilotlari{% endif %}',
+            title: 'So\'rov tafsilotlari',
             size: 'md',
-            bodyHtml: '<div class="space-y-3">' + rows.map(function(r) {
-                return '<div class="flex gap-3"><span class="w-24 shrink-0 text-xs font-semibold text-gray-500 dark:text-gray-400">' + esc(r[0]) + '</span><span class="break-all text-xs text-gray-800 dark:text-gray-200">' + esc(r[1]) + '</span></div>';
+            bodyHtml: '<div class="space-y-2 rounded-2xl bg-gray-50/50 p-4 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-700/50">' + rows.map(function(r) {
+                return '<div class="flex flex-col sm:flex-row sm:gap-4 py-1.5 border-b border-gray-100 dark:border-gray-800 last:border-0"><span class="w-28 shrink-0 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">' + esc(r[0]) + '</span><span class="text-sm font-medium text-gray-900 dark:text-white mt-1 sm:mt-0">' + r[1] + '</span></div>';
             }).join('') + '</div>'
         });
     }
 
     document.getElementById('btn-clear-all').addEventListener('click', function() {
         window.AppDialog.confirm({
-            title: '{% if lang == "ru" %}Подтверждение{% else %}Tasdiqlash{% endif %}',
-            message: '{% if lang == "ru" %}Все логи будут удалены!{% else %}Barcha loglar o\'chiriladi!{% endif %}',
-            confirmText: '{% if lang == "ru" %}Удалить{% else %}O\'chirish{% endif %}',
-            cancelText: '{% if lang == "ru" %}Отмена{% else %}Bekor qilish{% endif %}',
+            title: 'Tasdiqlash',
+            message: 'Barcha loglar o\'chiriladi va bu amalni qaytarib bo\'lmaydi!',
+            confirmText: 'O\'chirish',
+            cancelText: 'Bekor qilish',
             tone: 'danger'
         }).then(function(confirmed) {
             if (!confirmed) return;
@@ -405,7 +427,6 @@
     document.getElementById('btn-prev').addEventListener('click', function() { if (state.page > 1) { state.page--; load(false); } });
     document.getElementById('btn-next').addEventListener('click', function() { if (state.page < state.pages) { state.page++; load(false); } });
 
-    // Auto-refresh har 4 soniyada
     setInterval(function() {
         if (state.page === 1) { load(true); loadStats(); }
     }, 4000);

@@ -39,6 +39,7 @@
     <!-- FontAwesome Premium Icons -->
     <link href="/static/fontawesome/css/all.min.css" rel="stylesheet">
     <link href="/static/css/output.css?v=20260317c" rel="stylesheet">
+    <link href="/static/css/global-overrides.css?v=20260413a" rel="stylesheet">
     <style>
         ::-webkit-scrollbar { width: 5px; height: 5px; }
         ::-webkit-scrollbar-track { background: #f1f5f9; }
@@ -46,19 +47,15 @@
         .card-hover { transition: box-shadow .2s, transform .2s; }
         .card-hover:hover { box-shadow: 0 10px 30px -5px rgba(0,0,0,.1); transform: translateY(-2px); }
         .glass { background: rgba(255,255,255,.15); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,.2); }
-        body.sidebar-mobile-open #sidebar { transform: translateX(0) !important; translate: 0 0 !important; }
-        body.sidebar-mobile-open #sidebar-backdrop { opacity: 1 !important; pointer-events: auto !important; }
-        .sidebar-collapsed #sidebar { width: 4.7rem !important; padding-right: 0.35rem !important; }
-        .sidebar-collapsed .hide-on-collapse { display: none !important; opacity: 0 !important; }
-        .sidebar-collapsed .sidebar-indicator-mobile { position: absolute; right: 0.5rem; top: 0.5rem; }
+        #sidebar { transition: transform .25s ease, width .25s ease, min-width .25s ease, padding .25s ease; }
     </style>
 </head>
-<body class="relative bg-slate-50 dark:bg-gray-950 bg-gradient-to-b from-[#eef4fb] via-[#f8fbff] to-[#eef3f8] dark:from-[#020617] dark:via-[#050d1d] dark:to-[#020617] flex h-screen overflow-hidden font-sans antialiased text-slate-800 dark:text-slate-200">
+<body class="app-shell-body ui-scale-xs ui-density-compact ui-width-ultra ui-wide bg-slate-50 dark:bg-gray-950 flex h-screen overflow-hidden font-sans antialiased">
 
-    <div class="fixed inset-0 pointer-events-none overflow-hidden z-0" aria-hidden="true">
-        <div class="absolute rounded-full blur-[26px] opacity-50 dark:opacity-45 top-[-7rem] right-[-6rem] w-[22rem] h-[22rem] bg-[radial-gradient(circle,rgba(59,130,246,0.22),transparent_68%)] dark:bg-[radial-gradient(circle,rgba(37,99,235,0.28),transparent_68%)]"></div>
-        <div class="absolute rounded-full blur-[26px] opacity-50 dark:opacity-35 left-[-8rem] bottom-[10%] w-[24rem] h-[24rem] bg-[radial-gradient(circle,rgba(14,165,233,0.18),transparent_68%)] dark:bg-[radial-gradient(circle,rgba(14,165,233,0.2),transparent_70%)]"></div>
-        <div class="absolute rounded-full blur-[26px] opacity-50 dark:opacity-22 top-[22%] left-[30%] w-[18rem] h-[18rem] bg-[radial-gradient(circle,rgba(16,185,129,0.12),transparent_70%)] dark:bg-[radial-gradient(circle,rgba(16,185,129,0.14),transparent_70%)]"></div>
+    <div class="app-shell-backdrop" aria-hidden="true">
+        <div class="app-shell-orb orb-a"></div>
+        <div class="app-shell-orb orb-b"></div>
+        <div class="app-shell-orb orb-c"></div>
     </div>
 
     <!-- Global Page Loader -->
@@ -87,15 +84,15 @@
 
     <!-- ── Sidebar ── -->
     {% include "components/sidebar.html" %}
-    <div id="sidebar-backdrop" class="fixed inset-0 z-[35] bg-slate-900/40 backdrop-blur-[2px] opacity-0 pointer-events-none transition-opacity duration-200" aria-hidden="true"></div>
+    <div id="sidebar-backdrop" class="app-sidebar-backdrop" aria-hidden="true"></div>
 
     <!-- ── Content Wrapper ── -->
-    <div class="relative z-10 flex-1 flex flex-col min-h-screen overflow-hidden">
+    <div class="app-layout-column flex-1 flex flex-col min-h-screen overflow-hidden">
         {% include "components/navbar.html" %}
 
         <!-- ── Main Content ── -->
-        <main id="app-main" class="relative flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 lg:p-6 transition-all duration-300">
-            <div class="relative mx-auto w-full max-w-[2048px] animate-[fadeIn_.35s_ease_both]">
+        <main id="app-main" class="app-main-shell flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-3 lg:p-4 transition-all duration-300">
+            <div class="app-main-container mx-auto w-full max-w-[2048px] animate-[fadeIn_.35s_ease_both]">
                 {% block content %}{% endblock %}
             </div>
 

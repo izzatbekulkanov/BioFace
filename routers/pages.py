@@ -122,13 +122,10 @@ DEFAULT_MENU_STRUCTURE = [
     {"type": "group", "key": "group_management"},
     {"type": "link", "key": "organizations", "href": "/organizations", "icon": "fa-solid fa-building"},
     {"type": "link", "key": "users", "href": "/users", "icon": "fa-solid fa-users-gear"},
-    {"type": "link", "key": "user_approvals", "href": "/user-approvals", "icon": "fa-solid fa-user-clock"},
-    {"type": "link", "key": "settings", "href": "/settings", "icon": "fa-solid fa-gear"},
     {"type": "link", "key": "isup_server", "href": "/isup-server", "icon": "fa-solid fa-server"},
     {"type": "link", "key": "redis_monitor", "href": "/redis", "icon": "fa-solid fa-database"},
     {"type": "link", "key": "middleware_logs", "href": "/middleware-logs", "icon": "fa-solid fa-rectangle-history"},
-    {"type": "link", "key": "api_helper", "href": "/api-helper", "icon": "fa-solid fa-code-merge"},
-    {"type": "link", "key": "about", "href": "/about", "icon": "fa-solid fa-circle-question"}
+    {"type": "link", "key": "api_helper", "href": "/api-helper", "icon": "fa-solid fa-code-merge"}
 ]
 
 # ─────────────────────────────────────────────

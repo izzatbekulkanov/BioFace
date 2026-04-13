@@ -31,89 +31,67 @@
 {% set subscription_rate = ((ns.active_subscriptions * 100 / summary.organizations) if summary.organizations else 0) %}
 {% set system_pulse = ((attendance_rate + camera_health + subscription_rate) / 3) %}
 
-<div class="dashboard-page space-y-5">
-    <section class="dashboard-card dashboard-hero dashboard-section">
-        <div class="dashboard-hero-backdrop" aria-hidden="true">
-            <span class="dashboard-hero-orb orb-one"></span>
-            <span class="dashboard-hero-orb orb-two"></span>
-            <span class="dashboard-hero-orb orb-three"></span>
-        </div>
+<div class="animate-fade-in space-y-4">
+    <section class="overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 to-indigo-600 shadow-xl">
+        <div class="grid gap-4 p-5 xl:grid-cols-3">
+            <div class="space-y-4 xl:col-span-2">
+                <div class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white/80 backdrop-blur-sm">
+                    <i class="fa-duotone fa-gauge-high"></i>
+                    <span>{% if lang == 'ru' %}Живой мониторинг{% else %}Jonli monitoring{% endif %}</span>
+                </div>
 
-        <div class="dashboard-hero-grid grid gap-4 xl:grid-cols-12 xl:items-stretch">
-            <div class="xl:col-span-7">
-                <div class="dashboard-hero-copy">
-                    <div class="dashboard-hero-pill-row">
-                        <span class="dashboard-hero-pill">Operations Center</span>
-                        <span class="dashboard-hero-pill is-muted">{% if lang == 'ru' %}Живой мониторинг{% else %}Jonli monitoring{% endif %}</span>
-                    </div>
-                    <h1 class="mt-3 text-3xl font-bold tracking-tight text-gray-900 dark:text-white">{{ t.dashboard_title }}</h1>
-                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-3xl">
+                <div class="space-y-2">
+                    <h1 class="text-3xl font-bold tracking-tight text-white">{{ t.dashboard_title }}</h1>
+                    <p class="max-w-3xl text-sm leading-6 text-blue-100">
                         {% if lang == 'ru' %}
                             Централизованный контроль посещаемости, камер и организационной дисциплины в одном экране.
                         {% else %}
                             Davomat, kameralar va tashkilot intizomi bo'yicha markazlashgan boshqaruv paneli.
                         {% endif %}
                     </p>
-                    <div class="dashboard-hero-ticker mt-4">
-                        <span id="dashboard-today-line">
-                            {% if lang == 'ru' %}
-                                Пришли {{ summary.present_today }} • Нет {{ summary.absent_today }} • Опоздали {{ summary.late_today }}
-                            {% else %}
-                                Kelgan {{ summary.present_today }} • Kelmadi {{ summary.absent_today }} • Kechikkan {{ summary.late_today }}
-                            {% endif %}
-                        </span>
-                    </div>
+                    <p id="dashboard-today-line" class="text-sm font-medium text-white/80">
+                        {% if lang == 'ru' %}
+                            Пришли {{ summary.present_today }} • Нет {{ summary.absent_today }} • Опоздали {{ summary.late_today }}
+                        {% else %}
+                            Kelgan {{ summary.present_today }} • Kelmadi {{ summary.absent_today }} • Kechikkan {{ summary.late_today }}
+                        {% endif %}
+                    </p>
+                </div>
 
-                    <div class="mt-4 grid gap-3 sm:grid-cols-3">
-                        <article class="dashboard-hero-mini-card is-emerald">
-                            <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-300">{% if lang == 'ru' %}Посещаемость{% else %}Davomat{% endif %}</p>
-                            <div class="mt-2 flex items-end justify-between gap-2">
-                                <p id="signal-attendance-rate" class="text-2xl font-bold leading-none text-emerald-900 dark:text-emerald-100">{{ '%.0f'|format(attendance_rate) }}%</p>
-                                <p id="signal-attendance-meta" class="rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-200">{{ summary.present_today }} / {{ attendance_total }}</p>
-                            </div>
-                        </article>
-                        <article class="dashboard-hero-mini-card is-sky">
-                            <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-700 dark:text-sky-300">{% if lang == 'ru' %}Онлайн камеры{% else %}Online kameralar{% endif %}</p>
-                            <div class="mt-2 flex items-end justify-between gap-2">
-                                <p class="text-2xl font-bold leading-none text-sky-900 dark:text-sky-100"><span id="kpi-active-cameras">{{ summary.active_cameras }}</span><span class="text-xs font-semibold"> / <span id="kpi-cameras">{{ summary.cameras }}</span></span></p>
-                                <p id="signal-camera-rate" class="rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-sky-700 dark:bg-sky-950/60 dark:text-sky-200">{{ '%.0f'|format(camera_health) }}%</p>
-                            </div>
-                        </article>
-                        <article class="dashboard-hero-mini-card is-amber">
-                            <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-700 dark:text-amber-300">{% if lang == 'ru' %}Подписка{% else %}Obuna{% endif %}</p>
-                            <div class="mt-2 flex items-end justify-between gap-2">
-                                <p id="signal-subscription-rate" class="text-2xl font-bold leading-none text-amber-900 dark:text-amber-100">{{ '%.0f'|format(subscription_rate) }}%</p>
-                                <p class="rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:bg-amber-950/60 dark:text-amber-200">{% if lang == 'ru' %}активные организации{% else %}faol tashkilotlar{% endif %}</p>
-                            </div>
-                        </article>
+                <div class="grid gap-3 sm:grid-cols-3">
+                    <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-white/80">{% if lang == 'ru' %}Посещаемость{% else %}Davomat{% endif %}</p>
+                        <p id="signal-attendance-rate" class="mt-2 text-2xl font-bold text-white">{{ '%.0f'|format(attendance_rate) }}%</p>
+                        <p id="signal-attendance-meta" class="mt-1 text-xs text-white/80">{{ summary.present_today }} / {{ attendance_total }}</p>
+                    </div>
+                    <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-white/80">{% if lang == 'ru' %}Онлайн камеры{% else %}Online kameralar{% endif %}</p>
+                        <p class="mt-2 text-2xl font-bold text-white"><span id="kpi-active-cameras">{{ summary.active_cameras }}</span><span class="text-lg font-medium text-white/80"> / <span id="kpi-cameras">{{ summary.cameras }}</span></span></p>
+                        <p id="signal-camera-rate" class="mt-1 text-xs text-white/80">{{ '%.0f'|format(camera_health) }}%</p>
+                    </div>
+                    <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-white/80">{% if lang == 'ru' %}Подписка{% else %}Obuna{% endif %}</p>
+                        <p id="signal-subscription-rate" class="mt-2 text-2xl font-bold text-white">{{ '%.0f'|format(subscription_rate) }}%</p>
+                        <p class="mt-1 text-xs text-white/80">{% if lang == 'ru' %}активные организации{% else %}faol tashkilotlar{% endif %}</p>
                     </div>
                 </div>
             </div>
 
-            <div class="xl:col-span-5">
-                <div class="dashboard-hero-panel">
-                    <div class="dashboard-hero-panel-top">
-                        <div>
-                            <p class="dashboard-hero-panel-kicker">{% if lang == 'ru' %}Контур системы{% else %}Tizim pulsi{% endif %}</p>
-                            <h2 class="dashboard-hero-panel-title">
-                                {% if summary.cameras == 0 %}
-                                    {% if lang == 'ru' %}Камеры ещё не подключены{% else %}Kameralar hali ulanmagan{% endif %}
-                                {% elif camera_health < 70 %}
-                                    {% if lang == 'ru' %}Контур камер требует внимания{% else %}Kamera konturi e'tibor talab qiladi{% endif %}
-                                {% elif late_rate > 25 %}
-                                    {% if lang == 'ru' %}Дисциплина сегодня под контролем{% else %}Bugungi intizom nazoratda{% endif %}
-                                {% else %}
-                                    {% if lang == 'ru' %}Система работает стабильно{% else %}Tizim barqaror ishlayapti{% endif %}
-                                {% endif %}
-                            </h2>
-                        </div>
-                        <div class="dashboard-hero-score-ring" style="--score: {{ '%.0f'|format(system_pulse) }}%;">
-                            <span class="dashboard-hero-score-value">{{ '%.0f'|format(system_pulse) }}</span>
-                            <span class="dashboard-hero-score-label">/100</span>
-                        </div>
-                    </div>
-
-                    <p class="dashboard-hero-panel-text">
+            <div class="flex flex-col justify-between gap-4 rounded-3xl border border-white/10 bg-black/20 p-4 text-white backdrop-blur-sm xl:col-span-1">
+                <div class="space-y-2">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-white/80">{% if lang == 'ru' %}Контур системы{% else %}Tizim pulsi{% endif %}</p>
+                    <h2 class="text-xl font-semibold text-white">
+                        {% if summary.cameras == 0 %}
+                            {% if lang == 'ru' %}Камеры ещё не подключены{% else %}Kameralar hali ulanmagan{% endif %}
+                        {% elif camera_health < 70 %}
+                            {% if lang == 'ru' %}Контур камер требует внимания{% else %}Kamera konturi e'tibor talab qiladi{% endif %}
+                        {% elif late_rate > 25 %}
+                            {% if lang == 'ru' %}Дисциплина сегодня под контролем{% else %}Bugungi intizom nazoratda{% endif %}
+                        {% else %}
+                            {% if lang == 'ru' %}Система работает стабильно{% else %}Tizim barqaror ishlayapti{% endif %}
+                        {% endif %}
+                    </h2>
+                    <p class="text-sm leading-6 text-white/80">
                         {% if summary.cameras == 0 %}
                             {% if lang == 'ru' %}Для автоматического контроля подключите первую камеру и откройте поток событий.{% else %}Avtomatik monitoring uchun birinchi kamerani ulab, hodisa oqimini ishga tushiring.{% endif %}
                         {% elif camera_health < 70 %}
@@ -124,115 +102,84 @@
                             {% if lang == 'ru' %}Контур посещаемости, камеры и подписки синхронизированы. Ниже собраны ключевые сигналы для быстрых решений.{% else %}Davomat, kameralar va obuna konturi sinxron ishlayapti. Quyida tez qaror uchun asosiy signallar jamlangan.{% endif %}
                         {% endif %}
                     </p>
+                </div>
 
-                    <div class="mt-4 space-y-3">
-                        <div class="dashboard-hero-meter">
-                            <div class="dashboard-hero-meter-row">
-                                <span>{% if lang == 'ru' %}Охват посещаемости{% else %}Davomat qamrovi{% endif %}</span>
-                                <strong>{{ '%.0f'|format(attendance_rate) }}%</strong>
-                            </div>
-                            <div class="dashboard-hero-meter-track"><div id="signal-attendance-bar" class="dashboard-hero-meter-bar is-emerald" style="width: {{ attendance_rate }}%;"></div></div>
-                        </div>
-                        <div class="dashboard-hero-meter">
-                            <div class="dashboard-hero-meter-row">
-                                <span>{% if lang == 'ru' %}Стабильность камер{% else %}Kamera barqarorligi{% endif %}</span>
-                                <strong>{{ '%.0f'|format(camera_health) }}%</strong>
-                            </div>
-                            <div class="dashboard-hero-meter-track"><div id="signal-camera-bar" class="dashboard-hero-meter-bar is-sky" style="width: {{ camera_health }}%;"></div></div>
-                        </div>
-                        <div class="dashboard-hero-meter">
-                            <div class="dashboard-hero-meter-row">
-                                <span>{% if lang == 'ru' %}Активная подписка{% else %}Faol obuna{% endif %}</span>
-                                <strong>{{ '%.0f'|format(subscription_rate) }}%</strong>
-                            </div>
-                            <div class="dashboard-hero-meter-track"><div id="signal-subscription-bar" class="dashboard-hero-meter-bar is-amber" style="width: {{ subscription_rate }}%;"></div></div>
-                        </div>
+                <div class="mt-4 flex items-center justify-between">
+                    <div class="space-y-1">
+                        <p class="text-xs text-white/80">{% if lang == 'ru' %}Общий индекс{% else %}Umumiy indeks{% endif %}</p>
+                        <p class="text-3xl font-bold text-white">{{ '%.0f'|format(system_pulse) }}<span class="text-lg text-white/60">/100</span></p>
                     </div>
-
-                    <div class="mt-4 grid grid-cols-3 gap-3">
-                        <div class="dashboard-hero-info-card">
-                            <p class="dashboard-hero-info-label">{% if lang == 'ru' %}Орг.{% else %}Tashk.{% endif %}</p>
-                            <p id="kpi-organizations" class="dashboard-hero-info-value">{{ summary.organizations }}</p>
-                        </div>
-                        <div class="dashboard-hero-info-card">
-                            <p class="dashboard-hero-info-label">{% if lang == 'ru' %}Польз.{% else %}Foyd.{% endif %}</p>
-                            <p id="kpi-users-primary" class="dashboard-hero-info-value">{{ summary.users }}</p>
-                        </div>
-                        <div class="dashboard-hero-info-card">
-                            <p class="dashboard-hero-info-label">{% if lang == 'ru' %}Штат{% else %}Xodim{% endif %}</p>
-                            <p id="kpi-employees" class="dashboard-hero-info-value">{{ summary.employees }}</p>
-                        </div>
+                    <div class="relative inline-flex flex-col items-center justify-center w-16 h-16 rounded-full bg-[conic-gradient(rgba(255,255,255,0.8)_0_var(--score),rgba(255,255,255,0.1)_var(--score)_100%)] before:content-[''] before:absolute before:inset-[4px] before:rounded-full before:bg-slate-900/80" style="--score: {{ '%.0f'|format(system_pulse) }}%;">
+                        <i class="fa-duotone fa-heart-pulse relative z-10 text-white"></i>
                     </div>
                 </div>
             </div>
         </div>
+    </section>
 
-        <div class="dashboard-kpi-grid mt-4 grid gap-3 grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
-            <article class="dashboard-kpi rounded-2xl border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-800 dark:bg-gray-950/50">
-                <div class="dashboard-kpi-head">
-                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}Организации{% else %}Tashkilotlar{% endif %}</p>
-                    <span class="dashboard-kpi-icon"><i class="fa-duotone fa-buildings"></i></span>
-                </div>
-                <p class="mt-3 text-2xl font-bold text-gray-900 dark:text-white">{{ summary.organizations }}</p>
-            </article>
-            <article class="dashboard-kpi rounded-2xl border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-800 dark:bg-gray-950/50">
-                <div class="dashboard-kpi-head">
-                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}Пользователи{% else %}Foydalanuvchilar{% endif %}</p>
-                    <span class="dashboard-kpi-icon"><i class="fa-duotone fa-users"></i></span>
-                </div>
-                <p class="mt-3 text-2xl font-bold text-gray-900 dark:text-white">{{ summary.users }}</p>
-            </article>
-            <article class="dashboard-kpi rounded-2xl border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-800 dark:bg-gray-950/50">
-                <div class="dashboard-kpi-head">
-                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}Сотрудники{% else %}Xodimlar{% endif %}</p>
-                    <span class="dashboard-kpi-icon"><i class="fa-duotone fa-id-badge"></i></span>
-                </div>
-                <p class="mt-3 text-2xl font-bold text-gray-900 dark:text-white">{{ summary.employees }}</p>
-            </article>
-            <article class="dashboard-kpi rounded-2xl border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-800 dark:bg-gray-950/50">
-                <div class="dashboard-kpi-head">
-                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}Пришли{% else %}Kelgan{% endif %}</p>
-                    <span class="dashboard-kpi-icon"><i class="fa-duotone fa-circle-check"></i></span>
-                </div>
-                <p id="kpi-present" class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ summary.present_today }}</p>
-            </article>
-            <article class="dashboard-kpi rounded-2xl border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-800 dark:bg-gray-950/50">
-                <div class="dashboard-kpi-head">
-                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}Нет{% else %}Kelmadi{% endif %}</p>
-                    <span class="dashboard-kpi-icon"><i class="fa-duotone fa-user-xmark"></i></span>
-                </div>
-                <p id="kpi-absent" class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ summary.absent_today }}</p>
-            </article>
-            <article class="dashboard-kpi rounded-2xl border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-800 dark:bg-gray-950/50">
-                <div class="dashboard-kpi-head">
-                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}Опоздали{% else %}Kechikkan{% endif %}</p>
-                    <span class="dashboard-kpi-icon"><i class="fa-duotone fa-clock"></i></span>
-                </div>
-                <p id="kpi-late" class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ summary.late_today }}</p>
-            </article>
-            <article class="dashboard-kpi rounded-2xl border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-800 dark:bg-gray-950/50">
-                <div class="dashboard-kpi-head">
-                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}Камеры{% else %}Kameralar{% endif %}</p>
-                    <span class="dashboard-kpi-icon"><i class="fa-duotone fa-camera-cctv"></i></span>
-                </div>
-                <p class="mt-3 text-2xl font-bold text-gray-900 dark:text-white">{{ summary.active_cameras }}/{{ summary.cameras }}</p>
-            </article>
-            <article class="dashboard-kpi rounded-2xl border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-800 dark:bg-gray-950/50">
-                <div class="dashboard-kpi-head">
-                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}Доля опозданий{% else %}Kechikish ulushi{% endif %}</p>
-                    <span class="dashboard-kpi-icon"><i class="fa-duotone fa-wave-pulse"></i></span>
-                </div>
-                <p class="mt-3 text-2xl font-bold text-gray-900 dark:text-white">{{ '%.0f'|format(late_rate) }}%</p>
-            </article>
-        </div>
+    <section class="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <article class="rounded-3xl border border-gray-200 bg-white/80 p-4 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80">
+            <div class="flex items-start justify-between gap-3">
+                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}Организации{% else %}Tashkilotlar{% endif %}</p>
+                <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-blue-50/80 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"><i class="fa-duotone fa-buildings"></i></span>
+            </div>
+            <p id="kpi-organizations" class="mt-3 text-[1.7rem] leading-[1.15] font-bold text-gray-900 dark:text-white">{{ summary.organizations }}</p>
+        </article>
+        <article class="rounded-3xl border border-gray-200 bg-white/80 p-4 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80">
+            <div class="flex items-start justify-between gap-3">
+                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}Пользователи{% else %}Foydalanuvchilar{% endif %}</p>
+                <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-indigo-50/80 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400"><i class="fa-duotone fa-users"></i></span>
+            </div>
+            <p id="kpi-users-primary" class="mt-3 text-[1.7rem] leading-[1.15] font-bold text-gray-900 dark:text-white">{{ summary.users }}</p>
+        </article>
+        <article class="rounded-3xl border border-gray-200 bg-white/80 p-4 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80">
+            <div class="flex items-start justify-between gap-3">
+                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}Сотрудники{% else %}Xodimlar{% endif %}</p>
+                <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-purple-50/80 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400"><i class="fa-duotone fa-id-badge"></i></span>
+            </div>
+            <p id="kpi-employees" class="mt-3 text-[1.7rem] leading-[1.15] font-bold text-gray-900 dark:text-white">{{ summary.employees }}</p>
+        </article>
+        <article class="rounded-3xl border border-gray-200 bg-white/80 p-4 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80">
+            <div class="flex items-start justify-between gap-3">
+                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}Камеры{% else %}Kameralar{% endif %}</p>
+                <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-cyan-50/80 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400"><i class="fa-duotone fa-camera-cctv"></i></span>
+            </div>
+            <p class="mt-3 text-[1.7rem] leading-[1.15] font-bold text-gray-900 dark:text-white">{{ summary.active_cameras }}/{{ summary.cameras }}</p>
+        </article>
+        <article class="rounded-3xl border border-gray-200 bg-white/80 p-4 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80">
+            <div class="flex items-start justify-between gap-3">
+                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}Пришли{% else %}Kelgan{% endif %}</p>
+                <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-emerald-50/80 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"><i class="fa-duotone fa-circle-check"></i></span>
+            </div>
+            <p id="kpi-present" class="mt-3 text-[1.7rem] leading-[1.15] font-bold text-emerald-600 dark:text-emerald-400">{{ summary.present_today }}</p>
+        </article>
+        <article class="rounded-3xl border border-gray-200 bg-white/80 p-4 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80">
+            <div class="flex items-start justify-between gap-3">
+                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}Нет{% else %}Kelmadi{% endif %}</p>
+                <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-slate-100/80 text-slate-600 dark:bg-slate-800 dark:text-slate-400"><i class="fa-duotone fa-user-xmark"></i></span>
+            </div>
+            <p id="kpi-absent" class="mt-3 text-[1.7rem] leading-[1.15] font-bold text-slate-700 dark:text-slate-300">{{ summary.absent_today }}</p>
+        </article>
+        <article class="rounded-3xl border border-gray-200 bg-white/80 p-4 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80">
+            <div class="flex items-start justify-between gap-3">
+                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}Опоздали{% else %}Kechikkan{% endif %}</p>
+                <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-amber-50/80 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"><i class="fa-duotone fa-clock"></i></span>
+            </div>
+            <p id="kpi-late" class="mt-3 text-[1.7rem] leading-[1.15] font-bold text-amber-600 dark:text-amber-400">{{ summary.late_today }}</p>
+        </article>
+        <article class="rounded-3xl border border-gray-200 bg-white/80 p-4 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80">
+            <div class="flex items-start justify-between gap-3">
+                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}Доля опозданий{% else %}Kechikish ulushi{% endif %}</p>
+                <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-rose-50/80 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400"><i class="fa-duotone fa-wave-pulse"></i></span>
+            </div>
+            <p class="mt-3 text-[1.7rem] leading-[1.15] font-bold text-rose-600 dark:text-rose-400">{{ '%.0f'|format(late_rate) }}%</p>
+        </article>
     </section>
 
     {% if not has_orgs %}
-    <section class="dashboard-empty rounded-3xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center dark:border-gray-700 dark:bg-gray-900">
-        <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500">
-            <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2"></path>
-            </svg>
+    <section class="rounded-3xl border border-dashed border-gray-300 bg-white/80 px-6 py-12 text-center shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80">
+        <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500">
+            <i class="fa-duotone fa-folder-open text-2xl"></i>
         </div>
         <h2 class="mt-4 text-xl font-bold text-gray-900 dark:text-white">{% if lang == 'ru' %}Данные пока недоступны{% else %}Hozircha ma'lumot yo'q{% endif %}</h2>
         <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
@@ -245,105 +192,107 @@
     </section>
     {% else %}
     <section class="grid gap-5 xl:grid-cols-12">
-        <article class="dashboard-card dashboard-section xl:col-span-8">
+        <article class="rounded-3xl border border-gray-200 bg-white/80 p-5 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80 xl:col-span-8">
             <div class="flex items-center justify-between gap-3">
                 <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}Посещаемость{% else %}Davomat{% endif %}</p>
-                    <h2 class="mt-1 text-xl font-bold text-gray-900 dark:text-white">{% if lang == 'ru' %}Сегодняшний срез{% else %}Bugungi kesim{% endif %}</h2>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">{% if lang == 'ru' %}Посещаемость{% else %}Davomat{% endif %}</p>
+                    <h2 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{% if lang == 'ru' %}Сегодняшний срез{% else %}Bugungi kesim{% endif %}</h2>
                 </div>
-                <span class="inline-flex rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-semibold text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">Live</span>
+                <span class="inline-flex rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">Live</span>
             </div>
             <div class="mt-4 grid gap-4 lg:grid-cols-2">
-                <div class="h-64 rounded-2xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-950/40">
+                <div class="h-[15.5rem] lg:h-[13.75rem] rounded-2xl border border-gray-200 bg-gray-50/50 p-3 dark:border-gray-700/50 dark:bg-gray-800/50">
                     <canvas id="attendanceChart"></canvas>
                 </div>
                 <div class="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-                    <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/40 dark:bg-emerald-900/20">
-                        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-300">{% if lang == 'ru' %}Пришли{% else %}Kelgan{% endif %}</p>
+                    <div class="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4 dark:border-emerald-900/30 dark:bg-emerald-900/10">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">{% if lang == 'ru' %}Пришли{% else %}Kelgan{% endif %}</p>
                         <p id="att-present" class="mt-1 text-2xl font-bold text-emerald-900 dark:text-emerald-100">{{ summary.present_today }}</p>
                     </div>
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/80">
-                        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-700 dark:text-slate-300">{% if lang == 'ru' %}Нет{% else %}Kelmadi{% endif %}</p>
-                        <p id="att-absent" class="mt-1 text-2xl font-bold text-slate-900 dark:text-slate-100">{{ summary.absent_today }}</p>
+                    <div class="rounded-2xl border border-gray-200 bg-gray-50/50 p-4 dark:border-gray-700/50 dark:bg-gray-800/50">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">{% if lang == 'ru' %}Нет{% else %}Kelmadi{% endif %}</p>
+                        <p id="att-absent" class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ summary.absent_today }}</p>
                     </div>
-                    <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/40 dark:bg-amber-900/20">
-                        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700 dark:text-amber-300">{% if lang == 'ru' %}Опоздали{% else %}Kechikkan{% endif %}</p>
+                    <div class="rounded-2xl border border-amber-100 bg-amber-50/50 p-4 dark:border-amber-900/30 dark:bg-amber-900/10">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">{% if lang == 'ru' %}Опоздали{% else %}Kechikkan{% endif %}</p>
                         <p id="att-late" class="mt-1 text-2xl font-bold text-amber-900 dark:text-amber-100">{{ summary.late_today }}</p>
                     </div>
                 </div>
             </div>
         </article>
 
-        <article class="dashboard-card dashboard-section xl:col-span-4">
-            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}Коэффициенты{% else %}Koeffitsiyentlar{% endif %}</p>
-            <h2 class="mt-1 text-xl font-bold text-gray-900 dark:text-white">{% if lang == 'ru' %}Сигналы системы{% else %}Tizim signallari{% endif %}</h2>
+        <article class="rounded-3xl border border-gray-200 bg-white/80 p-5 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80 xl:col-span-4">
+            <p class="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">{% if lang == 'ru' %}Коэффициенты{% else %}Koeffitsiyentlar{% endif %}</p>
+            <h2 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{% if lang == 'ru' %}Сигналы системы{% else %}Tizim signallari{% endif %}</h2>
+            
             <div class="mt-4 space-y-3">
-                <div class="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/50">
+                <div class="rounded-2xl border border-gray-100 bg-gray-50/50 p-4 dark:border-gray-700/50 dark:bg-gray-800/50">
                     <div class="flex items-center justify-between text-sm font-semibold text-gray-700 dark:text-gray-200">
                         <span>{% if lang == 'ru' %}Охват посещаемости{% else %}Davomat qamrovi{% endif %}</span>
                         <span>{{ '%.0f'|format(attendance_rate) }}%</span>
                     </div>
-                    <div class="mt-3 h-2 rounded-full bg-gray-200 dark:bg-gray-800"><div class="h-2 rounded-full bg-emerald-500" style="width: {{ attendance_rate }}%;"></div></div>
+                    <div class="mt-3 h-2 rounded-full bg-gray-200 dark:bg-gray-700"><div class="h-2 rounded-full bg-emerald-500" style="width: {{ attendance_rate }}%;"></div></div>
                 </div>
-                <div class="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/50">
+                <div class="rounded-2xl border border-gray-100 bg-gray-50/50 p-4 dark:border-gray-700/50 dark:bg-gray-800/50">
                     <div class="flex items-center justify-between text-sm font-semibold text-gray-700 dark:text-gray-200">
                         <span>{% if lang == 'ru' %}Стабильность камер{% else %}Kamera barqarorligi{% endif %}</span>
                         <span>{{ '%.0f'|format(camera_health) }}%</span>
                     </div>
-                    <div class="mt-3 h-2 rounded-full bg-gray-200 dark:bg-gray-800"><div class="h-2 rounded-full bg-sky-500" style="width: {{ camera_health }}%;"></div></div>
+                    <div class="mt-3 h-2 rounded-full bg-gray-200 dark:bg-gray-700"><div class="h-2 rounded-full bg-blue-500" style="width: {{ camera_health }}%;"></div></div>
                 </div>
-                <div class="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/50">
+                <div class="rounded-2xl border border-gray-100 bg-gray-50/50 p-4 dark:border-gray-700/50 dark:bg-gray-800/50">
                     <div class="flex items-center justify-between text-sm font-semibold text-gray-700 dark:text-gray-200">
                         <span>{% if lang == 'ru' %}Активная подписка{% else %}Faol obuna{% endif %}</span>
                         <span>{{ '%.0f'|format(subscription_rate) }}%</span>
                     </div>
-                    <div class="mt-3 h-2 rounded-full bg-gray-200 dark:bg-gray-800"><div class="h-2 rounded-full bg-amber-500" style="width: {{ subscription_rate }}%;"></div></div>
+                    <div class="mt-3 h-2 rounded-full bg-gray-200 dark:bg-gray-700"><div class="h-2 rounded-full bg-amber-500" style="width: {{ subscription_rate }}%;"></div></div>
                 </div>
             </div>
+            
             <div class="mt-4 grid grid-cols-3 gap-3">
-                <div class="rounded-xl bg-emerald-50 px-3 py-3 text-center dark:bg-emerald-900/20"><p class="text-xs text-emerald-700 dark:text-emerald-300">{% if lang == 'ru' %}Активна{% else %}Faol{% endif %}</p><p id="subscription-active-count" class="text-xl font-bold text-emerald-900 dark:text-emerald-100">{{ ns.active_subscriptions }}</p></div>
-                <div class="rounded-xl bg-sky-50 px-3 py-3 text-center dark:bg-sky-900/20"><p class="text-xs text-sky-700 dark:text-sky-300">{% if lang == 'ru' %}Ожидает{% else %}Kutilmoqda{% endif %}</p><p id="subscription-pending-count" class="text-xl font-bold text-sky-900 dark:text-sky-100">{{ ns.pending_subscriptions }}</p></div>
-                <div class="rounded-xl bg-slate-100 px-3 py-3 text-center dark:bg-slate-800"><p class="text-xs text-slate-700 dark:text-slate-300">{% if lang == 'ru' %}Истекла{% else %}Tugagan{% endif %}</p><p id="subscription-expired-count" class="text-xl font-bold text-slate-900 dark:text-slate-100">{{ ns.expired_subscriptions }}</p></div>
+                <div class="rounded-2xl border border-emerald-100 bg-emerald-50/50 px-3 py-3 text-center dark:border-emerald-900/30 dark:bg-emerald-900/10"><p class="text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">{% if lang == 'ru' %}Активна{% else %}Faol{% endif %}</p><p id="subscription-active-count" class="mt-1 text-xl font-bold text-emerald-900 dark:text-emerald-100">{{ ns.active_subscriptions }}</p></div>
+                <div class="rounded-2xl border border-blue-100 bg-blue-50/50 px-3 py-3 text-center dark:border-blue-900/30 dark:bg-blue-900/10"><p class="text-[10px] font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-400">{% if lang == 'ru' %}Ожидает{% else %}Kutilmoqda{% endif %}</p><p id="subscription-pending-count" class="mt-1 text-xl font-bold text-blue-900 dark:text-blue-100">{{ ns.pending_subscriptions }}</p></div>
+                <div class="rounded-2xl border border-gray-200 bg-gray-50/50 px-3 py-3 text-center dark:border-gray-700/50 dark:bg-gray-800/50"><p class="text-[10px] font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">{% if lang == 'ru' %}Истекла{% else %}Tugagan{% endif %}</p><p id="subscription-expired-count" class="mt-1 text-xl font-bold text-gray-900 dark:text-white">{{ ns.expired_subscriptions }}</p></div>
             </div>
         </article>
     </section>
 
     {% if has_multiple_orgs %}
     <section class="grid gap-5 xl:grid-cols-12">
-        <article class="dashboard-card dashboard-section xl:col-span-8">
+        <article class="rounded-3xl border border-gray-200 bg-white/80 p-5 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80 xl:col-span-8">
             <div class="flex items-center justify-between gap-3">
                 <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}Сравнение{% else %}Taqqoslash{% endif %}</p>
-                    <h2 class="mt-1 text-xl font-bold text-gray-900 dark:text-white">{% if lang == 'ru' %}Организации: users, staff, cameras{% else %}Tashkilotlar: users, xodim, kamera{% endif %}</h2>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">{% if lang == 'ru' %}Сравнение{% else %}Taqqoslash{% endif %}</p>
+                    <h2 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{% if lang == 'ru' %}Организации: users, staff, cameras{% else %}Tashkilotlar: users, xodim, kamera{% endif %}</h2>
                 </div>
-                <span class="text-sm text-gray-500 dark:text-gray-400">{{ org_count }}</span>
+                <span class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ org_count }} {% if lang == 'ru' %}организаций{% else %}tashkilot{% endif %}</span>
             </div>
-            <div class="mt-4 h-80 rounded-2xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-950/40">
+            <div class="mt-4 h-[18.5rem] lg:h-[16rem] rounded-2xl border border-gray-100 bg-gray-50/50 p-3 dark:border-gray-700/50 dark:bg-gray-800/50">
                 <canvas id="orgOverviewChart"></canvas>
             </div>
         </article>
 
-        <article class="dashboard-card dashboard-section xl:col-span-4">
+        <article class="rounded-3xl border border-gray-200 bg-white/80 p-5 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80 xl:col-span-4">
             <div class="flex items-center justify-between gap-3">
-                <h2 class="text-xl font-bold text-gray-900 dark:text-white">{% if lang == 'ru' %}Организации{% else %}Tashkilotlar{% endif %}</h2>
-                <a href="/organizations" class="text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">{% if lang == 'ru' %}Подробнее{% else %}Batafsil{% endif %}</a>
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{% if lang == 'ru' %}Организации{% else %}Tashkilotlar{% endif %}</h2>
+                <a href="/organizations" class="text-sm font-medium text-blue-600 hover:text-blue-700 transition dark:text-blue-400 dark:hover:text-blue-300">{% if lang == 'ru' %}Подробнее{% else %}Batafsil{% endif %} <i class="fa-duotone fa-arrow-right text-[10px] ml-1"></i></a>
             </div>
             <div class="mt-4 space-y-3">
                 {% for org in org_cards %}
                 {% set org_attendance_rate = ((org.present_today * 100 / org.employee_count) if org.employee_count else 0) %}
-                <article class="dashboard-subcard rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/50">
+                <article class="rounded-2xl border border-gray-100 bg-gray-50/50 p-4 transition hover:bg-gray-100/80 dark:border-gray-700/50 dark:bg-gray-800/50 dark:hover:bg-gray-800/80">
                     <div class="flex items-start justify-between gap-2">
                         <h3 class="truncate text-sm font-semibold text-gray-900 dark:text-white">{{ org.name }}</h3>
                         {% if org.subscription_status == 'active' %}
-                        <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300">{% if lang == 'ru' %}Активна{% else %}Faol{% endif %}</span>
+                        <span class="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:border-emerald-800/30 dark:bg-emerald-900/20 dark:text-emerald-400">{% if lang == 'ru' %}Активна{% else %}Faol{% endif %}</span>
                         {% elif org.subscription_status == 'expired' %}
-                        <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">{% if lang == 'ru' %}Истекла{% else %}Tugagan{% endif %}</span>
+                        <span class="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">{% if lang == 'ru' %}Истекла{% else %}Tugagan{% endif %}</span>
                         {% else %}
-                        <span class="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700 dark:bg-sky-900/20 dark:text-sky-300">{% if lang == 'ru' %}Ожидает{% else %}Kutilmoqda{% endif %}</span>
+                        <span class="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-700 dark:border-blue-800/30 dark:bg-blue-900/20 dark:text-blue-400">{% if lang == 'ru' %}Ожидает{% else %}Kutilmoqda{% endif %}</span>
                         {% endif %}
                     </div>
                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ org.active_camera_count }}/{{ org.camera_count }} kamera • {{ org.user_count }} users</p>
-                    <div class="mt-2 h-2 rounded-full bg-gray-200 dark:bg-gray-800"><div class="h-2 rounded-full bg-slate-900 dark:bg-white" style="width: {{ org_attendance_rate }}%;"></div></div>
+                    <div class="mt-3 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700"><div class="h-1.5 rounded-full bg-blue-500 dark:bg-blue-400" style="width: {{ org_attendance_rate }}%;"></div></div>
                 </article>
                 {% endfor %}
             </div>
@@ -351,19 +300,19 @@
     </section>
     {% else %}
     <section class="grid gap-5 xl:grid-cols-12">
-        <article class="dashboard-card dashboard-section xl:col-span-8">
+        <article class="rounded-3xl border border-gray-200 bg-white/80 p-5 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80 xl:col-span-8">
             <div class="flex items-center justify-between gap-3">
                 <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}Фокус{% else %}Fokus{% endif %}</p>
-                    <h2 class="mt-1 text-xl font-bold text-gray-900 dark:text-white">{{ primary_org.name if primary_org else '-' }}</h2>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">{% if lang == 'ru' %}Фокус{% else %}Fokus{% endif %}</p>
+                    <h2 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{{ primary_org.name if primary_org else '-' }}</h2>
                 </div>
                 {% if primary_org %}
                     {% if primary_org.subscription_status == 'active' %}
-                    <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300">{% if lang == 'ru' %}Активная подписка{% else %}Faol obuna{% endif %}</span>
+                    <span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800/30 dark:bg-emerald-900/20 dark:text-emerald-400">{% if lang == 'ru' %}Активная подписка{% else %}Faol obuna{% endif %}</span>
                     {% elif primary_org.subscription_status == 'expired' %}
-                    <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">{% if lang == 'ru' %}Подписка истекла{% else %}Obuna tugagan{% endif %}</span>
+                    <span class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">{% if lang == 'ru' %}Подписка истекла{% else %}Obuna tugagan{% endif %}</span>
                     {% else %}
-                    <span class="rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700 dark:bg-sky-900/20 dark:text-sky-300">{% if lang == 'ru' %}Ожидает подтверждения{% else %}Tasdiq kutilmoqda{% endif %}</span>
+                    <span class="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800/30 dark:bg-blue-900/20 dark:text-blue-400">{% if lang == 'ru' %}Ожидает подтверждения{% else %}Tasdiq kutilmoqda{% endif %}</span>
                     {% endif %}
                 {% endif %}
             </div>
@@ -371,21 +320,22 @@
             {% set primary_attendance_rate = ((primary_org.present_today * 100 / primary_org.employee_count) if primary_org.employee_count else 0) %}
             {% set primary_late_rate = ((primary_org.late_today * 100 / primary_org.present_today) if primary_org.present_today else 0) %}
             <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <div class="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/50"><p class="text-xs text-gray-500 dark:text-gray-400">Users</p><p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ primary_org.user_count }}</p></div>
-                <div class="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/50"><p class="text-xs text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}Сотрудники{% else %}Xodimlar{% endif %}</p><p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ primary_org.employee_count }}</p></div>
-                <div class="rounded-2xl border border-sky-200 bg-sky-50 p-4 dark:border-sky-900/40 dark:bg-sky-900/20"><p class="text-xs text-sky-700 dark:text-sky-300">{% if lang == 'ru' %}Камеры{% else %}Kameralar{% endif %}</p><p class="mt-1 text-2xl font-bold text-sky-900 dark:text-sky-100">{{ primary_org.active_camera_count }}/{{ primary_org.camera_count }}</p></div>
-                <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/40 dark:bg-amber-900/20"><p class="text-xs text-amber-700 dark:text-amber-300">{% if lang == 'ru' %}Опоздания{% else %}Kechikish{% endif %}</p><p class="mt-1 text-2xl font-bold text-amber-900 dark:text-amber-100">{{ '%.0f'|format(primary_late_rate) }}%</p></div>
+                <div class="rounded-2xl border border-gray-100 bg-gray-50/50 p-4 dark:border-gray-700/50 dark:bg-gray-800/50"><p class="text-xs font-medium text-gray-500 dark:text-gray-400">Users</p><p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ primary_org.user_count }}</p></div>
+                <div class="rounded-2xl border border-gray-100 bg-gray-50/50 p-4 dark:border-gray-700/50 dark:bg-gray-800/50"><p class="text-xs font-medium text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}Сотрудники{% else %}Xodimlar{% endif %}</p><p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ primary_org.employee_count }}</p></div>
+                <div class="rounded-2xl border border-blue-100 bg-blue-50/50 p-4 dark:border-blue-900/30 dark:bg-blue-900/10"><p class="text-xs font-medium text-blue-700 dark:text-blue-400">{% if lang == 'ru' %}Камеры{% else %}Kameralar{% endif %}</p><p class="mt-1 text-2xl font-bold text-blue-900 dark:text-blue-100">{{ primary_org.active_camera_count }}/{{ primary_org.camera_count }}</p></div>
+                <div class="rounded-2xl border border-amber-100 bg-amber-50/50 p-4 dark:border-amber-900/30 dark:bg-amber-900/10"><p class="text-xs font-medium text-amber-700 dark:text-amber-400">{% if lang == 'ru' %}Опоздания{% else %}Kechikish{% endif %}</p><p class="mt-1 text-2xl font-bold text-amber-900 dark:text-amber-100">{{ '%.0f'|format(primary_late_rate) }}%</p></div>
             </div>
-            <div class="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/50">
+            <div class="mt-4 rounded-2xl border border-gray-100 bg-gray-50/50 p-4 dark:border-gray-700/50 dark:bg-gray-800/50">
                 <div class="flex items-center justify-between text-sm"><span class="font-semibold text-gray-700 dark:text-gray-200">{% if lang == 'ru' %}Охват посещаемости{% else %}Davomat qamrovi{% endif %}</span><span class="font-bold text-gray-900 dark:text-white">{{ '%.0f'|format(primary_attendance_rate) }}%</span></div>
-                <div class="mt-3 h-2 rounded-full bg-gray-200 dark:bg-gray-800"><div class="h-2 rounded-full bg-slate-900 dark:bg-white" style="width: {{ primary_attendance_rate }}%;"></div></div>
+                <div class="mt-3 h-2 rounded-full bg-gray-200 dark:bg-gray-700"><div class="h-2 rounded-full bg-blue-500 dark:bg-blue-400" style="width: {{ primary_attendance_rate }}%;"></div></div>
             </div>
             {% endif %}
         </article>
-        <article class="dashboard-card dashboard-section xl:col-span-4">
-            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}Рекомендация{% else %}Tavsif{% endif %}</p>
-            <h2 class="mt-1 text-xl font-bold text-gray-900 dark:text-white">{% if lang == 'ru' %}Что важно сейчас{% else %}Hozir muhim jihat{% endif %}</h2>
-            <div class="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm leading-6 text-gray-600 dark:border-gray-800 dark:bg-gray-950/50 dark:text-gray-300">
+        
+        <article class="rounded-3xl border border-gray-200 bg-white/80 p-5 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80 xl:col-span-4">
+            <p class="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">{% if lang == 'ru' %}Рекомендация{% else %}Tavsif{% endif %}</p>
+            <h2 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{% if lang == 'ru' %}Что важно сейчас{% else %}Hozir muhim jihat{% endif %}</h2>
+            <div class="mt-4 rounded-2xl border border-gray-100 bg-gray-50/50 p-4 text-sm leading-6 text-gray-600 dark:border-gray-700/50 dark:bg-gray-800/50 dark:text-gray-300">
                 {% if primary_org.camera_count == 0 %}
                     {% if lang == 'ru' %}К этой организации пока не привязана камера. Подключите устройство для автоматического потока данных.{% else %}Bu tashkilotga hali kamera biriktirilmagan. Avtomatik oqim uchun qurilma ulang.{% endif %}
                 {% elif primary_org.active_camera_count == 0 %}
@@ -401,49 +351,70 @@
     {% endif %}
 
     <section class="grid gap-5 xl:grid-cols-12">
-        <article class="dashboard-card dashboard-section xl:col-span-7">
+        <article class="rounded-3xl border border-gray-200 bg-white/80 p-5 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80 xl:col-span-7">
             <div class="flex items-center justify-between gap-3">
                 <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}Камеры{% else %}Kameralar{% endif %}</p>
-                    <h2 class="mt-1 text-xl font-bold text-gray-900 dark:text-white">{% if lang == 'ru' %}Живая нагрузка{% else %}Jonli yuklama{% endif %}</h2>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">{% if lang == 'ru' %}Камеры{% else %}Kameralar{% endif %}</p>
+                    <h2 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{% if lang == 'ru' %}Живая нагрузка{% else %}Jonli yuklama{% endif %}</h2>
                 </div>
-                {% if has_camera_load %}<span class="text-sm text-gray-500 dark:text-gray-400">{{ camera_load_labels|length }}</span>{% endif %}
+                {% if has_camera_load %}<span class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ camera_load_labels|length }} {% if lang == 'ru' %}устройств{% else %}qurilma{% endif %}</span>{% endif %}
             </div>
+            
             {% if show_camera_load_chart %}
-            <div class="mt-4 h-80 rounded-2xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-950/40"><canvas id="cameraLoadChart"></canvas></div>
+            <div class="mt-4 h-[18.5rem] lg:h-[16rem] rounded-2xl border border-gray-100 bg-gray-50/50 p-3 dark:border-gray-700/50 dark:bg-gray-800/50">
+                <canvas id="cameraLoadChart"></canvas>
+            </div>
             {% elif show_single_camera_highlight %}
             <div class="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr),220px]">
-                <div class="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/50">
-                    <p class="text-xs text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}Текущая точка{% else %}Joriy nuqta{% endif %}</p>
+                <div class="rounded-2xl border border-gray-100 bg-gray-50/50 p-4 dark:border-gray-700/50 dark:bg-gray-800/50">
+                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{% if lang == 'ru' %}Текущая точка{% else %}Joriy nuqta{% endif %}</p>
                     <h3 id="single-camera-name" class="mt-1 text-xl font-bold text-gray-900 dark:text-white">{{ single_camera_name or '-' }}</h3>
-                    <div class="mt-3 h-2 rounded-full bg-gray-200 dark:bg-gray-800"><div id="single-camera-bar" class="h-2 rounded-full bg-blue-600" style="width: {{ ((single_camera_load * 100 / primary_org.employee_count) if primary_org and primary_org.employee_count else 0) }}%;"></div></div>
+                    <div class="mt-3 h-2 rounded-full bg-gray-200 dark:bg-gray-700"><div id="single-camera-bar" class="h-2 rounded-full bg-blue-500" style="width: {{ ((single_camera_load * 100 / primary_org.employee_count) if primary_org and primary_org.employee_count else 0) }}%;"></div></div>
                 </div>
-                <div class="rounded-2xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900/40 dark:bg-blue-900/20"><p class="text-xs text-blue-700 dark:text-blue-300">{% if lang == 'ru' %}Охват{% else %}Qamrov{% endif %}</p><p id="single-camera-employees" class="mt-1 text-3xl font-bold text-blue-900 dark:text-blue-100">{{ single_camera_load }}</p></div>
+                <div class="rounded-2xl border border-blue-100 bg-blue-50/50 p-4 dark:border-blue-900/30 dark:bg-blue-900/10">
+                    <p class="text-xs font-medium text-blue-700 dark:text-blue-400">{% if lang == 'ru' %}Охват{% else %}Qamrov{% endif %}</p>
+                    <p id="single-camera-employees" class="mt-1 text-3xl font-bold text-blue-900 dark:text-blue-100">{{ single_camera_load }}</p>
+                </div>
             </div>
             {% else %}
-            <div class="mt-4 rounded-2xl border border-dashed border-gray-300 bg-gray-50 px-4 py-10 text-center text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-950/50 dark:text-gray-400">{% if lang == 'ru' %}Недостаточно данных по нагрузке камер.{% else %}Kamera yuklamasi uchun hozircha ma'lumot yetarli emas.{% endif %}</div>
+            <div class="mt-4 rounded-2xl border border-dashed border-gray-300 bg-gray-50/50 px-4 py-10 text-center text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-400">
+                {% if lang == 'ru' %}Недостаточно данных по нагрузке камер.{% else %}Kamera yuklamasi uchun hozircha ma'lumot yetarli emas.{% endif %}
+            </div>
             {% endif %}
         </article>
 
-        <article class="dashboard-card dashboard-section xl:col-span-5">
+        <article class="rounded-3xl border border-gray-200 bg-white/80 p-5 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80 xl:col-span-5">
             <div class="flex items-center justify-between gap-3">
                 <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">AI</p>
-                    <h2 class="mt-1 text-xl font-bold text-gray-900 dark:text-white">{% if lang == 'ru' %}Поведенческий профиль{% else %}Xulqiy profil{% endif %}</h2>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">AI</p>
+                    <h2 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{% if lang == 'ru' %}Поведенческий профиль{% else %}Xulqiy profil{% endif %}</h2>
                 </div>
-                <span class="text-sm text-gray-500 dark:text-gray-400">live</span>
+                <span class="inline-flex rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">Live</span>
             </div>
+            
             <div class="mt-4 grid gap-3 sm:grid-cols-3">
-                <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-900/40 dark:bg-emerald-900/20"><p class="text-[11px] text-emerald-700 dark:text-emerald-300">{% if lang == 'ru' %}Посещаемость{% else %}Davomat{% endif %}</p><p id="ai-attendance-rate" class="mt-1 text-xl font-bold text-emerald-900 dark:text-emerald-100">{{ '%.0f'|format(attendance_rate) }}%</p></div>
-                <div class="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 dark:border-sky-900/40 dark:bg-sky-900/20"><p class="text-[11px] text-sky-700 dark:text-sky-300">{% if lang == 'ru' %}Камеры{% else %}Kameralar{% endif %}</p><p id="ai-camera-rate" class="mt-1 text-xl font-bold text-sky-900 dark:text-sky-100">{{ '%.0f'|format(camera_health) }}%</p></div>
-                <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900/40 dark:bg-amber-900/20"><p class="text-[11px] text-amber-700 dark:text-amber-300">{% if lang == 'ru' %}Опоздания{% else %}Kechikish{% endif %}</p><p id="ai-late-rate" class="mt-1 text-xl font-bold text-amber-900 dark:text-amber-100">{{ '%.0f'|format(late_rate) }}%</p></div>
-            </div>
-            <div class="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr),220px]">
-                <div class="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/50">
-                    <p class="text-sm font-semibold text-gray-900 dark:text-white">{% if lang == 'ru' %}Что показывает профиль{% else %}Profil nimani ko'rsatadi{% endif %}</p>
-                    <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">{% if lang == 'ru' %}Профиль собирается из дисциплины входа, online камер и покрытия персонала.{% else %}Profil kelish intizomi, online kameralar va xodim qamroviga asoslanadi.{% endif %}</p>
+                <div class="rounded-2xl border border-emerald-100 bg-emerald-50/50 px-4 py-3 dark:border-emerald-900/30 dark:bg-emerald-900/10">
+                    <p class="text-[11px] font-medium uppercase tracking-wide text-emerald-700 dark:text-emerald-400">{% if lang == 'ru' %}Посещаемость{% else %}Davomat{% endif %}</p>
+                    <p id="ai-attendance-rate" class="mt-1 text-xl font-bold text-emerald-900 dark:text-emerald-100">{{ '%.0f'|format(attendance_rate) }}%</p>
                 </div>
-                <div class="h-56 rounded-2xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-950/50"><canvas id="bigFiveRadarChart"></canvas></div>
+                <div class="rounded-2xl border border-blue-100 bg-blue-50/50 px-4 py-3 dark:border-blue-900/30 dark:bg-blue-900/10">
+                    <p class="text-[11px] font-medium uppercase tracking-wide text-blue-700 dark:text-blue-400">{% if lang == 'ru' %}Камеры{% else %}Kameralar{% endif %}</p>
+                    <p id="ai-camera-rate" class="mt-1 text-xl font-bold text-blue-900 dark:text-blue-100">{{ '%.0f'|format(camera_health) }}%</p>
+                </div>
+                <div class="rounded-2xl border border-amber-100 bg-amber-50/50 px-4 py-3 dark:border-amber-900/30 dark:bg-amber-900/10">
+                    <p class="text-[11px] font-medium uppercase tracking-wide text-amber-700 dark:text-amber-400">{% if lang == 'ru' %}Опоздания{% else %}Kechikish{% endif %}</p>
+                    <p id="ai-late-rate" class="mt-1 text-xl font-bold text-amber-900 dark:text-amber-100">{{ '%.0f'|format(late_rate) }}%</p>
+                </div>
+            </div>
+            
+            <div class="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr),220px]">
+                <div class="rounded-2xl border border-gray-100 bg-gray-50/50 p-4 dark:border-gray-700/50 dark:bg-gray-800/50">
+                    <p class="text-sm font-semibold text-gray-900 dark:text-white">{% if lang == 'ru' %}Что показывает профиль{% else %}Profil nimani ko'rsatadi{% endif %}</p>
+                    <p class="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-400">{% if lang == 'ru' %}Профиль собирается из дисциплины входа, online камер и покрытия персонала.{% else %}Profil kelish intizomi, online kameralar va xodim qamroviga asoslanadi.{% endif %}</p>
+                </div>
+                <div class="h-[13.5rem] rounded-2xl border border-gray-100 bg-gray-50/50 p-3 dark:border-gray-700/50 dark:bg-gray-800/50">
+                    <canvas id="bigFiveRadarChart"></canvas>
+                </div>
             </div>
         </article>
     </section>

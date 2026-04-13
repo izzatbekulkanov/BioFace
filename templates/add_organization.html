@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="animate-fade-in mx-auto max-w-7xl space-y-4">
+<div class="animate-fade-in space-y-4">
     <section class="overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 to-indigo-600 shadow-xl">
         <div class="grid gap-4 p-5 lg:grid-cols-3">
             <div class="space-y-4 lg:col-span-2">
@@ -93,7 +93,7 @@
                     <span>{% if lang == "ru" %}Отмена{% else %}Bekor qilish{% endif %}</span>
                 </a>
                 <button type="button" onclick="saveOrganization()" class="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700">
-                    <i id="save-spinner" class="fa-solid fa-circle-notch hidden animate-spin"></i>
+                    <i id="save-spinner" class="fa-solid fa-circle-notch animate-spin" style="display:none"></i>
                     <i class="fa-solid fa-floppy-disk"></i>
                     <span>{% if lang == "ru" %}Сохранить организацию{% else %}Tashkilotni saqlash{% endif %}</span>
                 </button>
@@ -138,7 +138,7 @@ async function saveOrganization() {
         return;
     }
 
-    spinner.classList.remove("hidden");
+    spinner.style.display = "inline-block";
     try {
         const res = await fetch("/api/organizations", {
             method: "POST",
@@ -154,7 +154,7 @@ async function saveOrganization() {
         errorEl.textContent = err.message || "Saqlashda xatolik.";
         errorEl.classList.remove("hidden");
     } finally {
-        spinner.classList.add("hidden");
+        spinner.style.display = "none";
     }
 }
 </script>
