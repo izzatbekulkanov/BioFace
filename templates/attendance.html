@@ -426,9 +426,11 @@ function setRefreshLoading(loading) {
     const spinner = document.getElementById("btn-refresh-spinner");
     const icon = document.getElementById("btn-refresh-icon");
     const text = document.getElementById("btn-refresh-text");
+    if (!btn || !spinner || !text) return;
     btn.disabled = Boolean(loading);
-    spinner.classList.toggle("hidden", !loading);
-    if (icon) icon.classList.toggle("hidden", Boolean(loading));
+    // Use display style directly to avoid CSS class conflicts with 'hidden'
+    spinner.style.display = loading ? "inline-flex" : "none";
+    if (icon) icon.style.display = loading ? "none" : "";
     text.textContent = loading ? "Yangilanmoqda..." : "Yangilash";
 }
 
@@ -943,6 +945,8 @@ async function loadAttendance(options = {}) {
              const errorMsg = data.detail || data.message || `HTTP ${res.status}: Davomatni yuklashda xatolik`;
              throw new Error(errorMsg);
          }
+         // Success — clear any previous error banner
+         hideError();
          pageState.items = Array.isArray(data.items) ? data.items.map((row, idx) => ({ ...row, row_no: ((Number(data.page || 1) - 1) * Number(data.page_size || 15)) + idx + 1 })) : [];
          const nextGroupIds = new Set(pageState.items.map((row) => String(row.group_id || "")));
          const nowMs = Date.now();
@@ -996,9 +1000,8 @@ async function loadAttendance(options = {}) {
          renderPageControls();
     } finally {
         pageState.loading = false;
-         if (!silent) {
-             setRefreshLoading(false);
-         }
+        // Always stop spinner — prevents stuck state
+        setRefreshLoading(false);
     }
 }
 
