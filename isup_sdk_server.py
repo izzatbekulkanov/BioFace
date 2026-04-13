@@ -4201,11 +4201,21 @@ class HikvisionSdkRuntime:
             # ctypes.cdll.LoadLibrary da RTLD_GLOBAL flag zarur bo'lishi mumkin
             # Buni oldindan OpenSSL va boshqa transitive dep larini yuklab qo'yamiz
             import ctypes as _ctypes
-            for preload_base in ["libcrypto", "libssl"]:
+            preload_list = [
+                "libhpr", "libcrypto", "libssl", "libiconv2", "libz", "libsqlite3",
+                "libSystemTransform", "libAudioRender", "libSuperRender",
+                "libPlayCtrl", "libHCNetUtils", "libHCEHomeStream", "libHCISUPStream"
+            ]
+            for preload_base in preload_list:
                 preload_path = self._find_so(self.sdk_dir, preload_base)
                 try:
-                    _ctypes.CDLL(preload_path, mode=_ctypes.RTLD_GLOBAL)
-                    print(f"[ISUP SDK] Preloaded (RTLD_GLOBAL): {preload_path}")
+                    mode = _ctypes.RTLD_GLOBAL
+                    if hasattr(os, "RTLD_LAZY"):
+                        mode |= getattr(os, "RTLD_LAZY")
+                    else:
+                        mode |= 1
+                    _ctypes.CDLL(preload_path, mode=mode)
+                    print(f"[ISUP SDK] Preloaded (RTLD_GLOBAL | RTLD_LAZY): {preload_path}")
                 except Exception as preload_err:
                     print(f"[ISUP SDK] WARNING: preload {preload_path} failed: {preload_err}")
 
@@ -4221,10 +4231,15 @@ class HikvisionSdkRuntime:
             ss_path = self._find_so(self.sdk_dir, "libHCISUPSS")
             print(f"[ISUP SDK] Loading Linux libs: CMS={cms_path}, Alarm={alarm_path}, SS={ss_path}")
             # RTLD_GLOBAL: uch kutubxona bir-birining symbollarini ko'rishi uchun zarur.
-            # RTLD_LOCAL (default) da symbol resolution xatosi bo'lishi mumkin.
-            self._cms = ctypes.CDLL(cms_path, mode=ctypes.RTLD_GLOBAL)
-            self._alarm = ctypes.CDLL(alarm_path, mode=ctypes.RTLD_GLOBAL)
-            self._ss = ctypes.CDLL(ss_path, mode=ctypes.RTLD_GLOBAL)
+            mode = ctypes.RTLD_GLOBAL
+            if hasattr(os, "RTLD_LAZY"):
+                mode |= getattr(os, "RTLD_LAZY")
+            else:
+                mode |= 1
+                
+            self._cms = ctypes.CDLL(cms_path, mode=mode)
+            self._alarm = ctypes.CDLL(alarm_path, mode=mode)
+            self._ss = ctypes.CDLL(ss_path, mode=mode)
 
         self._configure_signatures()
         self._configure_sdk_init_cfg()
