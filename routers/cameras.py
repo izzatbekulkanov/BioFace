@@ -4038,10 +4038,13 @@ async def attendance_stream(
     request: Request,
     organization_id: Optional[int] = None,
     camera_id: Optional[int] = None,
-    db: Session = Depends(get_db),
 ):
-    scope = _resolve_attendance_org_scope(request, db)
-    allowed_org_ids = {int(v) for v in (scope.get("allowed_org_ids") or [])}
+    db: Session = SessionLocal()
+    try:
+        scope = _resolve_attendance_org_scope(request, db)
+        allowed_org_ids = {int(v) for v in (scope.get("allowed_org_ids") or [])}
+    finally:
+        db.close()
 
     redis_conn = get_redis(check_connection=True)
     pubsub = None
