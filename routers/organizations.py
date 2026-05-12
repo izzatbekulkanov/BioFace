@@ -5,9 +5,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from database import get_db
-from models import Organization, User, UserOrganizationLink
-from organization_types import (
+from core.database import get_db
+from core.models import Organization, User, UserOrganizationLink
+from utils.organization_types import (
     get_organization_type_choices,
     get_organization_type_label,
     normalize_organization_type,

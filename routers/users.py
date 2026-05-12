@@ -11,9 +11,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
-from database import get_db
-from models import Organization, User, UserOrganizationLink, UserRole
-from access_control import (
+from core.database import get_db
+from core.models import Organization, User, UserOrganizationLink, UserRole
+from core.access_control import (
     normalize_menu_permissions,
     resolve_user_menu_permissions,
     serialize_menu_permissions,

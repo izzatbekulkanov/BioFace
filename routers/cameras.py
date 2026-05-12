@@ -27,14 +27,15 @@ import httpx
 from PIL import Image
 from io import BytesIO
 
-from attendance_utils import ATTENDANCE_FLOOD_GUARD_SECONDS, build_attendance_sessions
-from database import SessionLocal, get_db
-from hikvision_sdk import get_sdk_status
-from isup_manager import get_process_status
-from models import Device, AttendanceLog, Employee, EmployeeWellbeingNote, Organization, EmployeeCameraLink, UserOrganizationLink
-from schedule_utils import get_late_minutes, is_holiday_for_org, resolve_employee_schedule
-from time_utils import now_tashkent, normalize_timestamp_tashkent, today_tashkent_range
-from system_config import (
+from utils.attendance_utils import ATTENDANCE_FLOOD_GUARD_SECONDS, build_attendance_sessions
+from core.database import SessionLocal, get_db
+from services.hikvision_sdk import get_sdk_status
+from services.isup_manager import get_process_status
+from core.models import Device, AttendanceLog, Employee, EmployeeWellbeingNote, Organization, EmployeeCameraLink, UserOrganizationLink
+from utils.schedule_utils import get_late_minutes, is_holiday_for_org, resolve_employee_schedule
+from utils.time_utils import now_tashkent, normalize_timestamp_tashkent, today_tashkent_range
+from core.system_config import (
+    BASE_DIR,
     ISUP_API_URL,
     ISUP_KEY,
     get_isup_public_host,
@@ -64,14 +65,24 @@ from routers.cameras_parts.psychology_utils import (
     state_labels,
     upsert_daily_psychological_state,
 )
-from access_control import normalize_role_value
-from models import UserRole
+from core.access_control import normalize_role_value
+from core.models import UserRole
 
 # ISUP server manzili (default localhost:7670) — health/info uchun ichki URL
 
+
+def _append_runtime_log(filename: str, text: str) -> None:
+    try:
+        log_dir = BASE_DIR / ".runtime"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        with (log_dir / filename).open("a", encoding="utf-8", errors="replace") as log_file:
+            log_file.write(text)
+    except Exception:
+        pass
+
 # Redis bridge import (graceful fallback if Redis not available)
 try:
-    from redis_client import (
+    from core.redis_client import (
         EVENTS_CHANNEL,
         get_isup_device as get_isup_device_from_redis,
         get_isup_devices as get_isup_devices_from_redis,
@@ -1158,7 +1169,7 @@ def add_camera(request: Request, data: CameraCreate, db: Session = Depends(get_d
 
     if isup_device_id:
         try:
-            from redis_client import send_command_and_wait
+            from core.redis_client import send_command_and_wait
             res = send_command_and_wait(isup_device_id, "get_info", {}, timeout=5)
             if res.get("ok"):
                 c_info = res.get("camera_info", {})
@@ -2706,8 +2717,7 @@ async def sync_employee_to_camera(
     employee_id: int = Form(...),
     db: Session = Depends(get_db),
 ):
-    with open(r"C:\Users\Izzatbek\Documents\FaceX\TRACER_SYNC.txt", "a") as f:
-        f.write(f"Direct sync hit for cam_id={cam_id}, emp_id={employee_id}\n")
+    _append_runtime_log("tracer_sync.log", f"Direct sync hit for cam_id={cam_id}, emp_id={employee_id}\n")
     cam = db.query(Device).filter(Device.id == cam_id).first()
     if not cam:
         raise HTTPException(status_code=404, detail="Kamera topilmadi")
@@ -4557,6 +4567,94 @@ def get_isup_device(device_id: str):
         raise HTTPException(status_code=503, detail="ISUP server ishlamayapti")
 
 
+@router.get("/api/isup-devices/{device_id}/metadata")
+def get_isup_device_metadata(device_id: str):
+    """Live ISUP qurilmadan saqlash formasi uchun MAC, serial va modelni aniqlaydi."""
+    target_device_id = str(device_id or "").strip()
+    if not target_device_id:
+        raise HTTPException(status_code=400, detail="ISUP Device ID majburiy")
+
+    live_device: dict[str, Any] = {}
+    warnings: list[str] = []
+    try:
+        response = httpx.get(f"{ISUP_API_URL}/devices/{target_device_id}", timeout=3.0)
+        if response.status_code < 400:
+            payload = response.json()
+            if isinstance(payload, dict):
+                live_device = payload
+    except Exception as exc:
+        warnings.append(f"Live registry o'qilmadi: {exc}")
+
+    info_response: dict[str, Any] = {}
+    if redis_ok():
+        try:
+            raw_response = send_command_and_wait(target_device_id, "get_info", {}, timeout=8.0)
+            if isinstance(raw_response, dict):
+                info_response = raw_response
+                if raw_response.get("ok") is False:
+                    warnings.append(str(raw_response.get("error") or "get_info xatolik qaytardi"))
+            else:
+                warnings.append("get_info javobi kelmadi")
+        except Exception as exc:
+            warnings.append(f"get_info bajarilmadi: {exc}")
+    else:
+        warnings.append("Redis command bridge ulanmagan")
+
+    camera_info = _extract_command_camera_info(info_response)
+    device_info = info_response.get("device") if isinstance(info_response.get("device"), dict) else {}
+    network_info = info_response.get("network_info") if isinstance(info_response.get("network_info"), dict) else {}
+
+    mac_address = _normalize_mac_address(
+        _pick_first_nonempty(camera_info, ("macAddress", "MACAddress"))
+        or _pick_first_nonempty(network_info, ("macAddress", "MACAddress"))
+        or _pick_first_nonempty(device_info, ("mac_address", "mac", "macAddress"))
+        or _pick_first_nonempty(live_device, ("mac_address", "mac", "macAddress"))
+    )
+    serial_number = (
+        _pick_first_nonempty(camera_info, ("serialNumber", "serialNo", "deviceID"))
+        or _pick_first_nonempty(device_info, ("serial", "serial_no", "serialNumber", "device_serial"))
+        or _pick_first_nonempty(live_device, ("serial", "serial_no", "serialNumber", "device_serial"))
+    )
+    model = (
+        _pick_first_nonempty(camera_info, ("model", "deviceName"))
+        or _pick_first_nonempty(device_info, ("device_model", "model", "model_name", "product", "deviceType"))
+        or _pick_first_nonempty(live_device, ("camera_model", "device_model", "model", "model_name", "product", "deviceType"))
+    )
+    firmware_version = (
+        _pick_first_nonempty(camera_info, ("firmwareVersion", "firmwareReleasedDate"))
+        or _pick_first_nonempty(device_info, ("firmware_version", "firmware"))
+        or _pick_first_nonempty(live_device, ("firmware_version", "firmware"))
+    )
+    external_ip = (
+        _pick_first_nonempty(network_info, ("ipAddress",))
+        or _pick_first_nonempty(device_info, ("remote_ip", "ip"))
+        or _pick_first_nonempty(live_device, ("remote_ip", "ip"))
+    )
+    protocol_version = (
+        _pick_first_nonempty(device_info, ("isup_version", "protocol_version"))
+        or _pick_first_nonempty(live_device, ("isup_version", "protocol_version"))
+        or _pick_first_nonempty(camera_info, ("protocolVersion",))
+    )
+
+    return {
+        "ok": True,
+        "device_id": target_device_id,
+        "detected": {
+            "mac_address": mac_address if _is_probable_mac_address(mac_address) else (mac_address or ""),
+            "serial_number": serial_number or "",
+            "model": model or "",
+            "firmware_version": firmware_version or "",
+            "external_ip": external_ip or "",
+            "protocol_version": protocol_version or "",
+        },
+        "camera_info": camera_info,
+        "network_info": network_info,
+        "device_info": device_info,
+        "live_device": live_device,
+        "warnings": warnings,
+    }
+
+
 @router.delete("/api/isup-devices/{device_id}")
 def disconnect_isup_device(device_id: str):
     """ISUP kamerani uzish"""
@@ -4956,20 +5054,20 @@ async def hik_event_webhook(
     try:
         import datetime as _dt
         _raw_body = await request.body()
-        _log_path = "C:/Users/Izzatbek/Documents/FaceX/CAMERA_RAW_LOG.txt"
-        with open(_log_path, "a", encoding="utf-8", errors="replace") as _lf:
-            _lf.write(f"\n{'='*70}\n")
-            _lf.write(f"[{_dt.datetime.now().isoformat()}] HIK-EVENT REQUEST\n")
-            _lf.write(f"Method : {request.method}\n")
-            _lf.write(f"URL    : {request.url}\n")
-            _lf.write(f"Client : {request.client}\n")
-            for _hk, _hv in request.headers.items():
-                _lf.write(f"Header : {_hk}: {_hv}\n")
-            _lf.write(f"Body({len(_raw_body)} bytes):\n")
-            # Rasm bo'lmagan qismini text sifatida yozamiz (max 4KB)
-            _body_preview = _raw_body[:4096]
-            _lf.write(_body_preview.decode("utf-8", errors="replace"))
-            _lf.write("\n")
+        _log_lines = [
+            f"\n{'='*70}\n",
+            f"[{_dt.datetime.now().isoformat()}] HIK-EVENT REQUEST\n",
+            f"Method : {request.method}\n",
+            f"URL    : {request.url}\n",
+            f"Client : {request.client}\n",
+        ]
+        for _hk, _hv in request.headers.items():
+            _log_lines.append(f"Header : {_hk}: {_hv}\n")
+        _body_preview = _raw_body[:4096]
+        _log_lines.append(f"Body({len(_raw_body)} bytes):\n")
+        _log_lines.append(_body_preview.decode("utf-8", errors="replace"))
+        _log_lines.append("\n")
+        _append_runtime_log("camera_raw.log", "".join(_log_lines))
     except Exception as _log_exc:
         print(f"[HIK-EVENT] log xatosi: {_log_exc}")
 

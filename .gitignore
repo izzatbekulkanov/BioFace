@@ -25,6 +25,8 @@ env/
 .env
 bioface.db
 *.db-journal
+*.db-shm
+*.db-wal
 *.sqlite3
 menu.json
 cookies.txt

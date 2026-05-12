@@ -8,11 +8,11 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, selectinload
 
-from attendance_monitor import attendance_monitor, get_attendance_monitor_status
-from database import get_db
-from models import Employee, Holiday, Schedule, TelegramContact
+from services.attendance_monitor import attendance_monitor, get_attendance_monitor_status
+from core.database import get_db
+from core.models import Employee, Holiday, Schedule, TelegramContact
 from routers.employees_parts.common import get_accessible_organization_or_raise, resolve_allowed_org_ids
-from schedule_utils import normalize_hhmm, resolve_employee_schedule, serialize_holiday_row, serialize_schedule_row
+from utils.schedule_utils import normalize_hhmm, resolve_employee_schedule, serialize_holiday_row, serialize_schedule_row
 
 
 router = APIRouter()

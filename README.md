@@ -7,7 +7,7 @@ BioFace is a FastAPI-based attendance and camera management system with Hikvisio
 - FastAPI + Jinja2
 - SQLite via SQLAlchemy
 - Redis for iSUP command/response transport
-- Hikvision SDK bridge (`isup_sdk_server.py`)
+- Hikvision SDK bridge (`services/isup_sdk_server.py`)
 - Optional C++ iSUP server prototype in `isup_server/`
 
 ## What Is Intentionally Excluded
@@ -22,6 +22,17 @@ This repository is prepared for GitHub push and does not include local runtime d
 - local IDE state and virtual environments
 
 Use `.env.example` and `menu.example.json` as templates for local setup.
+
+## Project Layout
+
+- `main.py` — FastAPI application entrypoint and middleware wiring.
+- `core/` — database, SQLAlchemy models, system configuration, Redis client, and access control.
+- `routers/` — HTTP route modules grouped by feature.
+- `services/` — background processes and external integrations such as iSUP, Telegram bot process control, Redis monitor, and Hikvision SDK helpers.
+- `utils/` — shared pure helpers for time, attendance, menu, translations, schedules, and organization types.
+- `templates/` — Jinja2 pages and reusable template components.
+- `static/` — compiled CSS, images, videos, uploads, and frontend assets.
+- `.runtime/` — local runtime logs and PID files; this folder is generated locally and should not be committed.
 
 ## Local Setup
 

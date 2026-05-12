@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 from telegram.error import BadRequest
 
-from redis_client import EVENTS_CHANNEL, get_redis
+from core.redis_client import EVENTS_CHANNEL, get_redis
 from bot.formatters import format_camera_event_message
 from bot.i18n import normalize_language
 from bot.services.bindings import get_bindings_for_employee

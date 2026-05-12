@@ -1,37 +1,38 @@
-# BioFace Tizim Sozlash
+# BioFace Setup Guide
 
-Quyidagi buyruqlarni ketma-ket bajaring:
+## 1. Muhitni tayyorlash
 
-## 1. Setup scriptni ishga tushiring
-```cmd
-cd C:\Users\Izzatbek\Documents\FaceX
-.venv\Scripts\python.exe setup_admin.py
+```powershell
+python -m venv .venv
+.\.venv\Scripts\pip.exe install -r requirements.txt
+Copy-Item .env.example .env
+Copy-Item menu.example.json menu.json
 ```
 
-Bu script:
-- ✅ Barcha templatelarni yangi sintaksisga o'zgartiradi
-- ✅ admin@gmail.com / admin123 bilan superadmin yaratadi
-- ℹ️ ISUP holatini tekshiradi
+## 2. Serverni ishga tushirish
 
-## 2. Serverni ishga tushiring
-```cmd
+```powershell
 .\start.ps1
 ```
 
-## 3. Brauzerda oching
+Yoki faqat web server uchun:
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8000
 ```
+
+Brauzerda ochish:
+
+```text
 http://localhost:8000
 ```
 
-Login:
-- Email: admin@gmail.com
-- Parol: admin123
+## 3. iSUP haqida
 
-## ISUP haqida
-ISUP server faqat Hikvision kameralar bilan ishlash uchun kerak.
-Agar sizda Hikvision kameralar bo'lmasa, ISUP server ishlamasa ham
-web tizim normal ishlaydi.
+iSUP faqat Hikvision kameralar bilan ishlash uchun kerak. Agar Hikvision kameralar ulanmagan bo'lsa, `.env` ichida quyidagicha qo'yish mumkin:
 
-ISUP muammosini hal qilish uchun:
-1. Hikvision SDK DLL fayllari `hikvision_sdk\` papkasida bo'lishi kerak
-2. Yoki `.env` faylida `ISUP_IMPLEMENTATION_MODE=disabled` qilib qo'ying
+```env
+ISUP_IMPLEMENTATION_MODE=disabled
+```
+
+Runtime loglar va PID fayllar `.runtime/` ichida saqlanadi. SQLite bazasi loyiha rootidagi `bioface.db` faylidan olinadi.

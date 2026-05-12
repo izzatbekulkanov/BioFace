@@ -3,18 +3,18 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
-from database import get_db
-import models
+from core.database import get_db
+import core.models as models
 
-from bot_process_manager import get_bot_process_status
-from isup_manager import (
+from services.bot_process_manager import get_bot_process_status
+from services.isup_manager import (
     get_process_status,
     restart_isup_server,
     start_isup_server,
     stop_isup_server,
 )
-from redis_monitor import get_recent_camera_events, get_redis_snapshot, get_redis_status_summary
-from time_utils import TASHKENT_TZ, normalize_timestamp_tashkent, now_tashkent
+from services.redis_monitor import get_recent_camera_events, get_redis_snapshot, get_redis_status_summary
+from utils.time_utils import TASHKENT_TZ, normalize_timestamp_tashkent, now_tashkent
 
 
 router = APIRouter()

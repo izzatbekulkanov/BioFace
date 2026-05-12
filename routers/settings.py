@@ -8,17 +8,17 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional, Dict, List, Union
 
-from database import get_db
-from bot_process_manager import (
+from core.database import get_db
+from services.bot_process_manager import (
     get_bot_process_status,
     restart_bot_process,
     start_bot_process,
     stop_bot_process,
 )
-from isup_manager import restart_isup_server
-from models import Organization, TelegramUserBinding
-from menu_utils import get_menu_data, save_menu_data
-from system_config import (
+from services.isup_manager import restart_isup_server
+from core.models import Organization, TelegramUserBinding
+from utils.menu_utils import get_menu_data, save_menu_data
+from core.system_config import (
     get_camera_event_push_base_url,
     get_detected_lan_ipv4,
     get_public_web_base_url,
@@ -177,7 +177,7 @@ def update_settings(data: SettingsUpdate, db: Session = Depends(get_db)):
         or data.camera_event_push_base_url is not None
     ):
         import json
-        from menu_utils import MENU_FILE
+        from utils.menu_utils import MENU_FILE
         menu_data = get_menu_data()
         
         if data.app_name is not None:

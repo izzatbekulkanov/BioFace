@@ -12,8 +12,8 @@ import httpx
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from database import get_db
-from models import AttendanceLog, Device, Employee, EmployeeCameraLink
+from core.database import get_db
+from core.models import AttendanceLog, Device, Employee, EmployeeCameraLink
 from routers.employees_parts.common import (
     ISUP_SNAPSHOT_INDEX_PATH,
     get_import_job as _get_import_job,
@@ -820,7 +820,7 @@ def _run_employee_face_job(
     allow_camera_http_download: bool,
     import_image: bool,
 ) -> None:
-    from database import SessionLocal
+    from core.database import SessionLocal
 
     db = SessionLocal()
     try:

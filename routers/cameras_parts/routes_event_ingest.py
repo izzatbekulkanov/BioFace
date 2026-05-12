@@ -7,10 +7,10 @@ from typing import Any, Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
-import models
-from database import get_db
-from redis_client import publish_camera_event
-from time_utils import normalize_timestamp_tashkent, now_tashkent
+import core.models as models
+from core.database import get_db
+from core.redis_client import publish_camera_event
+from utils.time_utils import normalize_timestamp_tashkent, now_tashkent
 from routers.cameras_parts.psychology_utils import (
     detect_psychological_profile,
     detect_psychological_state,

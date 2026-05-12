@@ -2,7 +2,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from system_config import ISUP_KEY
+from core.system_config import ISUP_KEY
 
 
 class CameraCreate(BaseModel):

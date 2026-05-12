@@ -7,7 +7,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 from bot.i18n import get_message
 from bot.services.attendance import DailyAttendanceSummary, MonthlyAttendanceDay, MonthlyAttendanceSummary
-from schedule_utils import resolve_employee_schedule
+from utils.schedule_utils import resolve_employee_schedule
 
 
 def _format_value(value: object | None) -> str:

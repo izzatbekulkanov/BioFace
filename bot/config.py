@@ -4,9 +4,9 @@ import os
 import re
 from dataclasses import dataclass
 
-import system_config  # noqa: F401  # Loads .env before reading bot settings.
-from database import SessionLocal, ensure_schema
-from models import Organization
+import core.system_config as system_config  # noqa: F401  # Loads .env before reading bot settings.
+from core.database import SessionLocal, ensure_schema
+from core.models import Organization
 
 # Telegram token format: {bot_id}:{random_string}
 _TOKEN_RE = re.compile(r"^\d{5,}:[A-Za-z0-9_-]{30,}$")

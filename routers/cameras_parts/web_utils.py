@@ -1,6 +1,6 @@
 from fastapi import Request
 
-from system_config import (
+from core.system_config import (
     get_camera_event_push_base_url,
     get_public_web_base_url,
     normalize_camera_event_push_base_url,

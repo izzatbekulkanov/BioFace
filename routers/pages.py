@@ -6,15 +6,15 @@ from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session, selectinload
-from access_control import (
+from core.access_control import (
     build_permission_groups,
     filter_menu_structure_by_permissions,
     get_role_default_menu_permissions,
     normalize_role_value,
     resolve_user_menu_permissions,
 )
-from database import get_db
-from models import (
+from core.database import get_db
+from core.models import (
     AttendanceLog,
     Department,
     Device,
@@ -27,7 +27,7 @@ from models import (
     UserOrganizationLink,
     UserRole,
 )
-from organization_types import get_organization_type_choices, get_organization_type_label
+from utils.organization_types import get_organization_type_choices, get_organization_type_label
 from routers.cameras_parts.psychology_utils import (
     PROFILELESS_STATES,
     aggregate_emotion_scores,
@@ -36,9 +36,9 @@ from routers.cameras_parts.psychology_utils import (
     resolve_snapshot_path,
     state_labels,
 )
-from time_utils import now_tashkent, today_tashkent_range
-from schedule_utils import get_attendance_deadline, get_late_minutes, is_holiday_for_org, resolve_employee_schedule
-from system_config import (
+from utils.time_utils import now_tashkent, today_tashkent_range
+from utils.schedule_utils import get_attendance_deadline, get_late_minutes, is_holiday_for_org, resolve_employee_schedule
+from core.system_config import (
     ISUP_ALARM_PORT,
     ISUP_API_PORT,
     ISUP_KEY,
@@ -50,7 +50,7 @@ from system_config import (
     get_public_web_base_url,
     normalize_public_web_base_url,
 )
-from translations import get_translations
+from utils.translations import get_translations
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -413,7 +413,7 @@ def _build_reports_rows(
 
 def get_menus_dict(request: Request) -> dict:
     import copy
-    from menu_utils import get_menu_data
+    from utils.menu_utils import get_menu_data
     
     lang = request.cookies.get("lang", "uz")
     defaults = MENU_TITLES["ru" if lang == "ru" else "uz"]

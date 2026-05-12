@@ -4,9 +4,9 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from database import SessionLocal, ensure_schema
-from models import Employee, TelegramUserBinding
-from time_utils import now_tashkent
+from core.database import SessionLocal, ensure_schema
+from core.models import Employee, TelegramUserBinding
+from utils.time_utils import now_tashkent
 
 
 def _normalize_telegram_id(value: int | str | None) -> str:

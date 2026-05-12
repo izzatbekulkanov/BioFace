@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="animate-fade-in space-y-6">
+<div class="camera-info-page animate-fade-in space-y-6">
     <div id="alert-box" class="hidden"></div>
 
     <div id="loading-block" class="camera-panel p-8 text-center">
@@ -21,7 +21,7 @@
                             <i class="fa-duotone fa-radar"></i>
                             Camera Detail
                         </span>
-                        <span id="camera-online-pill" class="hidden items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold"></span>
+                        <span id="camera-online-pill" class="hidden"></span>
                     </div>
                     <h1 id="camera-title" class="camera-hero-title truncate">Kamera</h1>
                     <p id="camera-subtitle" class="camera-hero-text">Ma'lumotlar yuklanmoqda...</p>
@@ -107,27 +107,27 @@
                 <div class="camera-info-list text-sm">
                     <div class="camera-info-row">
                         <span class="camera-info-key"><i class="fa-duotone fa-ethernet"></i> Wired Network</span>
-                        <b id="ns-wired" class="rounded-full px-2.5 py-1 text-xs font-semibold text-gray-700 dark:text-gray-100">-</b>
+                        <b id="ns-wired" class="camera-status-pill is-neutral">-</b>
                     </div>
                     <div class="camera-info-row">
                         <span class="camera-info-key"><i class="fa-duotone fa-tower-broadcast"></i> ISUP</span>
-                        <b id="ns-isup" class="rounded-full px-2.5 py-1 text-xs font-semibold text-gray-700 dark:text-gray-100">-</b>
+                        <b id="ns-isup" class="camera-status-pill is-neutral">-</b>
                     </div>
                     <div class="camera-info-row">
                         <span class="camera-info-key"><i class="fa-duotone fa-cloud-arrow-up"></i> OTAP1</span>
-                        <b id="ns-otap1" class="rounded-full px-2.5 py-1 text-xs font-semibold text-gray-700 dark:text-gray-100">-</b>
+                        <b id="ns-otap1" class="camera-status-pill is-neutral">-</b>
                     </div>
                     <div class="camera-info-row">
                         <span class="camera-info-key"><i class="fa-duotone fa-cloud-arrow-down"></i> OTAP2</span>
-                        <b id="ns-otap2" class="rounded-full px-2.5 py-1 text-xs font-semibold text-gray-700 dark:text-gray-100">-</b>
+                        <b id="ns-otap2" class="camera-status-pill is-neutral">-</b>
                     </div>
                     <div class="camera-info-row">
                         <span class="camera-info-key"><i class="fa-duotone fa-link"></i> Hik-Connect</span>
-                        <b id="ns-hikconnect" class="rounded-full px-2.5 py-1 text-xs font-semibold text-gray-700 dark:text-gray-100">-</b>
+                        <b id="ns-hikconnect" class="camera-status-pill is-neutral">-</b>
                     </div>
                     <div class="camera-info-row">
                         <span class="camera-info-key"><i class="fa-duotone fa-phone-volume"></i> VoIP</span>
-                        <b id="ns-voip" class="rounded-full px-2.5 py-1 text-xs font-semibold text-gray-700 dark:text-gray-100">-</b>
+                        <b id="ns-voip" class="camera-status-pill is-neutral">-</b>
                     </div>
                 </div>
             </section>
@@ -336,8 +336,8 @@
                 </div>
                 <span id="users-count-badge" class="camera-soft-chip">0 ta</span>
             </div>
-            <div class="overflow-x-auto">
-                <table class="table-standard min-w-full">
+            <div class="camera-table-shell">
+                <table class="table-standard camera-users-table">
                     <thead>
                         <tr>
                             <th class="px-4 py-3">#</th>
@@ -557,10 +557,10 @@ function formatValid(validObj) {
 function updateOnlinePill(isOnline) {
     const pill = document.getElementById("camera-online-pill");
     if (!pill) return;
-    pill.className = "camera-soft-chip camera-soft-chip-light inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold";
+    pill.className = `camera-online-pill ${isOnline ? "is-online" : "is-offline"}`;
     pill.innerHTML = isOnline
-        ? '<span class="h-2 w-2 rounded-full bg-emerald-400"></span>Online'
-        : '<span class="h-2 w-2 rounded-full bg-rose-400"></span>Offline';
+        ? '<span></span>Online'
+        : '<span></span>Offline';
 }
 
 function statusKind(value) {
@@ -576,18 +576,7 @@ function paintNetworkStatus(elId, value) {
     const text = value || "-";
     const kind = statusKind(text);
     el.textContent = text;
-    el.classList.remove(
-        "bg-emerald-100", "text-emerald-700", "dark:bg-emerald-900/30", "dark:text-emerald-300",
-        "bg-red-100", "text-red-700", "dark:bg-red-900/30", "dark:text-red-300",
-        "bg-gray-200", "text-gray-700", "dark:bg-gray-700", "dark:text-gray-200"
-    );
-    if (kind === "success") {
-        el.classList.add("bg-emerald-100", "text-emerald-700", "dark:bg-emerald-900/30", "dark:text-emerald-300");
-    } else if (kind === "danger") {
-        el.classList.add("bg-red-100", "text-red-700", "dark:bg-red-900/30", "dark:text-red-300");
-    } else {
-        el.classList.add("bg-gray-200", "text-gray-700", "dark:bg-gray-700", "dark:text-gray-200");
-    }
+    el.className = `camera-status-pill is-${kind}`;
 }
 
 function renderSnapshot(data) {
@@ -648,7 +637,7 @@ function renderUsers(users) {
 
     if (pageState.users.length === 0) {
         const row = document.createElement("tr");
-        row.innerHTML = `<td colspan="6" class="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">Kamerada foydalanuvchi topilmadi.</td>`;
+        row.innerHTML = `<td colspan="6"><div class="camera-users-empty"><i class="fa-duotone fa-users-slash"></i><span>Kamerada foydalanuvchi topilmadi.</span></div></td>`;
         body.appendChild(row);
         return;
     }
@@ -656,25 +645,25 @@ function renderUsers(users) {
     for (let i = 0; i < pageState.users.length; i += 1) {
         const user = pageState.users[i];
         const row = document.createElement("tr");
-        row.className = "hover:bg-gray-50/80 dark:hover:bg-gray-800/40";
         const employeeNo = user.employeeNo || "-";
         const name = user.name || "-";
         const userType = user.userType || "-";
         const valid = formatValid(user.Valid);
         const faceState = user.has_face_on_camera;
-        let faceBadge = '<span class="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300">Noma\'lum</span>';
+        let faceBadge = '<span class="camera-face-badge is-unknown">Noma\'lum</span>';
         if (faceState === true) {
-            faceBadge = '<span class="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">Bor</span>';
+            faceBadge = '<span class="camera-face-badge is-present">Bor</span>';
         } else if (faceState === false) {
-            faceBadge = '<span class="inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-semibold text-rose-700 dark:bg-rose-900/30 dark:text-rose-300">Yo\'q</span>';
+            faceBadge = '<span class="camera-face-badge is-missing">Yo\'q</span>';
         }
+        row.className = "camera-users-row";
         row.innerHTML = `
-            <td class="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-300">${i + 1}</td>
-            <td class="px-4 py-3 font-mono text-xs text-gray-700 dark:text-gray-200">${employeeNo}</td>
-            <td class="px-4 py-3 text-gray-700 dark:text-gray-200">${name}</td>
-            <td class="px-4 py-3 text-gray-500 dark:text-gray-400">${userType}</td>
-            <td class="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">${valid}</td>
-            <td class="px-4 py-3">${faceBadge}</td>
+            <td class="camera-users-index">${i + 1}</td>
+            <td class="camera-users-code">${employeeNo}</td>
+            <td class="camera-users-name">${name}</td>
+            <td class="camera-users-muted">${userType}</td>
+            <td class="camera-users-valid">${valid}</td>
+            <td>${faceBadge}</td>
         `;
         body.appendChild(row);
     }
@@ -689,8 +678,8 @@ function renderUsersUnsupported(message) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
     cell.colSpan = 6;
-    cell.className = "px-4 py-6 text-center text-sm text-amber-700 dark:text-amber-300";
-    cell.textContent = message || "Bu kamera modeli foydalanuvchi/yuz ro'yxatini qo'llamaydi.";
+    cell.innerHTML = '<div class="camera-users-empty is-warning"><i class="fa-duotone fa-circle-info"></i><span></span></div>';
+    cell.querySelector("span").textContent = message || "Bu kamera modeli foydalanuvchi/yuz ro'yxatini qo'llamaydi.";
     row.appendChild(cell);
     body.appendChild(row);
 }

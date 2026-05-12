@@ -3894,6 +3894,709 @@ body.ui-density-compact footer {
     }
 }
 
+/* --- CAMERA INFO PAGE --- */
+.camera-info-page {
+    color: rgb(51 65 85);
+}
+
+.dark .camera-info-page {
+    color: rgb(203 213 225);
+}
+
+.camera-hero,
+.camera-panel,
+.camera-readonly-banner {
+    border: 1px solid rgb(226 232 240 / 0.88);
+    border-radius: 1.25rem;
+    box-shadow: 0 18px 42px -34px rgb(15 23 42 / 0.42);
+    backdrop-filter: blur(18px);
+}
+
+.camera-hero {
+    position: relative;
+    overflow: hidden;
+    padding: 1.05rem;
+    color: rgb(255 255 255);
+    background:
+        linear-gradient(135deg, rgb(15 23 42 / 0.96), rgb(30 64 175 / 0.92)),
+        rgb(15 23 42);
+}
+
+.camera-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(90deg, rgb(255 255 255 / 0.12), transparent 42%),
+        linear-gradient(180deg, rgb(14 165 233 / 0.12), transparent 64%);
+    pointer-events: none;
+}
+
+.camera-hero-grid {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(20rem, 0.85fr);
+    align-items: stretch;
+    gap: 1rem;
+}
+
+.camera-hero-badge,
+.camera-soft-chip,
+.camera-online-pill,
+.camera-status-pill,
+.camera-face-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border-radius: 9999px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.camera-hero-badge {
+    border: 1px solid rgb(255 255 255 / 0.22);
+    background: rgb(255 255 255 / 0.13);
+    color: rgb(255 255 255);
+    padding: 0.56rem 0.78rem;
+}
+
+.camera-online-pill {
+    border: 1px solid rgb(255 255 255 / 0.22);
+    background: rgb(255 255 255 / 0.14);
+    color: rgb(255 255 255);
+    padding: 0.52rem 0.72rem;
+}
+
+.camera-online-pill span {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 9999px;
+}
+
+.camera-online-pill.is-online span {
+    background: rgb(52 211 153);
+    box-shadow: 0 0 0 4px rgb(52 211 153 / 0.16);
+}
+
+.camera-online-pill.is-offline span {
+    background: rgb(251 113 133);
+    box-shadow: 0 0 0 4px rgb(251 113 133 / 0.16);
+}
+
+.camera-hero-title {
+    overflow: hidden;
+    margin-top: 1rem;
+    color: rgb(255 255 255);
+    font-size: 1.9rem;
+    font-weight: 800;
+    letter-spacing: 0;
+    line-height: 1.1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.camera-hero-text {
+    max-width: 58rem;
+    margin-top: 0.55rem;
+    color: rgb(219 234 254);
+    font-size: 0.88rem;
+    font-weight: 600;
+    line-height: 1.6;
+}
+
+.camera-hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 1rem;
+}
+
+.camera-soft-chip {
+    width: fit-content;
+    border: 1px solid rgb(203 213 225 / 0.92);
+    background: rgb(255 255 255 / 0.9);
+    color: rgb(51 65 85);
+    padding: 0.56rem 0.78rem;
+    text-decoration: none;
+    transition: transform 0.16s ease, background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+
+.camera-soft-chip:hover {
+    transform: translateY(-1px);
+    background: rgb(248 250 252);
+}
+
+.camera-soft-chip-light {
+    border-color: rgb(255 255 255 / 0.24);
+    background: rgb(255 255 255 / 0.14);
+    color: rgb(255 255 255);
+}
+
+.camera-soft-chip-light:hover {
+    background: rgb(255 255 255 / 0.2);
+}
+
+.dark .camera-soft-chip {
+    border-color: rgb(51 65 85 / 0.95);
+    background: rgb(15 23 42 / 0.84);
+    color: rgb(203 213 225);
+}
+
+.camera-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.72rem;
+}
+
+.camera-summary-card {
+    min-height: 8.1rem;
+    padding: 0.82rem;
+    border: 1px solid rgb(255 255 255 / 0.22);
+    border-radius: 1.05rem;
+    background: rgb(255 255 255 / 0.14);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.14);
+}
+
+.camera-summary-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.camera-summary-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.35rem;
+    height: 2.35rem;
+    border-radius: 0.82rem;
+    background: rgb(255 255 255 / 0.16);
+    color: rgb(191 219 254);
+}
+
+.camera-summary-label {
+    margin-top: 0.72rem;
+    color: rgb(191 219 254);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+}
+
+.camera-summary-value {
+    margin-top: 0.18rem;
+    color: rgb(255 255 255);
+    font-size: 1.45rem;
+    font-weight: 800;
+    line-height: 1.05;
+}
+
+.camera-summary-meta {
+    margin-top: 0.32rem;
+    color: rgb(219 234 254);
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.45;
+}
+
+.camera-panel {
+    background: rgb(255 255 255 / 0.68);
+}
+
+.dark .camera-panel {
+    border-color: rgb(30 41 59 / 0.96);
+    background: rgb(15 23 42 / 0.62);
+    box-shadow: 0 20px 44px -36px rgb(0 0 0 / 0.72);
+}
+
+.camera-readonly-banner {
+    border-color: rgb(252 211 77 / 0.72);
+    background: rgb(255 251 235 / 0.86);
+    color: rgb(146 64 14);
+}
+
+.dark .camera-readonly-banner {
+    border-color: rgb(120 53 15 / 0.72);
+    background: rgb(120 53 15 / 0.28);
+    color: rgb(253 230 138);
+}
+
+.camera-panel-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    margin-bottom: 1rem;
+}
+
+.camera-panel-header.tight {
+    margin-bottom: 0.82rem;
+}
+
+.camera-panel-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.42rem;
+    color: rgb(37 99 235);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.dark .camera-panel-eyebrow {
+    color: rgb(125 211 252);
+}
+
+.camera-panel-title {
+    margin-top: 0.18rem;
+    color: rgb(15 23 42);
+    font-size: 1.02rem;
+    font-weight: 800;
+    line-height: 1.25;
+}
+
+.dark .camera-panel-title {
+    color: rgb(248 250 252);
+}
+
+.camera-panel-text {
+    margin-top: 0.3rem;
+    color: rgb(100 116 139);
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1.6;
+}
+
+.dark .camera-panel-text {
+    color: rgb(148 163 184);
+}
+
+.camera-info-list {
+    display: grid;
+    gap: 0.52rem;
+}
+
+.camera-info-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    min-height: 2.65rem;
+    padding: 0.62rem 0.72rem;
+    border: 1px solid rgb(226 232 240 / 0.78);
+    border-radius: 0.9rem;
+    background: rgb(248 250 252 / 0.75);
+}
+
+.camera-info-row.items-start {
+    align-items: flex-start;
+}
+
+.dark .camera-info-row {
+    border-color: rgb(51 65 85 / 0.76);
+    background: rgb(15 23 42 / 0.56);
+}
+
+.camera-info-key {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-width: 0;
+    color: rgb(71 85 105);
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.4;
+}
+
+.camera-info-key i {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.85rem;
+    height: 1.85rem;
+    flex: 0 0 1.85rem;
+    border-radius: 0.68rem;
+    background: rgb(219 234 254 / 0.84);
+    color: rgb(37 99 235);
+}
+
+.dark .camera-info-key {
+    color: rgb(203 213 225);
+}
+
+.dark .camera-info-key i {
+    background: rgb(30 58 138 / 0.5);
+    color: rgb(147 197 253);
+}
+
+.camera-info-value {
+    min-width: 0;
+    max-width: 62%;
+    color: rgb(15 23 42);
+    font-size: 0.78rem;
+    font-weight: 800;
+    line-height: 1.45;
+    text-align: right;
+    word-break: break-word;
+}
+
+.dark .camera-info-value {
+    color: rgb(248 250 252);
+}
+
+.camera-status-pill {
+    flex: 0 0 auto;
+    padding: 0.38rem 0.62rem;
+    border: 1px solid transparent;
+    font-size: 0.68rem;
+}
+
+.camera-status-pill.is-success {
+    border-color: rgb(187 247 208 / 0.9);
+    background: rgb(220 252 231 / 0.9);
+    color: rgb(22 101 52);
+}
+
+.camera-status-pill.is-danger {
+    border-color: rgb(254 205 211 / 0.92);
+    background: rgb(255 228 230 / 0.92);
+    color: rgb(190 18 60);
+}
+
+.camera-status-pill.is-neutral {
+    border-color: rgb(226 232 240 / 0.92);
+    background: rgb(241 245 249 / 0.9);
+    color: rgb(71 85 105);
+}
+
+.dark .camera-status-pill.is-success {
+    border-color: rgb(22 101 52 / 0.72);
+    background: rgb(20 83 45 / 0.58);
+    color: rgb(187 247 208);
+}
+
+.dark .camera-status-pill.is-danger {
+    border-color: rgb(136 19 55 / 0.72);
+    background: rgb(127 29 29 / 0.5);
+    color: rgb(254 202 202);
+}
+
+.dark .camera-status-pill.is-neutral {
+    border-color: rgb(51 65 85 / 0.92);
+    background: rgb(30 41 59 / 0.78);
+    color: rgb(203 213 225);
+}
+
+.camera-highlight-box {
+    border: 1px solid rgb(191 219 254 / 0.9);
+    border-radius: 0.95rem;
+    background: rgb(239 246 255 / 0.9);
+    padding: 0.78rem 0.85rem;
+    line-height: 1.55;
+}
+
+.dark .camera-highlight-box {
+    border-color: rgb(30 64 175 / 0.72);
+    background: rgb(30 58 138 / 0.38);
+}
+
+.camera-field {
+    display: grid;
+    gap: 0.42rem;
+    min-width: 0;
+}
+
+.camera-field-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.44rem;
+    color: rgb(71 85 105);
+    font-weight: 800;
+}
+
+.dark .camera-field-label {
+    color: rgb(203 213 225);
+}
+
+.camera-field-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.85rem;
+    height: 1.85rem;
+    border-radius: 0.68rem;
+    background: rgb(239 246 255 / 0.96);
+    color: rgb(37 99 235);
+}
+
+.dark .camera-field-icon {
+    background: rgb(30 58 138 / 0.44);
+    color: rgb(147 197 253);
+}
+
+.camera-table-shell {
+    overflow: auto;
+    border: 1px solid rgb(226 232 240 / 0.84);
+    border-radius: 1.05rem;
+    background: rgb(255 255 255 / 0.52);
+}
+
+.dark .camera-table-shell {
+    border-color: rgb(51 65 85 / 0.82);
+    background: rgb(2 6 23 / 0.16);
+}
+
+.camera-users-table {
+    min-width: 56rem;
+    table-layout: fixed;
+}
+
+.table-standard.camera-users-table thead {
+    background: rgb(248 250 252 / 0.94);
+}
+
+.dark .table-standard.camera-users-table thead {
+    background: rgb(15 23 42 / 0.92);
+}
+
+.table-standard.camera-users-table th {
+    padding: 0.78rem 0.84rem;
+    color: rgb(100 116 139);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.07em;
+    white-space: nowrap;
+}
+
+.dark .table-standard.camera-users-table th {
+    color: rgb(148 163 184);
+}
+
+.table-standard.camera-users-table td {
+    padding: 0.82rem 0.84rem;
+    color: rgb(51 65 85);
+    font-size: 0.8rem;
+    vertical-align: middle;
+}
+
+.dark .table-standard.camera-users-table td {
+    color: rgb(203 213 225);
+}
+
+.table-standard.camera-users-table tbody tr {
+    border-bottom: 1px solid rgb(226 232 240 / 0.72);
+}
+
+.dark .table-standard.camera-users-table tbody tr {
+    border-bottom-color: rgb(51 65 85 / 0.72);
+}
+
+.camera-users-row:hover {
+    background: rgb(248 250 252 / 0.78);
+}
+
+.dark .camera-users-row:hover {
+    background: rgb(15 23 42 / 0.68);
+}
+
+.camera-users-index {
+    width: 3.4rem;
+    color: rgb(100 116 139) !important;
+    font-size: 0.74rem !important;
+    font-weight: 800;
+}
+
+.camera-users-code {
+    overflow: hidden;
+    color: rgb(30 41 59) !important;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.76rem !important;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dark .camera-users-code {
+    color: rgb(226 232 240) !important;
+}
+
+.camera-users-name {
+    color: rgb(15 23 42) !important;
+    font-weight: 800;
+}
+
+.dark .camera-users-name {
+    color: rgb(248 250 252) !important;
+}
+
+.camera-users-muted,
+.camera-users-valid {
+    color: rgb(100 116 139) !important;
+    font-size: 0.76rem !important;
+    line-height: 1.5;
+}
+
+.dark .camera-users-muted,
+.dark .camera-users-valid {
+    color: rgb(148 163 184) !important;
+}
+
+.camera-face-badge {
+    padding: 0.34rem 0.58rem;
+    border: 1px solid transparent;
+    font-size: 0.68rem;
+}
+
+.camera-face-badge.is-present {
+    border-color: rgb(187 247 208 / 0.9);
+    background: rgb(220 252 231 / 0.92);
+    color: rgb(22 101 52);
+}
+
+.camera-face-badge.is-missing {
+    border-color: rgb(254 205 211 / 0.92);
+    background: rgb(255 228 230 / 0.92);
+    color: rgb(190 18 60);
+}
+
+.camera-face-badge.is-unknown {
+    border-color: rgb(226 232 240 / 0.9);
+    background: rgb(241 245 249 / 0.92);
+    color: rgb(71 85 105);
+}
+
+.dark .camera-face-badge.is-present {
+    border-color: rgb(22 101 52 / 0.72);
+    background: rgb(20 83 45 / 0.56);
+    color: rgb(187 247 208);
+}
+
+.dark .camera-face-badge.is-missing {
+    border-color: rgb(136 19 55 / 0.72);
+    background: rgb(127 29 29 / 0.48);
+    color: rgb(254 202 202);
+}
+
+.dark .camera-face-badge.is-unknown {
+    border-color: rgb(51 65 85 / 0.9);
+    background: rgb(30 41 59 / 0.76);
+    color: rgb(203 213 225);
+}
+
+.camera-users-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    min-height: 8.8rem;
+    padding: 1.8rem 1rem;
+    color: rgb(100 116 139);
+    text-align: center;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.camera-users-empty i {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.8rem;
+    height: 2.8rem;
+    border-radius: 0.95rem;
+    background: rgb(241 245 249 / 0.95);
+    color: rgb(37 99 235);
+}
+
+.camera-users-empty.is-warning {
+    color: rgb(146 64 14);
+}
+
+.camera-users-empty.is-warning i {
+    background: rgb(254 243 199 / 0.92);
+    color: rgb(217 119 6);
+}
+
+.dark .camera-users-empty {
+    color: rgb(148 163 184);
+}
+
+.dark .camera-users-empty i {
+    background: rgb(30 41 59 / 0.82);
+    color: rgb(125 211 252);
+}
+
+.dark .camera-users-empty.is-warning {
+    color: rgb(253 230 138);
+}
+
+.dark .camera-users-empty.is-warning i {
+    background: rgb(120 53 15 / 0.46);
+    color: rgb(253 186 116);
+}
+
+@media (max-width: 1279px) {
+    .camera-hero-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 767px) {
+    .camera-hero {
+        padding: 0.9rem;
+    }
+
+    .camera-hero-title {
+        font-size: 1.45rem;
+        white-space: normal;
+    }
+
+    .camera-hero-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .camera-hero-actions > * {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .camera-summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .camera-panel-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .camera-info-row {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .camera-info-value {
+        max-width: 100%;
+        text-align: left;
+    }
+
+    .camera-users-table {
+        min-width: 48rem;
+    }
+}
+
+@media (max-width: 519px) {
+    .camera-summary-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* --- SHIFT UI SYSTEM --- */
 .shift-page {
     --shift-ring: rgba(37, 99, 235, 0.16);
@@ -6746,6 +7449,769 @@ body.ui-density-compact footer {
     }
 
     .shift-holiday-legend {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+
+/* --- ISUP DEVICE REGISTRY --- */
+.isup-device-panel {
+    overflow: hidden;
+    border: 1px solid rgb(226 232 240 / 0.9);
+    border-radius: 1.35rem;
+    background: rgb(255 255 255 / 0.66);
+    box-shadow: 0 18px 40px -34px rgb(15 23 42 / 0.35);
+    backdrop-filter: blur(18px);
+}
+
+.dark .isup-device-panel {
+    border-color: rgb(30 41 59 / 0.95);
+    background: rgb(15 23 42 / 0.58);
+    box-shadow: 0 18px 44px -36px rgb(0 0 0 / 0.72);
+}
+
+.isup-device-topbar {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid rgb(226 232 240 / 0.72);
+    background: rgb(248 250 252 / 0.62);
+}
+
+.dark .isup-device-topbar {
+    border-bottom-color: rgb(51 65 85 / 0.72);
+    background: rgb(15 23 42 / 0.42);
+}
+
+.isup-device-heading {
+    min-width: min(100%, 18rem);
+}
+
+.isup-device-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.42rem;
+    color: rgb(37 99 235);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.dark .isup-device-kicker {
+    color: rgb(125 211 252);
+}
+
+.isup-device-title {
+    margin-top: 0.18rem;
+    color: rgb(15 23 42);
+    font-size: 1.08rem;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.dark .isup-device-title {
+    color: rgb(248 250 252);
+}
+
+.isup-device-summary {
+    margin-top: 0.18rem;
+    color: rgb(100 116 139);
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.dark .isup-device-summary {
+    color: rgb(148 163 184);
+}
+
+.isup-device-filters {
+    display: grid;
+    grid-template-columns: minmax(16rem, 26rem) minmax(9rem, 10.5rem) auto;
+    align-items: flex-end;
+    gap: 0.7rem;
+    width: min(100%, 48rem);
+}
+
+.isup-device-field {
+    display: grid;
+    gap: 0.32rem;
+    min-width: 0;
+}
+
+.isup-device-label {
+    padding-left: 0.08rem;
+    color: rgb(100 116 139);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+}
+
+.dark .isup-device-label {
+    color: rgb(148 163 184);
+}
+
+.isup-device-control-shell {
+    display: flex;
+    align-items: center;
+    min-height: 2.62rem;
+    overflow: hidden;
+    border: 1px solid rgb(203 213 225 / 0.95);
+    border-radius: 0.98rem;
+    background: rgb(255 255 255 / 0.92);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.8);
+    transition: border-color 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
+}
+
+.isup-device-control-shell:focus-within {
+    border-color: rgb(59 130 246 / 0.62);
+    box-shadow: 0 0 0 4px rgb(191 219 254 / 0.68);
+}
+
+.dark .isup-device-control-shell {
+    border-color: rgb(51 65 85 / 0.95);
+    background: rgb(15 23 42 / 0.82);
+    box-shadow: inset 0 1px 0 rgb(51 65 85 / 0.45);
+}
+
+.dark .isup-device-control-shell:focus-within {
+    border-color: rgb(96 165 250 / 0.55);
+    box-shadow: 0 0 0 4px rgb(30 58 138 / 0.38);
+}
+
+.isup-device-control-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 2.48rem;
+    color: rgb(100 116 139);
+}
+
+.dark .isup-device-control-icon {
+    color: rgb(148 163 184);
+}
+
+.isup-device-control {
+    width: 100%;
+    min-width: 0;
+    height: 2.62rem;
+    padding: 0 0.88rem 0 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: rgb(15 23 42);
+    font-size: 0.84rem;
+    font-weight: 600;
+}
+
+.isup-device-control::placeholder {
+    color: rgb(148 163 184);
+}
+
+.dark .isup-device-control {
+    color: rgb(248 250 252);
+}
+
+.isup-device-control option {
+    color: rgb(15 23 42);
+    background: rgb(255 255 255);
+}
+
+.dark .isup-device-control option {
+    color: rgb(248 250 252);
+    background: rgb(15 23 42);
+}
+
+.isup-device-filter-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.isup-device-filter-btn,
+.isup-device-page-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.42rem;
+    min-height: 2.42rem;
+    border: 1px solid rgb(203 213 225 / 0.95);
+    border-radius: 0.9rem;
+    background: rgb(255 255 255 / 0.9);
+    color: rgb(51 65 85);
+    font-size: 0.78rem;
+    font-weight: 800;
+    line-height: 1;
+    padding: 0.62rem 0.86rem;
+    white-space: nowrap;
+    transition: transform 0.16s ease, border-color 0.16s ease, background-color 0.16s ease, color 0.16s ease, opacity 0.16s ease;
+}
+
+.isup-device-filter-btn:hover,
+.isup-device-page-btn:hover {
+    transform: translateY(-1px);
+    background: rgb(248 250 252 / 0.96);
+}
+
+.isup-device-filter-btn.is-primary,
+.isup-device-page-btn.is-active {
+    border-color: rgb(37 99 235 / 0.2);
+    background: rgb(37 99 235);
+    color: rgb(255 255 255);
+    box-shadow: 0 14px 28px -24px rgb(37 99 235 / 0.9);
+}
+
+.isup-device-page-btn:disabled {
+    pointer-events: none;
+    opacity: 0.45;
+}
+
+.dark .isup-device-filter-btn,
+.dark .isup-device-page-btn {
+    border-color: rgb(51 65 85 / 0.95);
+    background: rgb(15 23 42 / 0.86);
+    color: rgb(203 213 225);
+}
+
+.dark .isup-device-filter-btn:hover,
+.dark .isup-device-page-btn:hover {
+    background: rgb(30 41 59 / 0.94);
+}
+
+.dark .isup-device-filter-btn.is-primary,
+.dark .isup-device-page-btn.is-active {
+    border-color: rgb(96 165 250 / 0.28);
+    background: rgb(37 99 235);
+    color: rgb(255 255 255);
+}
+
+.isup-device-table-shell {
+    min-height: 21rem;
+    max-height: 68vh;
+    overflow: auto;
+    background: rgb(255 255 255 / 0.38);
+}
+
+.dark .isup-device-table-shell {
+    background: rgb(2 6 23 / 0.12);
+}
+
+.isup-device-table {
+    min-width: 64rem;
+    table-layout: fixed;
+}
+
+.table-standard.isup-device-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.table-standard.isup-device-table th {
+    padding: 0.78rem 0.88rem;
+    color: rgb(100 116 139);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.07em;
+    white-space: nowrap;
+}
+
+.dark .table-standard.isup-device-table th {
+    color: rgb(148 163 184);
+}
+
+.table-standard.isup-device-table td {
+    padding: 0.86rem 0.88rem;
+    vertical-align: middle;
+}
+
+.table-standard.isup-device-table tbody tr {
+    border-bottom: 1px solid rgb(226 232 240 / 0.72);
+}
+
+.dark .table-standard.isup-device-table tbody tr {
+    border-bottom-color: rgb(51 65 85 / 0.7);
+}
+
+.table-standard.isup-device-table tbody tr:hover {
+    background: rgb(248 250 252 / 0.76);
+}
+
+.dark .table-standard.isup-device-table tbody tr:hover {
+    background: rgb(15 23 42 / 0.72);
+}
+
+.isup-col-index {
+    width: 4.2rem;
+    text-align: center;
+}
+
+.isup-col-device {
+    width: 25%;
+}
+
+.isup-col-ip {
+    width: 18%;
+}
+
+.isup-col-model {
+    width: 19%;
+}
+
+.isup-col-registered {
+    width: 18%;
+}
+
+.isup-col-actions {
+    width: 16rem;
+    text-align: right;
+}
+
+.isup-index-cell {
+    text-align: center;
+}
+
+.isup-row-index {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.76rem;
+    background: rgb(241 245 249 / 0.95);
+    color: rgb(100 116 139);
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.dark .isup-row-index {
+    background: rgb(30 41 59 / 0.9);
+    color: rgb(148 163 184);
+}
+
+.isup-device-name-line {
+    display: flex;
+    align-items: center;
+    gap: 0.72rem;
+    min-width: 0;
+}
+
+.isup-device-icon {
+    display: inline-flex;
+    flex: 0 0 2.36rem;
+    align-items: center;
+    justify-content: center;
+    width: 2.36rem;
+    height: 2.36rem;
+    border-radius: 0.86rem;
+    background: rgb(219 234 254 / 0.9);
+    color: rgb(37 99 235);
+}
+
+.dark .isup-device-icon {
+    background: rgb(30 58 138 / 0.48);
+    color: rgb(147 197 253);
+}
+
+.isup-device-name-copy {
+    min-width: 0;
+}
+
+.isup-device-id {
+    overflow: hidden;
+    color: rgb(15 23 42);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.86rem;
+    font-weight: 800;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dark .isup-device-id {
+    color: rgb(248 250 252);
+}
+
+.isup-device-display-name,
+.isup-device-subline {
+    color: rgb(100 116 139);
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.45;
+}
+
+.dark .isup-device-display-name,
+.dark .isup-device-subline {
+    color: rgb(148 163 184);
+}
+
+.isup-device-badges {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.42rem;
+    margin-top: 0.58rem;
+}
+
+.isup-device-badge,
+.isup-device-saved-label,
+.isup-device-muted-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.34rem;
+    border-radius: 9999px;
+    font-size: 0.66rem;
+    font-weight: 800;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.isup-device-badge {
+    padding: 0.32rem 0.55rem;
+    border: 1px solid transparent;
+}
+
+.isup-device-badge.is-online {
+    border-color: rgb(187 247 208 / 0.9);
+    background: rgb(220 252 231 / 0.9);
+    color: rgb(22 101 52);
+}
+
+.isup-device-badge.is-offline {
+    border-color: rgb(254 205 211 / 0.9);
+    background: rgb(255 228 230 / 0.92);
+    color: rgb(190 18 60);
+}
+
+.isup-device-badge.is-live {
+    border-color: rgb(191 219 254 / 0.9);
+    background: rgb(239 246 255 / 0.94);
+    color: rgb(29 78 216);
+}
+
+.isup-device-badge.is-configured {
+    border-color: rgb(253 230 138 / 0.9);
+    background: rgb(254 243 199 / 0.92);
+    color: rgb(146 64 14);
+}
+
+.dark .isup-device-badge.is-online {
+    border-color: rgb(22 101 52 / 0.7);
+    background: rgb(20 83 45 / 0.62);
+    color: rgb(187 247 208);
+}
+
+.dark .isup-device-badge.is-offline {
+    border-color: rgb(136 19 55 / 0.75);
+    background: rgb(127 29 29 / 0.56);
+    color: rgb(254 202 202);
+}
+
+.dark .isup-device-badge.is-live {
+    border-color: rgb(30 64 175 / 0.72);
+    background: rgb(30 58 138 / 0.48);
+    color: rgb(191 219 254);
+}
+
+.dark .isup-device-badge.is-configured {
+    border-color: rgb(120 53 15 / 0.72);
+    background: rgb(120 53 15 / 0.46);
+    color: rgb(253 230 138);
+}
+
+.isup-device-code {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    min-height: 2.08rem;
+    overflow: hidden;
+    border: 1px solid rgb(226 232 240 / 0.95);
+    border-radius: 0.78rem;
+    background: rgb(241 245 249 / 0.94);
+    color: rgb(51 65 85);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.78rem;
+    font-weight: 800;
+    line-height: 1;
+    padding: 0.45rem 0.6rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dark .isup-device-code {
+    border-color: rgb(51 65 85 / 0.95);
+    background: rgb(30 41 59 / 0.78);
+    color: rgb(203 213 225);
+}
+
+.isup-device-model {
+    overflow: hidden;
+    max-width: 14rem;
+    color: rgb(30 41 59);
+    font-size: 0.84rem;
+    font-weight: 800;
+    line-height: 1.35;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dark .isup-device-model {
+    color: rgb(226 232 240);
+}
+
+.isup-device-date {
+    color: rgb(51 65 85);
+    font-size: 0.8rem;
+    font-weight: 800;
+    line-height: 1.35;
+    white-space: nowrap;
+}
+
+.dark .isup-device-date {
+    color: rgb(226 232 240);
+}
+
+.isup-device-actions-cell {
+    text-align: right;
+}
+
+.isup-device-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.isup-device-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    min-height: 2.18rem;
+    border: 1px solid transparent;
+    border-radius: 0.82rem;
+    font-size: 0.74rem;
+    font-weight: 800;
+    line-height: 1;
+    padding: 0.5rem 0.68rem;
+    white-space: nowrap;
+    transition: transform 0.16s ease, background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+
+.isup-device-action:hover {
+    transform: translateY(-1px);
+}
+
+.isup-device-action.is-save {
+    border-color: rgb(191 219 254 / 0.9);
+    background: rgb(239 246 255 / 0.96);
+    color: rgb(29 78 216);
+}
+
+.isup-device-action.is-save:hover {
+    background: rgb(219 234 254 / 0.96);
+}
+
+.isup-device-action.is-danger {
+    border-color: rgb(254 205 211 / 0.94);
+    background: rgb(255 241 242 / 0.96);
+    color: rgb(190 18 60);
+}
+
+.isup-device-action.is-danger:hover {
+    background: rgb(255 228 230 / 0.96);
+}
+
+.dark .isup-device-action.is-save {
+    border-color: rgb(30 64 175 / 0.72);
+    background: rgb(30 58 138 / 0.42);
+    color: rgb(191 219 254);
+}
+
+.dark .isup-device-action.is-save:hover {
+    background: rgb(30 58 138 / 0.66);
+}
+
+.dark .isup-device-action.is-danger {
+    border-color: rgb(136 19 55 / 0.72);
+    background: rgb(127 29 29 / 0.42);
+    color: rgb(254 202 202);
+}
+
+.dark .isup-device-action.is-danger:hover {
+    background: rgb(127 29 29 / 0.64);
+}
+
+.isup-device-saved-label,
+.isup-device-muted-action {
+    min-height: 2.18rem;
+    padding: 0.5rem 0.65rem;
+}
+
+.isup-device-saved-label {
+    background: rgb(220 252 231 / 0.85);
+    color: rgb(22 101 52);
+}
+
+.isup-device-muted-action {
+    background: rgb(241 245 249 / 0.84);
+    color: rgb(100 116 139);
+}
+
+.dark .isup-device-saved-label {
+    background: rgb(20 83 45 / 0.55);
+    color: rgb(187 247 208);
+}
+
+.dark .isup-device-muted-action {
+    background: rgb(30 41 59 / 0.7);
+    color: rgb(148 163 184);
+}
+
+.isup-device-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 14rem;
+    padding: 2.2rem 1rem;
+    color: rgb(100 116 139);
+    text-align: center;
+}
+
+.dark .isup-device-empty {
+    color: rgb(148 163 184);
+}
+
+.isup-device-empty-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 1rem;
+    background: rgb(241 245 249 / 0.95);
+    color: rgb(37 99 235);
+}
+
+.dark .isup-device-empty-icon {
+    background: rgb(30 41 59 / 0.82);
+    color: rgb(125 211 252);
+}
+
+.isup-device-empty strong {
+    color: rgb(51 65 85);
+    font-size: 0.9rem;
+    font-weight: 800;
+}
+
+.dark .isup-device-empty strong {
+    color: rgb(226 232 240);
+}
+
+.isup-device-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    padding: 0.92rem 1.25rem;
+    border-top: 1px solid rgb(226 232 240 / 0.72);
+    background: rgb(248 250 252 / 0.56);
+}
+
+.dark .isup-device-footer {
+    border-top-color: rgb(51 65 85 / 0.72);
+    background: rgb(15 23 42 / 0.38);
+}
+
+.isup-device-page-info {
+    color: rgb(100 116 139);
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.dark .isup-device-page-info {
+    color: rgb(148 163 184);
+}
+
+.isup-device-pagination,
+.isup-device-page-numbers {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.46rem;
+}
+
+.isup-device-page-dots {
+    color: rgb(148 163 184);
+    font-size: 0.8rem;
+    font-weight: 800;
+    padding: 0 0.16rem;
+}
+
+@media (max-width: 1279px) {
+    .isup-device-topbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .isup-device-filters {
+        width: 100%;
+        grid-template-columns: minmax(0, 1fr) minmax(8rem, 10rem) auto;
+    }
+}
+
+@media (max-width: 767px) {
+    .isup-device-topbar,
+    .isup-device-footer {
+        padding: 0.9rem;
+    }
+
+    .isup-device-filters {
+        grid-template-columns: 1fr;
+    }
+
+    .isup-device-filter-actions,
+    .isup-device-pagination,
+    .isup-device-page-numbers {
+        align-items: stretch;
+        width: 100%;
+    }
+
+    .isup-device-filter-btn,
+    .isup-device-page-btn {
+        flex: 1 1 auto;
+    }
+
+    .isup-device-table {
+        min-width: 44rem;
+    }
+
+    .table-standard.isup-device-table td {
+        padding: 0.78rem 0.72rem;
+    }
+
+    .isup-col-actions {
+        width: 11rem;
+    }
+
+    .isup-device-actions {
+        flex-direction: column;
+        align-items: flex-end;
+    }
+
+    .isup-device-action,
+    .isup-device-saved-label,
+    .isup-device-muted-action {
+        width: 6.8rem;
+    }
+
+    .isup-device-footer {
         flex-direction: column;
         align-items: stretch;
     }

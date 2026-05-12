@@ -8,7 +8,7 @@ import time
 from bot.config import load_config
 from bot.handlers import choose_language, handle_action, handle_calendar_action, handle_calendar_noop, handle_menu_text, logout, show_month, show_today, start, unknown_state
 from bot.services.notifications import CameraEventNotifier
-from database import ensure_schema
+from core.database import ensure_schema
 from telegram.error import InvalidToken, NetworkError, RetryAfter, TelegramError, TimedOut
 
 logging.basicConfig(level=logging.WARNING)

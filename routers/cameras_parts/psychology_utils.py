@@ -11,8 +11,8 @@ from urllib.parse import unquote, urlparse
 import numpy as np
 from PIL import Image
 
-from models import EmployeePsychologicalState
-from time_utils import normalize_timestamp_tashkent, now_tashkent
+from core.models import EmployeePsychologicalState
+from utils.time_utils import normalize_timestamp_tashkent, now_tashkent
 
 try:
     from hsemotion.facial_emotions import HSEmotionRecognizer

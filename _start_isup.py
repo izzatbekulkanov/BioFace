@@ -2,7 +2,7 @@
 """ISUP serverni ishga tushirish va tekshirish"""
 import sys
 sys.path.insert(0, '.')
-from isup_manager import get_process_status, start_isup_server
+from services.isup_manager import get_process_status, start_isup_server
 import traceback
 
 s = get_process_status()

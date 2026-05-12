@@ -1,1 +1,0 @@
-chmod +x tailwindcss-linux-x64

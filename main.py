@@ -1,19 +1,20 @@
+import asyncio
 import os
 import time
 
-from access_control import resolve_menu_key_for_path, resolve_user_menu_permissions, user_has_menu_access
-from attendance_monitor import start_attendance_monitor, stop_attendance_monitor
+from core.access_control import resolve_menu_key_for_path, resolve_user_menu_permissions, user_has_menu_access
+from services.attendance_monitor import start_attendance_monitor, stop_attendance_monitor
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.staticfiles import StaticFiles
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
-import models
-from database import engine, ensure_schema, SessionLocal
-from models import RequestLog
+import core.models as models
+from core.database import engine, ensure_schema, SessionLocal
+from core.models import RequestLog
 from routers import auth, pages, webhook, cameras, employees, settings, organizations, users, system_monitor, planning
-from time_utils import now_tashkent
+from utils.time_utils import now_tashkent
 
 # Jadvallarni yaratish
 models.Base.metadata.create_all(bind=engine)
@@ -28,7 +29,7 @@ os.makedirs("static/uploads/users", exist_ok=True)
 os.makedirs("templates/components", exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-
+# tuple shaklida — startswith() bilan ishlaydi
 PUBLIC_PATH_PREFIXES = (
     "/static/",
     "/api/webhook",
@@ -44,7 +45,7 @@ PUBLIC_PATH_PREFIXES = (
     "/openapi.json",
 )
 
-PUBLIC_PATHS = {
+PUBLIC_PATHS = frozenset({
     "/login",
     "/logout",
     "/favicon.ico",
@@ -52,11 +53,52 @@ PUBLIC_PATHS = {
     "/contact",
     "/about",
     "/map",
-}
+})
 
-AUTH_PERMISSION_EXEMPT_PATHS = {
+AUTH_PERMISSION_EXEMPT_PATHS = frozenset({
     "/api/system-monitor/navbar-status",
-}
+})
+
+
+# ─── LOG YOZISH YORDAMCHISI (background thread'da) ──────────────────────────
+def _write_log_entry(
+    log_id: int | None,
+    method: str,
+    path: str,
+    client_ip: str,
+    content_type: str,
+    user_agent: str,
+    status_code: int,
+    response_time_ms: int,
+    created_at,
+) -> None:
+    """DB log yozish — bitta sessiyada ham insert, ham update."""
+    db = SessionLocal()
+    try:
+        if log_id is None:
+            # Yangi yozuv yaratish
+            log_entry = RequestLog(
+                method=method,
+                url=path,
+                client_ip=client_ip,
+                content_type=content_type[:255],
+                user_agent=user_agent[:512],
+                status_code=status_code,
+                response_time_ms=response_time_ms,
+                created_at=created_at,
+            )
+            db.add(log_entry)
+        else:
+            # Mavjud yozuvni yangilash
+            log = db.query(RequestLog).filter(RequestLog.id == log_id).first()
+            if log:
+                log.status_code = status_code
+                log.response_time_ms = response_time_ms
+        db.commit()
+    except Exception:
+        pass
+    finally:
+        db.close()
 
 
 # ─── MIDDLEWARE 1: LOGGER (birinchi ishlaydi — hamma so'rovni ushlab qoladi) ──
@@ -82,43 +124,29 @@ async def log_requests(request, call_next):
         "/api/v1/httppost",
         "/api/hik-event",
     )
-    if not path.startswith(ignored_prefixes):
-        db = SessionLocal()
-        try:
-            log_entry = RequestLog(
-                method=method,
-                url=path,
-                client_ip=client_ip,
-                content_type=content_type[:255],
-                user_agent=user_agent[:512],
-                status_code=0,
-                response_time_ms=0,
-                created_at=now_tashkent(),
-            )
-            db.add(log_entry)
-            db.commit()
-            db.refresh(log_entry)
-            request.state.log_id = log_entry.id
-        except Exception:
-            pass
-        finally:
-            db.close()
+
+    should_log = not path.startswith(ignored_prefixes)
+    created_at = now_tashkent() if should_log else None
 
     response = await call_next(request)
 
-    # Status va response_time ni yangilaymiz
-    if hasattr(request.state, "log_id"):
-        db = SessionLocal()
-        try:
-            log = db.query(RequestLog).filter(RequestLog.id == request.state.log_id).first()
-            if log:
-                log.status_code = response.status_code
-                log.response_time_ms = int((time.time() - start_time) * 1000)
-                db.commit()
-        except Exception:
-            pass
-        finally:
-            db.close()
+    if should_log:
+        elapsed_ms = int((time.time() - start_time) * 1000)
+        # Background threadda yozish — so'rovni to'xtatmaydi
+        loop = asyncio.get_event_loop()
+        loop.run_in_executor(
+            None,
+            _write_log_entry,
+            None,
+            method,
+            path,
+            client_ip,
+            content_type,
+            user_agent,
+            response.status_code,
+            elapsed_ms,
+            created_at,
+        )
 
     return response
 

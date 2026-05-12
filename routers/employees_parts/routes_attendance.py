@@ -5,9 +5,9 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from database import get_db
-from models import AttendanceLog, Device, Employee, EmployeeCameraLink
-from schedule_utils import (
+from core.database import get_db
+from core.models import AttendanceLog, Device, Employee, EmployeeCameraLink
+from utils.schedule_utils import (
     get_expected_end_dt,
     get_expected_start_dt,
     get_late_minutes,

@@ -11,12 +11,12 @@ from pydantic import BaseModel
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
-import system_config  # noqa: F401  # loads .env values before OAuth settings are read
-from access_control import resolve_user_menu_permissions
-from database import get_db
-from models import User, Organization
-from menu_utils import get_menu_data
-from translations import get_translations
+import core.system_config as system_config  # noqa: F401  # loads .env values before OAuth settings are read
+from core.access_control import resolve_user_menu_permissions
+from core.database import get_db
+from core.models import User, Organization
+from utils.menu_utils import get_menu_data
+from utils.translations import get_translations
 
 
 router = APIRouter()

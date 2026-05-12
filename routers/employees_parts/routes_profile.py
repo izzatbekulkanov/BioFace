@@ -4,8 +4,8 @@ from typing import Any, Optional
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from database import get_db
-from models import AttendanceLog, Device, Employee, EmployeeCameraLink, EmployeePsychologicalState, EmployeeWellbeingNote
+from core.database import get_db
+from core.models import AttendanceLog, Device, Employee, EmployeeCameraLink, EmployeePsychologicalState, EmployeeWellbeingNote
 from routers.cameras_parts.psychology_utils import (
     EMOTION_DISPLAY_ORDER,
     build_psychological_profile,
@@ -17,7 +17,7 @@ from routers.employees_parts.common import (
     normalize_wellbeing_note_source,
     serialize_psychological_state_row,
 )
-from schedule_utils import get_late_minutes, is_holiday_for_org, resolve_employee_schedule
+from utils.schedule_utils import get_late_minutes, is_holiday_for_org, resolve_employee_schedule
 
 router = APIRouter()
 

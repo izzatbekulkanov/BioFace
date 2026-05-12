@@ -8,9 +8,9 @@ from typing import cast
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from database import SessionLocal, ensure_schema
-from models import AttendanceLog, Employee
-from schedule_utils import get_late_minutes, is_holiday_for_org, resolve_employee_schedule
+from core.database import SessionLocal, ensure_schema
+from core.models import AttendanceLog, Employee
+from utils.schedule_utils import get_late_minutes, is_holiday_for_org, resolve_employee_schedule
 
 
 @dataclass(frozen=True)

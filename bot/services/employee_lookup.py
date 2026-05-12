@@ -3,9 +3,9 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from database import SessionLocal, ensure_schema
-from models import Employee, EmployeeWellbeingNote
-from time_utils import today_tashkent_range
+from core.database import SessionLocal, ensure_schema
+from core.models import Employee, EmployeeWellbeingNote
+from utils.time_utils import today_tashkent_range
 
 
 def normalize_personal_id(value: str | None) -> str:
