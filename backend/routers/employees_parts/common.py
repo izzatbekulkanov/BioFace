@@ -8,7 +8,7 @@ from typing import Any, Optional
 from fastapi import HTTPException, Request
 from sqlalchemy.orm import Session
 
-from models import (
+from core.models import (
     Device,
     Employee,
     EmployeeCameraLink,

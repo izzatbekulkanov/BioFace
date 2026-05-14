@@ -6,8 +6,8 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from database import SessionLocal, get_db
-from models import AttendanceLog, Device, Employee, EmployeeCameraLink, Organization
+from core.database import SessionLocal, get_db
+from core.models import AttendanceLog, Device, Employee, EmployeeCameraLink, Organization
 from routers.cameras import (
     _resolve_online_command_target,
     _send_isup_command_or_raise,

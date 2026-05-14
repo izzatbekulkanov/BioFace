@@ -1,6 +1,10 @@
 from fastapi import Request
 
+<<<<<<< HEAD:backend/routers/cameras_parts/web_utils.py
 from config.system_config import (
+=======
+from core.system_config import (
+>>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:routers/cameras_parts/web_utils.py
     get_camera_event_push_base_url,
     get_public_web_base_url,
     normalize_camera_event_push_base_url,

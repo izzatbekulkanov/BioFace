@@ -249,69 +249,78 @@
             </article>
         </div>
 
-        <article class="rounded-[1.35rem] border border-slate-200/90 bg-white/60 shadow-[0_10px_20px_-15px_rgba(0,0,0,0.1)] backdrop-blur-xl dark:border-slate-800/90 dark:bg-slate-900/50 overflow-hidden">
-            <div class="px-5 py-4 border-b border-slate-100/50 bg-white/40 dark:border-slate-800/50 dark:bg-slate-900/30">
-                <div>
-                    <h2 class="text-[1.1rem] font-bold tracking-tight text-slate-900 dark:text-white select-none">Ulangan ISUP qurilmalar</h2>
-                    <p id="isup-device-summary" class="mt-0.5 text-[0.8rem] font-medium tracking-wide text-slate-500 dark:text-slate-400">ISUP Registry</p>
+        <article class="isup-device-panel">
+            <div class="isup-device-topbar">
+                <div class="isup-device-heading">
+                    <span class="isup-device-kicker"><i class="fa-duotone fa-satellite-dish"></i> Live registry</span>
+                    <h2 class="isup-device-title">Ulangan ISUP qurilmalar</h2>
+                    <p id="isup-device-summary" class="isup-device-summary">ISUP Registry</p>
                 </div>
-                <div class="mt-4 overflow-x-auto">
-                    <div class="flex min-w-max items-end gap-3">
-                        <label class="block w-[25rem]">
-                            <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Qidiruv</span>
-                            <span class="flex overflow-hidden rounded-[0.85rem] border border-slate-300 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800/50">
-                                <span class="flex w-11 shrink-0 items-center justify-center border-r border-slate-200 text-slate-400 dark:border-slate-700">
-                                    <i class="fa-duotone fa-magnifying-glass"></i>
-                                </span>
-                                <input id="isup-device-search" type="text" placeholder="Device ID, IP, model, MAC..." class="min-w-0 flex-1 bg-transparent px-3 py-2 text-[0.85rem] text-slate-900 outline-none placeholder:text-slate-400 dark:text-white">
+                <div class="isup-device-filters">
+                    <label class="isup-device-field is-search">
+                        <span class="isup-device-label">Qidiruv</span>
+                        <span class="isup-device-control-shell">
+                            <span class="isup-device-control-icon">
+                                <i class="fa-duotone fa-magnifying-glass"></i>
                             </span>
-                        </label>
-                        <label class="block xl:min-w-[10rem]">
-                            <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Sahifa hajmi</span>
-                            <select id="isup-device-page-size" class="w-full rounded-[0.85rem] border border-slate-300 bg-white px-4 py-2.5 text-[0.85rem] text-slate-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-800/50 dark:text-white dark:focus:ring-indigo-900/40">
+                            <input id="isup-device-search" type="text" placeholder="Device ID, IP, model, MAC..." class="isup-device-control">
+                        </span>
+                    </label>
+                    <label class="isup-device-field is-size">
+                        <span class="isup-device-label">Sahifa hajmi</span>
+                        <span class="isup-device-control-shell">
+                            <span class="isup-device-control-icon">
+                                <i class="fa-duotone fa-list-ol"></i>
+                            </span>
+                            <select id="isup-device-page-size" class="isup-device-control">
                                 <option value="25">25 ta</option>
                                 <option value="50" selected>50 ta</option>
                                 <option value="100">100 ta</option>
                             </select>
-                        </label>
-                        <div class="grid w-[15rem] grid-cols-2 overflow-hidden rounded-[0.85rem] border border-slate-300 shadow-sm">
-                                <button id="isup-device-apply" type="button" class="inline-flex items-center justify-center gap-2 border-r border-slate-300 bg-white px-4 py-2.5 text-[0.8rem] font-bold tracking-wide text-indigo-700 transition hover:bg-indigo-50 dark:border-slate-700 dark:bg-slate-800/50 dark:text-indigo-300 dark:hover:bg-indigo-900/20">
-                                    <i class="fa-duotone fa-check"></i>
-                                    Qo'llash
-                                </button>
-                                <button id="isup-device-reset" type="button" class="inline-flex items-center justify-center gap-2 bg-slate-50 px-4 py-2.5 text-[0.8rem] font-bold tracking-wide text-slate-700 transition hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
-                                    <i class="fa-duotone fa-eraser"></i>
-                                    Tozalash
-                                </button>
-                        </div>
+                        </span>
+                    </label>
+                    <div class="isup-device-filter-actions">
+                        <button id="isup-device-apply" type="button" class="isup-device-filter-btn is-primary">
+                            <i class="fa-duotone fa-check"></i>
+                            <span>Qo'llash</span>
+                        </button>
+                        <button id="isup-device-reset" type="button" class="isup-device-filter-btn">
+                            <i class="fa-duotone fa-eraser"></i>
+                            <span>Tozalash</span>
+                        </button>
                     </div>
                 </div>
             </div>
-            <div class="overflow-auto max-h-[72vh] min-h-[560px]">
-                <table class="table-standard">
+            <div class="isup-device-table-shell">
+                <table class="table-standard isup-device-table">
                     <thead>
                         <tr>
-                            <th class="w-16 px-5 py-3 text-center">T/r</th>
-                            <th class="px-5 py-3">Device</th>
-                            <th class="px-5 py-3 hidden md:table-cell">IP / Port</th>
-                            <th class="px-5 py-3 hidden lg:table-cell">Model</th>
-                            <th class="px-5 py-3">Registered</th>
-                            <th class="px-5 py-3 text-right">Harakatlar</th>
+                            <th class="isup-col-index">T/r</th>
+                            <th class="isup-col-device">Device</th>
+                            <th class="isup-col-ip hidden md:table-cell">IP / Port</th>
+                            <th class="isup-col-model hidden lg:table-cell">Model</th>
+                            <th class="isup-col-registered">Registered</th>
+                            <th class="isup-col-actions">Harakatlar</th>
                         </tr>
                     </thead>
-                    <tbody id="devices-table" class="divide-y divide-gray-100 dark:divide-gray-800">
+                    <tbody id="devices-table">
                         <tr>
-                            <td colspan="6" class="px-5 py-8 text-center text-gray-500 dark:text-gray-400">Qurilmalar tekshirilmoqda...</td>
+                            <td colspan="6">
+                                <div class="isup-device-empty">
+                                    <span class="isup-device-empty-icon"><i class="fa-duotone fa-loader fa-spin"></i></span>
+                                    <strong>Qurilmalar tekshirilmoqda...</strong>
+                                </div>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
             </div>
-            <div class="flex flex-col gap-3 border-t border-gray-100 px-5 py-4 dark:border-gray-800 md:flex-row md:items-center md:justify-between">
-                <p id="isup-device-page-info" class="text-sm text-gray-500 dark:text-gray-400">0 ta natija</p>
-                <div class="flex flex-wrap items-center gap-2">
-                    <button id="isup-device-prev" type="button" class="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">Oldingi</button>
-                    <div id="isup-device-page-numbers" class="flex flex-wrap items-center gap-2"></div>
-                    <button id="isup-device-next" type="button" class="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">Keyingi</button>
+            <div class="isup-device-footer">
+                <p id="isup-device-page-info" class="isup-device-page-info">0 ta natija</p>
+                <div class="isup-device-pagination">
+                    <button id="isup-device-prev" type="button" class="isup-device-page-btn">Oldingi</button>
+                    <div id="isup-device-page-numbers" class="isup-device-page-numbers"></div>
+                    <button id="isup-device-next" type="button" class="isup-device-page-btn">Keyingi</button>
                 </div>
             </div>
         </article>
@@ -389,6 +398,17 @@ document.addEventListener("DOMContentLoaded", () => {
             if (text) return text;
         }
         return "";
+    }
+
+    function normalizeMacAddress(value) {
+        const raw = String(value || "").trim().toUpperCase().replaceAll("-", ":");
+        if (/^[0-9A-F]{12}$/.test(raw)) {
+            return raw.match(/.{1,2}/g).join(":");
+        }
+        if (/^[0-9A-F]{2}(:[0-9A-F]{2}){5}$/.test(raw)) {
+            return raw;
+        }
+        return raw;
     }
 
     function resolveDeviceIdentifier(device) {
@@ -563,7 +583,7 @@ document.addEventListener("DOMContentLoaded", () => {
         pages.forEach((item) => {
             if (String(item).startsWith("dots")) {
                 const dots = document.createElement("span");
-                dots.className = "px-1 text-sm text-gray-400";
+                dots.className = "isup-device-page-dots";
                 dots.textContent = "...";
                 isupDevicePageNumbers.appendChild(dots);
                 return;
@@ -571,8 +591,8 @@ document.addEventListener("DOMContentLoaded", () => {
             const button = document.createElement("button");
             button.type = "button";
             button.className = item === isupDevicesState.page
-                ? "inline-flex h-9 min-w-[2.25rem] items-center justify-center rounded-xl bg-blue-600 px-3 text-sm font-semibold text-white shadow-sm"
-                : "inline-flex h-9 min-w-[2.25rem] items-center justify-center rounded-xl border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700";
+                ? "isup-device-page-btn is-active"
+                : "isup-device-page-btn";
             button.textContent = String(item);
             button.addEventListener("click", () => {
                 isupDevicesState.page = Number(item);
@@ -588,7 +608,16 @@ document.addEventListener("DOMContentLoaded", () => {
         const rows = isupDevicesState.filtered.slice(startIndex, startIndex + isupDevicesState.pageSize);
 
         if (rows.length === 0) {
-            devicesTable.innerHTML = '<tr><td colspan="6" class="px-5 py-8 text-center text-gray-500 dark:text-gray-400">Hozircha ulangan ISUP qurilmalar topilmadi.</td></tr>';
+            devicesTable.innerHTML = `
+                <tr>
+                    <td colspan="6">
+                        <div class="isup-device-empty">
+                            <span class="isup-device-empty-icon"><i class="fa-duotone fa-video-slash"></i></span>
+                            <strong>Hozircha ulangan ISUP qurilmalar topilmadi.</strong>
+                        </div>
+                    </td>
+                </tr>
+            `;
             renderIsupDevicesPagination();
             return;
         }
@@ -598,44 +627,60 @@ document.addEventListener("DOMContentLoaded", () => {
             const isConfiguredOnly = source === "configured_only" || device.connection_state === "not_registered";
             const isOnline = device.online !== false;
             const onlineBadge = !isOnline
-                ? '<span class="inline-flex rounded-full bg-rose-100 dark:bg-rose-900/30 px-2.5 py-1 text-[10px] font-semibold text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/50">Offline</span>'
-                : '<span class="inline-flex rounded-full bg-emerald-100 dark:bg-emerald-900/30 px-2.5 py-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/50">Online</span>';
+                ? '<span class="isup-device-badge is-offline">Offline</span>'
+                : '<span class="isup-device-badge is-online">Online</span>';
             const sourceBadge = isConfiguredOnly
-                ? '<span class="inline-flex rounded-full bg-amber-100 dark:bg-amber-900/30 px-2.5 py-1 text-[10px] font-semibold text-amber-700 dark:text-amber-300">Configured</span>'
-                : '<span class="inline-flex rounded-full bg-blue-100 dark:bg-blue-900/30 px-2.5 py-1 text-[10px] font-semibold text-blue-700 dark:text-blue-300">Live</span>';
+                ? '<span class="isup-device-badge is-configured">Configured</span>'
+                : '<span class="isup-device-badge is-live">Live</span>';
             const displayName = device.display_name || device.camera_name || "";
             const isSaved = !!device.db_camera_id;
             const absoluteIndex = startIndex + index + 1;
+            const deviceId = escapeHtml(device.device_id || "-");
+            const remoteAddress = `${firstNonEmptyValue(device.remote_ip, device.ip) || "-"}:${firstNonEmptyValue(device.remote_port, device.port) || "-"}`;
+            const modelLabel = resolveDeviceModel(device) || "-";
+            const firmwareRaw = firstNonEmptyValue(device.firmware_version, device.firmware);
+            const firmwareLabel = firmwareRaw
+                ? (firmwareRaw.toLowerCase().startsWith("v") ? firmwareRaw : `v${firmwareRaw}`)
+                : "-";
+            const registeredAt = formatDate(device.registered_at || device.last_seen || device.last_seen_at);
 
-            const saveAction = isSaved ? '' : `<button class="save-cam-btn inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 px-2.5 py-1.5 text-[11px] font-bold tracking-wide text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition border border-indigo-200 dark:border-indigo-900/30 whitespace-nowrap" title="Kamerani bazaga saqlash" data-device-id="${escapeHtml(device.device_id || "")}" data-mac="${escapeHtml(firstNonEmptyValue(device.mac_address, device.mac, device.macAddress))}" data-serial="${escapeHtml(firstNonEmptyValue(device.serial, device.serial_no, device.serialNumber, device.device_serial))}" data-model="${escapeHtml(resolveDeviceModel(device))}"><i class="fa-duotone fa-download"></i>Saqlash</button>`;
+            const saveAction = isSaved
+                ? '<span class="isup-device-saved-label"><i class="fa-duotone fa-circle-check"></i>Saqlangan</span>'
+                : `<button class="save-cam-btn isup-device-action is-save" title="Kamerani bazaga saqlash" data-device-id="${escapeHtml(device.device_id || "")}" data-mac="${escapeHtml(firstNonEmptyValue(device.mac_address, device.mac, device.macAddress))}" data-serial="${escapeHtml(firstNonEmptyValue(device.serial, device.serial_no, device.serialNumber, device.device_serial))}" data-model="${escapeHtml(modelLabel === "-" ? "" : modelLabel)}"><i class="fa-duotone fa-download"></i><span>Saqlash</span></button>`;
             const disconnectAction = isConfiguredOnly
-                ? '<span class="text-xs text-slate-400 dark:text-slate-500 italic">DB dagi yozuv</span>'
+                ? '<span class="isup-device-muted-action">DB dagi yozuv</span>'
                 : (!isOnline
-                    ? '<span class="text-xs text-slate-400 dark:text-slate-500 italic">O\'chirilgan</span>'
-                    : `<button class="disconnect-btn inline-flex items-center gap-1.5 rounded-lg bg-rose-50 dark:bg-rose-900/20 px-2.5 py-1.5 text-[11px] font-bold tracking-wide text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition border border-rose-200 dark:border-rose-900/30 whitespace-nowrap" title="Qurilma ulanishini serverdan uzadi" data-device-id="${escapeHtml(device.device_id || "")}"><i class="fa-duotone fa-ban"></i>Uzish</button>`);
+                    ? '<span class="isup-device-muted-action">O\'chirilgan</span>'
+                    : `<button class="disconnect-btn isup-device-action is-danger" title="Qurilma ulanishini serverdan uzadi" data-device-id="${escapeHtml(device.device_id || "")}"><i class="fa-duotone fa-ban"></i><span>Uzish</span></button>`);
 
             return `
-                <tr class="align-top hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
-                    <td class="px-5 py-4 text-center text-sm font-semibold text-gray-500 dark:text-gray-400">${absoluteIndex}</td>
-                    <td class="px-5 py-4">
-                        <div class="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                            ${escapeHtml(device.device_id || "-")}
+                <tr class="isup-device-row">
+                    <td class="isup-index-cell">
+                        <span class="isup-row-index">${absoluteIndex}</span>
+                    </td>
+                    <td class="isup-device-main-cell">
+                        <div class="isup-device-name-line">
+                            <span class="isup-device-icon"><i class="fa-duotone fa-video"></i></span>
+                            <div class="isup-device-name-copy">
+                                <div class="isup-device-id">${deviceId}</div>
+                                ${displayName ? `<div class="isup-device-display-name">${escapeHtml(displayName)}</div>` : ""}
+                            </div>
                         </div>
-                        ${displayName ? `<div class="mt-1 text-xs text-gray-500 dark:text-gray-400 font-medium">${escapeHtml(displayName)}</div>` : ""}
-                        <div class="mt-2 flex flex-wrap items-center gap-1.5">${onlineBadge}${sourceBadge}</div>
+                        <div class="isup-device-badges">${onlineBadge} ${sourceBadge}</div>
                     </td>
-                    <td class="px-5 py-4 text-gray-600 dark:text-gray-300 hidden md:table-cell">
-                        <div class="font-mono text-sm bg-gray-100 dark:bg-gray-800/50 inline-block px-2 py-1 rounded truncate max-w-[180px]" title="${escapeHtml(device.remote_ip || device.ip || "-")}:${escapeHtml(device.remote_port || device.port || "-")}">${escapeHtml(device.remote_ip || device.ip || "-")}:${escapeHtml(device.remote_port || device.port || "-")}</div>
+                    <td class="isup-device-ip-cell hidden md:table-cell">
+                        <span class="isup-device-code" title="${escapeHtml(remoteAddress)}">${escapeHtml(remoteAddress)}</span>
                     </td>
-                    <td class="px-5 py-4 text-gray-600 dark:text-gray-300 hidden lg:table-cell">
-                        <div class="font-medium text-sm text-gray-800 dark:text-gray-200">${escapeHtml(device.device_model || device.model || "-")}</div>
-                        <div class="mt-1 text-[11px] text-gray-500 dark:text-gray-400 font-mono">v${escapeHtml(device.firmware_version || device.firmware || "-")}</div>
+                    <td class="isup-device-model-cell hidden lg:table-cell">
+                        <div class="isup-device-model" title="${escapeHtml(modelLabel)}">${escapeHtml(modelLabel)}</div>
+                        <div class="isup-device-subline">Firmware ${escapeHtml(firmwareLabel)}</div>
                     </td>
-                    <td class="px-5 py-4">
-                        <div class="text-sm text-gray-600 dark:text-gray-300">${escapeHtml(formatDate(device.registered_at || device.last_seen || device.last_seen_at))}</div>
+                    <td class="isup-device-date-cell">
+                        <div class="isup-device-date">${escapeHtml(registeredAt)}</div>
+                        <div class="isup-device-subline">Registered</div>
                     </td>
-                    <td class="px-5 py-4 text-right">
-                        <div class="flex flex-col sm:flex-row items-end sm:items-center justify-end gap-2">
+                    <td class="isup-device-actions-cell">
+                        <div class="isup-device-actions">
                             ${saveAction}
                             ${disconnectAction}
                         </div>
@@ -756,7 +801,7 @@ document.addEventListener("DOMContentLoaded", () => {
             let statusMessage = "";
             let statusTone = "info";
             if (!process.binary_exists) {
-                statusMessage = "ISUP SDK server script topilmadi. isup_sdk_server.py mavjudligini tekshiring.";
+                statusMessage = "ISUP SDK server script topilmadi. services/isup_sdk_server.py mavjudligini tekshiring.";
                 statusTone = "error";
             } else if (!process.running) {
                 statusMessage = "ISUP process hozir ishlamayapti. Start tugmasi bilan ishga tushiring.";
@@ -870,6 +915,11 @@ document.addEventListener("DOMContentLoaded", () => {
         return Array.isArray(cachedOrganizations) ? cachedOrganizations : [];
     }
 
+    async function fetchIsupDeviceMetadata(deviceId) {
+        if (!deviceId) return null;
+        return fetchJson(`/api/isup-devices/${encodeURIComponent(deviceId)}/metadata`);
+    }
+
     window.openSaveModal = async function(deviceInfo) {
         const appModal = window.AppModal;
         if (!appModal || !saveTemplate) {
@@ -895,30 +945,63 @@ document.addEventListener("DOMContentLoaded", () => {
         const scModelInput = scForm.querySelector("#sc-model");
         const scModelHelp = scForm.querySelector("#sc-model-help");
 
+        function applyDetectedMetadata(detected, label = "ISUP") {
+            const metadata = detected || {};
+            const mac = normalizeMacAddress(firstNonEmptyValue(metadata.mac_address, metadata.mac, metadata.macAddress));
+            const serial = firstNonEmptyValue(metadata.serial_number, metadata.serial, metadata.serial_no, metadata.serialNumber, metadata.device_serial);
+            const model = firstNonEmptyValue(metadata.model, metadata.camera_model, metadata.device_model, metadata.model_name, metadata.deviceType);
+            const firmware = firstNonEmptyValue(metadata.firmware_version, metadata.firmware);
+            const externalIp = firstNonEmptyValue(metadata.external_ip, metadata.ip, metadata.remote_ip);
+            const protocolVersion = firstNonEmptyValue(metadata.protocol_version, metadata.isup_version);
+
+            if (mac) {
+                scMacInput.value = mac;
+                scMacInput.dataset.autoFilled = "true";
+            }
+            if (serial) {
+                scSerialInput.value = serial;
+                scSerialInput.dataset.autoFilled = "true";
+            }
+            if (model) {
+                scModelInput.value = model;
+                scModelInput.dataset.autoFilled = "true";
+            }
+            if (firmware) scForm.dataset.firmwareVersion = firmware;
+            if (externalIp) scForm.dataset.externalIp = externalIp;
+            if (protocolVersion) scForm.dataset.protocolVersion = protocolVersion;
+
+            if (scMacHelp) {
+                scMacHelp.textContent = mac
+                    ? `${label} orqali MAC aniqlandi: ${mac}`
+                    : "MAC hali aniqlanmadi. Kamera javob berganda avtomatik to'ldiriladi.";
+            }
+            if (scSerialHelp) {
+                scSerialHelp.textContent = serial
+                    ? `${label} orqali serial aniqlandi: ${serial}`
+                    : "Serial hali aniqlanmadi. Kamera javob berganda avtomatik to'ldiriladi.";
+            }
+            if (scModelHelp) {
+                scModelHelp.textContent = model
+                    ? `${label} orqali model aniqlandi: ${model}`
+                    : "Model hali aniqlanmadi. Kamera javob berganda avtomatik to'ldiriladi.";
+            }
+        }
+
         scForm.querySelector("#sc-isup-device-id").value = deviceId;
         scForm.querySelector("#sc-isup-device-id-display").value = deviceId;
         scForm.querySelector("#sc-name").value = `Kamera ${deviceId}`;
-        scMacInput.value = detectedMac ? detectedMac.toUpperCase() : "";
-        scMacInput.placeholder = SAMPLE_MAC_PLACEHOLDER;
-        scSerialInput.value = detectedSerial || "";
-        if (scMacHelp) {
-            scMacHelp.textContent = detectedMac
-                ? "ISUP ro'yxatidan aniqlangan MAC qo'yildi."
-                : `MAC topilmadi. Masalan: ${SAMPLE_MAC_PLACEHOLDER}`;
-        }
-        if (scSerialHelp) {
-            scSerialHelp.textContent = detectedSerial
-                ? "ISUP ro'yxatidan aniqlangan serial qo'yildi."
-                : "Serial topilmasa keyin metadata sync orqali yangilanadi.";
-        }
+        scMacInput.value = "";
+        scMacInput.placeholder = "MAC aniqlanmoqda...";
+        scSerialInput.value = "";
+        scSerialInput.placeholder = "Serial aniqlanmoqda...";
+        scModelInput.placeholder = "Model aniqlanmoqda...";
+        if (scMacHelp) scMacHelp.textContent = "Kameradan MAC manzili aniqlanmoqda...";
+        if (scSerialHelp) scSerialHelp.textContent = "Kameradan serial raqami aniqlanmoqda...";
         scForm.querySelector("#sc-memory").value = "1500";
         scForm.querySelector("#sc-location").value = "";
-        scModelInput.value = detectedModel;
-        if (scModelHelp) {
-            scModelHelp.textContent = detectedModel
-                ? `ISUP bo'yicha aniqlangan model: ${detectedModel}`
-                : "Agar model aniqlanmasa, taxminiy variantlardan birini tanlang.";
-        }
+        scModelInput.value = "";
+        if (scModelHelp) scModelHelp.textContent = "Kameradan model aniqlanmoqda...";
+        applyDetectedMetadata({ mac_address: detectedMac, serial_number: detectedSerial, model: detectedModel }, "ISUP ro'yxati");
         scForm.querySelector("#sc-username").value = "admin";
         scForm.querySelector("#sc-password").value = "";
         scForm.querySelector("#sc-isup-key").value = "facex2024";
@@ -932,6 +1015,19 @@ document.addEventListener("DOMContentLoaded", () => {
         appModal.open({ title: "Kamerani bazaga saqlash", size: "2xl", bodyNode });
 
         scCloseBtn.addEventListener("click", () => appModal.close());
+
+        fetchIsupDeviceMetadata(deviceId)
+            .then((metadata) => {
+                applyDetectedMetadata(metadata?.detected || {}, "Kamera");
+                if (metadata?.warnings?.length && !metadata?.detected?.mac_address) {
+                    console.warn("ISUP metadata warnings", metadata.warnings);
+                }
+            })
+            .catch((error) => {
+                if (scMacHelp && !scMacInput.value) scMacHelp.textContent = `MAC aniqlanmadi: ${error.message}`;
+                if (scSerialHelp && !scSerialInput.value) scSerialHelp.textContent = `Serial aniqlanmadi: ${error.message}`;
+                if (scModelHelp && !scModelInput.value) scModelHelp.textContent = `Model aniqlanmadi: ${error.message}`;
+            });
 
         try {
             const orgs = await getOrganizations();
@@ -957,6 +1053,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 max_memory: Number.isFinite(memoryVal) && memoryVal > 0 ? memoryVal : 1500,
                 location: scForm.querySelector("#sc-location").value.trim() || null,
                 model: scForm.querySelector("#sc-model").value.trim() || null,
+                firmware_version: scForm.dataset.firmwareVersion || null,
+                external_ip: scForm.dataset.externalIp || null,
+                protocol_version: scForm.dataset.protocolVersion || null,
                 username: scForm.querySelector("#sc-username").value.trim() || null,
                 password: scForm.querySelector("#sc-password").value.trim() || null,
                 isup_password: scForm.querySelector("#sc-isup-key").value.trim() || "facex2024",

@@ -11,7 +11,11 @@ from urllib.parse import unquote, urlparse
 import numpy as np
 from PIL import Image
 
+<<<<<<< HEAD:backend/routers/cameras_parts/psychology_utils.py
 from models import EmployeePsychologicalState
+=======
+from core.models import EmployeePsychologicalState
+>>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:routers/cameras_parts/psychology_utils.py
 from utils.time_utils import normalize_timestamp_tashkent, now_tashkent
 
 try:

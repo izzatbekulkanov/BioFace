@@ -6,15 +6,19 @@ from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session, selectinload
+<<<<<<< HEAD:backend/routers/pages.py
 from utils.access_control import (
+=======
+from core.access_control import (
+>>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:routers/pages.py
     build_permission_groups,
     filter_menu_structure_by_permissions,
     get_role_default_menu_permissions,
     normalize_role_value,
     resolve_user_menu_permissions,
 )
-from database import get_db
-from models import (
+from core.database import get_db
+from core.models import (
     AttendanceLog,
     Department,
     Device,
@@ -37,8 +41,13 @@ from routers.cameras_parts.psychology_utils import (
     state_labels,
 )
 from utils.time_utils import now_tashkent, today_tashkent_range
+<<<<<<< HEAD:backend/routers/pages.py
 from utils.schedule_utils import get_attendance_deadline, get_late_minutes, load_holiday_dates, resolve_employee_schedule
 from config.system_config import (
+=======
+from utils.schedule_utils import get_attendance_deadline, get_late_minutes, is_holiday_for_org, resolve_employee_schedule
+from core.system_config import (
+>>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:routers/pages.py
     ISUP_ALARM_PORT,
     ISUP_API_PORT,
     ISUP_KEY,

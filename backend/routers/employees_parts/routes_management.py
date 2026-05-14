@@ -9,8 +9,8 @@ from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Query, 
 from sqlalchemy import String, and_, cast, exists, false, func, or_, true
 from sqlalchemy.orm import Session
 
-from database import get_db
-from models import Department, Device, Employee, EmployeeCameraLink, Organization, Position, Schedule, UserOrganizationLink
+from core.database import get_db
+from core.models import Department, Device, Employee, EmployeeCameraLink, Organization, Position, Schedule, UserOrganizationLink
 from routers.employees_parts.catalogs import (
     UNSET,
     get_catalog_items_for_org,

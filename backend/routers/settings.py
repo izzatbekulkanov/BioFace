@@ -8,7 +8,11 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional, Dict, List, Union
 
+<<<<<<< HEAD:backend/routers/settings.py
 from database import get_db
+=======
+from core.database import get_db
+>>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:routers/settings.py
 from services.bot_process_manager import (
     get_bot_process_status,
     restart_bot_process,
@@ -16,9 +20,15 @@ from services.bot_process_manager import (
     stop_bot_process,
 )
 from services.isup_manager import restart_isup_server
+<<<<<<< HEAD:backend/routers/settings.py
 from models import Organization, TelegramUserBinding
 from utils.menu_utils import get_menu_data, save_menu_data
 from config.system_config import (
+=======
+from core.models import Organization, TelegramUserBinding
+from utils.menu_utils import get_menu_data, save_menu_data
+from core.system_config import (
+>>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:routers/settings.py
     get_camera_event_push_base_url,
     get_detected_lan_ipv4,
     get_public_web_base_url,

@@ -4,8 +4,8 @@ from typing import Any, Optional
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from database import get_db
-from models import AttendanceLog, Device, Employee, EmployeeCameraLink, EmployeePsychologicalState, EmployeeWellbeingNote
+from core.database import get_db
+from core.models import AttendanceLog, Device, Employee, EmployeeCameraLink, EmployeePsychologicalState, EmployeeWellbeingNote
 from routers.cameras_parts.psychology_utils import (
     EMOTION_DISPLAY_ORDER,
     build_psychological_profile,

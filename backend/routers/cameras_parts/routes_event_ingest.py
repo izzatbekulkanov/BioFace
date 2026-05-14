@@ -7,9 +7,15 @@ from typing import Any, Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
+<<<<<<< HEAD:backend/routers/cameras_parts/routes_event_ingest.py
 import models
 from database import get_db
 from services.redis_client import publish_camera_event
+=======
+import core.models as models
+from core.database import get_db
+from core.redis_client import publish_camera_event
+>>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:routers/cameras_parts/routes_event_ingest.py
 from utils.time_utils import normalize_timestamp_tashkent, now_tashkent
 from routers.cameras_parts.psychology_utils import (
     detect_psychological_profile,

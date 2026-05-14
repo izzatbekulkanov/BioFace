@@ -4,7 +4,7 @@ from fastapi import HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from models import Department, Position
+from core.models import Department, Position
 
 UNSET = object()
 

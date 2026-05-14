@@ -3,8 +3,8 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
-from database import get_db
-import models
+from core.database import get_db
+import core.models as models
 
 from services.bot_process_manager import get_bot_process_status
 from services.isup_manager import (

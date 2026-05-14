@@ -9,8 +9,13 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, selectinload
 
 from services.attendance_monitor import attendance_monitor, get_attendance_monitor_status
+<<<<<<< HEAD:backend/routers/planning.py
 from database import get_db
 from models import Employee, Holiday, Schedule, TelegramContact
+=======
+from core.database import get_db
+from core.models import Employee, Holiday, Schedule, TelegramContact
+>>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:routers/planning.py
 from routers.employees_parts.common import get_accessible_organization_or_raise, resolve_allowed_org_ids
 from utils.schedule_utils import normalize_hhmm, resolve_employee_schedule, serialize_holiday_row, serialize_schedule_row
 
