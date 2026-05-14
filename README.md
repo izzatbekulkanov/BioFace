@@ -10,6 +10,17 @@ BioFace is a FastAPI-based attendance and camera management system with Hikvisio
 - Hikvision SDK bridge (`isup_sdk_server.py`)
 - Optional C++ iSUP server prototype in `isup_server/`
 
+## Project Structure
+
+- `routers/` - FastAPI route modules
+- `templates/` - Jinja pages and shared components
+- `static/` and `src/` - built assets and Tailwind source
+- `utils/` - shared helpers such as schedule, time, menu, permissions, and translations
+- `services/` - runtime services and integrations such as iSUP, Redis, attendance monitor, and bot process control
+- `config/` - application configuration and environment loading
+- `scripts/` - one-command local maintenance helpers
+- `deploy/` - deployment, build, and server setup scripts
+
 ## What Is Intentionally Excluded
 
 This repository is prepared for GitHub push and does not include local runtime data:
@@ -68,6 +79,12 @@ python -m bot.main
 .\start.ps1
 ```
 
+Create/update the default admin user when needed:
+
+```powershell
+python -m scripts.setup_admin
+```
+
 For local development with Tailwind watcher:
 
 ```powershell
@@ -76,15 +93,15 @@ For local development with Tailwind watcher:
 
 ## Deploy Helper
 
-`deploy.ps1` was sanitized for public use. Pass target values explicitly:
+`deploy/deploy.ps1` was sanitized for public use. Pass target values explicitly:
 
 ```powershell
-.\deploy.ps1 -Server user@example-host -Dest ~/BioFace
+.\deploy\deploy.ps1 -Server user@example-host -Dest ~/BioFace
 ```
 
 Ubuntu deploy notes:
 
-- `setup_server.sh` now installs required system packages automatically, including `tzdata`.
+- `deploy/setup_server.sh` now installs required system packages automatically, including `tzdata`.
 - This ensures `Asia/Tashkent` timezone handling works correctly on minimal servers.
 
 ## Hikvision SDK Note

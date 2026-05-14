@@ -14,6 +14,7 @@ htmlcov/
 .venv/
 venv/
 env/
+node_modules/
 
 # Local IDE / editor state
 .idea/
@@ -23,7 +24,7 @@ env/
 # Local runtime and data
 .runtime/
 .env
-bioface.db
+*.db
 *.db-journal
 *.sqlite3
 menu.json
@@ -36,6 +37,8 @@ CAMERA_RAW_LOG.txt
 # Generated uploads
 static/uploads/
 hikvision_sdk/*.db
+hikvision_sdk_linux/*.db
+scratch/
 
 # Build artifacts
 isup_server/build/
@@ -51,5 +54,6 @@ Thumbs.db
 # Ignore logs and backups
 *.log
 *.bak
+*.backup
 *~
 

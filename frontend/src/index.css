@@ -1,0 +1,130 @@
+/* ─── Reset ──────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #root { height: 100%; min-height: 100vh; }
+input, textarea, button { font-family: inherit; }
+
+/* ─── Theme transition ───────────────────────────────────────────── */
+*, *::before, *::after {
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: 0.18s;
+  transition-timing-function: ease;
+}
+
+/* ─── Dark theme (default) ───────────────────────────────────────── */
+:root, [data-theme="dark"] {
+  --bg:          #0d0d0d;
+  --nav:         #0f172a;
+  --surface:     #181818;
+  --surface-2:   #1e1e1e;
+  --surface-3:   #111111;
+  --border:      #252525;
+  --border-2:    #2a2a2a;
+  --border-3:    #2e2e2e;
+  --text-1:      #e0e0e0;
+  --text-2:      #adadad;
+  --text-3:      #888888;
+  --text-4:      #555555;
+  --text-5:      #444444;
+  --white:       #ffffff;
+  --accent:      #0078d4;
+  --accent-h:    #106ebe;
+  --accent-bg:   #1a2c40;
+  --accent-bd:   #1f3a5f;
+  --accent-tx:   #479ef5;
+  --input-bg:    #1e1e1e;
+  --input-bd:    #2e2e2e;
+  --green:       #4ade80;
+  --green-bg:    #1a2e1a;
+  --green-bd:    #2a4a2a;
+  --red:         #f87171;
+  --red-bg:      #2e1a1a;
+  --red-bd:      #4a2a2a;
+  --red-bg-2:    #2a1a1a;
+  --red-bd-2:    #3a2020;
+  --yellow:      #fbbf24;
+  --yellow-bg:   #2a2a1a;
+  --yellow-bd:   #4a4a1a;
+  --shadow:      0 8px 40px rgba(0,0,0,0.6);
+  --shadow-sm:   0 1px 0 rgba(255,255,255,0.06);
+  --scroll-thumb:#2e2e2e;
+  --nav-border:  rgba(255,255,255,0.07);
+}
+
+/* ─── Light theme ─────────────────────────────────────────────────── */
+[data-theme="light"] {
+  --bg:          #f3f2f1;
+  --nav:         #0f172a;
+  --surface:     #ffffff;
+  --surface-2:   #faf9f8;
+  --surface-3:   #f8f7f6;
+  --border:      #e1dfdd;
+  --border-2:    #edebe9;
+  --border-3:    #d2d0ce;
+  --text-1:      #323130;
+  --text-2:      #605e5c;
+  --text-3:      #797775;
+  --text-4:      #a19f9d;
+  --text-5:      #bebbb8;
+  --white:       #323130;
+  --accent:      #0078d4;
+  --accent-h:    #106ebe;
+  --accent-bg:   #eff6fc;
+  --accent-bd:   #c7e0f4;
+  --accent-tx:   #0078d4;
+  --input-bg:    #ffffff;
+  --input-bd:    #e1dfdd;
+  --green:       #107c10;
+  --green-bg:    #eef7ee;
+  --green-bd:    #bad3ba;
+  --red:         #d13438;
+  --red-bg:      #fde7e9;
+  --red-bd:      #f4b8bb;
+  --red-bg-2:    #fde7e9;
+  --red-bd-2:    #f4b8bb;
+  --yellow:      #835b00;
+  --yellow-bg:   #fff4ce;
+  --yellow-bd:   #f7d98d;
+  --shadow:      0 4px 24px rgba(0,0,0,0.10);
+  --shadow-sm:   0 2px 8px rgba(0,0,0,0.07);
+  --scroll-thumb:#d2d0ce;
+}
+
+/* ─── Base ─────────────────────────────────────────────────────────── */
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text-1);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── Scrollbar ────────────────────────────────────────────────────── */
+::-webkit-scrollbar               { width: 6px; height: 6px; }
+::-webkit-scrollbar-track         { background: transparent; }
+::-webkit-scrollbar-thumb         { background: var(--scroll-thumb); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover   { background: var(--border-3); }
+
+/* ─── Leaflet ──────────────────────────────────────────────────────── */
+[data-theme="dark"]  .leaflet-container { background: #141414; }
+[data-theme="light"] .leaflet-container { background: #e5e3e0; }
+.leaflet-control-attribution { background: rgba(20,20,20,0.85) !important; color: #555 !important; }
+[data-theme="light"] .leaflet-control-attribution { background: rgba(255,255,255,0.85) !important; color: #666 !important; }
+.leaflet-control-attribution a { color: #0078d4 !important; }
+
+/* ─── Fluent light/dark sync ─────────────────────────────────────── */
+[data-theme="light"] .leaflet-popup-content-wrapper {
+  background: #ffffff !important;
+  border: 1px solid #e1dfdd !important;
+  color: #323130 !important;
+}
+[data-theme="light"] .leaflet-popup-tip { background: #ffffff !important; }
+
+/* ─── Animations ─────────────────────────────────────────────────── */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
