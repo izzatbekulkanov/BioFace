@@ -15,7 +15,9 @@ import Commands       from './pages/Commands'
 import Settings       from './pages/Settings'
 import MiddlewareLogs from './pages/MiddlewareLogs'
 import Shifts         from './pages/Shifts'
+import IsupServer      from './pages/IsupServer'
 import { ConfirmProvider } from './components/ConfirmDialog'
+import { NotificationProvider } from './components/Notifications'
 
 function getIsLoggedIn() {
   return localStorage.getItem('bf_logged_in') === 'true'
@@ -54,31 +56,34 @@ export default function App() {
 
   return (
     <FluentSync>
-      <ConfirmProvider>
-        <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-          <Navbar
-            isLoggedIn={isLoggedIn}
-            onLogout={handleLogout}
-            onLangChange={handleLangChange}
-          />
-          <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            <Routes>
-              <Route path="/"          element={<Navigate to={isLoggedIn ? '/dashboard' : '/login'} replace />} />
-              <Route path="/login"     element={<Login onLogin={handleLogin} />} />
-              <Route path="/about"     element={<About />} />
-              <Route path="/contact"   element={<Contact />} />
-              <Route path="/map"       element={<MapView isLoggedIn={isLoggedIn} />} />
-              <Route path="/dashboard"   element={isLoggedIn ? <Dashboard /> : <Navigate to="/login" replace />} />
-              <Route path="/devices"     element={isLoggedIn ? <Devices />   : <Navigate to="/login" replace />} />
-              <Route path="/devices/:id" element={isLoggedIn ? <CameraDetail /> : <Navigate to="/login" replace />} />
-              <Route path="/commands"        element={isLoggedIn ? <Commands />  : <Navigate to="/login" replace />} />
-              <Route path="/settings"        element={isLoggedIn ? <Settings />  : <Navigate to="/login" replace />} />
-              <Route path="/shifts"          element={isLoggedIn ? <Shifts />    : <Navigate to="/login" replace />} />
-              <Route path="/middleware-logs" element={isLoggedIn ? <MiddlewareLogs /> : <Navigate to="/login" replace />} />
-            </Routes>
-          </main>
-        </div>
-      </ConfirmProvider>
+      <NotificationProvider>
+        <ConfirmProvider>
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+            <Navbar
+              isLoggedIn={isLoggedIn}
+              onLogout={handleLogout}
+              onLangChange={handleLangChange}
+            />
+            <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <Routes>
+                <Route path="/"          element={<Navigate to={isLoggedIn ? '/dashboard' : '/login'} replace />} />
+                <Route path="/login"     element={<Login onLogin={handleLogin} />} />
+                <Route path="/about"     element={<About />} />
+                <Route path="/contact"   element={<Contact />} />
+                <Route path="/map"       element={<MapView isLoggedIn={isLoggedIn} />} />
+                <Route path="/dashboard"   element={isLoggedIn ? <Dashboard /> : <Navigate to="/login" replace />} />
+                <Route path="/devices"     element={isLoggedIn ? <Devices />   : <Navigate to="/login" replace />} />
+                <Route path="/devices/:id" element={isLoggedIn ? <CameraDetail /> : <Navigate to="/login" replace />} />
+                <Route path="/commands"        element={isLoggedIn ? <Commands />  : <Navigate to="/login" replace />} />
+                <Route path="/settings"        element={isLoggedIn ? <Settings />  : <Navigate to="/login" replace />} />
+                <Route path="/shifts"          element={isLoggedIn ? <Shifts />    : <Navigate to="/login" replace />} />
+                <Route path="/middleware-logs" element={isLoggedIn ? <MiddlewareLogs /> : <Navigate to="/login" replace />} />
+                <Route path="/isup-server"     element={isLoggedIn ? <IsupServer />     : <Navigate to="/login" replace />} />
+              </Routes>
+            </main>
+          </div>
+        </ConfirmProvider>
+      </NotificationProvider>
     </FluentSync>
   )
 }

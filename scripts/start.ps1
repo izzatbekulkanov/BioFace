@@ -11,14 +11,16 @@ Write-Host "[1/3] Redis tekshirilmoqda..." -ForegroundColor Yellow
 $redisPong = redis-cli ping 2>&1
 if ($redisPong -match "PONG") {
     Write-Host "  [OK]  Redis ishlamoqda (127.0.0.1:6379)" -ForegroundColor Green
-} else {
+}
+else {
     Write-Host "  [!!]  Redis ishlamayapti, ishga tushirilmoqda..." -ForegroundColor Yellow
     Start-Process "redis-server" -WindowStyle Hidden -ErrorAction SilentlyContinue
     Start-Sleep -Seconds 2
     $redisPong2 = redis-cli ping 2>&1
     if ($redisPong2 -match "PONG") {
         Write-Host "  [OK]  Redis ishga tushdi!" -ForegroundColor Green
-    } else {
+    }
+    else {
         Write-Host "  [ERR] Redis ishga tushmadi! redis-server ni qolda ishga tushiring." -ForegroundColor Red
     }
 }
@@ -28,7 +30,7 @@ Write-Host ""
 $PROJECT_ROOT = (Resolve-Path "$PSScriptRoot\..").Path
 cd "$PROJECT_ROOT\backend"
 $PYTHON = ".\.venv\Scripts\python.exe"
-$env:ISUP_IMPLEMENTATION_MODE = "hikvision_sdk"
+$env:PYTHONPATH = $PROJECT_ROOT
 
 Write-Host "[2/3] ISUP Server ishga tushirilmoqda..." -ForegroundColor Yellow
 & $PYTHON -m scripts.start_isup

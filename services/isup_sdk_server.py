@@ -61,11 +61,7 @@ except Exception:  # pragma: no cover - runtime dependency check
     Image = None
 
 try:
-<<<<<<<< HEAD:isup/isup_sdk_server.py
-    from config.system_config import (
-========
     from core.system_config import (
->>>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:services/isup_sdk_server.py
         get_camera_event_push_base_url,
         get_isup_public_host,
         get_public_web_base_url,

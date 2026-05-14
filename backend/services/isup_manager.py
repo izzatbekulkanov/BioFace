@@ -8,12 +8,7 @@ from typing import Optional
 import psutil
 
 from services.hikvision_sdk import get_sdk_status
-<<<<<<<< HEAD:backend/services/isup_manager.py
-from config.system_config import (
-========
 from core.system_config import (
->>>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:services/isup_manager.py
-    BASE_DIR,
     BIOFACE_HOST,
     BIOFACE_PORT,
     ISUP_ALARM_PORT,
@@ -26,6 +21,7 @@ from core.system_config import (
     ISUP_RUNTIME_DIR,
     ISUP_REGISTER_PORT,
     ISUP_SDK_SERVER_SCRIPT,
+    PROJECT_ROOT,
     REDIS_HOST,
     REDIS_PORT,
     get_camera_event_push_base_url,
@@ -327,19 +323,11 @@ def start_isup_server() -> dict:
                 "Hikvision SDK runtime tayyor emas. /api/isup-sdk-status ni tekshiring."
             )
 
-<<<<<<<< HEAD:backend/services/isup_manager.py
-    # SDK mode needs to run from project root, not from the services package.
-    working_dir = str(BASE_DIR) if ISUP_IMPLEMENTATION_MODE == "hikvision_sdk" else str(binary_path.parent)
-    
-    # Create log files for debugging
-    log_dir = BASE_DIR / ".runtime"
-========
-    # SDK mode needs to run from project root, not from services/.
-    working_dir = str(BASE_DIR) if ISUP_IMPLEMENTATION_MODE == "hikvision_sdk" else str(binary_path.parent)
+    # SDK mode needs to run from the repository root, not from backend/services.
+    working_dir = str(PROJECT_ROOT) if ISUP_IMPLEMENTATION_MODE == "hikvision_sdk" else str(binary_path.parent)
     
     # Create log files for debugging
     log_dir = ISUP_RUNTIME_DIR
->>>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:services/isup_manager.py
     log_dir.mkdir(parents=True, exist_ok=True)
     stdout_log = log_dir / "isup_stdout.log"
     stderr_log = log_dir / "isup_stderr.log"

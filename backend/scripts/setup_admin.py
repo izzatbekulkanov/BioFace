@@ -1,140 +1,130 @@
 #!/usr/bin/env python3
-"""
-Bu script templatelarni yangi Starlette sintaksisga o'zgartiradi va
-superadmin yaratadi.
-"""
+from __future__ import annotations
+
 import os
-import re
 import sys
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(BASE_DIR))
+import bcrypt
+from sqlalchemy import func
 
-print("=" * 50)
-print("  BioFace Setup Script")
-print("=" * 50)
-print()
 
-# 1. Fix templates
-print("[1/3] Templatelarni tuzatish...")
-file_path = BASE_DIR / "routers" / "pages.py"
+BACKEND_DIR = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = BACKEND_DIR.parent
 
-try:
-    with open(file_path, "r", encoding="utf-8") as f:
-        content = f.read()
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
-    # Count old patterns
-    old_count = len(re.findall(r'templates\.TemplateResponse\("', content))
-    
-    if old_count > 0:
-        print(f"      {old_count} ta eski sintaksis topildi...")
-        
-        # Fix pattern
-        content = re.sub(
-            r'templates\.TemplateResponse\("([^"]+)",\s*\{',
-            r'templates.TemplateResponse(request=request, name="\1", context={',
-            content
-        )
+from core.database import SessionLocal, engine, ensure_schema
+import core.models as models
 
-        # Write back
-        with open(file_path, "w", encoding="utf-8") as f:
-            f.write(content)
 
-        # Verify
-        with open(file_path, "r", encoding="utf-8") as f:
-            new_content = f.read()
-        new_count = len(re.findall(r'templates\.TemplateResponse\("', new_content))
+def _hash_password(password: str) -> str:
+    return bcrypt.hashpw(
+        password.encode("utf-8")[:71],
+        bcrypt.gensalt(),
+    ).decode("utf-8")
 
-        print(f"      ✓ {old_count - new_count} ta tuzatildi")
-        if new_count > 0:
-            print(f"      ⚠ {new_count} ta qoldi (bularni qo'lda tekshiring)")
-    else:
-        print(f"      ✓ Barcha templatelar allaqachon yangi sintaksisda")
-except Exception as e:
-    print(f"      ✗ Xato: {e}")
 
-print()
+def _split_name(full_name: str) -> tuple[str, str]:
+    parts = [part for part in str(full_name or "").strip().split() if part]
+    if not parts:
+        return "Admin", "User"
+    if len(parts) == 1:
+        return parts[0], "User"
+    return parts[0], " ".join(parts[1:])
 
-# 2. Create superadmin
-print("[2/3] Superadmin yaratish...")
-try:
-    from database import SessionLocal, engine
-    import models
-    import bcrypt
-    
-    # Create tables
-    models.Base.metadata.create_all(bind=engine)
-    
+
+def _resolve_admin_settings() -> tuple[str, str, str]:
+    name = os.getenv("DEFAULT_ADMIN_NAME", "Admin User").strip() or "Admin User"
+    email = os.getenv("DEFAULT_ADMIN_EMAIL", "admin@bioface.local").strip().lower() or "admin@bioface.local"
+    password = os.getenv("DEFAULT_ADMIN_PASSWORD", "admin123").strip() or "admin123"
+    return name, email, password
+
+
+def _ensure_admin_user() -> tuple[models.User, bool, str]:
+    admin_name, admin_email, admin_password = _resolve_admin_settings()
+    first_name, last_name = _split_name(admin_name)
+    hashed_password = _hash_password(admin_password)
+
     db = SessionLocal()
-    
-    # Check if admin@gmail.com exists
-    existing = db.query(models.User).filter(models.User.email == "admin@gmail.com").first()
-    
-    if existing:
-        print(f"      ℹ admin@gmail.com allaqachon mavjud")
-        # Update password to admin123
-        hashed = bcrypt.hashpw("admin123".encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-        existing.hashed_password = hashed
-        existing.role = models.UserRole.SUPER_ADMIN
-        db.commit()
-        print(f"      ✓ Parol yangilandi: admin123")
-    else:
-        # Create new admin
-        hashed = bcrypt.hashpw("admin123".encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-        admin = models.User(
-            name="Super Admin",
-            first_name="Super",
-            last_name="Admin",
-            email="admin@gmail.com",
-            hashed_password=hashed,
-            role=models.UserRole.SUPER_ADMIN,
-            organization_id=None
+    try:
+        user = (
+            db.query(models.User)
+            .filter(func.lower(models.User.email) == admin_email)
+            .first()
         )
-        db.add(admin)
+
+        created = user is None
+        if user is None:
+            user = models.User(
+                name=admin_name,
+                first_name=first_name,
+                last_name=last_name,
+                middle_name="",
+                email=admin_email,
+                phone="",
+                image_url="",
+                hashed_password=hashed_password,
+                role=models.UserRole.super_admin,
+                status="active",
+                organization_id=None,
+                google_oauth_enabled=False,
+                last_login_provider="password",
+            )
+            db.add(user)
+        else:
+            user.name = admin_name
+            user.first_name = first_name
+            user.last_name = last_name
+            user.middle_name = user.middle_name or ""
+            user.hashed_password = hashed_password
+            user.role = models.UserRole.super_admin
+            user.status = "active"
+            user.last_login_provider = "password"
+
         db.commit()
-        print(f"      ✓ admin@gmail.com yaratildi (parol: admin123)")
-    
-    db.close()
-except Exception as e:
-    print(f"      ✗ Xato: {e}")
+        db.refresh(user)
+        return user, created, admin_password
+    finally:
+        db.close()
 
-print()
 
-# 3. Check ISUP
-print("[3/3] ISUP holatini tekshirish...")
-try:
-    from services.isup_manager import get_process_status, start_isup_server
-    status = get_process_status()
-    
-    if status['running']:
-        print(f"      ✓ ISUP server ishlamoqda (PID: {status.get('pid', '?')})")
-    else:
-        print(f"      ℹ ISUP server ishlamayapti, ishga tushirilmoqda...")
-        try:
-            result = start_isup_server()
-            if result['running']:
-                print(f"      ✓ ISUP server ishga tushdi (PID: {result.get('pid', '?')})")
-            else:
-                print(f"      ⚠ ISUP server ishga tushmadi")
-                print(f"      → Sabab: SDK yoki DLL fayllari muammosi bo'lishi mumkin")
-                print(f"      → Web tizim baribir ishlaydi, faqat kamera integratsiyasi bo'lmaydi")
-        except Exception as start_err:
-            print(f"      ⚠ ISUP ishga tushmadi: {start_err}")
-            print(f"      → Web tizim baribir ishlaydi")
-except Exception as e:
-    print(f"      ⚠ ISUP tekshirib bo'lmadi: {e}")
-    print(f"      → Web tizim baribir ishlaydi")
+def _report_isup_status() -> None:
+    try:
+        from services.isup_manager import get_process_status
 
-print()
-print("=" * 50)
-print("  ✓ Setup tugadi!")
-print("=" * 50)
-print()
-print("Login ma'lumotlari:")
-print("  Email:    admin@gmail.com")
-print("  Parol:    admin123")
-print()
-print("Serverni ishga tushiring:")
-print("  .\\start.ps1")
-print()
+        status = get_process_status()
+        if status.get("running"):
+            print(f"ISUP server ishlamoqda (PID: {status.get('pid', '?')})")
+        else:
+            print("ISUP server ishlamayapti. Uni .\\start.ps1 orqali ishga tushiring.")
+    except Exception as exc:
+        print(f"ISUP holatini tekshirib bo'lmadi: {exc}")
+
+
+def main() -> None:
+    print("=" * 50)
+    print("  BioFace Admin Setup")
+    print("=" * 50)
+    print()
+    print("Jinja fayllariga o'zgartirish kiritilmaydi.")
+    print()
+
+    models.Base.metadata.create_all(bind=engine)
+    ensure_schema()
+
+    user, created, raw_password = _ensure_admin_user()
+    action = "yaratildi" if created else "yangilandi"
+
+    print(f"Admin foydalanuvchi {action}:")
+    print(f"  Email:  {user.email}")
+    print(f"  Role:   {user.role.value if user.role else '-'}")
+    print(f"  Parol:  {raw_password}")
+    print()
+
+    _report_isup_status()
+
+
+if __name__ == "__main__":
+    main()

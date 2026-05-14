@@ -10,6 +10,7 @@ import {
 } from '@fluentui/react-icons'
 import PageHero from '../components/PageHero'
 import { useConfirm } from '../components/ConfirmDialog'
+import { useNotify } from '../components/Notifications'
 
 // Module-level cache: sahifadan chiqib qaytganda darhol ko'rinadi
 let _camerasCache = []
@@ -50,6 +51,7 @@ export default function Devices() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const confirm  = useConfirm()
+  const notify = useNotify()
   // Cache bo'lsa darhol ko'rsatamiz (stale-while-revalidate pattern)
   const [cameras, setCameras]   = useState(_camerasCache)
   const [loading, setLoading]   = useState(_camerasCache.length === 0)
@@ -110,8 +112,18 @@ export default function Devices() {
     setDeleting(cam.id)
     try {
       const res = await fetch(`/api/cameras/${cam.id}`, { method: 'DELETE' })
-      if (res.ok) setCameras(c => c.filter(x => x.id !== cam.id))
-    } catch {}
+      if (!res.ok) throw new Error(t('devices.deleteFailed'))
+      setCameras(c => c.filter(x => x.id !== cam.id))
+      notify.success({
+        title: t('devices.delete'),
+        body: t('devices.deleted', { name: cam.name }),
+      })
+    } catch (e) {
+      notify.error({
+        title: t('devices.delete'),
+        body: e.message || t('devices.deleteFailed'),
+      })
+    }
     setDeleting(null)
   }
 

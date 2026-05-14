@@ -117,7 +117,18 @@ export default function MapView({ isLoggedIn = false }) {
 
       {/* Map */}
       <div style={{ flex:1, position:'relative' }}>
-        <MapContainer center={[41.3005, 69.2455]} zoom={14} style={{ width:'100%', height:'100%' }} zoomControl={false}>
+        <MapContainer 
+          center={[41.3005, 69.2455]} 
+          zoom={12} 
+          minZoom={6}
+          maxBounds={[
+            [37.18, 55.99], // South West
+            [45.58, 73.13]  // North East
+          ]}
+          maxBoundsViscosity={1.0}
+          style={{ width:'100%', height:'100%' }} 
+          zoomControl={false}
+        >
           <TileLayer attribution='&copy; CARTO' url={tileUrl} />
           {devices.map(dev => (
             <CircleMarker key={dev.id} center={[dev.lat, dev.lng]}

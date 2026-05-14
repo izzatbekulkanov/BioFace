@@ -9,9 +9,9 @@ from typing import Optional
 
 import psutil
 
-from core.system_config import BASE_DIR
+from core.system_config import BASE_DIR, ISUP_RUNTIME_DIR
 
-RUNTIME_DIR = BASE_DIR / ".runtime"
+RUNTIME_DIR = ISUP_RUNTIME_DIR
 BOT_PID_FILE = RUNTIME_DIR / "telegram_bot.pid"
 BOT_STDOUT_LOG = RUNTIME_DIR / "telegram_bot_stdout.log"
 BOT_STDERR_LOG = RUNTIME_DIR / "telegram_bot_stderr.log"

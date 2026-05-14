@@ -1,11 +1,7 @@
 import shutil
 from pathlib import Path
 
-<<<<<<<< HEAD:backend/services/hikvision_sdk.py
-from config.system_config import BASE_DIR, HIKVISION_SDK_DIR, ISUP_IMPLEMENTATION_MODE
-========
-from core.system_config import BASE_DIR, HIKVISION_SDK_DIR, ISUP_IMPLEMENTATION_MODE
->>>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:services/hikvision_sdk.py
+from core.system_config import HIKVISION_SDK_DIR, ISUP_IMPLEMENTATION_MODE, PROJECT_ROOT
 
 
 import sys
@@ -47,7 +43,7 @@ else:
     )
 
 BUNDLED_RUNTIME_DIR = (
-    BASE_DIR
+    PROJECT_ROOT
     / "external"
     / "QuickNV.HikvisionISUPSDK"
     / "src"

@@ -2,11 +2,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-<<<<<<< HEAD:backend/routers/cameras_parts/schemas.py
-from config.system_config import ISUP_KEY
-=======
 from core.system_config import ISUP_KEY
->>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:routers/cameras_parts/schemas.py
 
 
 class CameraCreate(BaseModel):

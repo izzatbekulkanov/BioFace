@@ -1,13 +1,7 @@
 #!/usr/bin/env python3
 """ISUP serverni ishga tushirish va tekshirish"""
 import sys
-<<<<<<< HEAD:backend/scripts/start_isup.py
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-=======
 sys.path.insert(0, '.')
->>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:_start_isup.py
 from services.isup_manager import get_process_status, start_isup_server
 import traceback
 

@@ -3,11 +3,7 @@ from datetime import datetime, timezone
 from sqlalchemy import CheckConstraint, Column, Integer, String, Boolean, DateTime, ForeignKey, Float, Date, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 
-<<<<<<<< HEAD:backend/models.py
-from database import Base
-========
 from core.database import Base
->>>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:core/models.py
 from utils.time_utils import now_tashkent
 
 

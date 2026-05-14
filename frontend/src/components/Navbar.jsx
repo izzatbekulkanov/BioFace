@@ -5,11 +5,11 @@ import { Tooltip } from '@fluentui/react-components'
 import {
   MapRegular, InfoRegular, MailRegular, SignOutRegular, PersonRegular,
   GridRegular, CameraRegular, CodeRegular, WeatherSunnyRegular, WeatherMoonRegular,
-  SettingsRegular, HistoryRegular, CalendarClockRegular
+  SettingsRegular, HistoryRegular, CalendarClockRegular, ServerRegular,
 } from '@fluentui/react-icons'
 
 const PUBLIC_LINKS  = ['map', 'about', 'contact']
-const PRIVATE_LINKS = ['dashboard', 'devices', 'shifts', 'middlewareLogs', 'settings']
+const PRIVATE_LINKS = ['dashboard', 'devices', 'shifts', 'middlewareLogs', 'isupServer', 'settings']
 
 const LINK_ICONS = {
   map:            <MapRegular  fontSize={17} />,
@@ -19,11 +19,12 @@ const LINK_ICONS = {
   devices:        <CameraRegular fontSize={17} />,
   shifts:         <CalendarClockRegular fontSize={17} />,
   middlewareLogs: <HistoryRegular fontSize={17} />,
+  isupServer:     <ServerRegular fontSize={17} />,
   settings:       <SettingsRegular fontSize={17} />,
 }
 const LINK_PATHS = {
-  map: '/map', about: '/about', contact: '/contact', dashboard: '/dashboard', 
-  devices: '/devices', shifts: '/shifts', middlewareLogs: '/middleware-logs', settings: '/settings',
+  map: '/map', about: '/about', contact: '/contact', dashboard: '/dashboard',
+  devices: '/devices', shifts: '/shifts', middlewareLogs: '/middleware-logs', isupServer: '/isup-server', settings: '/settings',
 }
 
 // Navbar ichida barcha tugmalar oq matnli

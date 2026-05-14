@@ -10,11 +10,7 @@ from pathlib import Path
 from typing import Any
 from telegram.error import BadRequest
 
-<<<<<<< HEAD:backend/bot/services/notifications.py
-from services.redis_client import EVENTS_CHANNEL, get_redis
-=======
 from core.redis_client import EVENTS_CHANNEL, get_redis
->>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:bot/services/notifications.py
 from bot.formatters import format_camera_event_message
 from bot.i18n import normalize_language
 from bot.services.bindings import get_bindings_for_employee

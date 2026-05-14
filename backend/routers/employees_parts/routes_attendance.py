@@ -5,13 +5,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-<<<<<<< HEAD:backend/routers/employees_parts/routes_attendance.py
-from database import get_db
-from models import AttendanceLog, Device, Employee, EmployeeCameraLink
-=======
 from core.database import get_db
 from core.models import AttendanceLog, Device, Employee, EmployeeCameraLink
->>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:routers/employees_parts/routes_attendance.py
 from utils.schedule_utils import (
     get_expected_end_dt,
     get_expected_start_dt,

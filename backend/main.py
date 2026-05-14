@@ -2,11 +2,7 @@ import asyncio
 import os
 import time
 
-<<<<<<< HEAD:backend/main.py
 from utils.access_control import resolve_menu_key_for_path, resolve_user_menu_permissions, user_has_menu_access
-=======
-from core.access_control import resolve_menu_key_for_path, resolve_user_menu_permissions, user_has_menu_access
->>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:main.py
 from services.attendance_monitor import start_attendance_monitor, stop_attendance_monitor
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -59,6 +55,7 @@ PUBLIC_PATHS = frozenset({
     "/favicon.ico",
     "/pending-approval",
     "/contact",
+    "/api/contact",
     "/about",
     "/map",
 })
@@ -254,6 +251,7 @@ if os.path.exists(assets_dir):
 @app.get("/map")
 @app.get("/dashboard")
 @app.get("/devices")
+@app.get("/isup-server")
 async def serve_react_app():
     index_file = os.path.join(frontend_dist, 'index.html')
     if os.path.exists(index_file):

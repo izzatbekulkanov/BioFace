@@ -6,11 +6,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session, selectinload
-<<<<<<< HEAD:backend/routers/pages.py
-from utils.access_control import (
-=======
 from core.access_control import (
->>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:routers/pages.py
     build_permission_groups,
     filter_menu_structure_by_permissions,
     get_role_default_menu_permissions,
@@ -41,13 +37,8 @@ from routers.cameras_parts.psychology_utils import (
     state_labels,
 )
 from utils.time_utils import now_tashkent, today_tashkent_range
-<<<<<<< HEAD:backend/routers/pages.py
-from utils.schedule_utils import get_attendance_deadline, get_late_minutes, load_holiday_dates, resolve_employee_schedule
-from config.system_config import (
-=======
 from utils.schedule_utils import get_attendance_deadline, get_late_minutes, is_holiday_for_org, resolve_employee_schedule
 from core.system_config import (
->>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:routers/pages.py
     ISUP_ALARM_PORT,
     ISUP_API_PORT,
     ISUP_KEY,
@@ -2201,21 +2192,6 @@ def edit_organization_page(request: Request, org_id: int, db: Session = Depends(
         "lang": lang,
         "org": org,
         "organization_types": get_organization_type_choices(lang=lang),
-        "notifs": get_notifications(request, db),
-    })
-
-
-@router.get("/isup-server")
-def isup_dashboard_page(request: Request, db: Session = Depends(get_db)):
-    menus = get_menus_dict(request)
-    lang = request.cookies.get("lang", "uz")
-    t = get_translations(lang)
-    return templates.TemplateResponse(request=request, name="isup_dashboard.html", context={
-        "request": request,
-        "page_title": menus.get("isup_server"),
-        "menus": menus,
-        "t": t,
-        "lang": lang,
         "notifs": get_notifications(request, db),
     })
 

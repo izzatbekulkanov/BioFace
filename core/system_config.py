@@ -6,35 +6,41 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+BACKEND_DIR = PROJECT_ROOT / "backend"
+BASE_DIR = BACKEND_DIR if BACKEND_DIR.is_dir() else PROJECT_ROOT
 
 
 def _load_dotenv_file() -> None:
     """Load a local .env file if present, without overriding existing env vars."""
-    env_path = BASE_DIR / ".env"
-    if not env_path.exists():
-        return
+    candidates = [BASE_DIR / ".env", PROJECT_ROOT / ".env"]
+    seen: set[Path] = set()
 
-    try:
-        for raw_line in env_path.read_text(encoding="utf-8").splitlines():
-            line = raw_line.strip()
-            if not line or line.startswith("#"):
-                continue
-            if line.lower().startswith("export "):
-                line = line[7:].strip()
-            if "=" not in line:
-                continue
-            key, value = line.split("=", 1)
-            key = key.strip()
-            if not key or key in os.environ:
-                continue
-            value = value.strip()
-            if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
-                value = value[1:-1]
-            os.environ.setdefault(key, value)
-    except Exception:
-        # Never block startup if .env is malformed.
-        pass
+    for env_path in candidates:
+        if env_path in seen or not env_path.exists():
+            continue
+        seen.add(env_path)
+
+        try:
+            for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+                line = raw_line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if line.lower().startswith("export "):
+                    line = line[7:].strip()
+                if "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                key = key.strip()
+                if not key or key in os.environ:
+                    continue
+                value = value.strip()
+                if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
+                    value = value[1:-1]
+                os.environ.setdefault(key, value)
+        except Exception:
+            # Never block startup if .env is malformed.
+            pass
 
 
 _load_dotenv_file()
@@ -276,8 +282,8 @@ ISUP_PUBLIC_HOST = get_isup_public_host()
 REDIS_HOST = os.getenv("REDIS_HOST", "127.0.0.1")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 
-# ISUP artifacts were moved to root/isup folder
-ISUP_DIR = BASE_DIR.parent / "isup"
+# ISUP artifacts live at the repository root.
+ISUP_DIR = PROJECT_ROOT / "isup"
 ISUP_BINARY_PATH = Path(
     os.getenv(
         "ISUP_BINARY_PATH",
@@ -285,13 +291,9 @@ ISUP_BINARY_PATH = Path(
     )
 )
 ISUP_SDK_SERVER_SCRIPT = Path(
-<<<<<<<< HEAD:backend/config/system_config.py
-    os.getenv("ISUP_SDK_SERVER_SCRIPT", str(ISUP_DIR / "isup_sdk_server.py"))
-========
-    os.getenv("ISUP_SDK_SERVER_SCRIPT", str(BASE_DIR / "services" / "isup_sdk_server.py"))
->>>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:core/system_config.py
+    os.getenv("ISUP_SDK_SERVER_SCRIPT", str(PROJECT_ROOT / "services" / "isup_sdk_server.py"))
 )
-ISUP_RUNTIME_DIR = BASE_DIR / ".runtime"
+ISUP_RUNTIME_DIR = PROJECT_ROOT / ".runtime"
 ISUP_PID_FILE = ISUP_RUNTIME_DIR / "isup_server.pid"
 
 ISUP_API_URL = os.getenv("ISUP_API_URL", f"http://127.0.0.1:{ISUP_API_PORT}")

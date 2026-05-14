@@ -8,17 +8,9 @@ from sqlalchemy.pool import QueuePool
 import bcrypt
 
 # Database URL configuration
-<<<<<<<< HEAD:backend/database.py
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(BASE_DIR, 'data')
-if not os.path.exists(DATA_DIR):
-    os.makedirs(DATA_DIR)
-SQLALCHEMY_DATABASE_URL = f"sqlite:///{os.path.join(DATA_DIR, 'bioface.db')}"  # PostgreSQL: "postgresql://user:password@postgresserver/db"
-========
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DB_PATH = Path(os.getenv("BIOFACE_DB_PATH", PROJECT_ROOT / "bioface.db")).resolve()
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DB_PATH.as_posix()}")
->>>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:core/database.py
 
 # Engine setup — WAL mode + pool = parallel read uchun 3-5x tezroq
 engine = create_engine(

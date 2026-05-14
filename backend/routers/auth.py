@@ -11,17 +11,10 @@ from pydantic import BaseModel
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
-<<<<<<< HEAD:backend/routers/auth.py
-import config.system_config as system_config  # noqa: F401  # loads .env values before OAuth settings are read
-from utils.access_control import resolve_user_menu_permissions
-from database import get_db
-from models import User, Organization
-=======
 import core.system_config as system_config  # noqa: F401  # loads .env values before OAuth settings are read
 from core.access_control import resolve_user_menu_permissions
 from core.database import get_db
 from core.models import User, Organization
->>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:routers/auth.py
 from utils.menu_utils import get_menu_data
 from utils.translations import get_translations
 
@@ -457,6 +450,18 @@ def pending_approval_page(request: Request):
         },
     )
 
+
+
+class ContactPayload(BaseModel):
+    name: str
+    email: str
+    message: str
+
+@router.post("/api/contact")
+def submit_contact_form(payload: ContactPayload, db: Session = Depends(get_db)):
+    # Simulating saving to DB or sending to Telegram
+    print(f"[CONTACT FORM] Name: {payload.name}, Email: {payload.email}, Message: {payload.message}")
+    return {"ok": True, "message": "Xabar muvaffaqiyatli yuborildi"}
 
 @router.get("/contact")
 def contact_page(request: Request):

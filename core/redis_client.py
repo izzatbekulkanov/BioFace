@@ -14,11 +14,7 @@ from typing import Optional, Union
 
 import redis
 
-<<<<<<<< HEAD:backend/services/redis_client.py
-from config.system_config import REDIS_HOST, REDIS_PORT
-========
 from core.system_config import REDIS_HOST, REDIS_PORT
->>>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:core/redis_client.py
 
 
 _redis: Optional[redis.Redis] = None

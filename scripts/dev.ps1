@@ -8,7 +8,7 @@ Start-Process powershell -ArgumentList @("-NoExit", "-Command", "cd '$PROJECT_RO
 
 cd "$PROJECT_ROOT\backend"
 $PYTHON = ".\.venv\Scripts\python.exe"
-$env:ISUP_IMPLEMENTATION_MODE = "hikvision_sdk"
+$env:PYTHONPATH = $PROJECT_ROOT
 
 Write-Host "ISUP Server (hikvision_sdk mode) ishga tushirilmoqda..." -ForegroundColor Yellow
 & $PYTHON -m scripts.start_isup

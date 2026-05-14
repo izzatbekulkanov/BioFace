@@ -35,13 +35,26 @@ export default function Contact() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
-    await new Promise(r => setTimeout(r, 1100))
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, message: msg })
+      })
+      if (res.ok) {
+        setSent(true)
+        setName('')
+        setEmail('')
+        setMsg('')
+      }
+    } catch (err) {
+      console.error(err)
+    }
     setLoading(false)
-    setSent(true)
   }
 
   const CONTACTS = [
-    { icon: <MailRegoral fontSize={20} />,     labelKey: 'contact.email',   value: 'support@bioface.uz',       color: '#0078d4' },
+    { icon: <MailRegular fontSize={20} />,     labelKey: 'contact.email',   value: 'support@bioface.uz',       color: '#0078d4' },
     { icon: <PhoneRegular fontSize={20} />,    labelKey: 'contact.phone',   value: '+998 90 123 45 67',        color: '#038387' },
     { icon: <LocationRegular fontSize={20} />, labelKey: 'contact.address', value: t('contact.addressValue'),  color: '#6264a7' },
   ]

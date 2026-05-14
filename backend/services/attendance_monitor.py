@@ -11,13 +11,8 @@ import httpx
 from sqlalchemy import text
 from sqlalchemy.orm import selectinload
 
-<<<<<<<< HEAD:backend/services/attendance_monitor.py
-from database import SessionLocal, ensure_schema
-from models import AttendanceLog, Employee, Organization
-========
 from core.database import SessionLocal, ensure_schema
 from core.models import AttendanceLog, Employee, Organization
->>>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:services/attendance_monitor.py
 from utils.schedule_utils import (
     ATTENDANCE_GRACE_MINUTES,
     get_attendance_deadline,

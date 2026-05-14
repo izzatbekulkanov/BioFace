@@ -4,13 +4,8 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-<<<<<<< HEAD:backend/bot/services/bindings.py
-from database import SessionLocal, ensure_schema
-from models import Employee, TelegramUserBinding
-=======
 from core.database import SessionLocal, ensure_schema
 from core.models import Employee, TelegramUserBinding
->>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:bot/services/bindings.py
 from utils.time_utils import now_tashkent
 
 

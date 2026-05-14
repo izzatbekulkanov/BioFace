@@ -8,13 +8,8 @@ from typing import cast
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-<<<<<<< HEAD:backend/bot/services/attendance.py
-from database import SessionLocal, ensure_schema
-from models import AttendanceLog, Employee
-=======
 from core.database import SessionLocal, ensure_schema
 from core.models import AttendanceLog, Employee
->>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:bot/services/attendance.py
 from utils.schedule_utils import get_late_minutes, is_holiday_for_org, resolve_employee_schedule
 
 
