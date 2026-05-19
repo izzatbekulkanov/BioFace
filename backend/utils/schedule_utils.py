@@ -6,7 +6,7 @@ from typing import Any, Optional
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
-from core.models import Employee, Holiday, Schedule
+from models import Employee, Holiday, Schedule
 
 
 DEFAULT_START_TIME = "09:00"

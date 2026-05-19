@@ -4,7 +4,7 @@ import json
 import re
 from typing import Any, Iterable
 
-from core.models import UserRole
+from models import UserRole
 
 
 MENU_PERMISSION_METADATA = [

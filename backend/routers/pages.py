@@ -6,11 +6,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session, selectinload
-<<<<<<< HEAD:backend/routers/pages.py
 from utils.access_control import (
-=======
-from core.access_control import (
->>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:routers/pages.py
     build_permission_groups,
     filter_menu_structure_by_permissions,
     get_role_default_menu_permissions,
@@ -41,13 +37,8 @@ from routers.cameras_parts.psychology_utils import (
     state_labels,
 )
 from utils.time_utils import now_tashkent, today_tashkent_range
-<<<<<<< HEAD:backend/routers/pages.py
 from utils.schedule_utils import get_attendance_deadline, get_late_minutes, load_holiday_dates, resolve_employee_schedule
 from config.system_config import (
-=======
-from utils.schedule_utils import get_attendance_deadline, get_late_minutes, is_holiday_for_org, resolve_employee_schedule
-from core.system_config import (
->>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:routers/pages.py
     ISUP_ALARM_PORT,
     ISUP_API_PORT,
     ISUP_KEY,
@@ -1120,10 +1111,115 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/api/dashboard/metrics")
 def dashboard_metrics_api(request: Request, db: Session = Depends(get_db)):
-    return {
-        "ok": True,
-        "dashboard": _build_dashboard_metrics(request, db),
-    }
+    # Per-user cache: 5 minutes TTL — orgs/employees/cameras don't change frequently
+    import time as _time
+    auth_user = request.session.get("auth_user") or {}
+    user_id = auth_user.get("id") or "anon"
+    cache_key = f"dash_metrics_{user_id}"
+    cache = getattr(dashboard_metrics_api, "_cache", {})
+    now_ts = _time.time()
+    cached = cache.get(cache_key)
+    if cached and now_ts - cached["ts"] < 300:  # 5 minutes
+        return {"ok": True, "dashboard": cached["data"], "cached": True, "cache_age": int(now_ts - cached["ts"])}
+
+    data = _build_dashboard_metrics(request, db)
+    cache[cache_key] = {"ts": now_ts, "data": data}
+    # Keep cache small — drop entries older than 30 minutes
+    if len(cache) > 100:
+        for k in [k for k, v in cache.items() if now_ts - v["ts"] > 1800]:
+            cache.pop(k, None)
+    dashboard_metrics_api._cache = cache
+    return {"ok": True, "dashboard": data, "cache_age": 0}
+
+
+@router.get("/api/dashboard/weekly-trend")
+def dashboard_weekly_trend(request: Request, db: Session = Depends(get_db)):
+    """Oxirgi 7 kunlik davomat trendi. 10 daqiqali cache."""
+    import time as _time
+    from datetime import timedelta
+    auth_user = request.session.get("auth_user") or {}
+    user_id = auth_user.get("id") or "anon"
+    cache_key = f"dash_trend_{user_id}"
+    cache = getattr(dashboard_weekly_trend, "_cache", {})
+    now_ts = _time.time()
+    cached = cache.get(cache_key)
+    if cached and now_ts - cached["ts"] < 600:  # 10 minutes
+        return {"ok": True, "days": cached["data"], "cached": True}
+
+    allowed_org_ids = _resolve_allowed_org_ids(request, db)
+    if not allowed_org_ids:
+        return {"ok": True, "days": []}
+
+    now_local = now_tashkent()
+    days = []
+    for i in range(6, -1, -1):
+        day = now_local.date() - timedelta(days=i)
+        day_start = day.strftime("%Y-%m-%d") + "T00:00:00"
+        day_end = day.strftime("%Y-%m-%d") + "T23:59:59"
+
+        present_count = (
+            db.query(func.count(func.distinct(AttendanceLog.employee_id)))
+            .join(Employee, Employee.id == AttendanceLog.employee_id)
+            .filter(
+                AttendanceLog.status == "aniqlandi",
+                Employee.organization_id.in_(allowed_org_ids),
+                AttendanceLog.timestamp >= day_start,
+                AttendanceLog.timestamp <= day_end,
+            )
+            .scalar() or 0
+        )
+        total_employees = (
+            db.query(func.count(Employee.id))
+            .filter(Employee.organization_id.in_(allowed_org_ids), Employee.has_access.is_(True))
+            .scalar() or 0
+        )
+        days.append({
+            "date": day.strftime("%d.%m"),
+            "weekday": day.strftime("%a"),
+            "present": int(present_count),
+            "total": int(total_employees),
+            "absent": max(0, int(total_employees) - int(present_count)),
+        })
+
+    cache[cache_key] = {"ts": now_ts, "data": days}
+    if len(cache) > 100:
+        for k in [k for k, v in cache.items() if now_ts - v["ts"] > 1800]:
+            cache.pop(k, None)
+    dashboard_weekly_trend._cache = cache
+    return {"ok": True, "days": days}
+
+
+@router.get("/api/dashboard/recent-events")
+def dashboard_recent_events(request: Request, db: Session = Depends(get_db)):
+    """Oxirgi 20 ta davomat hodisasi."""
+    allowed_org_ids = _resolve_allowed_org_ids(request, db)
+    if not allowed_org_ids:
+        return {"ok": True, "events": []}
+
+    logs = (
+        db.query(AttendanceLog)
+        .join(Employee, Employee.id == AttendanceLog.employee_id, isouter=True)
+        .filter(
+            Employee.organization_id.in_(allowed_org_ids),
+        )
+        .order_by(AttendanceLog.timestamp.desc())
+        .limit(20)
+        .all()
+    )
+    events = []
+    for log in logs:
+        events.append({
+            "id": log.id,
+            "employee_name": log.person_name or (
+                f"{log.employee.first_name} {log.employee.last_name}" if log.employee else "Noma'lum"
+            ),
+            "timestamp": log.timestamp.strftime("%H:%M:%S") if log.timestamp else "",
+            "date": log.timestamp.strftime("%d.%m.%Y") if log.timestamp else "",
+            "status": log.status or "aniqlandi",
+            "snapshot_url": log.snapshot_url,
+            "device_name": log.device.name if log.device else None,
+        })
+    return {"ok": True, "events": events}
 
 
 @router.get("/devices")

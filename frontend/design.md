@@ -467,6 +467,119 @@ import { Spinner } from '@fluentui/react-components'
 transition: 'width 0.6s ease'
 ```
 
+### Skeleton loader (yuklanish ko'rinishi)
+
+Tashqi API'dan ma'lumot oladigan har bir React sahifa **dastlabki yuklanishda** spinner emas, **skeleton loader** ishlatishi kerak. Shu yondashuv:
+
+- foydalanuvchi sahifa tuzilishini darhol ko'radi (joy turg'un, kontentdan kontentga "sakramaydi"),
+- xatolik bo'lsa ham layout buzilmaydi,
+- avtomatik yangilanishlar (poll, refresh) **skeleton ko'rsatmaydi** — eski qiymat saqlanib turadi va jonli yangilanadi.
+
+Umumiy komponent: `src/components/Skeleton.jsx`.
+
+```jsx
+import Skeleton from '../components/Skeleton'
+
+// Atom
+<Skeleton width="60%" height={14} />
+
+// Tayyor naqshlar
+<Skeleton.Stat />               // bitta stat kartasi
+<Skeleton.Stats count={6} />    // grid bo'lib stat kartalar
+<Skeleton.Card rows={3} />      // sarlavha + ichki qatorlar
+<Skeleton.Button width={120} /> // tugma o'rniga
+<Skeleton.Row />                // jadval/list qatori
+```
+
+**State pattern (poll bilan):**
+
+```jsx
+const [data, setData] = useState(null)
+const [initialLoading, setInitialLoading] = useState(true)
+const [refreshing, setRefreshing] = useState(false)
+
+const load = async ({ silent = false } = {}) => {
+  if (!silent) setRefreshing(true)
+  try {
+    const res = await fetch('/api/...', { credentials: 'include' })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    setData(await res.json())
+  } finally {
+    setInitialLoading(false)
+    setRefreshing(false)
+  }
+}
+
+useEffect(() => {
+  load({ silent: true })
+  const id = setInterval(() => load({ silent: true }), 5000)
+  return () => clearInterval(id)
+}, [])
+
+const showSkeleton = initialLoading && !data
+return showSkeleton ? <Skeleton.Stats /> : <RealContent data={data} />
+```
+
+**Qoidalar:**
+
+- `Skeleton` o'lchamlari haqiqiy kontentga yaqin bo'lsin (uzunlik, balandlik), shunda layout sakramaydi.
+- Xato bo'lganda (`error`) skeleton ham, jonli kontent ham ko'rsatilmasa, qisqa fallback xabar chiqarilsin.
+- Real fetch'lar uchun **doim `credentials: 'include'`** qo'shilsin — Vite proxy orqali sessiya cookie'lari to'g'ri uzatiladi.
+- Spinner faqat refresh tugmasi yoki tugma ichidagi yuklash holati uchun qoldiriladi.
+
+Misol: `src/pages/IsupServer.jsx`, `src/pages/RedisMonitor.jsx`.
+
+### Tasdiqlash dialogi va toast bildirishnomalar
+
+Tizim **ikkita umumiy UI naqshini** rasmiy uslubga ega:
+
+**1. Tasdiqlash dialogi (`useConfirm`)** — `window.confirm()` o'rnida ishlatiladi.
+
+```jsx
+import { useConfirm } from '../components/ConfirmDialog'
+
+const confirm = useConfirm()
+
+const ok = await confirm({
+  title: "Foydalanuvchini o'chirish?",
+  message: 'Bu amalni qaytarib bo\'lmaydi.',
+  confirmText: "O'chirish",
+  cancelText: 'Bekor qilish',
+  danger: true,        // qizil tugma + delete ikonkasi
+})
+if (!ok) return
+```
+
+**2. Toast bildirishnomalar (`useToast`)** — `alert()` o'rnida va action muvaffaqiyati uchun ishlatiladi. O'ng-pastki burchakda chiqadi.
+
+```jsx
+import { useToast } from '../components/Toaster'
+
+const toast = useToast()
+
+toast.success('Saqlandi')
+toast.error('Xatolik: HTTP 500')
+toast.warning('Diqqat')
+toast.info('Yangilanmoqda...')
+
+// Sarlavha + amal bilan
+toast.success('Buyruq yuborildi', {
+  title: 'ISUP',
+  action: { label: 'Yopish', onClick: () => {} },
+  duration: 5000,
+})
+```
+
+**Qoidalar:**
+
+- `window.confirm`, `window.alert`, `window.prompt` ishlatish **taqiqlangan** — ular saytning tashqi uslubidan farq qiladi.
+- O'chirish/bekor qilish kabi destruktiv amallar uchun **`danger: true`** ishlatish kerak.
+- API muvaffaqiyatidan keyin **`toast.success(...)`** bilan tasdiqlash. Xatoliklar **`toast.error(e.message)`** sifatida ko'rsatiladi.
+- `<ToastProvider>` va `<ConfirmProvider>` `App.jsx` ichida bir marta ulangan — qo'shimcha sozlash kerak emas.
+- Toastlar 3.5s (xato — 6s) ichida o'zi yopiladi; foydalanuvchi qo'lda ham yopa oladi.
+
+Misollar: `src/pages/SystemUsers.jsx`, `src/pages/IsupServer.jsx`, `src/pages/Settings.jsx`.
+
 ---
 
 ## 11. Sahifalar Ro'yxati

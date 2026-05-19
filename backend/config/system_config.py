@@ -285,11 +285,7 @@ ISUP_BINARY_PATH = Path(
     )
 )
 ISUP_SDK_SERVER_SCRIPT = Path(
-<<<<<<<< HEAD:backend/config/system_config.py
     os.getenv("ISUP_SDK_SERVER_SCRIPT", str(ISUP_DIR / "isup_sdk_server.py"))
-========
-    os.getenv("ISUP_SDK_SERVER_SCRIPT", str(BASE_DIR / "services" / "isup_sdk_server.py"))
->>>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:core/system_config.py
 )
 ISUP_RUNTIME_DIR = BASE_DIR / ".runtime"
 ISUP_PID_FILE = ISUP_RUNTIME_DIR / "isup_server.pid"

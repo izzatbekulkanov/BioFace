@@ -3,16 +3,17 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   SettingsRegular, ListRegular, PlugConnectedRegular, SaveRegular,
-  ClockRegular, InfoRegular, CameraRegular, LockClosedRegular,
-  CheckmarkCircleRegular, ArrowUpRegular, ArrowDownRegular, ArrowSyncRegular,
-  PlayRegular, StopRegular
+  ClockRegular, CameraRegular, LockClosedRegular,
+  ArrowUpRegular, ArrowDownRegular, ArrowSyncRegular,
 } from '@fluentui/react-icons'
 import PageHero from '../components/PageHero'
+import { useToast } from '../components/Toaster'
 
 export default function Settings() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const isRu = i18n.language === 'ru'
+  const toast = useToast()
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -178,9 +179,11 @@ export default function Settings() {
       if (!menuRes.ok) throw new Error('Menyu sozlamalarini saqlashda xatolik')
 
       // Refresh to reflect changes
+      toast.success(isRu ? 'Настройки сохранены' : 'Sozlamalar saqlandi')
       window.location.reload()
     } catch (e) {
       setError(e.message)
+      toast.error(e.message)
       setSaving(false)
     }
   }
@@ -188,11 +191,18 @@ export default function Settings() {
   const handleBotAction = async (action) => {
     setBotLoading(true)
     try {
-      const res = await fetch(`/api/telegram/process/${action}`, { method: 'POST' })
+      const res = await fetch(`/api/telegram/process/${action}`, { method: 'POST', credentials: 'include' })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       if (data.status) setBotProcess(data.status)
+      const labels = {
+        start: isRu ? 'Бот запущен' : 'Bot ishga tushirildi',
+        stop: isRu ? 'Бот остановлен' : "Bot to'xtatildi",
+        restart: isRu ? 'Бот перезапущен' : 'Bot qayta ishga tushirildi',
+      }
+      toast.success(labels[action] || (isRu ? 'Готово' : 'Bajarildi'))
     } catch (e) {
-      alert(e.message)
+      toast.error(e.message)
     } finally {
       setBotLoading(false)
     }
@@ -245,11 +255,11 @@ export default function Settings() {
         )}
 
         {/* Tabs */}
-        <div style={{ display: 'flex', gap: 12, borderBottom: '1px solid var(--border)', marginBottom: 24 }}>
+        <div style={{ display: 'flex', gap: 12, borderBottom: '1px solid var(--border)', marginBottom: 24, overflowX: 'auto' }}>
           {[
             { id: 'system', icon: <SettingsRegular />, label: isRu ? 'Система' : 'Tizim' },
             { id: 'menus', icon: <ListRegular />, label: isRu ? 'Меню' : 'Menyu' },
-            { id: 'integrations', icon: <PlugConnectedRegular />, label: isRu ? 'Интеграции' : 'Integratsiyalar' }
+            { id: 'integrations', icon: <PlugConnectedRegular />, label: isRu ? 'Интеграции' : 'Integratsiyalar' },
           ].map(tab => (
             <button
               key={tab.id}

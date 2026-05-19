@@ -6,13 +6,8 @@ from typing import Any, Optional
 
 import psutil
 
-<<<<<<<< HEAD:backend/services/redis_monitor.py
 from services.redis_client import get_redis
 from config.system_config import REDIS_HOST, REDIS_PORT
-========
-from core.redis_client import get_redis
-from core.system_config import REDIS_HOST, REDIS_PORT
->>>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:services/redis_monitor.py
 
 
 MAX_STRING_LENGTH = 1200
@@ -94,44 +89,106 @@ def _build_disconnected_snapshot(pattern: str, limit: int, service: dict, error:
     }
 
 
-def get_redis_status_summary() -> dict:
+def get_redis_status_summary(detailed: bool = False) -> dict:
+    """Yengil Redis holati. detailed=True bo'lsa server/memory/stats info ham qo'shiladi."""
     service = _get_redis_service_status()
     redis_conn = get_redis(check_connection=True)
 
+    base: dict[str, Any] = {
+        "connected": False,
+        "host": REDIS_HOST,
+        "port": REDIS_PORT,
+        "checked_at": _utc_now(),
+        "ping_ms": None,
+        "service": service,
+        "error": None,
+    }
+
     if redis_conn is None:
-        return {
-            "connected": False,
-            "host": REDIS_HOST,
-            "port": REDIS_PORT,
-            "checked_at": _utc_now(),
-            "ping_ms": None,
-            "service": service,
-            "error": None,
-        }
+        if detailed:
+            base.update(
+                {
+                    "redis_version": None,
+                    "uptime_seconds": None,
+                    "uptime_days": None,
+                    "used_memory_human": None,
+                    "used_memory_peak_human": None,
+                    "connected_clients": None,
+                    "total_keys": 0,
+                    "keyspace_hits": None,
+                    "keyspace_misses": None,
+                    "instantaneous_ops_per_sec": None,
+                }
+            )
+        return base
 
     try:
         ping_started = time.perf_counter()
         redis_conn.ping()
         ping_ms = round((time.perf_counter() - ping_started) * 1000, 2)
-        return {
-            "connected": True,
-            "host": REDIS_HOST,
-            "port": REDIS_PORT,
-            "checked_at": _utc_now(),
-            "ping_ms": ping_ms,
-            "service": service,
-            "error": None,
-        }
+        base.update({"connected": True, "ping_ms": ping_ms})
+
+        if detailed:
+            try:
+                server_info = redis_conn.info(section="server")
+            except Exception:
+                server_info = {}
+            try:
+                memory_info = redis_conn.info(section="memory")
+            except Exception:
+                memory_info = {}
+            try:
+                clients_info = redis_conn.info(section="clients")
+            except Exception:
+                clients_info = {}
+            try:
+                stats_info = redis_conn.info(section="stats")
+            except Exception:
+                stats_info = {}
+            try:
+                dbsize = int(redis_conn.dbsize())
+            except Exception:
+                dbsize = 0
+
+            uptime_seconds = server_info.get("uptime_in_seconds")
+            try:
+                uptime_seconds_val = int(uptime_seconds) if uptime_seconds is not None else None
+            except Exception:
+                uptime_seconds_val = None
+
+            base.update(
+                {
+                    "redis_version": server_info.get("redis_version"),
+                    "uptime_seconds": uptime_seconds_val,
+                    "uptime_days": (uptime_seconds_val // 86400) if uptime_seconds_val is not None else None,
+                    "used_memory_human": memory_info.get("used_memory_human"),
+                    "used_memory_peak_human": memory_info.get("used_memory_peak_human"),
+                    "connected_clients": clients_info.get("connected_clients"),
+                    "total_keys": dbsize,
+                    "keyspace_hits": stats_info.get("keyspace_hits"),
+                    "keyspace_misses": stats_info.get("keyspace_misses"),
+                    "instantaneous_ops_per_sec": stats_info.get("instantaneous_ops_per_sec"),
+                }
+            )
+        return base
     except Exception as exc:
-        return {
-            "connected": False,
-            "host": REDIS_HOST,
-            "port": REDIS_PORT,
-            "checked_at": _utc_now(),
-            "ping_ms": None,
-            "service": service,
-            "error": str(exc),
-        }
+        base["error"] = str(exc)
+        if detailed:
+            base.update(
+                {
+                    "redis_version": None,
+                    "uptime_seconds": None,
+                    "uptime_days": None,
+                    "used_memory_human": None,
+                    "used_memory_peak_human": None,
+                    "connected_clients": None,
+                    "total_keys": 0,
+                    "keyspace_hits": None,
+                    "keyspace_misses": None,
+                    "instantaneous_ops_per_sec": None,
+                }
+            )
+        return base
 
 
 def read_redis_key(key: str, redis_conn=None) -> dict:

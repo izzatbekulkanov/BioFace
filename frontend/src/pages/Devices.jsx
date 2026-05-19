@@ -10,11 +10,12 @@ import {
 } from '@fluentui/react-icons'
 import PageHero from '../components/PageHero'
 import { useConfirm } from '../components/ConfirmDialog'
+import { smartFetch, getCached, isStale, invalidate } from '../lib/dataCache'
 
 // Module-level cache: sahifadan chiqib qaytganda darhol ko'rinadi
 let _camerasCache = []
 let _cacheTime = 0
-const CACHE_TTL = 30_000 // 30 soniya
+const CACHE_TTL = 60_000 // 1 daqiqa
 
 function StatusDot({ online }) {
   return (
@@ -92,10 +93,11 @@ export default function Devices() {
   }, [navigate, t])
 
   useEffect(() => {
-    // Cache yangi bo'lsa darhol ko'rsatamiz, orqa fonda yangilaymiz
+    // Cache yangi bo'lsa fetch qilmaymiz, sahifa darhol cachedan ko'rinadi
     const stale = Date.now() - _cacheTime > CACHE_TTL
-    if (stale) load()
-    else load() // har doim background refresh
+    if (stale || _camerasCache.length === 0) {
+      load()
+    }
     return () => { if (abortRef.current) abortRef.current.abort() }
   }, [load])
 
@@ -110,7 +112,11 @@ export default function Devices() {
     setDeleting(cam.id)
     try {
       const res = await fetch(`/api/cameras/${cam.id}`, { method: 'DELETE' })
-      if (res.ok) setCameras(c => c.filter(x => x.id !== cam.id))
+      if (res.ok) {
+        setCameras(c => c.filter(x => x.id !== cam.id))
+        _camerasCache = _camerasCache.filter(x => x.id !== cam.id)
+        invalidate('/api/cameras')
+      }
     } catch {}
     setDeleting(null)
   }

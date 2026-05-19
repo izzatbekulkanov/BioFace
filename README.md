@@ -118,3 +118,14 @@ Ubuntu deploy notes:
 ## Hikvision SDK Note
 
 The project currently depends on Hikvision runtime files inside `hikvision_sdk/`. If you publish this repository publicly, verify that distributing those binaries is allowed by their license.
+
+## React Frontend Notes
+
+The React SPA in `frontend/` follows a few project-wide conventions documented in [`frontend/design.md`](frontend/design.md):
+
+- **Skeleton loaders.** Every page that fetches data from the backend uses skeleton placeholders on first load (not spinners). Periodic polling does not show skeletons; the previous value stays visible while the live one updates. The shared component lives at `frontend/src/components/Skeleton.jsx`.
+- **Auth-aware fetches.** All `fetch` calls pass `credentials: 'include'` so session cookies travel through the Vite proxy to FastAPI.
+- **System pages.** ISUP Server, Redis Monitor and API Helper are standalone pages under `/settings/isup`, `/settings/redis`, `/settings/api`.
+- **Confirmation dialogs.** Use `useConfirm()` from `frontend/src/components/ConfirmDialog.jsx` instead of `window.confirm`. Pass `danger: true` for destructive actions.
+- **Toast notifications.** Use `useToast()` from `frontend/src/components/Toaster.jsx` instead of `alert()`. Methods: `toast.success/error/warning/info(message, opts)`. Toasts appear in the bottom-right corner and auto-dismiss.
+

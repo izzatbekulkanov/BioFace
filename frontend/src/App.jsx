@@ -13,9 +13,17 @@ import Devices      from './pages/Devices'
 import CameraDetail from './pages/CameraDetail'
 import Commands       from './pages/Commands'
 import Settings       from './pages/Settings'
+import IsupServer     from './pages/IsupServer'
+import RedisMonitor   from './pages/RedisMonitor'
+import ApiHelper      from './pages/ApiHelper'
+import SystemUsers    from './pages/SystemUsers'
+import UserForm       from './pages/UserForm'
+import EmployeesPage  from './pages/EmployeesPage'
+import Attendance     from './pages/Attendance'
 import MiddlewareLogs from './pages/MiddlewareLogs'
 import Shifts         from './pages/Shifts'
 import { ConfirmProvider } from './components/ConfirmDialog'
+import { ToastProvider } from './components/Toaster'
 
 function getIsLoggedIn() {
   return localStorage.getItem('bf_logged_in') === 'true'
@@ -55,6 +63,7 @@ export default function App() {
   return (
     <FluentSync>
       <ConfirmProvider>
+        <ToastProvider>
         <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
           <Navbar
             isLoggedIn={isLoggedIn}
@@ -72,12 +81,22 @@ export default function App() {
               <Route path="/devices"     element={isLoggedIn ? <Devices />   : <Navigate to="/login" replace />} />
               <Route path="/devices/:id" element={isLoggedIn ? <CameraDetail /> : <Navigate to="/login" replace />} />
               <Route path="/commands"        element={isLoggedIn ? <Commands />  : <Navigate to="/login" replace />} />
-              <Route path="/settings"        element={isLoggedIn ? <Settings />  : <Navigate to="/login" replace />} />
+              <Route path="/settings"        element={isLoggedIn ? <Settings />     : <Navigate to="/login" replace />} />
+              <Route path="/settings/isup"   element={isLoggedIn ? <IsupServer />   : <Navigate to="/login" replace />} />
+              <Route path="/settings/redis"  element={isLoggedIn ? <RedisMonitor /> : <Navigate to="/login" replace />} />
+              <Route path="/settings/api"    element={isLoggedIn ? <ApiHelper />    : <Navigate to="/login" replace />} />
+              <Route path="/users"           element={isLoggedIn ? <SystemUsers />                    : <Navigate to="/login" replace />} />
+              <Route path="/users/new"       element={isLoggedIn ? <UserForm />                       : <Navigate to="/login" replace />} />
+              <Route path="/users/:id/edit"  element={isLoggedIn ? <UserForm />                       : <Navigate to="/login" replace />} />
+              <Route path="/users/staff"     element={isLoggedIn ? <EmployeesPage mode="staff" />     : <Navigate to="/login" replace />} />
+              <Route path="/users/students"  element={isLoggedIn ? <EmployeesPage mode="students" />  : <Navigate to="/login" replace />} />
+              <Route path="/attendance"      element={isLoggedIn ? <Attendance /> : <Navigate to="/login" replace />} />
               <Route path="/shifts"          element={isLoggedIn ? <Shifts />    : <Navigate to="/login" replace />} />
               <Route path="/middleware-logs" element={isLoggedIn ? <MiddlewareLogs /> : <Navigate to="/login" replace />} />
             </Routes>
           </main>
         </div>
+        </ToastProvider>
       </ConfirmProvider>
     </FluentSync>
   )

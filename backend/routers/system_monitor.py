@@ -158,6 +158,13 @@ def redis_snapshot(
     return {"ok": snapshot["connected"], **snapshot}
 
 
+@router.get("/api/redis/status")
+def redis_status():
+    """Yengil Redis status (versiya, xotira, kalitlar, uptime). Dashboard uchun."""
+    summary = get_redis_status_summary(detailed=True)
+    return {"ok": summary["connected"], **summary}
+
+
 @router.get("/api/redis/events")
 def redis_events(
     limit: int = Query(100, ge=1, le=500),

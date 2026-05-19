@@ -28,7 +28,6 @@ from PIL import Image
 from io import BytesIO
 
 from utils.attendance_utils import ATTENDANCE_FLOOD_GUARD_SECONDS, build_attendance_sessions
-<<<<<<< HEAD:backend/routers/cameras.py
 from database import SessionLocal, get_db
 from services.hikvision_sdk import get_sdk_status
 from services.isup_manager import get_process_status
@@ -36,16 +35,6 @@ from models import Device, AttendanceLog, Employee, EmployeeWellbeingNote, Organ
 from utils.schedule_utils import get_late_minutes, is_holiday_for_org, resolve_employee_schedule
 from utils.time_utils import now_tashkent, normalize_timestamp_tashkent, today_tashkent_range
 from config.system_config import (
-=======
-from core.database import SessionLocal, get_db
-from services.hikvision_sdk import get_sdk_status
-from services.isup_manager import get_process_status
-from core.models import Device, AttendanceLog, Employee, EmployeeWellbeingNote, Organization, EmployeeCameraLink, UserOrganizationLink
-from utils.schedule_utils import get_late_minutes, is_holiday_for_org, resolve_employee_schedule
-from utils.time_utils import now_tashkent, normalize_timestamp_tashkent, today_tashkent_range
-from core.system_config import (
-    BASE_DIR,
->>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:routers/cameras.py
     ISUP_API_URL,
     ISUP_KEY,
     get_isup_public_host,
@@ -75,13 +64,8 @@ from routers.cameras_parts.psychology_utils import (
     state_labels,
     upsert_daily_psychological_state,
 )
-<<<<<<< HEAD:backend/routers/cameras.py
 from utils.access_control import normalize_role_value
 from models import UserRole
-=======
-from core.access_control import normalize_role_value
-from core.models import UserRole
->>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:routers/cameras.py
 
 # ISUP server manzili (default localhost:7670) — health/info uchun ichki URL
 
@@ -97,11 +81,7 @@ def _append_runtime_log(filename: str, text: str) -> None:
 
 # Redis bridge import (graceful fallback if Redis not available)
 try:
-<<<<<<< HEAD:backend/routers/cameras.py
     from services.redis_client import (
-=======
-    from core.redis_client import (
->>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:routers/cameras.py
         EVENTS_CHANNEL,
         get_isup_device as get_isup_device_from_redis,
         get_isup_devices as get_isup_devices_from_redis,
@@ -1250,11 +1230,7 @@ def add_camera(request: Request, data: CameraCreate, db: Session = Depends(get_d
 
     if isup_device_id:
         try:
-<<<<<<< HEAD:backend/routers/cameras.py
             from services.redis_client import send_command_and_wait
-=======
-            from core.redis_client import send_command_and_wait
->>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:routers/cameras.py
             res = send_command_and_wait(isup_device_id, "get_info", {}, timeout=5)
             if res.get("ok"):
                 c_info = res.get("camera_info", {})

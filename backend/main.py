@@ -2,11 +2,7 @@ import asyncio
 import os
 import time
 
-<<<<<<< HEAD:backend/main.py
 from utils.access_control import resolve_menu_key_for_path, resolve_user_menu_permissions, user_has_menu_access
-=======
-from core.access_control import resolve_menu_key_for_path, resolve_user_menu_permissions, user_has_menu_access
->>>>>>> 3fbf1f2249672d84de81ac32e417409f5cb20ab4:main.py
 from services.attendance_monitor import start_attendance_monitor, stop_attendance_monitor
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -15,9 +11,9 @@ from starlette.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
-import core.models as models
-from core.database import engine, ensure_schema, SessionLocal
-from core.models import RequestLog
+import models
+from database import engine, ensure_schema, SessionLocal
+from models import RequestLog
 from routers import auth, pages, webhook, cameras, employees, settings, organizations, users, system_monitor, planning
 from utils.time_utils import now_tashkent
 
@@ -254,6 +250,7 @@ if os.path.exists(assets_dir):
 @app.get("/map")
 @app.get("/dashboard")
 @app.get("/devices")
+@app.get("/settings")
 async def serve_react_app():
     index_file = os.path.join(frontend_dist, 'index.html')
     if os.path.exists(index_file):
@@ -261,6 +258,7 @@ async def serve_react_app():
     return JSONResponse({"detail": "Frontend build topilmadi"}, status_code=404)
 
 @app.get("/devices/{path:path}")
+@app.get("/settings/{path:path}")
 async def serve_react_device_path(path: str):
     index_file = os.path.join(frontend_dist, 'index.html')
     if os.path.exists(index_file):

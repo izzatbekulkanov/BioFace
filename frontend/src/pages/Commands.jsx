@@ -7,6 +7,7 @@ import {
   LockOpenRegular, PowerRegular, AlertRegular, ClockRegular, SendRegular
 } from '@fluentui/react-icons'
 import PageHero from '../components/PageHero'
+import { smartFetch, getCached, isStale } from '../lib/dataCache'
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -23,9 +24,9 @@ export default function Commands() {
   const location = useLocation()
   const isRu = i18n.language === 'ru'
 
-  const [loading, setLoading] = useState(true)
-  const [cameras, setCameras] = useState([])
-  const [orgs, setOrgs] = useState([])
+  const [loading, setLoading] = useState(() => !getCached('/api/cameras') && !getCached('/api/organizations'))
+  const [cameras, setCameras] = useState(() => getCached('/api/cameras') || [])
+  const [orgs, setOrgs] = useState(() => getCached('/api/organizations') || [])
   const [error, setError] = useState('')
   const [spin, setSpin] = useState(false)
 
@@ -45,41 +46,36 @@ export default function Commands() {
   // Demo user permissions - fetch from /api/users/me if needed, assuming Full for now
   const CAMERA_COMMAND_ALLOWED = true 
 
-  const load = useCallback(async (animate = false) => {
-    if (animate) setSpin(true)
+  const load = useCallback(async (force = false) => {
+    if (force) setSpin(true)
     setError('')
     if (abortRef.current) abortRef.current.abort()
     abortRef.current = new AbortController()
+    const signal = abortRef.current.signal
+
+    // Skip fetching when cache is fresh (unless force-refresh)
+    if (!force && !isStale('/api/cameras') && !isStale('/api/organizations')) {
+      setLoading(false)
+      return
+    }
 
     try {
-      const isFirstLoad = cameras.length === 0 && !animate
-      const fetchPromise = Promise.all([
-        fetch('/api/cameras', { signal: abortRef.current.signal }),
-        fetch('/api/organizations', { signal: abortRef.current.signal })
+      const [cams, orgList] = await Promise.all([
+        smartFetch('/api/cameras', { signal, force }),
+        smartFetch('/api/organizations', { signal, force }).catch(() => []),
       ])
-      
-      const [camRes, orgRes] = isFirstLoad 
-        ? await Promise.all([fetchPromise, new Promise(r => setTimeout(r, 800))]).then(arr => arr[0])
-        : await fetchPromise
-
-      if (camRes.status === 401 || orgRes.status === 401) { navigate('/login'); return }
-      if (!camRes.ok) throw new Error('Kameralar yuklanmadi')
-      
-      const cdata = await camRes.json()
-      const odata = orgRes.ok ? await orgRes.json() : []
-
-      setCameras(Array.isArray(cdata) ? cdata : cdata.items || [])
-      setOrgs(Array.isArray(odata) ? odata : odata.items || [])
-
+      setCameras(cams || [])
+      setOrgs(orgList || [])
       setLoading(false)
-      if (animate) setTimeout(() => setSpin(false), 500)
+      if (force) setTimeout(() => setSpin(false), 400)
     } catch (e) {
       if (e.name === 'AbortError') return
+      if (String(e.message).includes('401')) { navigate('/login'); return }
       setError(e.message || 'Xatolik yuz berdi')
       setLoading(false)
-      if (animate) setTimeout(() => setSpin(false), 500)
+      if (force) setTimeout(() => setSpin(false), 400)
     }
-  }, [navigate, cameras.length])
+  }, [navigate])
 
   useEffect(() => {
     load()

@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTheme } from 'next-themes'
 import { useTranslation } from 'react-i18next'
@@ -5,11 +6,14 @@ import { Tooltip } from '@fluentui/react-components'
 import {
   MapRegular, InfoRegular, MailRegular, SignOutRegular, PersonRegular,
   GridRegular, CameraRegular, CodeRegular, WeatherSunnyRegular, WeatherMoonRegular,
-  SettingsRegular, HistoryRegular, CalendarClockRegular
+  SettingsRegular, HistoryRegular, CalendarClockRegular,
+  ServerRegular, DatabaseRegular, PlugConnectedRegular, ChevronDownRegular,
+  PeopleRegular, ShieldRegular, HatGraduationRegular,
+  ClipboardTaskListLtrRegular,
 } from '@fluentui/react-icons'
 
 const PUBLIC_LINKS  = ['map', 'about', 'contact']
-const PRIVATE_LINKS = ['dashboard', 'devices', 'shifts', 'middlewareLogs', 'settings']
+const PRIVATE_LINKS = ['dashboard', 'devices', 'attendance', 'shifts', 'middlewareLogs']
 
 const LINK_ICONS = {
   map:            <MapRegular  fontSize={17} />,
@@ -18,12 +22,13 @@ const LINK_ICONS = {
   dashboard:      <GridRegular fontSize={17} />,
   devices:        <CameraRegular fontSize={17} />,
   shifts:         <CalendarClockRegular fontSize={17} />,
+  attendance:     <ClipboardTaskListLtrRegular fontSize={17} />,
   middlewareLogs: <HistoryRegular fontSize={17} />,
   settings:       <SettingsRegular fontSize={17} />,
 }
 const LINK_PATHS = {
   map: '/map', about: '/about', contact: '/contact', dashboard: '/dashboard', 
-  devices: '/devices', shifts: '/shifts', middlewareLogs: '/middleware-logs', settings: '/settings',
+  devices: '/devices', shifts: '/shifts', attendance: '/attendance', middlewareLogs: '/middleware-logs', settings: '/settings',
 }
 
 // Navbar ichida barcha tugmalar oq matnli
@@ -46,6 +51,129 @@ function NavBtn({ id, active, onClick }) {
       {LINK_ICONS[id]}
       {t(`nav.${id}`)}
     </button>
+  )
+}
+
+// Dropdown menu for Settings section
+function SettingsDropdown({ active }) {
+  const { t, i18n } = useTranslation()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  const isRu = i18n.language === 'ru'
+
+  useEffect(() => {
+    function handleOutside(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    if (open) document.addEventListener('mousedown', handleOutside)
+    return () => document.removeEventListener('mousedown', handleOutside)
+  }, [open])
+
+  const items = [
+    { id: 'settings', label: isRu ? 'Настройки' : 'Sozlamalar', icon: <SettingsRegular fontSize={15} />, path: '/settings' },
+    { id: 'isup', label: 'ISUP Server', icon: <ServerRegular fontSize={15} />, path: '/settings/isup' },
+    { id: 'redis', label: 'Redis', icon: <DatabaseRegular fontSize={15} />, path: '/settings/redis' },
+    { id: 'api', label: 'API Helper', icon: <PlugConnectedRegular fontSize={15} />, path: '/settings/api' },
+  ]
+
+  return <NavDropdown
+    label={t('nav.settings')}
+    icon={<SettingsRegular fontSize={17} />}
+    items={items}
+    active={active}
+    open={open}
+    setOpen={setOpen}
+    refEl={ref}
+    location={location}
+    navigate={navigate}
+  />
+}
+
+// Dropdown menu for Users section
+function UsersDropdown({ active }) {
+  const { t, i18n } = useTranslation()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    function handleOutside(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    if (open) document.addEventListener('mousedown', handleOutside)
+    return () => document.removeEventListener('mousedown', handleOutside)
+  }, [open])
+
+  const items = [
+    { id: 'usersAdmins',  label: t('nav.usersAdmins'),  icon: <ShieldRegular fontSize={15} />,         path: '/users' },
+    { id: 'usersStaff',   label: t('nav.usersStaff'),   icon: <PeopleRegular fontSize={15} />,         path: '/users/staff' },
+    { id: 'usersStudents',label: t('nav.usersStudents'),icon: <HatGraduationRegular fontSize={15} />,  path: '/users/students' },
+  ]
+
+  return <NavDropdown
+    label={t('nav.users')}
+    icon={<PeopleRegular fontSize={17} />}
+    items={items}
+    active={active}
+    open={open}
+    setOpen={setOpen}
+    refEl={ref}
+    location={location}
+    navigate={navigate}
+  />
+}
+
+// Shared dropdown shell used by both SettingsDropdown and UsersDropdown
+function NavDropdown({ label, icon, items, active, open, setOpen, refEl, location, navigate }) {
+  return (
+    <div ref={refEl} style={{ position: 'relative' }}>
+      <button onClick={() => setOpen(!open)} style={{
+        ...navBtn(active),
+        gap: 5,
+      }}
+        onMouseEnter={e => { if (!active) { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = '#fff' } }}
+        onMouseLeave={e => { if (!active && !open) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.55)' } }}
+      >
+        {icon}
+        {label}
+        <ChevronDownRegular fontSize={12} style={{ opacity: 0.6, transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'rotate(0)' }} />
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, marginTop: 6,
+          background: '#1a2236', border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: 10, padding: '6px', minWidth: 220,
+          boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
+          zIndex: 999, animation: 'fadeIn 0.15s ease',
+        }}>
+          {items.map(item => {
+            const isActive = location.pathname === item.path
+            return (
+              <button key={item.id} onClick={() => { navigate(item.path); setOpen(false) }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+                  padding: '9px 12px', borderRadius: 7, border: 'none',
+                  background: isActive ? 'rgba(255,255,255,0.1)' : 'transparent',
+                  color: isActive ? '#fff' : 'rgba(255,255,255,0.7)',
+                  fontSize: 13, fontWeight: isActive ? 600 : 400,
+                  cursor: 'pointer', textAlign: 'left',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = '#fff' }}
+                onMouseLeave={e => { e.currentTarget.style.background = isActive ? 'rgba(255,255,255,0.1)' : 'transparent'; e.currentTarget.style.color = isActive ? '#fff' : 'rgba(255,255,255,0.7)' }}
+              >
+                {item.icon}
+                {item.label}
+              </button>
+            )
+          })}
+        </div>
+      )}
+      <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(-4px) } to { opacity: 1; transform: translateY(0) } }`}</style>
+    </div>
   )
 }
 
@@ -102,6 +230,12 @@ export default function Navbar({ isLoggedIn, onLogout, onLangChange }) {
             onClick={() => navigate(LINK_PATHS[id])}
           />
         ))}
+        {isLoggedIn && (
+          <>
+            <UsersDropdown active={location.pathname.startsWith('/users')} />
+            <SettingsDropdown active={location.pathname.startsWith('/settings')} />
+          </>
+        )}
       </nav>
 
       {/* Theme toggle */}
