@@ -19,7 +19,10 @@ import ApiHelper      from './pages/ApiHelper'
 import SystemUsers    from './pages/SystemUsers'
 import UserForm       from './pages/UserForm'
 import EmployeesPage  from './pages/EmployeesPage'
+import EmployeeForm   from './pages/EmployeeForm'
+import EmployeeDetail from './pages/EmployeeDetail'
 import Attendance     from './pages/Attendance'
+import PsychologicalPortrait from './pages/PsychologicalPortrait'
 import MiddlewareLogs from './pages/MiddlewareLogs'
 import Shifts         from './pages/Shifts'
 import { ConfirmProvider } from './components/ConfirmDialog'
@@ -89,8 +92,13 @@ export default function App() {
               <Route path="/users/new"       element={isLoggedIn ? <UserForm />                       : <Navigate to="/login" replace />} />
               <Route path="/users/:id/edit"  element={isLoggedIn ? <UserForm />                       : <Navigate to="/login" replace />} />
               <Route path="/users/staff"     element={isLoggedIn ? <EmployeesPage mode="staff" />     : <Navigate to="/login" replace />} />
+              <Route path="/users/staff/new" element={isLoggedIn ? <EmployeeForm />                  : <Navigate to="/login" replace />} />
               <Route path="/users/students"  element={isLoggedIn ? <EmployeesPage mode="students" />  : <Navigate to="/login" replace />} />
+              <Route path="/users/students/new" element={isLoggedIn ? <EmployeeForm />               : <Navigate to="/login" replace />} />
+              <Route path="/employees/:id/edit" element={isLoggedIn ? <EmployeeForm />               : <Navigate to="/login" replace />} />
+              <Route path="/employees/:id"      element={isLoggedIn ? <EmployeeDetail />             : <Navigate to="/login" replace />} />
               <Route path="/attendance"      element={isLoggedIn ? <Attendance /> : <Navigate to="/login" replace />} />
+              <Route path="/psychology"      element={isLoggedIn ? <PsychologicalPortrait /> : <Navigate to="/login" replace />} />
               <Route path="/shifts"          element={isLoggedIn ? <Shifts />    : <Navigate to="/login" replace />} />
               <Route path="/middleware-logs" element={isLoggedIn ? <MiddlewareLogs /> : <Navigate to="/login" replace />} />
             </Routes>

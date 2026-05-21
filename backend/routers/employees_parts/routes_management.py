@@ -47,8 +47,18 @@ router = APIRouter()
 
 
 def _resolve_employee_allowed_org_ids(request: Request, db: Session) -> list[int]:
-    """Employees list scope: only organizations explicitly linked to the current user."""
+    """Employees list scope.
+
+    SuperAdmin -> hamma tashkilotlar.
+    Boshqa rollar -> faqat user bilan bog'langan tashkilotlar
+    (`UserOrganizationLink` yoki session.organization_id orqali).
+    """
     auth_user = request.session.get("auth_user") or {}
+    role = str(auth_user.get("role") or "").strip().lower()
+    if role in {"superadmin", "super_admin"}:
+        rows = db.query(Organization.id).all()
+        return [int(row.id) for row in rows]
+
     org_ids: set[int] = set()
 
     user_id = auth_user.get("id")
@@ -694,19 +704,124 @@ def _employee_filter_options_payload(
     }
 
 
-@router.get("/api/employees")
-def get_employees(request: Request, db: Session = Depends(get_db)):
+@router.get("/api/employees/{emp_id}")
+def get_employee(emp_id: int, request: Request, db: Session = Depends(get_db)):
+    """Bitta xodim ma'lumotlari (form uchun)."""
     allowed_org_ids = _resolve_employee_allowed_org_ids(request, db)
-    if not allowed_org_ids:
-        return []
+    emp = db.query(Employee).filter(Employee.id == int(emp_id)).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Xodim topilmadi")
+    if allowed_org_ids and emp.organization_id is not None and int(emp.organization_id) not in allowed_org_ids:
+        raise HTTPException(status_code=403, detail="Bu xodimga ruxsat yo'q")
 
-    employees = (
-        db.query(Employee)
-        .filter(Employee.organization_id.in_(allowed_org_ids))
-        .order_by(Employee.id.desc())
+    org_rows = (
+        db.query(Organization.id, Organization.name)
+        .filter(Organization.id.in_(allowed_org_ids))
+        .all()
+        if allowed_org_ids
+        else []
+    )
+    cam_rows = (
+        db.query(Device.id, Device.name)
+        .filter(Device.organization_id.in_(allowed_org_ids))
+        .all()
+        if allowed_org_ids
+        else []
+    )
+    links = (
+        db.query(EmployeeCameraLink.employee_id, EmployeeCameraLink.camera_id)
+        .filter(EmployeeCameraLink.employee_id == int(emp.id))
         .all()
     )
-    return _build_employee_payload(db, employees, allowed_org_ids)
+
+    org_map = {int(r[0]): str(r[1]) for r in org_rows}
+    cam_map = {int(r[0]): str(r[1]) for r in cam_rows}
+    camera_map: dict[int, list[int]] = {int(emp.id): []}
+    for emp_id_row, cam_id_row in links:
+        camera_map[int(emp_id_row)].append(int(cam_id_row))
+
+    return {"ok": True, "item": _serialize_employee_record(emp, org_map, cam_map, camera_map)}
+
+
+@router.get("/api/employees")
+def get_employees(
+    request: Request,
+    db: Session = Depends(get_db),
+    organization_id: Optional[int] = Query(None),
+    employee_type: Optional[str] = Query(None, description="hodim | oqituvchi | oquvchi | talaba"),
+    search: Optional[str] = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=500),
+    paginate: bool = Query(True, description="False bo'lsa eski format (faqat list) qaytadi"),
+):
+    """Xodimlar ro'yxati, paginatsiya bilan.
+
+    Backward compatibility: agar `paginate=false` berilsa, eski format (list) qaytadi.
+    Aks holda `{ items, total, page, page_size, total_pages }` qaytadi.
+    """
+    allowed_org_ids = _resolve_employee_allowed_org_ids(request, db)
+    if not allowed_org_ids:
+        if paginate:
+            return {"items": [], "total": 0, "page": 1, "page_size": page_size, "total_pages": 0}
+        return []
+
+    query = db.query(Employee).filter(Employee.organization_id.in_(allowed_org_ids))
+
+    if organization_id is not None and int(organization_id) in allowed_org_ids:
+        query = query.filter(Employee.organization_id == int(organization_id))
+
+    type_filter = (employee_type or "").strip().lower()
+    if type_filter == "students":
+        query = query.filter(func.lower(func.coalesce(Employee.employee_type, "")).in_(["oquvchi", "talaba", "student"]))
+    elif type_filter == "staff":
+        # hodim, oqituvchi, employee, staff, teacher yoki tipsiz
+        query = query.filter(
+            or_(
+                Employee.employee_type.is_(None),
+                func.trim(Employee.employee_type) == "",
+                func.lower(func.trim(Employee.employee_type)).in_(
+                    ["hodim", "oqituvchi", "employee", "staff", "teacher"]
+                ),
+            )
+        )
+    elif type_filter:
+        query = query.filter(func.lower(func.trim(Employee.employee_type)) == type_filter)
+
+    search_clean = (search or "").strip().lower()
+    if search_clean:
+        like = f"%{search_clean}%"
+        query = query.filter(
+            or_(
+                func.lower(Employee.first_name).like(like),
+                func.lower(Employee.last_name).like(like),
+                func.lower(Employee.middle_name).like(like),
+                func.lower(Employee.personal_id).like(like),
+                func.lower(func.coalesce(Employee.department, "")).like(like),
+                func.lower(func.coalesce(Employee.position, "")).like(like),
+            )
+        )
+
+    if not paginate:
+        employees = query.order_by(Employee.id.desc()).all()
+        return _build_employee_payload(db, employees, allowed_org_ids)
+
+    total = query.with_entities(func.count(Employee.id)).scalar() or 0
+    total_pages = (int(total) + int(page_size) - 1) // int(page_size) if total else 0
+    safe_page = max(1, min(int(page), total_pages or 1))
+
+    employees = (
+        query.order_by(Employee.id.desc())
+        .offset((safe_page - 1) * int(page_size))
+        .limit(int(page_size))
+        .all()
+    )
+    return {
+        "items": _build_employee_payload(db, employees, allowed_org_ids),
+        "total": int(total),
+        "page": safe_page,
+        "page_size": int(page_size),
+        "total_pages": int(total_pages),
+    }
 
 
 @router.get("/api/employees/filter-options")
@@ -1600,7 +1715,7 @@ def update_employee(
             raise HTTPException(status_code=422, detail="Kameraga saqlash uchun Shaxsiy ID majburiy")
 
         face_url = None
-        if has_new_image_upload and emp.image_url:
+        if emp.image_url:
             base_url = str(request.base_url)
             face_url = urljoin(base_url, str(emp.image_url).lstrip("/"))
 

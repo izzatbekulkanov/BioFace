@@ -10,8 +10,27 @@ from sqlalchemy.orm import Session, selectinload
 
 from services.attendance_monitor import attendance_monitor, get_attendance_monitor_status
 from database import get_db
-from models import Employee, Holiday, Schedule, TelegramContact
-from routers.employees_parts.common import get_accessible_organization_or_raise, resolve_allowed_org_ids
+from models import (
+    AttendanceLog,
+    Device,
+    Employee,
+    EmployeePsychologicalState,
+    Holiday,
+    Organization,
+    Schedule,
+    TelegramContact,
+)
+from routers.cameras_parts.psychology_utils import (
+    PROFILELESS_STATES,
+    aggregate_emotion_scores,
+    build_psychological_profile,
+    deserialize_emotion_scores,
+)
+from routers.employees_parts.common import (
+    get_accessible_organization_or_raise,
+    resolve_allowed_org_ids,
+    serialize_psychological_state_row,
+)
 from utils.schedule_utils import normalize_hhmm, resolve_employee_schedule, serialize_holiday_row, serialize_schedule_row
 
 
@@ -600,3 +619,278 @@ def attendance_monitor_status():
 def attendance_monitor_run():
     result = attendance_monitor.run_once()
     return {"ok": True, "result": result, "status": get_attendance_monitor_status()}
+
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# Psychological portrait — JSON endpoint for React frontend
+# ────────────────────────────────────────────────────────────────────────────
+
+
+@router.get("/api/psychological-portrait")
+def psychological_portrait_summary(
+    request: Request,
+    organization_id: Optional[int] = Query(None),
+    year: Optional[str] = Query(None),
+    month: Optional[str] = Query(None),
+    day: Optional[str] = Query(None),
+    limit: int = Query(60, ge=1, le=300),
+    db: Session = Depends(get_db),
+):
+    """Psixologik portret sahifasi uchun JSON xulosasi.
+
+    Qaytaradi:
+      - filters: { years, months, days } — mavjud yil/oy/kun
+      - stats:   { total_employees, period_records, avg_profile, latest_at, level }
+      - average: { state_key, profile_text_uz/ru, top_emotions_uz/ru, emotion_scores }
+      - state_breakdown: [{ state_key, label_uz, label_ru, count }]
+      - source_breakdown: [{ source, count }]
+      - items: [ { ...state, employee: { id, full_name, personal_id, organization_name }, snapshot_url } ]
+    """
+    allowed_org_ids = resolve_allowed_org_ids(request, db) or []
+    invalid_state_keys = tuple(sorted(PROFILELESS_STATES))
+
+    # Xodim doirasini aniqlash
+    employees_q = db.query(Employee.id, Employee.organization_id).filter(Employee.organization_id.isnot(None))
+    if allowed_org_ids:
+        employees_q = employees_q.filter(Employee.organization_id.in_(allowed_org_ids))
+    if organization_id is not None:
+        employees_q = employees_q.filter(Employee.organization_id == int(organization_id))
+    scoped_employees = employees_q.all()
+    scoped_employee_ids = [int(row.id) for row in scoped_employees]
+
+    # Foydali psixologik state'larga filter
+    base_q = db.query(EmployeePsychologicalState).filter(
+        EmployeePsychologicalState.state_key.isnot(None),
+        EmployeePsychologicalState.state_key != "",
+        EmployeePsychologicalState.state_key.notin_(invalid_state_keys),
+        EmployeePsychologicalState.emotion_scores_json.isnot(None),
+        EmployeePsychologicalState.emotion_scores_json != "",
+        EmployeePsychologicalState.confidence.isnot(None),
+    )
+    if scoped_employee_ids:
+        base_q = base_q.filter(EmployeePsychologicalState.employee_id.in_(scoped_employee_ids))
+    else:
+        base_q = base_q.filter(EmployeePsychologicalState.id == -1)
+
+    # Filtrga yaroqli yil/oy/kun ro'yxati (filter-data)
+    year_rows = (
+        base_q
+        .with_entities(func.substr(EmployeePsychologicalState.state_date, 1, 4).label("y"))
+        .distinct()
+        .order_by(func.substr(EmployeePsychologicalState.state_date, 1, 4).desc())
+        .all()
+    )
+    years = [str(r.y or "").strip() for r in year_rows if str(r.y or "").strip()]
+
+    month_q = base_q
+    if year and year != "all":
+        month_q = month_q.filter(func.substr(EmployeePsychologicalState.state_date, 1, 4) == year)
+    month_rows = (
+        month_q
+        .with_entities(func.substr(EmployeePsychologicalState.state_date, 6, 2).label("m"))
+        .distinct()
+        .order_by(func.substr(EmployeePsychologicalState.state_date, 6, 2).asc())
+        .all()
+    )
+    months = [str(r.m or "").strip() for r in month_rows if str(r.m or "").strip()]
+
+    day_q = month_q
+    if month and month != "all":
+        day_q = day_q.filter(func.substr(EmployeePsychologicalState.state_date, 6, 2) == month)
+    day_rows = (
+        day_q
+        .with_entities(func.substr(EmployeePsychologicalState.state_date, 9, 2).label("d"))
+        .distinct()
+        .order_by(func.substr(EmployeePsychologicalState.state_date, 9, 2).asc())
+        .all()
+    )
+    days = [str(r.d or "").strip() for r in day_rows if str(r.d or "").strip()]
+
+    # Filtrlangan ro'yxat
+    filtered_q = base_q
+    if year and year != "all":
+        filtered_q = filtered_q.filter(func.substr(EmployeePsychologicalState.state_date, 1, 4) == year)
+    if month and month != "all":
+        filtered_q = filtered_q.filter(func.substr(EmployeePsychologicalState.state_date, 6, 2) == month)
+    if day and day != "all":
+        filtered_q = filtered_q.filter(func.substr(EmployeePsychologicalState.state_date, 9, 2) == day)
+
+    # Snapshot uchun har bir (employee, date) bo'yicha eng so'nggi attendance log'ni topamiz
+    snapshot_subq = (
+        db.query(
+            AttendanceLog.employee_id.label("employee_id"),
+            func.date(AttendanceLog.timestamp).label("state_date"),
+            func.max(AttendanceLog.id).label("latest_log_id"),
+        )
+        .filter(
+            AttendanceLog.employee_id.isnot(None),
+            AttendanceLog.snapshot_url.isnot(None),
+            AttendanceLog.snapshot_url != "",
+        )
+        .group_by(AttendanceLog.employee_id, func.date(AttendanceLog.timestamp))
+        .subquery()
+    )
+    snapshot_url_map: dict[tuple[int, str], str] = {}
+    snap_rows = (
+        db.query(
+            snapshot_subq.c.employee_id,
+            snapshot_subq.c.state_date,
+            AttendanceLog.snapshot_url,
+        )
+        .join(AttendanceLog, AttendanceLog.id == snapshot_subq.c.latest_log_id)
+        .all()
+    )
+    for r in snap_rows:
+        if r.employee_id is None or not r.state_date:
+            continue
+        snapshot_url_map[(int(r.employee_id), str(r.state_date))] = r.snapshot_url
+
+    # Top yozuvlar
+    rows = (
+        filtered_q
+        .order_by(EmployeePsychologicalState.assessed_at.desc(), EmployeePsychologicalState.id.desc())
+        .limit(int(limit))
+        .all()
+    )
+
+    # Xodimlar va tashkilotlarni bir marta yuklash
+    emp_ids_in_rows = list({int(r.employee_id) for r in rows if r.employee_id is not None})
+    emp_map: dict[int, Employee] = {}
+    if emp_ids_in_rows:
+        emp_objs = (
+            db.query(Employee)
+            .filter(Employee.id.in_(emp_ids_in_rows))
+            .all()
+        )
+        emp_map = {int(e.id): e for e in emp_objs}
+
+    org_ids_needed = list({int(e.organization_id) for e in emp_map.values() if e.organization_id is not None})
+    org_name_map: dict[int, str] = {}
+    if org_ids_needed:
+        for oid, oname in (
+            db.query(Organization.id, Organization.name).filter(Organization.id.in_(org_ids_needed)).all()
+        ):
+            org_name_map[int(oid)] = str(oname or "")
+
+    items = []
+    for r in rows:
+        emp = emp_map.get(int(r.employee_id)) if r.employee_id is not None else None
+        snap_url = snapshot_url_map.get((int(r.employee_id), str(r.state_date)), None) if r.employee_id is not None else None
+        base = serialize_psychological_state_row(r)
+        items.append({
+            **base,
+            "snapshot_url": snap_url,
+            "employee": (
+                {
+                    "id": int(emp.id),
+                    "full_name": " ".join([x for x in [emp.first_name, emp.last_name, emp.middle_name] if x]).strip() or f"#{emp.id}",
+                    "personal_id": emp.personal_id,
+                    "organization_id": emp.organization_id,
+                    "organization_name": org_name_map.get(int(emp.organization_id)) if emp.organization_id is not None else None,
+                    "avatar": emp.image_url or None,
+                }
+                if emp is not None
+                else {"id": None, "full_name": "—", "personal_id": None, "organization_id": None, "organization_name": None, "avatar": None}
+            ),
+        })
+
+    # State va source breakdown (filtrlanganlar bo'yicha)
+    state_breakdown_rows = (
+        filtered_q
+        .with_entities(EmployeePsychologicalState.state_key, func.count(EmployeePsychologicalState.id))
+        .group_by(EmployeePsychologicalState.state_key)
+        .all()
+    )
+    state_breakdown = []
+    for state_key, count in state_breakdown_rows:
+        if not state_key:
+            continue
+        profile = build_psychological_profile(state_key)
+        state_breakdown.append({
+            "state_key": state_key,
+            "label_uz": profile.get("profile_text_uz") or state_key,
+            "label_ru": profile.get("profile_text_ru") or state_key,
+            "count": int(count or 0),
+        })
+    state_breakdown.sort(key=lambda x: x["count"], reverse=True)
+
+    source_breakdown_rows = (
+        filtered_q
+        .with_entities(EmployeePsychologicalState.source, func.count(EmployeePsychologicalState.id))
+        .group_by(EmployeePsychologicalState.source)
+        .all()
+    )
+    source_breakdown = [
+        {"source": (s or "manual"), "count": int(c or 0)}
+        for s, c in source_breakdown_rows
+    ]
+    source_breakdown.sort(key=lambda x: x["count"], reverse=True)
+
+    # O'rtacha emotsiyalar va profil
+    aggregate_items = []
+    for r in rows:
+        scores = deserialize_emotion_scores(r.emotion_scores_json)
+        if scores:
+            aggregate_items.append({
+                "state_key": r.state_key,
+                "confidence": r.confidence,
+                "emotion_scores": scores,
+            })
+    average_emotions = aggregate_emotion_scores(aggregate_items)
+    average_state_key = max(average_emotions, key=average_emotions.get) if average_emotions else "undetermined"
+    average_profile = build_psychological_profile(
+        average_state_key,
+        emotion_scores=average_emotions,
+    )
+    average_payload = {
+        **average_profile,
+        "emotion_scores": average_emotions,
+    }
+
+    period_total = filtered_q.count()
+    selected_employees = filtered_q.with_entities(func.count(func.distinct(EmployeePsychologicalState.employee_id))).scalar() or 0
+    coverage = round(100 * selected_employees / max(1, len(scoped_employee_ids))) if scoped_employee_ids else 0
+    if coverage >= 75:
+        level = "stable"
+    elif coverage >= 45:
+        level = "moderate"
+    else:
+        level = "attention"
+
+    latest_at = None
+    last_row = (
+        filtered_q
+        .order_by(EmployeePsychologicalState.assessed_at.desc(), EmployeePsychologicalState.id.desc())
+        .with_entities(EmployeePsychologicalState.assessed_at)
+        .first()
+    )
+    if last_row and last_row[0]:
+        latest_at = last_row[0].isoformat()
+
+    return {
+        "ok": True,
+        "filters": {
+            "years": years,
+            "months": months,
+            "days": days,
+            "selected": {
+                "year": year or "all",
+                "month": month or "all",
+                "day": day or "all",
+                "organization_id": organization_id,
+            },
+        },
+        "stats": {
+            "total_employees": len(scoped_employee_ids),
+            "period_records": int(period_total),
+            "selected_employees": int(selected_employees),
+            "coverage_percent": int(coverage),
+            "level": level,
+            "latest_at": latest_at,
+        },
+        "average": average_payload,
+        "state_breakdown": state_breakdown,
+        "source_breakdown": source_breakdown,
+        "items": items,
+    }

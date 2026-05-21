@@ -537,6 +537,19 @@ def get_menus_dict(request: Request) -> dict:
 
 def _resolve_allowed_org_ids(request: Request, db: Session) -> list[int]:
     auth_user = request.session.get("auth_user") or {}
+    role = str(auth_user.get("role") or "").strip().lower()
+
+    # SuperAdmin -> hamma aktiv (expired emas) tashkilotlar
+    if role in {"superadmin", "super_admin"}:
+        org_rows = db.query(Organization.id, Organization.subscription_status).all()
+        allowed: list[int] = []
+        for org_id, sub_status in org_rows:
+            status = str(sub_status.value if hasattr(sub_status, "value") else sub_status or "").strip().lower()
+            if status == "expired":
+                continue
+            allowed.append(int(org_id))
+        return sorted(allowed)
+
     org_ids: set[int] = set()
     user_id = auth_user.get("id")
     has_linked_orgs = False

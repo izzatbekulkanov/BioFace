@@ -9,11 +9,11 @@ import {
   SettingsRegular, HistoryRegular, CalendarClockRegular,
   ServerRegular, DatabaseRegular, PlugConnectedRegular, ChevronDownRegular,
   PeopleRegular, ShieldRegular, HatGraduationRegular,
-  ClipboardTaskListLtrRegular,
+  ClipboardTaskListLtrRegular, BrainCircuitRegular,
 } from '@fluentui/react-icons'
 
 const PUBLIC_LINKS  = ['map', 'about', 'contact']
-const PRIVATE_LINKS = ['dashboard', 'devices', 'attendance', 'shifts', 'middlewareLogs']
+const PRIVATE_LINKS = ['dashboard', 'devices', 'attendance', 'psychology', 'shifts', 'middlewareLogs']
 
 const LINK_ICONS = {
   map:            <MapRegular  fontSize={17} />,
@@ -23,12 +23,13 @@ const LINK_ICONS = {
   devices:        <CameraRegular fontSize={17} />,
   shifts:         <CalendarClockRegular fontSize={17} />,
   attendance:     <ClipboardTaskListLtrRegular fontSize={17} />,
+  psychology:     <BrainCircuitRegular fontSize={17} />,
   middlewareLogs: <HistoryRegular fontSize={17} />,
   settings:       <SettingsRegular fontSize={17} />,
 }
 const LINK_PATHS = {
   map: '/map', about: '/about', contact: '/contact', dashboard: '/dashboard', 
-  devices: '/devices', shifts: '/shifts', attendance: '/attendance', middlewareLogs: '/middleware-logs', settings: '/settings',
+  devices: '/devices', shifts: '/shifts', attendance: '/attendance', psychology: '/psychology', middlewareLogs: '/middleware-logs', settings: '/settings',
 }
 
 // Navbar ichida barcha tugmalar oq matnli
