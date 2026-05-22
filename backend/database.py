@@ -88,6 +88,7 @@ def ensure_schema() -> bool:
                     "webhook_enabled": "ALTER TABLE devices ADD COLUMN webhook_enabled BOOLEAN DEFAULT 0",
                     "webhook_target_url": "ALTER TABLE devices ADD COLUMN webhook_target_url VARCHAR",
                     "webhook_picture_sending": "ALTER TABLE devices ADD COLUMN webhook_picture_sending BOOLEAN DEFAULT 0",
+                    "direction": "ALTER TABLE devices ADD COLUMN direction VARCHAR",
                 }
                 for col_name, sql in device_alters.items():
                     if col_name not in cols:
@@ -138,6 +139,16 @@ def ensure_schema() -> bool:
                     conn.execute(text("ALTER TABLE organizations ADD COLUMN google_client_secret VARCHAR"))
                 if "google_redirect_uri" not in org_cols:
                     conn.execute(text("ALTER TABLE organizations ADD COLUMN google_redirect_uri VARCHAR"))
+                if "address" not in org_cols:
+                    conn.execute(text("ALTER TABLE organizations ADD COLUMN address VARCHAR"))
+                if "phone" not in org_cols:
+                    conn.execute(text("ALTER TABLE organizations ADD COLUMN phone VARCHAR"))
+                if "region" not in org_cols:
+                    conn.execute(text("ALTER TABLE organizations ADD COLUMN region VARCHAR"))
+                if "district" not in org_cols:
+                    conn.execute(text("ALTER TABLE organizations ADD COLUMN district VARCHAR"))
+                if "village" not in org_cols:
+                    conn.execute(text("ALTER TABLE organizations ADD COLUMN village VARCHAR"))
                 conn.execute(
                     text(
                         "UPDATE organizations "
@@ -291,6 +302,20 @@ def ensure_schema() -> bool:
                     conn.execute(text("ALTER TABLE employees ADD COLUMN position_id INTEGER"))
                 if "schedule_id" not in emp_cols:
                     conn.execute(text("ALTER TABLE employees ADD COLUMN schedule_id INTEGER"))
+                if "phone" not in emp_cols:
+                    conn.execute(text("ALTER TABLE employees ADD COLUMN phone VARCHAR"))
+                if "parent_phone" not in emp_cols:
+                    conn.execute(text("ALTER TABLE employees ADD COLUMN parent_phone VARCHAR"))
+                if "region" not in emp_cols:
+                    conn.execute(text("ALTER TABLE employees ADD COLUMN region VARCHAR"))
+                if "district" not in emp_cols:
+                    conn.execute(text("ALTER TABLE employees ADD COLUMN district VARCHAR"))
+                if "address" not in emp_cols:
+                    conn.execute(text("ALTER TABLE employees ADD COLUMN address VARCHAR"))
+                if "birth_date" not in emp_cols:
+                    conn.execute(text("ALTER TABLE employees ADD COLUMN birth_date VARCHAR"))
+                if "gender" not in emp_cols:
+                    conn.execute(text("ALTER TABLE employees ADD COLUMN gender VARCHAR"))
                 conn.execute(
                     text(
                         "CREATE UNIQUE INDEX IF NOT EXISTS ux_employees_personal_id "

@@ -55,6 +55,11 @@ class OrganizationCreate(BaseModel):
     organization_type: Optional[str] = None
     default_start_time: Optional[str] = "09:00"
     default_end_time: Optional[str] = "18:00"
+    address: Optional[str] = None
+    phone: Optional[str] = None
+    region: Optional[str] = None
+    district: Optional[str] = None
+    village: Optional[str] = None
 
 
 class OrganizationUpdate(BaseModel):
@@ -63,6 +68,11 @@ class OrganizationUpdate(BaseModel):
     default_start_time: Optional[str] = None
     default_end_time: Optional[str] = None
     subscription_status: Optional[str] = None
+    address: Optional[str] = None
+    phone: Optional[str] = None
+    region: Optional[str] = None
+    district: Optional[str] = None
+    village: Optional[str] = None
 
 
 @router.get("/api/organizations/types")
@@ -92,6 +102,11 @@ def list_organizations(
             "subscription_end_date": o.subscription_end_date.isoformat() if o.subscription_end_date else None,
             "default_start_time": o.default_start_time,
             "default_end_time": o.default_end_time,
+            "address": o.address,
+            "phone": o.phone,
+            "region": o.region,
+            "district": o.district,
+            "village": o.village,
             "users_count": int(users_count_by_org.get(int(o.id), 0)),
             "employees_count": len(o.employees),
             "devices_count": len(o.devices),
@@ -122,6 +137,11 @@ def get_organization(
         "subscription_end_date": org.subscription_end_date.isoformat() if org.subscription_end_date else None,
         "default_start_time": org.default_start_time,
         "default_end_time": org.default_end_time,
+        "address": org.address,
+        "phone": org.phone,
+        "region": org.region,
+        "district": org.district,
+        "village": org.village,
     }
 
 
@@ -136,6 +156,11 @@ def create_organization(data: OrganizationCreate, db: Session = Depends(get_db))
         organization_type=normalize_organization_type(data.organization_type),
         default_start_time=data.default_start_time,
         default_end_time=data.default_end_time,
+        address=data.address,
+        phone=data.phone,
+        region=data.region,
+        district=data.district,
+        village=data.village,
     )
     db.add(org)
     db.commit()
@@ -162,6 +187,16 @@ def update_organization(org_id: int, data: OrganizationUpdate, db: Session = Dep
         org.default_end_time = data.default_end_time
     if data.subscription_status is not None:
         org.subscription_status = data.subscription_status
+    if data.address is not None:
+        org.address = data.address
+    if data.phone is not None:
+        org.phone = data.phone
+    if data.region is not None:
+        org.region = data.region
+    if data.district is not None:
+        org.district = data.district
+    if data.village is not None:
+        org.village = data.village
 
     db.commit()
     return {"ok": True, "message": "Tashkilot yangilandi"}

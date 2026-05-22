@@ -34,6 +34,11 @@ class Organization(Base):
     subscription_end_date = Column(DateTime, nullable=True)
     default_start_time = Column(String, default="09:00")  # HH:MM format
     default_end_time = Column(String, default="18:00")    # HH:MM format
+    address = Column(String, nullable=True)               # Tashkilot manzili (ko'cha, uy)
+    phone = Column(String, nullable=True)                 # Tashkilot telefon raqami
+    region = Column(String, nullable=True)                # Viloyat ID (toshkent_viloyat, ...)
+    district = Column(String, nullable=True)              # Tuman/Shahar ID
+    village = Column(String, nullable=True)               # Qishloq / MFY nomi (erkin matn)
     telegram_enabled = Column(Boolean, default=False)
     telegram_admin_chat_id = Column(String, nullable=True)
     telegram_bot_token = Column(String, nullable=True)
@@ -107,6 +112,7 @@ class Device(Base):
     used_faces = Column(Integer, default=0)
     is_online = Column(Boolean, default=False)
     last_seen_at = Column(DateTime, nullable=True)               # So'nggi webhook vaqti
+    direction = Column(String, nullable=True)                    # "in" yoki "out" kabi yo'nalish
     created_at = Column(DateTime, default=utc_now)
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
     organization = relationship("Organization", back_populates="devices")
@@ -128,6 +134,13 @@ class Employee(Base):
     schedule_id = Column(Integer, ForeignKey("schedules.id"), nullable=True, index=True)
     employee_type = Column(String, nullable=True)  # oquvchi, oqituvchi, hodim
     image_url = Column(String, nullable=True)
+    phone = Column(String, nullable=True)
+    parent_phone = Column(String, nullable=True)
+    region = Column(String, nullable=True)
+    district = Column(String, nullable=True)
+    address = Column(String, nullable=True)
+    birth_date = Column(String, nullable=True)
+    gender = Column(String, nullable=True)
     has_access = Column(Boolean, default=True)
     start_time = Column(String, nullable=True)  # HH:MM format, override default
     end_time = Column(String, nullable=True)    # HH:MM format, override default

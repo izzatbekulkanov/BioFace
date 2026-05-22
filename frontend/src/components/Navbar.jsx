@@ -9,11 +9,11 @@ import {
   SettingsRegular, HistoryRegular, CalendarClockRegular,
   ServerRegular, DatabaseRegular, PlugConnectedRegular, ChevronDownRegular,
   PeopleRegular, ShieldRegular, HatGraduationRegular,
-  ClipboardTaskListLtrRegular, BrainCircuitRegular,
+  ClipboardTaskListLtrRegular, BrainCircuitRegular, BuildingRegular,
 } from '@fluentui/react-icons'
 
 const PUBLIC_LINKS  = ['map', 'about', 'contact']
-const PRIVATE_LINKS = ['dashboard', 'devices', 'attendance', 'psychology', 'shifts', 'middlewareLogs']
+const PRIVATE_LINKS = ['dashboard', 'devices', 'attendance', 'psychology', 'shifts', 'organizations', 'middlewareLogs']
 
 const LINK_ICONS = {
   map:            <MapRegular  fontSize={17} />,
@@ -24,12 +24,13 @@ const LINK_ICONS = {
   shifts:         <CalendarClockRegular fontSize={17} />,
   attendance:     <ClipboardTaskListLtrRegular fontSize={17} />,
   psychology:     <BrainCircuitRegular fontSize={17} />,
+  organizations:  <BuildingRegular fontSize={17} />,
   middlewareLogs: <HistoryRegular fontSize={17} />,
   settings:       <SettingsRegular fontSize={17} />,
 }
 const LINK_PATHS = {
   map: '/map', about: '/about', contact: '/contact', dashboard: '/dashboard', 
-  devices: '/devices', shifts: '/shifts', attendance: '/attendance', psychology: '/psychology', middlewareLogs: '/middleware-logs', settings: '/settings',
+  devices: '/devices', shifts: '/shifts', attendance: '/attendance', psychology: '/psychology', organizations: '/organizations', middlewareLogs: '/middleware-logs', settings: '/settings',
 }
 
 // Navbar ichida barcha tugmalar oq matnli
@@ -188,6 +189,44 @@ export default function Navbar({ isLoggedIn, onLogout, onLangChange }) {
   const isLogin = location.pathname === '/login'
   const isDark  = resolvedTheme === 'dark'
 
+  const [logoUrl, setLogoUrl] = useState('')
+  const [faviconUrl, setFaviconUrl] = useState('')
+  const [appName, setAppName] = useState('BioFace')
+
+  useEffect(() => {
+    fetch('/api/settings')
+      .then(res => {
+        if (res.ok) return res.json();
+        throw new Error('Failed to load settings');
+      })
+      .then(data => {
+        if (data) {
+          setAppName(data.app_name || 'BioFace')
+          setLogoUrl(data.logo_url || '')
+          setFaviconUrl(data.favicon_url || '')
+        }
+      })
+      .catch(err => {
+        console.log('Error loading branding settings:', err)
+      })
+  }, [])
+
+  useEffect(() => {
+    const link = document.querySelector("link[rel~='icon']") || document.querySelector("link[rel='shortcut icon']");
+    if (link) {
+      link.href = faviconUrl || '/favicon.svg';
+    } else {
+      const newLink = document.createElement('link');
+      newLink.rel = 'icon';
+      newLink.href = faviconUrl || '/favicon.svg';
+      document.head.appendChild(newLink);
+    }
+  }, [faviconUrl])
+
+  useEffect(() => {
+    document.title = appName || 'BioFace';
+  }, [appName])
+
   const handleLangChange = (lang) => {
     i18n.changeLanguage(lang)
     if (onLangChange) onLangChange(lang)
@@ -213,13 +252,29 @@ export default function Navbar({ isLoggedIn, onLogout, onLangChange }) {
       <div onClick={() => navigate(isLoggedIn ? '/dashboard' : '/')}
         style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginRight: 16 }}
       >
-        <div style={{
-          width: 28, height: 28, background: 'var(--accent)',
-          borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 14, fontWeight: 800, color: '#fff', flexShrink: 0,
-        }}>B</div>
+        {logoUrl ? (
+          <img
+            src={logoUrl}
+            alt={appName}
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 7,
+              objectFit: 'contain',
+              flexShrink: 0,
+            }}
+          />
+        ) : (
+          <div style={{
+            width: 28, height: 28, background: 'var(--accent)',
+            borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 14, fontWeight: 800, color: '#fff', flexShrink: 0,
+          }}>
+            {appName ? appName.charAt(0).toUpperCase() : 'B'}
+          </div>
+        )}
         <span style={{ fontWeight: 700, fontSize: 16, color: '#fff', letterSpacing: -0.3 }}>
-          BioFace
+          {appName}
         </span>
       </div>
 

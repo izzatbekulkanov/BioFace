@@ -17,7 +17,8 @@
     "login": "Kirish",
     "logout": "Chiqish",
     "themeLight": "Yorug' rejim",
-    "themeDark": "Qorong'u rejim"
+    "themeDark": "Qorong'u rejim",
+    "organizations": "Tashkilotlar"
   },
   "login": {
     "subtitle": "Boshqaruv paneliga kiring",
@@ -142,6 +143,7 @@
     "filter_all": "Barchasi",
     "filter_online": "Online",
     "filter_offline": "Offline",
+    "filter_unassigned": "Birikmagan",
     "total": "Jami kamera",
     "online": "Online",
     "offline": "Offline",
@@ -160,5 +162,36 @@
     "deleteTitle": "Kamerani o'chirish",
     "deleteMsg": "\"{{name}}\" kamerasini tizimdan butunlay o'chirmoqchimisiz? Bu amalni qaytarib bo'lmaydi.",
     "deleteCam": "Ha, o'chirish"
+  },
+  "organizationDetail": {
+    "title": "Tashkilot Tafsilotlari",
+    "subtitle": "Tashkilotning tarkibiy tuzilishi, bo'lim va lavozimlari",
+    "infoCard": "Tashkilot ma'lumotlari",
+    "departmentsCard": "Tarkibiy bo'limlar",
+    "positionsCard": "Lavozimlar / Mutaxassisliklar",
+    "departmentName": "Bo'lim nomi",
+    "positionName": "Lavozim nomi",
+    "addDepartment": "Bo'lim qo'shish",
+    "addPosition": "Lavozim qo'shish",
+    "editDepartment": "Bo'limni tahrirlash",
+    "editPosition": "Lavozimni tahrirlash",
+    "deleteDepartment": "Bo'limni o'chirish",
+    "deletePosition": "Lavozimni o'chirish",
+    "school": {
+      "departmentsCard": "Sinflar ro'yxati",
+      "positionsCard": "Parallel sinflar (harflar)",
+      "departmentName": "Sinf (masalan: 9)",
+      "positionName": "Sinf harfi (masalan: a)",
+      "addDepartment": "Sinf qo'shish",
+      "addPosition": "Sinf harfini qo'shish",
+      "editDepartment": "Sinfni tahrirlash",
+      "editPosition": "Sinf harfini tahrirlash",
+      "deleteDepartment": "Sinfni o'chirish",
+      "deletePosition": "Sinf harfini o'chirish"
+    },
+    "employeesList": "Tashkilot a'zolari (Xodimlar / O'quvchilar)",
+    "noEmployees": "Ushbu tashkilotda a'zolar mavjud emas",
+    "noDepartments": "Hozircha hech qanday tarkibiy qism qo'shilmagan",
+    "associatedEmployees": "Ushbu bo'lim/lavozimga bog'langan foydalanuvchilar soni"
   }
 }

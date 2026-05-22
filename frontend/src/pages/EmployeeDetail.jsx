@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   PersonRegular,
@@ -40,6 +40,7 @@ import { useConfirm } from '../components/ConfirmDialog'
 export default function EmployeeDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { i18n } = useTranslation()
   const isRu = i18n.language === 'ru'
   const toast = useToast()
@@ -155,7 +156,7 @@ export default function EmployeeDetail() {
     return ['oquvchi', 'talaba', 'student'].includes(t)
   }, [employee])
 
-  const backPath = isStudent ? '/users/students' : '/users/staff'
+  const backPath = location.state?.from || (isStudent ? '/users/students' : '/users/staff')
 
   const onDelete = async () => {
     if (!employee) return
@@ -323,6 +324,21 @@ export default function EmployeeDetail() {
               />
               {employee.schedule_name && (
                 <InfoRow label={isRu ? 'Название графика' : 'Smena nomi'} value={employee.schedule_name} />
+              )}
+              <InfoRow label={isRu ? 'Пол' : 'Jinsi'} value={employee.gender === 'male' ? (isRu ? 'Мужской' : 'Erkak') : employee.gender === 'female' ? (isRu ? 'Женский' : 'Ayol') : '—'} />
+              <InfoRow label={isRu ? 'Дата рождения' : "Tug'ilgan sana"} value={employee.birth_date || '—'} />
+              <InfoRow label={isRu ? 'Телефон' : 'Telefon'} value={employee.phone || '—'} />
+              {employee.parent_phone && (
+                <InfoRow label={isRu ? 'Телефон родителей' : 'Ota-onasi telefoni'} value={employee.parent_phone} />
+              )}
+              {employee.region && (
+                <InfoRow label={isRu ? 'Область' : 'Viloyat'} value={employee.region} />
+              )}
+              {employee.district && (
+                <InfoRow label={isRu ? 'Район' : 'Tuman'} value={employee.district} />
+              )}
+              {employee.address && (
+                <InfoRow label={isRu ? 'Адрес' : 'Manzil'} value={employee.address} />
               )}
               <InfoRow label={isRu ? 'Дата добавления' : "Qo'shilgan sana"} value={employee.added_date || '—'} />
             </div>

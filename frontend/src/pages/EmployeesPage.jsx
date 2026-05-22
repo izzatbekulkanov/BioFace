@@ -16,6 +16,7 @@ import {
   DeleteRegular,
   EyeRegular,
   WarningRegular,
+  DocumentTableRegular,
 } from '@fluentui/react-icons'
 import PageHero from '../components/PageHero'
 import Skeleton from '../components/Skeleton'
@@ -39,6 +40,74 @@ export default function EmployeesPage({ mode = 'staff' }) {
   const navigate = useNavigate()
   const toast = useToast()
 
+  const handleDownloadTemplate = () => {
+    try {
+      const data = isStudents ? [
+        {
+          "Familiya": "Karimov",
+          "Ism": "Eshmat",
+          "Otasining ismi": "Toshmatovich",
+          "Shaxsiy ID (Personal ID)": "99010203",
+          "O'quvchi turi (oquvchi/talaba)": "oquvchi",
+          "Sinf / Guruh": "5-A",
+          "Telefon raqami": "+998901234567",
+          "Ota-onasining telefon raqami": "+998907654321",
+          "Viloyat": "Toshkent viloyati",
+          "Tuman": "Zangiota tumani",
+          "Manzil": "Muqimiy ko'chasi, 12-uy",
+          "Tug'ilgan sana (YYYY-MM-DD)": "2010-05-15",
+          "Jinsi (male/female)": "male",
+          "Rasm (URL yoki fayl nomi)": ""
+        }
+      ] : [
+        {
+          "Familiya": "Toshmatov",
+          "Ism": "Toshmat",
+          "Otasining ismi": "Eshmatovich",
+          "Shaxsiy ID (Personal ID)": "88010203",
+          "Xodim turi (oqituvchi/hodim)": "oqituvchi",
+          "Bo'lim": "Matematika bo'limi",
+          "Lavozim": "Katta o'qituvchi",
+          "Telefon raqami": "+998909876543",
+          "Ota-onasining telefon raqami": "",
+          "Viloyat": "Toshkent viloyati",
+          "Tuman": "Zangiota tumani",
+          "Manzil": "Tinchlik ko'chasi, 45-uy",
+          "Tug'ilgan sana (YYYY-MM-DD)": "1985-10-22",
+          "Jinsi (male/female)": "male",
+          "Rasm (URL yoki fayl nomi)": ""
+        }
+      ];
+
+      import('xlsx').then(XLSX => {
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, isStudents ? "O'quvchilar shabloni" : "Xodimlar shabloni");
+        
+        // Auto-fit columns
+        const maxLens = {};
+        data.forEach(row => {
+          Object.keys(row).forEach(key => {
+            const val = String(row[key] || '');
+            maxLens[key] = Math.max(maxLens[key] || key.length, val.length);
+          });
+        });
+        ws['!cols'] = Object.keys(maxLens).map(key => ({
+          wch: maxLens[key] + 4
+        }));
+
+        XLSX.writeFile(wb, isStudents ? "oquvchilar_shablon.xlsx" : "hodimlar_shablon.xlsx");
+        toast.success(isRu ? 'Шаблон Excel скачан' : 'Excel shabloni yuklab olindi');
+      }).catch(err => {
+        console.error(err);
+        toast.error(isRu ? 'Ошибка при загрузке Excel' : 'Excel yuklashda xatolik yuz berdi');
+      });
+    } catch (e) {
+      console.error(e);
+      toast.error(isRu ? 'Ошибка при скачивании шаблона' : 'Shablonni yuklab olishda xatolik yuz berdi');
+    }
+  }
+
   const [items, setItems] = useState([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -48,6 +117,12 @@ export default function EmployeesPage({ mode = 'staff' }) {
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
 
+  const [organizations, setOrganizations] = useState([])
+  const [departments, setDepartments] = useState([])
+  const [orgFilter, setOrgFilter] = useState('')
+  const [deptFilter, setDeptFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+
   const [initialLoading, setInitialLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
@@ -56,24 +131,71 @@ export default function EmployeesPage({ mode = 'staff' }) {
   // Delete dialog state
   const [deleting, setDeleting] = useState(null)   // employee object or null
 
+  // Tashkilotlar ro'yxatini yuklash
+  useEffect(() => {
+    let active = true
+    fetch('/api/organizations', { credentials: 'include' })
+      .then(res => {
+        if (!res.ok) throw new Error('HTTP ' + res.status)
+        return res.json()
+      })
+      .then(data => {
+        if (active) {
+          setOrganizations(Array.isArray(data) ? data : [])
+        }
+      })
+      .catch(err => {
+        console.error('Tashkilotlarni yuklashda xatolik:', err)
+      })
+    return () => { active = false }
+  }, [])
+
+  // Bo'limlarni dinamik yuklash logikasi
+  useEffect(() => {
+    if (!orgFilter) {
+      setDepartments([])
+      setDeptFilter('')
+      return
+    }
+    let active = true
+    fetch(`/api/organizations/${orgFilter}/employee-catalogs`, { credentials: 'include' })
+      .then(res => {
+        if (!res.ok) throw new Error('HTTP ' + res.status)
+        return res.json()
+      })
+      .then(data => {
+        if (active) {
+          setDepartments(Array.isArray(data?.departments) ? data.departments : [])
+          setDeptFilter('')
+        }
+      })
+      .catch(err => {
+        console.error('Bo\'limlarni yuklashda xatolik:', err)
+      })
+    return () => { active = false }
+  }, [orgFilter])
+
   // Debounce qidiruv (350ms)
   useEffect(() => {
     const h = setTimeout(() => setDebouncedSearch(search.trim()), 350)
     return () => clearTimeout(h)
   }, [search])
 
-  // Mode o'zgarsa — sahifani 1 ga qaytaramiz
+  // Mode o'zgarsa — barcha filter va sahifani tozalaymiz
   useEffect(() => {
     setPage(1)
     setSearch('')
     setDebouncedSearch('')
+    setOrgFilter('')
+    setDeptFilter('')
+    setStatusFilter('')
     setInitialLoading(true)
   }, [mode])
 
-  // Search yoki page_size o'zgarsa, sahifani 1 ga
+  // Search, page_size yoki filterlar o'zgarsa, sahifani 1 ga
   useEffect(() => {
     setPage(1)
-  }, [debouncedSearch, pageSize])
+  }, [debouncedSearch, pageSize, orgFilter, deptFilter, statusFilter])
 
   const load = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setRefreshing(true)
@@ -84,6 +206,11 @@ export default function EmployeesPage({ mode = 'staff' }) {
         page_size: String(pageSize),
       })
       if (debouncedSearch) params.set('search', debouncedSearch)
+      if (orgFilter) params.set('organization_id', orgFilter)
+      if (deptFilter) params.set('department_id', deptFilter)
+      if (statusFilter) {
+        params.set('has_access', statusFilter === 'active' ? 'true' : 'false')
+      }
 
       const res = await fetch(`/api/employees?${params}`, { credentials: 'include' })
       if (!res.ok) {
@@ -106,7 +233,7 @@ export default function EmployeesPage({ mode = 'staff' }) {
         setRefreshing(false)
       }
     }
-  }, [mode, page, pageSize, debouncedSearch, isRu])
+  }, [mode, page, pageSize, debouncedSearch, orgFilter, deptFilter, statusFilter, isRu])
 
   useEffect(() => {
     aliveRef.current = true
@@ -133,6 +260,20 @@ export default function EmployeesPage({ mode = 'staff' }) {
           : (isRu ? 'Сотрудники и преподаватели' : "Hodimlar va o'qituvchilar")}
         right={
           <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              type="button"
+              onClick={handleDownloadTemplate}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 7,
+                padding: '8px 16px', borderRadius: 8,
+                background: '#107c41', border: 'none',
+                color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              }}
+              title={isRu ? 'Скачать шаблон Excel' : 'Excel shablonini yuklab olish'}
+            >
+              <DocumentTableRegular fontSize={16} />
+              {isRu ? 'Шаблон Excel' : 'Excel shablon'}
+            </button>
             <button
               type="button"
               onClick={() => navigate(isStudents ? '/users/students/new?type=oquvchi' : '/users/staff/new?type=hodim')}
@@ -168,14 +309,58 @@ export default function EmployeesPage({ mode = 'staff' }) {
                 {totalPages > 1 && <> · {isRu ? 'стр.' : 'sahifa'} {page}/{totalPages}</>}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <input
                 type="text"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder={isRu ? 'Поиск по ФИО, ID, отделу' : "F.I.SH, ID, bo'lim bo'yicha qidiruv"}
-                style={{ minWidth: 240, ...inpStyle }}
+                placeholder={isRu ? 'Поиск по ФИО, ID' : "F.I.SH, ID bo'yicha qidiruv"}
+                style={{ minWidth: 200, ...inpStyle }}
               />
+
+              {/* Tashkilot filtri */}
+              <select
+                value={orgFilter}
+                onChange={e => {
+                  setOrgFilter(e.target.value)
+                  setDeptFilter('')
+                }}
+                style={{ minWidth: 160, ...inpStyle }}
+              >
+                <option value="">{isRu ? 'Все организации' : 'Barcha tashkilotlar'}</option>
+                {organizations.map(org => (
+                  <option key={org.id} value={org.id}>{org.name}</option>
+                ))}
+              </select>
+
+              {/* Bo'lim filtri */}
+              <select
+                value={deptFilter}
+                onChange={e => setDeptFilter(e.target.value)}
+                disabled={!orgFilter}
+                style={{ minWidth: 150, ...inpStyle }}
+              >
+                <option value="">
+                  {isStudents
+                    ? (isRu ? 'Все классы / группы' : 'Barcha sinf / guruhlar')
+                    : (isRu ? 'Все отделы' : 'Barcha bo\'limlar')}
+                </option>
+                {departments.map(dept => (
+                  <option key={dept.id} value={dept.id}>{dept.name}</option>
+                ))}
+              </select>
+
+              {/* Holat filtri */}
+              <select
+                value={statusFilter}
+                onChange={e => setStatusFilter(e.target.value)}
+                style={{ minWidth: 130, ...inpStyle }}
+              >
+                <option value="">{isRu ? 'Все статусы' : 'Barcha holatlar'}</option>
+                <option value="active">{isRu ? 'Активен' : 'Faol'}</option>
+                <option value="inactive">{isRu ? 'Нет доступа' : 'Ruxsat yo\'q'}</option>
+              </select>
+
               <select value={pageSize} onChange={e => setPageSize(Number(e.target.value))} style={inpStyle}>
                 {[20, 50, 100, 200].map(n => (
                   <option key={n} value={n}>{n} {isRu ? '/ стр.' : '/ sahifa'}</option>
@@ -202,22 +387,28 @@ export default function EmployeesPage({ mode = 'staff' }) {
                 <table style={tableStyle}>
                   <thead>
                     <tr>
-                      {[
-                        isRu ? 'ФИО' : 'F.I.SH',
-                        isRu ? 'Личный ID' : 'Shaxsiy ID',
-                        isStudents
-                          ? (isRu ? 'Класс / группа' : 'Sinf / guruh')
-                          : (isRu ? 'Отдел / должность' : "Bo'lim / lavozim"),
-                        isRu ? 'Организация' : 'Tashkilot',
-                        isRu ? 'График' : 'Smena',
-                        isRu ? 'Статус' : 'Holat',
-                        '',
-                      ].map((h, i) => <th key={i} style={thStyle}>{h}</th>)}
+                      {/* F.I.SH */}
+                      <th style={thStyle}>{isRu ? 'ФИО' : 'F.I.SH'}</th>
+                      {/* Shaxsiy ID */}
+                      <th style={thStyle}>{isRu ? 'Личный ID' : 'Shaxsiy ID'}</th>
+                      {/* O'quvchilar: Sinf | Hodimlar: Bo'lim */}
+                      {isStudents
+                        ? <th style={thStyle}>{isRu ? 'Класс / группа' : 'Sinf / Guruh'}</th>
+                        : <>
+                            <th style={thStyle}>{isRu ? 'Отдел' : "Bo'lim"}</th>
+                            <th style={thStyle}>{isRu ? 'Должность' : 'Lavozim'}</th>
+                          </>
+                      }
+                      <th style={thStyle}>{isRu ? 'Организация' : 'Tashkilot'}</th>
+                      <th style={thStyle}>{isRu ? 'График' : 'Smena'}</th>
+                      <th style={thStyle}>{isRu ? 'Статус' : 'Holat'}</th>
+                      <th style={thStyle}></th>
                     </tr>
                   </thead>
                   <tbody>
                     {items.map(emp => (
                       <tr key={emp.id}>
+                        {/* F.I.SH + avatar */}
                         <td style={tdStyle}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }} onClick={() => navigate(`/employees/${emp.id}`)}>
                             {emp.avatar
@@ -225,27 +416,59 @@ export default function EmployeesPage({ mode = 'staff' }) {
                               : <div style={avatarFallback}><PersonRegular fontSize={18} /></div>}
                             <div>
                               <div style={{ fontWeight: 600, color: 'var(--text-1)' }}>{emp.full_name || `#${emp.id}`}</div>
-                              <div style={{ fontSize: 11, color: 'var(--text-4)' }}>
-                                {emp.employee_type
-                                  ? <TypePill type={emp.employee_type} />
-                                  : <span>ID: {emp.id}</span>}
+                              <div style={{ fontSize: 11, color: 'var(--text-4)', marginTop: 2 }}>
+                                {emp.employee_type ? <TypePill type={emp.employee_type} /> : <span>ID: {emp.id}</span>}
                               </div>
                             </div>
                           </div>
                         </td>
+
+                        {/* Shaxsiy ID */}
                         <td style={tdStyle}>
                           <code style={{ fontSize: 12, color: 'var(--text-1)' }}>{emp.personal_id || '—'}</code>
                         </td>
-                        <td style={tdStyle}>
-                          <div>{emp.department || <span style={{ color: 'var(--text-4)' }}>—</span>}</div>
-                          {emp.position && <div style={{ fontSize: 11, color: 'var(--text-4)', marginTop: 2 }}>{emp.position}</div>}
-                        </td>
+
+                        {/* O'quvchilar: Sinf | Hodimlar: Bo'lim + Lavozim alohida */}
+                        {isStudents ? (
+                          <td style={tdStyle}>
+                            {emp.department
+                              ? <span style={{
+                                  display: 'inline-block', padding: '3px 10px',
+                                  borderRadius: 6, fontSize: 12, fontWeight: 600,
+                                  background: 'rgba(6,182,212,0.10)', color: '#06b6d4',
+                                  border: '1px solid rgba(6,182,212,0.25)',
+                                }}>{emp.department}</span>
+                              : <span style={{ color: 'var(--text-4)' }}>—</span>}
+                          </td>
+                        ) : (
+                          <>
+                            <td style={tdStyle}>
+                              {emp.department
+                                ? <span style={{
+                                    display: 'inline-block', padding: '3px 10px',
+                                    borderRadius: 6, fontSize: 12, fontWeight: 600,
+                                    background: 'rgba(245,158,11,0.10)', color: '#f59e0b',
+                                    border: '1px solid rgba(245,158,11,0.25)',
+                                  }}>{emp.department}</span>
+                                : <span style={{ color: 'var(--text-4)' }}>—</span>}
+                            </td>
+                            <td style={tdStyle}>
+                              {emp.position
+                                ? <span style={{ fontSize: 13, color: 'var(--text-2)' }}>{emp.position}</span>
+                                : <span style={{ color: 'var(--text-4)' }}>—</span>}
+                            </td>
+                          </>
+                        )}
+
+                        {/* Tashkilot */}
                         <td style={tdStyle}>
                           {emp.organization_name || <span style={{ color: 'var(--text-4)' }}>—</span>}
                         </td>
+
+                        {/* Smena */}
                         <td style={tdStyle}>
                           {(emp.effective_start_time || emp.effective_end_time) ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, whiteSpace: 'nowrap' }}>
                               <ClockRegular fontSize={12} style={{ color: 'var(--text-4)' }} />
                               {emp.effective_start_time || '—'} – {emp.effective_end_time || '—'}
                             </div>
@@ -254,33 +477,22 @@ export default function EmployeesPage({ mode = 'staff' }) {
                             <div style={{ fontSize: 11, color: 'var(--text-4)', marginTop: 2 }}>{emp.schedule_name}</div>
                           )}
                         </td>
+
+                        {/* Holat */}
                         <td style={tdStyle}>
                           <AccessPill status={emp.status} isRu={isRu} />
                         </td>
+
+                        {/* Amallar */}
                         <td style={{ ...tdStyle, textAlign: 'right' }}>
                           <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                            <button
-                              type="button"
-                              onClick={() => navigate(`/employees/${emp.id}`)}
-                              style={iconBtn('subtle')}
-                              title={isRu ? 'Просмотр' : "Ko'rish"}
-                            >
+                            <button type="button" onClick={() => navigate(`/employees/${emp.id}`)} style={iconBtn('subtle')} title={isRu ? 'Просмотр' : "Ko'rish"}>
                               <EyeRegular fontSize={13} />
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => navigate(`/employees/${emp.id}/edit`)}
-                              style={iconBtn('subtle')}
-                              title={isRu ? 'Редактировать' : 'Tahrirlash'}
-                            >
+                            <button type="button" onClick={() => navigate(`/employees/${emp.id}/edit`)} style={iconBtn('subtle')} title={isRu ? 'Редактировать' : 'Tahrirlash'}>
                               <EditRegular fontSize={13} />
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => setDeleting(emp)}
-                              style={iconBtn('danger')}
-                              title={isRu ? 'Удалить' : "O'chirish"}
-                            >
+                            <button type="button" onClick={() => setDeleting(emp)} style={iconBtn('danger')} title={isRu ? 'Удалить' : "O'chirish"}>
                               <DeleteRegular fontSize={13} />
                             </button>
                           </div>

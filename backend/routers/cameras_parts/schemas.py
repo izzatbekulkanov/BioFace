@@ -23,6 +23,7 @@ class CameraCreate(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None
     isup_password: Optional[str] = ISUP_KEY
+    direction: Optional[str] = None
 
 
 class CameraUpdate(BaseModel):
@@ -43,6 +44,7 @@ class CameraUpdate(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None
     isup_password: Optional[str] = None
+    direction: Optional[str] = None
 
 
 class WebhookPayload(BaseModel):

@@ -46,7 +46,7 @@ function PwField({ value, onChange, placeholder }) {
   )
 }
 
-function CmdBtn({ label: lbl, icon, color, onClick, loading }) {
+function CmdBtn({ lbl, icon, color, onClick, loading }) {
   const isPrimary = !!color
   const base = {
     width: '100%', display: 'flex', alignItems: 'center', gap: 10,
@@ -71,7 +71,8 @@ function CmdBtn({ label: lbl, icon, color, onClick, loading }) {
 export default function CameraDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const isRu = i18n.language === 'ru'
   const abortRef = useRef(null)
   const confirm  = useConfirm()
 
@@ -87,7 +88,7 @@ export default function CameraDetail() {
   const [f, setF] = useState({
     name: '', location: '', model: '', mac_address: '', serial_number: '',
     isup_device_id: '', username: 'admin', isup_password: '', password: '',
-    max_memory: '', organization_id: '',
+    max_memory: '', organization_id: '', direction: '',
   })
 
   const load = useCallback(async (animate = false) => {
@@ -102,8 +103,8 @@ export default function CameraDetail() {
         new Promise(resolve => setTimeout(resolve, 800)) // Skeleton animatsiyasi chiroyli ishlashi uchun minimal vaqt
       ])
       if (camRes.status === 401) { navigate('/login'); return }
-      if (camRes.status === 404) throw new Error('Kamera topilmadi')
-      if (!camRes.ok) throw new Error('Kamera yuklanmadi')
+      if (camRes.status === 404) throw new Error(isRu ? 'Камера не найдена' : 'Kamera topilmadi')
+      if (!camRes.ok) throw new Error(isRu ? 'Камера не загружена' : 'Kamera yuklanmadi')
       const data = await camRes.json()
       const orgList = orgsRes.ok ? await orgsRes.json() : []
       setCam(data)
@@ -120,6 +121,7 @@ export default function CameraDetail() {
         password:       '',
         max_memory:     data.max_memory || '',
         organization_id: data.organization_id || '',
+        direction:      data.direction || '',
       })
       setLoading(false)
       if (animate) setTimeout(() => setSpin(false), 500)
@@ -129,7 +131,7 @@ export default function CameraDetail() {
       setLoading(false)
       if (animate) setTimeout(() => setSpin(false), 500)
     }
-  }, [id, navigate, t])
+  }, [id, navigate, t, isRu])
 
   useEffect(() => {
     load()
@@ -139,7 +141,7 @@ export default function CameraDetail() {
   const update = (k) => (e) => setF(prev => ({ ...prev, [k]: e.target.value }))
 
   const save = async () => {
-    if (!f.name.trim()) { setError("Kamera nomi majburiy"); return }
+    if (!f.name.trim()) { setError(isRu ? "Имя камеры обязательно" : "Kamera nomi majburiy"); return }
     setSaving(true); setError(''); setSuccess('')
     const body = {
       name: f.name.trim(), location: f.location.trim() || null,
@@ -150,6 +152,7 @@ export default function CameraDetail() {
       isup_password: f.isup_password.trim() || null,
       max_memory: parseInt(f.max_memory) || null,
       organization_id: f.organization_id ? parseInt(f.organization_id) : null,
+      direction: f.direction || '',
     }
     if (f.password.trim()) body.password = f.password.trim()
     try {
@@ -158,8 +161,8 @@ export default function CameraDetail() {
         body: JSON.stringify(body),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.detail || 'Xatolik')
-      setSuccess(data.message || 'Muvaffaqiyatli saqlandi')
+      if (!res.ok) throw new Error(data.detail || (isRu ? 'Ошибка' : 'Xatolik'))
+      setSuccess(data.message || (isRu ? 'Успешно сохранено' : 'Muvaffaqiyatli saqlandi'))
       load(true)
     } catch (e) { setError(e.message) }
     finally { setSaving(false) }
@@ -173,24 +176,40 @@ export default function CameraDetail() {
         body: JSON.stringify({ command: cmd, params: {} }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.detail || 'Xatolik')
-      setSuccess(data.message || `${cmd} bajarildi`)
+      if (!res.ok) throw new Error(data.detail || (isRu ? 'Ошибка' : 'Xatolik'))
+      
+      let cmdMsg = ''
+      if (cmd === 'open_door') {
+        cmdMsg = isRu ? 'Дверь успешно открыта' : 'Eshik muvaffaqiyatli ochildi'
+      } else if (cmd === 'get_device_snapshot') {
+        cmdMsg = isRu ? 'Метаданные успешно синхронизированы' : 'Metadata muvaffaqiyatli sinxronlandi'
+      } else if (cmd === 'sync_faces') {
+        cmdMsg = isRu ? 'Лица успешно синхронизированы' : 'Yuzlar muvaffaqiyatli sinxronlandi'
+      } else if (cmd === 'reboot') {
+        cmdMsg = isRu ? 'Устройство перезагружено' : 'Qurilma qayta yuklandi'
+      } else {
+        cmdMsg = isRu ? `Команда ${cmd} выполнена` : `${cmd} bajarildi`
+      }
+      
+      setSuccess(data.message || cmdMsg)
     } catch (e) { setError(e.message) }
     finally { setCmdLoading(p => ({ ...p, [cmd]: false })) }
   }
 
   const deleteCamera = async () => {
     const ok = await confirm({
-      title: `Kamerani o'chirish`,
-      message: `"${cam?.name}" kamerasini tizimdan butunlay o'chirmoqchimisiz? Bu amalni qaytarib bo'lmaydi.`,
-      confirmText: `O'chirish`,
+      title: isRu ? "Удаление камеры" : "Kamerani o'chirish",
+      message: isRu
+        ? `Вы действительно хотите безвозвратно удалить камеру "${cam?.name}" из системы? Это действие нельзя отменить.`
+        : `"${cam?.name}" kamerasini tizimdan butunlay o'chirmoqchimisiz? Bu amalni qaytarib bo'lmaydi.`,
+      confirmText: isRu ? "Удалить" : "O'chirish",
       danger: true,
     })
     if (!ok) return
     try {
       await fetch(`/api/cameras/${id}`, { method: 'DELETE' })
       navigate('/devices')
-    } catch { setError("O'chirishda xatolik") }
+    } catch { setError(isRu ? "Ошибка при удалении" : "O'chirishda xatolik") }
   }
 
   if (loading) return (
@@ -261,10 +280,10 @@ export default function CameraDetail() {
     <div style={{ minHeight: 'calc(100vh - 52px)', background: 'var(--bg)', color: 'var(--text-1)', overflowY: 'auto' }}>
 
       <PageHero
-        badge="✦ Kamerani Tahrirlash"
+        badge={isRu ? "✦ Редактирование камеры" : "✦ Kamerani Tahrirlash"}
         title={
           <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            {cam?.name || 'Kamera'}
+            {cam?.name || (isRu ? 'Камера' : 'Kamera')}
             <span style={{
               fontSize: 11, padding: '3px 10px', borderRadius: 100, fontWeight: 600,
               background: online ? 'rgba(74,222,128,0.18)' : 'rgba(248,113,113,0.18)',
@@ -284,7 +303,7 @@ export default function CameraDetail() {
             border: '1px solid rgba(255,255,255,0.12)', color: '#fff', fontSize: 13, cursor: 'pointer',
           }}>
             <ArrowSyncRegular fontSize={14} style={{ animation: spin ? 'spin 0.6s linear infinite' : 'none' }} />
-            Yangilash
+            {isRu ? 'Обновить' : 'Yangilash'}
           </button>
         }
       />
@@ -308,17 +327,21 @@ export default function CameraDetail() {
           {/* Asosiy ma'lumotlar */}
           <div style={card}>
             <div style={{ marginBottom: 18 }}>
-              <div style={{ fontSize: 11, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 700, marginBottom: 4 }}>Asosiy Ma'lumotlar</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--white)' }}>Kamera profili</div>
+              <div style={{ fontSize: 11, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 700, marginBottom: 4 }}>
+                {isRu ? 'Основные данные' : "Asosiy Ma'lumotlar"}
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--white)' }}>
+                {isRu ? 'Профиль камеры' : 'Kamera profili'}
+              </div>
             </div>
             <div style={grid2}>
-              <Field label="Kamera Nomi *" span={2}>
-                <input style={inp} value={f.name} onChange={update('name')} placeholder="Masalan: Asosiy kirish" />
+              <Field label={isRu ? "Имя камеры *" : "Kamera Nomi *"} span={2}>
+                <input style={inp} value={f.name} onChange={update('name')} placeholder={isRu ? "Например: Главный вход" : "Masalan: Asosiy kirish"} />
               </Field>
-              <Field label="Joylashuv">
-                <input style={inp} value={f.location} onChange={update('location')} placeholder="Qavat, Xona..." />
+              <Field label={isRu ? "Местоположение" : "Joylashuv"}>
+                <input style={inp} value={f.location} onChange={update('location')} placeholder={isRu ? "Этаж, комната..." : "Qavat, Xona..."} />
               </Field>
-              <Field label="Model">
+              <Field label={isRu ? "Модель" : "Model"}>
                 <input style={inp} value={f.model} onChange={update('model')} placeholder="DS-K1T343" list="model-list" />
                 <datalist id="model-list">{MODELS.map(m => <option key={m} value={m} />)}</datalist>
                 <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 5 }}>
@@ -327,21 +350,33 @@ export default function CameraDetail() {
                   ))}
                 </div>
               </Field>
-              <Field label="MAC Manzil">
+              <Field label={isRu ? "MAC-адрес" : "MAC Manzil"}>
                 <input style={{ ...inp, fontFamily: 'monospace', textTransform: 'uppercase' }} value={f.mac_address} onChange={update('mac_address')} placeholder="AA:BB:CC:11:22:33" />
               </Field>
-              <Field label="Seriya Raqami">
+              <Field label={isRu ? "Серийный номер" : "Seriya Raqami"}>
                 <input style={{ ...inp, fontFamily: 'monospace' }} value={f.serial_number} onChange={update('serial_number')} placeholder="DS3B24123456" />
               </Field>
-              <Field label="Tashkilot" span={2}>
+              <Field label={isRu ? "Организация" : "Tashkilot"} span={2}>
                 <CustomSelect
                   value={f.organization_id || ''}
                   onChange={val => setF(prev => ({ ...prev, organization_id: val }))}
                   options={[
-                    { value: '', label: '— Tanlanmagan —' },
+                    { value: '', label: isRu ? '— Не выбрано —' : '— Tanlanmagan —' },
                     ...orgs.map(o => ({ value: o.id, label: o.name }))
                   ]}
-                  placeholder="Tashkilotni tanlang..."
+                  placeholder={isRu ? "Выберите организацию..." : "Tashkilotni tanlang..."}
+                />
+              </Field>
+              <Field label={isRu ? "Направление (Вход/Выход)" : "Yo'nalish (Kirish/Chiqish)"} span={2}>
+                <CustomSelect
+                  value={f.direction || ''}
+                  onChange={val => setF(prev => ({ ...prev, direction: val }))}
+                  options={[
+                    { value: '', label: isRu ? '— Не выбрано —' : '— Tanlanmagan —' },
+                    { value: 'in', label: isRu ? 'Вход (Kirish)' : 'Kirish (Вход)' },
+                    { value: 'out', label: isRu ? 'Выход (Chiqish)' : 'Chiqish (Выход)' }
+                  ]}
+                  placeholder={isRu ? "Выберите направление..." : "Yo'nalishni tanlang..."}
                 />
               </Field>
             </div>
@@ -350,24 +385,30 @@ export default function CameraDetail() {
           {/* ISUP va HTTP sozlamalari */}
           <div style={card}>
             <div style={{ marginBottom: 18 }}>
-              <div style={{ fontSize: 11, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 700, marginBottom: 4 }}>ISUP va HTTP</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--white)' }}>Aloqa sozlamalari</div>
+              <div style={{ fontSize: 11, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 700, marginBottom: 4 }}>
+                {isRu ? 'ISUP и HTTP' : 'ISUP va HTTP'}
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--white)' }}>
+                {isRu ? 'Настройки связи' : 'Aloqa sozlamalari'}
+              </div>
             </div>
             <div style={grid2}>
-              <Field label="ISUP Device ID (Ixtiyoriy)">
+              <Field label={isRu ? "ISUP Device ID (Необязательно)" : "ISUP Device ID (Ixtiyoriy)"}>
                 <input style={{ ...inp, fontFamily: 'monospace', textTransform: 'uppercase' }} value={f.isup_device_id} onChange={update('isup_device_id')} placeholder="CAM1111" />
               </Field>
-              <Field label="ISUP Paroli *">
+              <Field label={isRu ? "ISUP Пароль *" : "ISUP Paroli *"}>
                 <PwField value={f.isup_password} onChange={update('isup_password')} placeholder="facex2024" />
               </Field>
-              <Field label="Kamera Logini">
+              <Field label={isRu ? "Логин камеры" : "Kamera Logini"}>
                 <input style={inp} value={f.username} onChange={update('username')} placeholder="admin" />
               </Field>
-              <Field label="Yangi HTTP Parol">
-                <PwField value={f.password} onChange={update('password')} placeholder="Bo'sh = o'zgarmaydi" />
-                <div style={{ fontSize: 11, color: 'var(--text-4)', marginTop: 4 }}>Bo'sh qoldirilsa eski parol saqlanib qoladi.</div>
+              <Field label={isRu ? "Новый HTTP пароль" : "Yangi HTTP Parol"}>
+                <PwField value={f.password} onChange={update('password')} placeholder={isRu ? "Пусто = не меняется" : "Bo'sh = o'zgarmaydi"} />
+                <div style={{ fontSize: 11, color: 'var(--text-4)', marginTop: 4 }}>
+                  {isRu ? 'Если оставить пустым, сохранится старый пароль.' : "Bo'sh qoldirilsa eski parol saqlanib qoladi."}
+                </div>
               </Field>
-              <Field label="Maksimal xotira limiti (yuzlar soni)" span={2}>
+              <Field label={isRu ? "Максимальный лимит памяти (кол-во лиц)" : "Maksimal xotira limiti (yuzlar soni)"} span={2}>
                 <input style={inp} type="number" min="0" max="50000" value={f.max_memory} onChange={update('max_memory')} placeholder="1500" />
               </Field>
             </div>
@@ -376,27 +417,31 @@ export default function CameraDetail() {
           {/* Read-only Metadata */}
           <div style={card}>
             <div style={{ marginBottom: 18 }}>
-              <div style={{ fontSize: 11, color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 700, marginBottom: 4 }}>Avtomatik Metadata</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--white)' }}>Sync orqali yangilanadigan ma'lumotlar</div>
+              <div style={{ fontSize: 11, color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 700, marginBottom: 4 }}>
+                {isRu ? 'Автоматические метаданные' : 'Avtomatik Metadata'}
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--white)' }}>
+                {isRu ? 'Данные, обновляемые через синхронизацию' : "Sync orqali yangilanadigan ma'lumotlar"}
+              </div>
             </div>
             <div style={grid3}>
-              <Field label="Firmware">
+              <Field label={isRu ? "Прошивка" : "Firmware"}>
                 <input style={inpRO} readOnly value={cam?.firmware_version || ''} />
               </Field>
-              <Field label="Tashqi IP">
+              <Field label={isRu ? "Внешний IP" : "Tashqi IP"}>
                 <input style={inpRO} readOnly value={cam?.external_ip || ''} />
               </Field>
-              <Field label="Protokol">
+              <Field label={isRu ? "Протокол" : "Protokol"}>
                 <input style={inpRO} readOnly value={cam?.protocol_version || ''} />
               </Field>
               <Field label="Webhook URL" span={3}>
                 <input style={inpRO} readOnly value={cam?.webhook_target_url || ''} />
               </Field>
-              <Field label="Webhook Holati" span={2}>
-                <input style={inpRO} readOnly value={cam?.webhook_enabled ? 'Yoqilgan' : "O'chiq"} />
+              <Field label={isRu ? "Статус Webhook" : "Webhook Holati"} span={2}>
+                <input style={inpRO} readOnly value={cam?.webhook_enabled ? (isRu ? 'Включено' : 'Yoqilgan') : (isRu ? 'Отключено' : "O'chiq")} />
               </Field>
-              <Field label="Rasm Yuborish">
-                <input style={inpRO} readOnly value={cam?.webhook_picture_sending ? 'Ruxsat berilgan' : "O'chirilgan"} />
+              <Field label={isRu ? "Отправка изображений" : "Rasm Yuborish"}>
+                <input style={inpRO} readOnly value={cam?.webhook_picture_sending ? (isRu ? 'Разрешено' : 'Ruxsat berilgan') : (isRu ? 'Отключено' : "O'chirilgan")} />
               </Field>
             </div>
           </div>
@@ -404,11 +449,11 @@ export default function CameraDetail() {
           {/* Save / Cancel buttons */}
           <div style={{ display: 'flex', gap: 10 }}>
             <button onClick={() => navigate('/devices')} style={{ padding: '10px 20px', borderRadius: 9, background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-2)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-              Bekor qilish
+              {isRu ? 'Отмена' : 'Bekor qilish'}
             </button>
             <button onClick={save} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 24px', borderRadius: 9, background: 'var(--accent)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1 }}>
               {saving ? <Spinner size="tiny" /> : <SaveRegular fontSize={16} />}
-              Saqlash
+              {isRu ? 'Сохранить' : 'Saqlash'}
             </button>
           </div>
         </div>
@@ -418,9 +463,11 @@ export default function CameraDetail() {
 
           {/* Kamera xotirasi */}
           <div style={{ ...card, marginBottom: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--white)', marginBottom: 14 }}>Kamera xotirasi</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--white)', marginBottom: 14 }}>
+              {isRu ? 'Память камеры' : 'Kamera xotirasi'}
+            </div>
             {[
-              { lbl: 'Yuzlar', used: cam?.used_faces || 0, max: cam?.max_memory || 0 },
+              { lbl: isRu ? 'Лица' : 'Yuzlar', used: cam?.used_faces || 0, max: cam?.max_memory || 0 },
             ].map((m, i) => {
               const pct = m.max > 0 ? Math.min(100, Math.round(m.used / m.max * 100)) : 0
               return (
@@ -432,14 +479,16 @@ export default function CameraDetail() {
                   <div style={{ height: 6, background: 'var(--surface-2)', borderRadius: 10, overflow: 'hidden' }}>
                     <div style={{ height: '100%', width: `${pct}%`, background: pct > 90 ? 'var(--red)' : 'var(--accent)', transition: 'width .3s' }} />
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-4)', marginTop: 4 }}>{pct}% ishlatilgan</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-4)', marginTop: 4 }}>
+                    {pct}% {isRu ? 'использовано' : 'ishlatilgan'}
+                  </div>
                 </div>
               )
             })}
             <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               {[
-                { lbl: 'Bugungi', val: cam?.events_today || 0, color: 'var(--accent)' },
-                { lbl: 'Online holati', val: online ? 'Online' : 'Offline', color: online ? 'var(--green)' : 'var(--red)' },
+                { lbl: isRu ? 'Сегодня' : 'Bugungi', val: cam?.events_today || 0, color: 'var(--accent)' },
+                { lbl: isRu ? 'Статус онлайн' : 'Online holati', val: online ? 'Online' : 'Offline', color: online ? 'var(--green)' : 'var(--red)' },
               ].map((s, i) => (
                 <div key={i} style={{ background: 'var(--bg)', border: '1px solid var(--border-2)', borderRadius: 8, padding: '10px 12px' }}>
                   <div style={{ fontSize: 10, color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: 0.5 }}>{s.lbl}</div>
@@ -451,20 +500,24 @@ export default function CameraDetail() {
 
           {/* Tezkor buyruqlar */}
           <div style={{ ...card, marginBottom: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--white)', marginBottom: 14 }}>Tezkor Buyruqlar</div>
-            <CmdBtn lbl="Eshikni ochish" icon={<LockOpenRegular fontSize={18} />} color="var(--accent)" onClick={() => sendCmd('open_door')} loading={cmdLoading.open_door} />
-            <CmdBtn lbl="Metadata sinxronlash" icon={<ShareScreenStartRegular fontSize={18} />} onClick={() => sendCmd('get_device_snapshot')} loading={cmdLoading.get_device_snapshot} />
-            <CmdBtn lbl="Yuzlarni sinxronlash" icon={<ArrowSyncRegular fontSize={18} />} onClick={() => sendCmd('sync_faces')} loading={cmdLoading.sync_faces} />
-            <CmdBtn lbl="Qayta yuklash (Reboot)" icon={<PhoneUpdateRegular fontSize={18} />} onClick={() => sendCmd('reboot')} loading={cmdLoading.reboot} />
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--white)', marginBottom: 14 }}>
+              {isRu ? 'Быстрые команды' : 'Tezkor Buyruqlar'}
+            </div>
+            <CmdBtn lbl={isRu ? "Открыть дверь" : "Eshikni ochish"} icon={<LockOpenRegular fontSize={18} />} color="var(--accent)" onClick={() => sendCmd('open_door')} loading={cmdLoading.open_door} />
+            <CmdBtn lbl={isRu ? "Синхронизировать метаданные" : "Metadata sinxronlash"} icon={<ShareScreenStartRegular fontSize={18} />} onClick={() => sendCmd('get_device_snapshot')} loading={cmdLoading.get_device_snapshot} />
+            <CmdBtn lbl={isRu ? "Синхронизировать лица" : "Yuzlarni sinxronlash"} icon={<ArrowSyncRegular fontSize={18} />} onClick={() => sendCmd('sync_faces')} loading={cmdLoading.sync_faces} />
+            <CmdBtn lbl={isRu ? "Перезагрузка (Reboot)" : "Qayta yuklash (Reboot)"} icon={<PhoneUpdateRegular fontSize={18} />} onClick={() => sendCmd('reboot')} loading={cmdLoading.reboot} />
           </div>
 
           {/* Eslatma */}
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '18px 20px' }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--white)', marginBottom: 10 }}>Eslatma</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--white)', marginBottom: 10 }}>
+              {isRu ? 'Примечание' : 'Eslatma'}
+            </div>
             {[
-              { icon: '🔗', title: 'Device ID', desc: "Kameradagi Device ID bilan bir xil ekanligini tekshiring." },
-              { icon: '🔑', title: 'Parol', desc: "Bo'sh qoldirilsa eski HTTP parol saqlanib qoladi." },
-              { icon: '🔄', title: 'Metadata', desc: "Kulrang maydonlar sync orqali avtomatik yangilanadi." },
+              { icon: '🔗', title: 'Device ID', desc: isRu ? "Убедитесь, что Device ID совпадает с ID на камере." : "Kameradagi Device ID bilan bir xil ekanligini tekshiring." },
+              { icon: '🔑', title: isRu ? 'Пароль' : 'Parol', desc: isRu ? "Если оставить пустым, сохранится старый HTTP пароль." : "Bo'sh qoldirilsa eski HTTP parol saqlanib qoladi." },
+              { icon: '🔄', title: isRu ? 'Метаданные' : 'Metadata', desc: isRu ? "Серые поля обновляются автоматически при синхронизации." : "Kulrang maydonlar sync orqali avtomatik yangilanadi." },
             ].map((n, i) => (
               <div key={i} style={{ background: 'var(--bg)', borderRadius: 9, padding: '10px 12px', marginBottom: 8 }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-1)', marginBottom: 3 }}>{n.icon} {n.title}</div>
@@ -475,10 +528,14 @@ export default function CameraDetail() {
 
           {/* Xavfli hudud */}
           <div style={{ background: 'var(--red-bg)', border: '1px solid var(--red-bd)', borderRadius: 14, padding: '18px 20px' }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--red)', marginBottom: 6 }}>Xavfli hudud</div>
-            <p style={{ fontSize: 11, color: 'var(--text-4)', marginBottom: 14, lineHeight: 1.5 }}>Kamerani tizimdan butunlay o'chirish. Bu amalni ortga qaytarib bo'lmaydi.</p>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--red)', marginBottom: 6 }}>
+              {isRu ? 'Опасная зона' : 'Xavfli hudud'}
+            </div>
+            <p style={{ fontSize: 11, color: 'var(--text-4)', marginBottom: 14, lineHeight: 1.5 }}>
+              {isRu ? 'Полное удаление камеры из системы. Это действие нельзя отменить.' : "Kamerani tizimdan butunlay o'chirish. Bu amalni ortga qaytarib bo'lmaydi."}
+            </p>
             <button onClick={deleteCamera} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px', background: 'var(--red)', border: 'none', borderRadius: 9, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-              <DeleteRegular fontSize={16} /> Kamerani o'chirish
+              <DeleteRegular fontSize={16} /> {isRu ? 'Удалить камеру' : "Kamerani o'chirish"}
             </button>
           </div>
         </div>

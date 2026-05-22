@@ -17,7 +17,8 @@
     "login": "Войти",
     "logout": "Выйти",
     "themeLight": "Светлая тема",
-    "themeDark": "Тёмная тема"
+    "themeDark": "Тёмная тема",
+    "organizations": "Организации"
   },
   "login": {
     "subtitle": "Войдите в панель управления",
@@ -142,6 +143,7 @@
     "filter_all": "Все",
     "filter_online": "Онлайн",
     "filter_offline": "Офлайн",
+    "filter_unassigned": "Не привязанные",
     "total": "Всего камер",
     "online": "Онлайн",
     "offline": "Офлайн",
@@ -160,5 +162,36 @@
     "deleteTitle": "Удалить камеру",
     "deleteMsg": "\"{{name}}\" будет безвозвратно удалена из системы. Это действие нельзя отменить.",
     "deleteCam": "Да, удалить"
+  },
+  "organizationDetail": {
+    "title": "Детали организации",
+    "subtitle": "Структурное подразделение, отделы и должности организации",
+    "infoCard": "Информация об организации",
+    "departmentsCard": "Структурные отделы",
+    "positionsCard": "Должности / Специальности",
+    "departmentName": "Название отдела",
+    "positionName": "Название должности",
+    "addDepartment": "Добавить отдел",
+    "addPosition": "Добавить должность",
+    "editDepartment": "Редактировать отдел",
+    "editPosition": "Редактировать должность",
+    "deleteDepartment": "Удалить отдел",
+    "deletePosition": "Удалить должность",
+    "school": {
+      "departmentsCard": "Список классов",
+      "positionsCard": "Параллельные классы (буквы)",
+      "departmentName": "Класс (например: 9)",
+      "positionName": "Буква класса (например: a)",
+      "addDepartment": "Добавить класс",
+      "addPosition": "Добавить букву класса",
+      "editDepartment": "Редактировать класс",
+      "editPosition": "Редактировать букву класса",
+      "deleteDepartment": "Удалить класс",
+      "deletePosition": "Удалить букву класса"
+    },
+    "employeesList": "Члены организации (Сотрудники / Учащиеся)",
+    "noEmployees": "В этой организации нет зарегистрированных членов",
+    "noDepartments": "Структурные подразделения еще не добавлены",
+    "associatedEmployees": "Количество сотрудников, привязанных к этому отделу/должности"
   }
 }

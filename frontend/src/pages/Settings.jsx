@@ -2,12 +2,236 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
-  SettingsRegular, ListRegular, PlugConnectedRegular, SaveRegular,
+  SettingsRegular, PlugConnectedRegular, SaveRegular,
   ClockRegular, CameraRegular, LockClosedRegular,
-  ArrowUpRegular, ArrowDownRegular, ArrowSyncRegular,
+  ArrowSyncRegular, ImageRegular, GlobeRegular, DeleteRegular, DismissRegular
 } from '@fluentui/react-icons'
 import PageHero from '../components/PageHero'
 import { useToast } from '../components/Toaster'
+
+function ImageUploader({
+  label,
+  value,
+  preview,
+  fileRef,
+  onChange,
+  onClear,
+  placeholderIcon: PlaceholderIcon,
+  accept = "image/*",
+  isRu = false,
+  description = ""
+}) {
+  const [isDragOver, setIsDragOver] = useState(false)
+  const activeImage = preview || value
+
+  const handleDragOver = (e) => {
+    e.preventDefault()
+    setIsDragOver(true)
+  }
+
+  const handleDragLeave = (e) => {
+    e.preventDefault()
+    setIsDragOver(false)
+  }
+
+  const handleDrop = (e) => {
+    e.preventDefault()
+    setIsDragOver(false)
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0]
+      const mockEvent = {
+        target: {
+          files: [file]
+        }
+      }
+      if (fileRef.current) {
+        const dataTransfer = new DataTransfer()
+        dataTransfer.items.add(file)
+        fileRef.current.files = dataTransfer.files
+      }
+      onChange(mockEvent)
+    }
+  }
+
+  const handleFileSelect = (e) => {
+    onChange(e)
+  }
+
+  const triggerUpload = () => {
+    if (fileRef.current) {
+      fileRef.current.click()
+    }
+  }
+
+  const handleRemove = (e) => {
+    e.stopPropagation()
+    if (fileRef.current) {
+      fileRef.current.value = ''
+    }
+    onClear()
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
+      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-4)', textTransform: 'uppercase' }}>
+        {label}
+      </label>
+      
+      <div
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        onClick={triggerUpload}
+        style={{
+          position: 'relative',
+          padding: 16,
+          border: isDragOver ? '2px dashed var(--accent)' : '2px dashed var(--border-2)',
+          borderRadius: 12,
+          background: isDragOver ? 'var(--accent-bg)' : 'var(--surface)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 12,
+          cursor: 'pointer',
+          transition: 'all 0.2s ease-in-out',
+          height: 160,
+          boxShadow: isDragOver ? '0 0 12px rgba(var(--accent-rgb), 0.15)' : 'none',
+          overflow: 'hidden'
+        }}
+        className="pro-image-uploader"
+      >
+        <input
+          type="file"
+          ref={fileRef}
+          accept={accept}
+          style={{ display: 'none' }}
+          onChange={handleFileSelect}
+        />
+
+        {activeImage ? (
+          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+            <img
+              src={activeImage}
+              alt={label}
+              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 8 }}
+            />
+            
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                background: 'rgba(0, 0, 0, 0.4)',
+                opacity: 0,
+                transition: 'opacity 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 12,
+                borderRadius: 8
+              }}
+              className="uploader-overlay"
+            >
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); triggerUpload(); }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '6px 12px',
+                  background: '#fff',
+                  color: '#000',
+                  border: 'none',
+                  borderRadius: 6,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                <CameraRegular fontSize={14} />
+                {isRu ? 'Изменить' : "O'zgartirish"}
+              </button>
+              <button
+                type="button"
+                onClick={handleRemove}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '6px 12px',
+                  background: '#ef4444',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                <DeleteRegular fontSize={14} />
+                {isRu ? 'Удалить' : "O'chirish"}
+              </button>
+            </div>
+            
+            <button
+              type="button"
+              onClick={handleRemove}
+              style={{
+                position: 'absolute',
+                top: 8,
+                right: 8,
+                width: 24,
+                height: 24,
+                borderRadius: '50%',
+                background: 'rgba(255, 255, 255, 0.9)',
+                border: 'none',
+                color: '#333',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                zIndex: 10
+              }}
+              title={isRu ? 'Удалить' : "O'chirish"}
+            >
+              <DismissRegular fontSize={14} />
+            </button>
+          </div>
+        ) : (
+          <>
+            <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border)', color: 'var(--text-3)' }}>
+              {PlaceholderIcon && <PlaceholderIcon fontSize={22} />}
+            </div>
+            <div style={{ textAlign: 'center', fontSize: 13 }}>
+              <span style={{ fontWeight: 600, color: 'var(--accent)' }}>
+                {isRu ? 'Загрузить файл' : 'Fayl yuklash'}
+              </span>
+              <span style={{ color: 'var(--text-3)' }}>
+                {isRu ? ' или перетащите сюда' : ' yoki bu yerga torting'}
+              </span>
+            </div>
+            {description && (
+              <div style={{ fontSize: 11, color: 'var(--text-4)' }}>
+                {description}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      <style>{`
+        .pro-image-uploader:hover .uploader-overlay {
+          opacity: 1 !important;
+        }
+      `}</style>
+    </div>
+  )
+}
 
 export default function Settings() {
   const { t, i18n } = useTranslation()
@@ -35,8 +259,7 @@ export default function Settings() {
   const logoFileRef = useRef(null)
   const faviconFileRef = useRef(null)
 
-  // Menus
-  const [menus, setMenus] = useState([])
+
 
   // Integrations (Telegram)
   const [tgEnabled, setTgEnabled] = useState(false)
@@ -56,9 +279,8 @@ export default function Settings() {
     setLoading(true)
     setError('')
     try {
-      const [setRes, menuRes, botRes] = await Promise.all([
+      const [setRes, botRes] = await Promise.all([
         fetch('/api/settings'),
-        fetch('/api/menu_settings'),
         fetch('/api/telegram/process').catch(() => null) // May fail if not configured
       ])
 
@@ -82,18 +304,6 @@ export default function Settings() {
         setGoogleEnabled(!!data.google_oauth_enabled)
         setGoogleClientId(data.google_client_id || '')
         setGoogleRedirectUri(data.google_redirect_uri || '')
-      }
-
-      if (menuRes.ok) {
-        const menuData = await menuRes.json()
-        // Convert menuData.menus map and menuData.order array to ordered array
-        if (menuData.menus && menuData.order) {
-          const orderedMenus = menuData.order.map(key => ({
-            key,
-            ...menuData.menus[key]
-          }))
-          setMenus(orderedMenus)
-        }
       }
 
       if (botRes && botRes.ok) {
@@ -164,20 +374,6 @@ export default function Settings() {
       })
       if (!setRes.ok) throw new Error('Sozlamalarni saqlashda xatolik')
 
-      // Save menus
-      const menusMap = {}
-      const order = menus.map(m => m.key)
-      menus.forEach(m => {
-        menusMap[m.key] = { uz: m.uz, ru: m.ru, type: m.type, icon: m.icon, href: m.href }
-      })
-
-      const menuRes = await fetch('/api/menu_settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ menus: menusMap, order })
-      })
-      if (!menuRes.ok) throw new Error('Menyu sozlamalarini saqlashda xatolik')
-
       // Refresh to reflect changes
       toast.success(isRu ? 'Настройки сохранены' : 'Sozlamalar saqlandi')
       window.location.reload()
@@ -208,21 +404,7 @@ export default function Settings() {
     }
   }
 
-  const moveMenu = (index, dir) => {
-    if (dir === -1 && index === 0) return
-    if (dir === 1 && index === menus.length - 1) return
-    const newMenus = [...menus]
-    const temp = newMenus[index]
-    newMenus[index] = newMenus[index + dir]
-    newMenus[index + dir] = temp
-    setMenus(newMenus)
-  }
 
-  const handleMenuChange = (index, lang, value) => {
-    const newMenus = [...menus]
-    newMenus[index][lang] = value
-    setMenus(newMenus)
-  }
 
   if (loading) {
     return (
@@ -237,7 +419,7 @@ export default function Settings() {
       <PageHero
         badge={`✦ ${isRu ? 'Настройки' : 'Sozlamalar'}`}
         title={isRu ? 'Настройки системы' : 'Tizim Sozlamalari'}
-        sub={isRu ? 'Управление системой, меню и интеграциями' : 'Tizim, menyular va integratsiyalarni boshqarish'}
+        sub={isRu ? 'Управление системой и интеграциями' : 'Tizim va integratsiyalarni boshqarish'}
         right={
           <button onClick={handleSave} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 16px', borderRadius: 8, background: 'var(--accent)', border: 'none', color: '#fff', fontSize: 13, cursor: saving ? 'not-allowed' : 'pointer', fontWeight: 600 }}>
             {saving ? <ArrowSyncRegular fontSize={16} style={{ animation: 'spin 1s linear infinite' }} /> : <SaveRegular fontSize={16} />}
@@ -258,7 +440,6 @@ export default function Settings() {
         <div style={{ display: 'flex', gap: 12, borderBottom: '1px solid var(--border)', marginBottom: 24, overflowX: 'auto' }}>
           {[
             { id: 'system', icon: <SettingsRegular />, label: isRu ? 'Система' : 'Tizim' },
-            { id: 'menus', icon: <ListRegular />, label: isRu ? 'Меню' : 'Menyu' },
             { id: 'integrations', icon: <PlugConnectedRegular />, label: isRu ? 'Интеграции' : 'Integratsiyalar' },
           ].map(tab => (
             <button
@@ -316,30 +497,38 @@ export default function Settings() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginTop: 12 }}>
                 
                 {/* Logo Upload */}
-                <div style={{ padding: 20, border: '1px dashed var(--border-2)', borderRadius: 12, background: 'var(--surface)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, transition: 'all 0.2s' }}>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-4)', textTransform: 'uppercase' }}>{isRu ? 'Логотип' : 'Logotip'}</label>
-                  <div style={{ width: 80, height: 80, borderRadius: 12, background: 'var(--surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', border: '1px solid var(--border)' }}>
-                    <img src={logoPreview || logoUrl || '/static/images/default-logo.png'} style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 8 }} />
-                  </div>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'var(--accent-bg)', color: 'var(--accent)', border: '1px solid var(--accent-bd)', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}>
-                    <CameraRegular fontSize={18} />
-                    {isRu ? 'Выбрать фото' : 'Rasm tanlash'}
-                    <input type="file" ref={logoFileRef} accept="image/*" style={{ display: 'none' }} onChange={(e) => handleFileChange(e, setLogoPreview)} />
-                  </label>
-                </div>
+                <ImageUploader
+                  label={isRu ? 'Логотип' : 'Logotip'}
+                  value={logoUrl}
+                  preview={logoPreview}
+                  fileRef={logoFileRef}
+                  onChange={(e) => handleFileChange(e, setLogoPreview)}
+                  onClear={() => {
+                    setLogoUrl('')
+                    setLogoPreview('')
+                  }}
+                  placeholderIcon={ImageRegular}
+                  accept="image/*"
+                  isRu={isRu}
+                  description={isRu ? 'PNG, JPG или SVG' : 'PNG, JPG yoki SVG'}
+                />
 
                 {/* Favicon Upload */}
-                <div style={{ padding: 20, border: '1px dashed var(--border-2)', borderRadius: 12, background: 'var(--surface)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, transition: 'all 0.2s' }}>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-4)', textTransform: 'uppercase' }}>Favicon</label>
-                  <div style={{ width: 80, height: 80, borderRadius: 12, background: 'var(--surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', border: '1px solid var(--border)' }}>
-                    <img src={faviconPreview || faviconUrl || '/favicon.ico'} style={{ width: 32, height: 32, objectFit: 'contain' }} />
-                  </div>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'var(--surface-2)', color: 'var(--text-1)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}>
-                    <CameraRegular fontSize={18} />
-                    {isRu ? 'Выбрать иконку' : 'Ikonka tanlash'}
-                    <input type="file" ref={faviconFileRef} accept=".ico,.png" style={{ display: 'none' }} onChange={(e) => handleFileChange(e, setFaviconPreview)} />
-                  </label>
-                </div>
+                <ImageUploader
+                  label="Favicon"
+                  value={faviconUrl}
+                  preview={faviconPreview}
+                  fileRef={faviconFileRef}
+                  onChange={(e) => handleFileChange(e, setFaviconPreview)}
+                  onClear={() => {
+                    setFaviconUrl('')
+                    setFaviconPreview('')
+                  }}
+                  placeholderIcon={GlobeRegular}
+                  accept=".ico,.png,.svg"
+                  isRu={isRu}
+                  description={isRu ? 'ICO, PNG или SVG' : 'ICO, PNG yoki SVG'}
+                />
                 
               </div>
 
@@ -347,39 +536,7 @@ export default function Settings() {
           </div>
         )}
 
-        {/* TAB: MENUS */}
-        {activeTab === 'menus' && (
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-             <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <ListRegular /> {isRu ? 'Редактор меню' : 'Menyu muharriri'}
-            </h3>
-            <div style={{ fontSize: 12, color: 'var(--text-4)', marginBottom: 24 }}>{isRu ? 'Измените порядок и названия меню на левой панели.' : 'Chap paneldagi menyu ketma-ketligini va nomlarini o\'zgartiring.'}</div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {menus.map((m, idx) => (
-                <div key={m.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, background: m.type === 'group' ? 'var(--accent-bg)' : 'var(--bg)', border: `1px solid ${m.type === 'group' ? 'var(--accent-bd)' : 'var(--border)'}`, borderRadius: 8 }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <button onClick={() => moveMenu(idx, -1)} disabled={idx === 0} style={{ padding: 4, background: 'transparent', border: 'none', cursor: idx === 0 ? 'not-allowed' : 'pointer', color: 'var(--text-4)' }}><ArrowUpRegular /></button>
-                    <button onClick={() => moveMenu(idx, 1)} disabled={idx === menus.length - 1} style={{ padding: 4, background: 'transparent', border: 'none', cursor: idx === menus.length - 1 ? 'not-allowed' : 'pointer', color: 'var(--text-4)' }}><ArrowDownRegular /></button>
-                  </div>
-                  <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    <div>
-                      <div style={{ fontSize: 10, color: 'var(--text-4)', fontWeight: 600, marginBottom: 4 }}>UZ</div>
-                      <input type="text" value={m.uz} onChange={e => handleMenuChange(idx, 'uz', e.target.value)} style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border-2)', background: 'var(--surface)', color: 'var(--text-1)', fontSize: 13, outline: 'none' }} />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 10, color: 'var(--text-4)', fontWeight: 600, marginBottom: 4 }}>RU</div>
-                      <input type="text" value={m.ru} onChange={e => handleMenuChange(idx, 'ru', e.target.value)} style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border-2)', background: 'var(--surface)', color: 'var(--text-1)', fontSize: 13, outline: 'none' }} />
-                    </div>
-                  </div>
-                  <div style={{ width: 100, fontSize: 11, color: 'var(--text-4)', textAlign: 'right' }}>
-                    {m.type === 'group' ? <b>{isRu ? 'ГРУППА' : 'GURUH'}</b> : m.key}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* TAB: INTEGRATIONS */}
         {activeTab === 'integrations' && (

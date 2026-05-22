@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   ClipboardTaskListLtrRegular,
@@ -324,6 +325,7 @@ export default function Attendance() {
                   <thead>
                     <tr>
                       {[
+                        '№',
                         isRu ? 'Время' : 'Vaqt',
                         isRu ? 'Сотрудник' : 'Xodim',
                         isRu ? 'ID' : 'ID',
@@ -335,8 +337,11 @@ export default function Attendance() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map(it => (
+                    {filtered.map((it, idx) => (
                       <tr key={it.id}>
+                        <td style={tdStyle}>
+                          <span style={{ fontWeight: 600, color: 'var(--text-4)' }}>{idx + 1}</span>
+                        </td>
                         <td style={tdStyle}>
                           <div style={{ fontWeight: 600, fontSize: 13 }}>{formatTime(it.timestamp)}</div>
                           <div style={{ fontSize: 11, color: 'var(--text-4)' }}>{formatDate(it.timestamp)}</div>
@@ -345,7 +350,19 @@ export default function Attendance() {
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <div style={avatarFallback}><PersonRegular fontSize={16} /></div>
                             <div>
-                              <div style={{ fontWeight: 600 }}>{it.employee_name || it.person_name || (isRu ? 'Неизвестный' : "Noma'lum")}</div>
+                              {it.employee_id ? (
+                                <Link
+                                  to={`/employees/${it.employee_id}`}
+                                  state={{ from: '/attendance' }}
+                                  style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}
+                                >
+                                  {it.employee_name || it.person_name || (isRu ? 'Сотрудник' : 'Xodim')}
+                                </Link>
+                              ) : (
+                                <div style={{ fontWeight: 600 }}>
+                                  {it.employee_name || it.person_name || (isRu ? 'Неизвестный' : "Noma'lum")}
+                                </div>
+                              )}
                               {it.person_name && it.person_name !== it.employee_name && (
                                 <div style={{ fontSize: 11, color: 'var(--text-4)', marginTop: 2 }}>{it.person_name}</div>
                               )}

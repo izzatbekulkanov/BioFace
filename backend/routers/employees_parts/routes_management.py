@@ -104,6 +104,13 @@ def _serialize_employee_record(employee: Employee, org_map: dict[int, str], cam_
         "schedule_is_flexible": bool(schedule_payload.get("is_flexible")),
         "schedule_source": schedule_payload.get("source"),
         "avatar": employee.image_url or "",
+        "phone": employee.phone or "",
+        "parent_phone": employee.parent_phone or "",
+        "region": employee.region or "",
+        "district": employee.district or "",
+        "address": employee.address or "",
+        "birth_date": employee.birth_date or "",
+        "gender": employee.gender or "",
         "organization_id": employee.organization_id,
         "organization_name": org_map.get(int(employee.organization_id)) if employee.organization_id is not None else None,
         "camera_ids": camera_map.get(int(employee.id), []),
@@ -748,6 +755,8 @@ def get_employees(
     request: Request,
     db: Session = Depends(get_db),
     organization_id: Optional[int] = Query(None),
+    department_id: Optional[int] = Query(None),
+    has_access: Optional[bool] = Query(None),
     employee_type: Optional[str] = Query(None, description="hodim | oqituvchi | oquvchi | talaba"),
     search: Optional[str] = Query(None),
     page: int = Query(1, ge=1),
@@ -769,6 +778,12 @@ def get_employees(
 
     if organization_id is not None and int(organization_id) in allowed_org_ids:
         query = query.filter(Employee.organization_id == int(organization_id))
+
+    if department_id is not None:
+        query = query.filter(Employee.department_id == int(department_id))
+
+    if has_access is not None:
+        query = query.filter(Employee.has_access == has_access)
 
     type_filter = (employee_type or "").strip().lower()
     if type_filter == "students":
@@ -1488,6 +1503,13 @@ def create_employee(
     organization_id: Optional[int] = Form(None),
     camera_ids: Optional[str] = Form(None),
     image: Optional[UploadFile] = File(None),
+    phone: Optional[str] = Form(None),
+    parent_phone: Optional[str] = Form(None),
+    region: Optional[str] = Form(None),
+    district: Optional[str] = Form(None),
+    address: Optional[str] = Form(None),
+    birth_date: Optional[str] = Form(None),
+    gender: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ):
     parsed_camera_ids = parse_camera_ids(camera_ids)
@@ -1546,6 +1568,13 @@ def create_employee(
         start_time=start_time,
         end_time=end_time,
         image_url=image_url,
+        phone=(phone.strip() if phone else None),
+        parent_phone=(parent_phone.strip() if parent_phone else None),
+        region=(region.strip() if region else None),
+        district=(district.strip() if district else None),
+        address=(address.strip() if address else None),
+        birth_date=(birth_date.strip() if birth_date else None),
+        gender=(gender.strip() if gender else None),
         organization_id=resolved_org_id,
     )
     db.add(new_emp)
@@ -1589,6 +1618,13 @@ def update_employee(
     organization_id: Optional[int] = Form(None),
     camera_ids: Optional[str] = Form(None),
     image: Optional[UploadFile] = File(None),
+    phone: Optional[str] = Form(None),
+    parent_phone: Optional[str] = Form(None),
+    region: Optional[str] = Form(None),
+    district: Optional[str] = Form(None),
+    address: Optional[str] = Form(None),
+    birth_date: Optional[str] = Form(None),
+    gender: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ):
     emp = db.query(Employee).filter(Employee.id == emp_id).first()
@@ -1630,6 +1666,20 @@ def update_employee(
         emp.start_time = start_time
     if end_time is not None:
         emp.end_time = end_time
+    if phone is not None:
+        emp.phone = phone.strip() or None
+    if parent_phone is not None:
+        emp.parent_phone = parent_phone.strip() or None
+    if region is not None:
+        emp.region = region.strip() or None
+    if district is not None:
+        emp.district = district.strip() or None
+    if address is not None:
+        emp.address = address.strip() or None
+    if birth_date is not None:
+        emp.birth_date = birth_date.strip() or None
+    if gender is not None:
+        emp.gender = gender.strip() or None
 
     original_org_id = int(emp.organization_id) if emp.organization_id is not None else None
     original_department_id = int(emp.department_id) if emp.department_id is not None else None

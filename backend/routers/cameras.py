@@ -1103,6 +1103,7 @@ def list_cameras(request: Request, db: Session = Depends(get_db)):
             "max_memory": c.max_memory,
             "used_faces": c.used_faces,
             "organization_id": c.organization_id,
+            "direction": c.direction,
             "username": c.username,
             "isup_password": c.isup_password or ISUP_KEY,
             "has_password": bool(c.password),
@@ -1176,6 +1177,7 @@ def get_camera(request: Request, cam_id: int, db: Session = Depends(get_db)):
         "max_memory": cam.max_memory,
         "used_faces": cam.used_faces,
         "organization_id": cam.organization_id,
+        "direction": cam.direction,
         "username": cam.username,
         "has_password": bool(cam.password),
         "is_online": dynamic_online,
@@ -1308,6 +1310,7 @@ def add_camera(request: Request, data: CameraCreate, db: Session = Depends(get_d
         username=username,
         password=password,
         isup_password=isup_password,
+        direction=data.direction,
     )
     db.add(cam)
     db.commit()
@@ -1418,6 +1421,8 @@ def update_camera(request: Request, cam_id: int, data: CameraUpdate, db: Session
         cam.password = data.password
     if data.isup_password is not None:
         cam.isup_password = data.isup_password
+    if data.direction is not None:
+        cam.direction = data.direction
         
     db.commit()
     return {"ok": True, "message": "Kamera yangilandi"}

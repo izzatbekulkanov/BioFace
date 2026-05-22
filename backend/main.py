@@ -251,6 +251,8 @@ if os.path.exists(assets_dir):
 @app.get("/dashboard")
 @app.get("/devices")
 @app.get("/settings")
+@app.get("/organizations")
+@app.get("/users")
 async def serve_react_app():
     index_file = os.path.join(frontend_dist, 'index.html')
     if os.path.exists(index_file):
@@ -259,6 +261,7 @@ async def serve_react_app():
 
 @app.get("/devices/{path:path}")
 @app.get("/settings/{path:path}")
+@app.get("/organizations/{path:path}")
 async def serve_react_device_path(path: str):
     index_file = os.path.join(frontend_dist, 'index.html')
     if os.path.exists(index_file):

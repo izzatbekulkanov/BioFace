@@ -25,6 +25,9 @@ import Attendance     from './pages/Attendance'
 import PsychologicalPortrait from './pages/PsychologicalPortrait'
 import MiddlewareLogs from './pages/MiddlewareLogs'
 import Shifts         from './pages/Shifts'
+import Organizations  from './pages/Organizations'
+import OrganizationDetail from './pages/OrganizationDetail'
+import OrganizationForm from './pages/OrganizationForm'
 import { ConfirmProvider } from './components/ConfirmDialog'
 import { ToastProvider } from './components/Toaster'
 
@@ -100,6 +103,10 @@ export default function App() {
               <Route path="/attendance"      element={isLoggedIn ? <Attendance /> : <Navigate to="/login" replace />} />
               <Route path="/psychology"      element={isLoggedIn ? <PsychologicalPortrait /> : <Navigate to="/login" replace />} />
               <Route path="/shifts"          element={isLoggedIn ? <Shifts />    : <Navigate to="/login" replace />} />
+              <Route path="/organizations"        element={isLoggedIn ? <Organizations /> : <Navigate to="/login" replace />} />
+              <Route path="/organizations/new"    element={isLoggedIn ? <OrganizationForm /> : <Navigate to="/login" replace />} />
+              <Route path="/organizations/:id"    element={isLoggedIn ? <OrganizationDetail /> : <Navigate to="/login" replace />} />
+              <Route path="/organizations/:id/edit" element={isLoggedIn ? <OrganizationForm /> : <Navigate to="/login" replace />} />
               <Route path="/middleware-logs" element={isLoggedIn ? <MiddlewareLogs /> : <Navigate to="/login" replace />} />
             </Routes>
           </main>
