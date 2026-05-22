@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 import config.system_config as system_config  # noqa: F401  # loads .env values before OAuth settings are read
 from utils.access_control import resolve_user_menu_permissions
 from database import get_db
-from models import User, Organization
+from models import User, Organization, UserOrganizationLink, Device, RequestLog
 from utils.menu_utils import get_menu_data
 from utils.translations import get_translations
 
@@ -85,6 +85,10 @@ def _build_auth_user(user: User) -> dict:
     return {
         "id": user.id,
         "name": user.name,
+        "first_name": user.first_name or "",
+        "last_name": user.last_name or "",
+        "middle_name": user.middle_name or "",
+        "phone": user.phone or "",
         "display_name": display_name,
         "email": user.email,
         "role": user.role.value if user.role else "",
@@ -379,6 +383,19 @@ def login(payload: LoginPayload, request: Request, db: Session = Depends(get_db)
     return {"ok": True, "redirect": "/"}
 
 
+@router.get("/api/auth/me")
+def get_me(request: Request, db: Session = Depends(get_db)):
+    auth_user = request.session.get("auth_user")
+    if not auth_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    user = db.query(User).filter(User.id == auth_user["id"]).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    fresh_auth_user = _build_auth_user(user)
+    request.session["auth_user"] = fresh_auth_user
+    return fresh_auth_user
+
+
 @router.post("/api/auth/logout")
 def logout_api(request: Request):
     request.session.clear()
@@ -390,4 +407,121 @@ def logout(request: Request):
     request.session.clear()
     return RedirectResponse(url="/login", status_code=303)
 
+
+@router.get("/api/profile/dashboard")
+def profile_dashboard(request: Request, db: Session = Depends(get_db)):
+    """Foydalanuvchining profilini, tashkilotlarini, kameralarini, loglarini va seanslarini qaytaradi."""
+    auth_user = request.session.get("auth_user")
+    if not auth_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    user = db.query(User).filter(User.id == auth_user["id"]).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    # --- Tashkilotlar va kameralar ---
+    org_links = db.query(UserOrganizationLink).filter(
+        UserOrganizationLink.user_id == user.id
+    ).all()
+
+    org_ids = [link.organization_id for link in org_links]
+
+    # Foydalanuvchining asosiy organization_id ni ham qo'shamiz
+    if user.organization_id and user.organization_id not in org_ids:
+        org_ids.append(user.organization_id)
+
+    organizations = []
+    if org_ids:
+        orgs = db.query(Organization).filter(Organization.id.in_(org_ids)).all()
+        for org in orgs:
+            devices = db.query(Device).filter(Device.organization_id == org.id).all()
+            organizations.append({
+                "id": org.id,
+                "name": org.name,
+                "organization_type": org.organization_type or "boshqa",
+                "address": org.address or "",
+                "phone": org.phone or "",
+                "region": org.region or "",
+                "district": org.district or "",
+                "subscription_status": org.subscription_status.value if org.subscription_status else "pending",
+                "subscription_end_date": org.subscription_end_date.isoformat() if org.subscription_end_date else None,
+                "telegram_enabled": bool(org.telegram_enabled),
+                "is_primary": org.id == user.organization_id,
+                "cameras": [
+                    {
+                        "id": d.id,
+                        "name": d.name,
+                        "mac_address": d.mac_address,
+                        "serial_number": d.serial_number or "",
+                        "model": d.model or "",
+                        "location": d.location or "",
+                        "is_online": bool(d.is_online),
+                        "direction": d.direction or "",
+                        "external_ip": d.external_ip or "",
+                        "used_faces": d.used_faces or 0,
+                        "max_memory": d.max_memory or 1500,
+                        "last_seen_at": d.last_seen_at.isoformat() if d.last_seen_at else None,
+                        "created_at": d.created_at.isoformat() if d.created_at else None,
+                    }
+                    for d in devices
+                ],
+            })
+
+    # --- Faollik loglari (so'nggi 50 ta so'rov) ---
+    recent_logs = (
+        db.query(RequestLog)
+        .filter(RequestLog.client_ip.isnot(None))
+        .order_by(RequestLog.created_at.desc())
+        .limit(100)
+        .all()
+    )
+    activity_logs = [
+        {
+            "id": log.id,
+            "method": log.method or "GET",
+            "url": log.url or "",
+            "status_code": log.status_code,
+            "response_time_ms": log.response_time_ms,
+            "client_ip": log.client_ip or "",
+            "user_agent": log.user_agent or "",
+            "created_at": log.created_at.isoformat() if log.created_at else None,
+        }
+        for log in recent_logs
+    ]
+
+    # --- Faol seanslar ---
+    # Session ma'lumotlarini olish
+    current_session = {
+        "ip": request.client.host if request.client else "unknown",
+        "user_agent": request.headers.get("user-agent", "unknown"),
+        "login_provider": user.last_login_provider or "password",
+        "current": True,
+    }
+
+    return {
+        "user": {
+            "id": user.id,
+            "name": user.name,
+            "first_name": user.first_name or "",
+            "last_name": user.last_name or "",
+            "middle_name": user.middle_name or "",
+            "email": user.email,
+            "phone": user.phone or "",
+            "role": user.role.value if user.role else "",
+            "status": user.status or "active",
+            "image_url": user.image_url or "",
+            "google_oauth_enabled": bool(user.google_oauth_enabled),
+            "last_login_provider": user.last_login_provider or "password",
+            "organization_id": user.organization_id,
+        },
+        "organizations": organizations,
+        "activity_logs": activity_logs,
+        "sessions": [current_session],
+        "stats": {
+            "total_organizations": len(organizations),
+            "total_cameras": sum(len(o["cameras"]) for o in organizations),
+            "online_cameras": sum(1 for o in organizations for c in o["cameras"] if c["is_online"]),
+            "total_logs": len(activity_logs),
+        },
+    }
 

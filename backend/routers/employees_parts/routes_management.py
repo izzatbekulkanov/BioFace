@@ -711,45 +711,6 @@ def _employee_filter_options_payload(
     }
 
 
-@router.get("/api/employees/{emp_id}")
-def get_employee(emp_id: int, request: Request, db: Session = Depends(get_db)):
-    """Bitta xodim ma'lumotlari (form uchun)."""
-    allowed_org_ids = _resolve_employee_allowed_org_ids(request, db)
-    emp = db.query(Employee).filter(Employee.id == int(emp_id)).first()
-    if not emp:
-        raise HTTPException(status_code=404, detail="Xodim topilmadi")
-    if allowed_org_ids and emp.organization_id is not None and int(emp.organization_id) not in allowed_org_ids:
-        raise HTTPException(status_code=403, detail="Bu xodimga ruxsat yo'q")
-
-    org_rows = (
-        db.query(Organization.id, Organization.name)
-        .filter(Organization.id.in_(allowed_org_ids))
-        .all()
-        if allowed_org_ids
-        else []
-    )
-    cam_rows = (
-        db.query(Device.id, Device.name)
-        .filter(Device.organization_id.in_(allowed_org_ids))
-        .all()
-        if allowed_org_ids
-        else []
-    )
-    links = (
-        db.query(EmployeeCameraLink.employee_id, EmployeeCameraLink.camera_id)
-        .filter(EmployeeCameraLink.employee_id == int(emp.id))
-        .all()
-    )
-
-    org_map = {int(r[0]): str(r[1]) for r in org_rows}
-    cam_map = {int(r[0]): str(r[1]) for r in cam_rows}
-    camera_map: dict[int, list[int]] = {int(emp.id): []}
-    for emp_id_row, cam_id_row in links:
-        camera_map[int(emp_id_row)].append(int(cam_id_row))
-
-    return {"ok": True, "item": _serialize_employee_record(emp, org_map, cam_map, camera_map)}
-
-
 @router.get("/api/employees")
 def get_employees(
     request: Request,
@@ -1215,6 +1176,45 @@ def validate_personal_id(
 @router.get("/api/employees/personal-id/generate")
 def generate_personal_id(db: Session = Depends(get_db)):
     return {"personal_id": generate_unique_personal_id(db)}
+
+
+@router.get("/api/employees/{emp_id}")
+def get_employee(emp_id: int, request: Request, db: Session = Depends(get_db)):
+    """Bitta xodim ma'lumotlari (form uchun)."""
+    allowed_org_ids = _resolve_employee_allowed_org_ids(request, db)
+    emp = db.query(Employee).filter(Employee.id == int(emp_id)).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Xodim topilmadi")
+    if allowed_org_ids and emp.organization_id is not None and int(emp.organization_id) not in allowed_org_ids:
+        raise HTTPException(status_code=403, detail="Bu xodimga ruxsat yo'q")
+
+    org_rows = (
+        db.query(Organization.id, Organization.name)
+        .filter(Organization.id.in_(allowed_org_ids))
+        .all()
+        if allowed_org_ids
+        else []
+    )
+    cam_rows = (
+        db.query(Device.id, Device.name)
+        .filter(Device.organization_id.in_(allowed_org_ids))
+        .all()
+        if allowed_org_ids
+        else []
+    )
+    links = (
+        db.query(EmployeeCameraLink.employee_id, EmployeeCameraLink.camera_id)
+        .filter(EmployeeCameraLink.employee_id == int(emp.id))
+        .all()
+    )
+
+    org_map = {int(r[0]): str(r[1]) for r in org_rows}
+    cam_map = {int(r[0]): str(r[1]) for r in cam_rows}
+    camera_map: dict[int, list[int]] = {int(emp.id): []}
+    for emp_id_row, cam_id_row in links:
+        camera_map[int(emp_id_row)].append(int(cam_id_row))
+
+    return {"ok": True, "item": _serialize_employee_record(emp, org_map, cam_map, camera_map)}
 
 
 @router.get("/api/employees/{emp_id}/camera-status")

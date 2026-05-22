@@ -3016,6 +3016,7 @@ def get_attendance(
     organization_id: Optional[int] = None,
     camera_id: Optional[int] = None,
     after_id: Optional[int] = None,
+    before_id: Optional[int] = None,
     today_only: bool = False,
     db: Session = Depends(get_db),
 ):
@@ -3033,8 +3034,15 @@ def get_attendance(
         )
     if camera_id is not None:
         query = query.filter(AttendanceLog.device_id == camera_id)
+    # Calculate grand totals for this filter (excluding pagination)
+    total = query.count()
+    known = query.filter(AttendanceLog.employee_id.isnot(None)).count()
+    unknown = total - known
+
     if after_id is not None:
         query = query.filter(AttendanceLog.id > after_id)
+    if before_id is not None:
+        query = query.filter(AttendanceLog.id < before_id)
 
     # after_id berilganda faqat yangi yozuvlarni kichikdan kattaga qaytaramiz,
     # aks holda UI uchun oxirgi yozuvlar tepadan pastga (desc) kerak.
@@ -3053,7 +3061,6 @@ def get_attendance(
             organization = l.device.organization
         elif l.employee and l.employee.organization:
             organization = l.employee.organization
-
 
         employee_name = None
         personal_id = l.person_id
@@ -3082,7 +3089,15 @@ def get_attendance(
                 "snapshot_url": l.snapshot_url,
             }
         )
-    return {"ok": True, "count": len(items), "items": items, "last_id": last_id}
+    return {
+        "ok": True,
+        "count": len(items),
+        "total": total,
+        "known": known,
+        "unknown": unknown,
+        "items": items,
+        "last_id": last_id
+    }
 
 
 def _attendance_group_identity_expr():

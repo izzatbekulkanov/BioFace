@@ -41,18 +41,96 @@ import { useToast } from '../components/Toaster'
  */
 
 const ROLES = [
-  { value: 'super_admin',     label_uz: 'Asosiy Administrator', label_ru: 'Главный администратор' },
-  { value: 'mahalla_admin',   label_uz: 'Mahalla Admini',       label_ru: 'Махаллинский админ' },
-  { value: 'maktab_admin',    label_uz: 'Maktab Admini',        label_ru: 'Школьный админ' },
-  { value: 'kollej_admin',    label_uz: 'Kollej Admini',        label_ru: 'Колледжский админ' },
-  { value: 'tashkilot_admin', label_uz: 'Tashkilot Admini',     label_ru: 'Админ организации' },
-  { value: 'korxona_admin',   label_uz: 'Korxona Admini',       label_ru: 'Админ предприятия' },
+  { value: 'SuperAdmin',     label_uz: 'Asosiy Administrator', label_ru: 'Главный администратор' },
+  { value: 'MahallaAdmin',   label_uz: 'Mahalla Admini',       label_ru: 'Махаллинский админ' },
+  { value: 'MaktabAdmin',    label_uz: 'Maktab Admini',        label_ru: 'Школьный админ' },
+  { value: 'KollejAdmin',    label_uz: 'Kollej Admini',        label_ru: 'Колледжский админ' },
+  { value: 'TashkilotAdmin', label_uz: 'Tashkilot Admini',     label_ru: 'Админ организации' },
+  { value: 'KorxonaAdmin',   label_uz: 'Korxona Admini',       label_ru: 'Админ предприятия' },
 ]
 
 const STATUSES = [
   { value: 'active',   label_uz: 'Faol (Active)',          label_ru: 'Активен' },
   { value: 'pending',  label_uz: 'Kutilmoqda (Pending)',   label_ru: 'Ожидает' },
   { value: 'inactive', label_uz: 'Nofaol (Inactive)',      label_ru: 'Неактивен' },
+]
+
+const LIMITED_ADMIN_DEFAULTS = [
+  'dashboard',
+  'devices',
+  'commands',
+  'staff',
+  'students',
+  'shifts',
+  'attendance',
+  'psychological_portrait',
+  'reports',
+  'user_approvals',
+  'settings',
+  'about'
+]
+
+const ALL_PERMISSION_KEYS = [
+  'dashboard', 'about', 'devices', 'commands', 'staff', 'students', 'shifts',
+  'attendance', 'psychological_portrait', 'reports', 'organizations', 'users',
+  'user_approvals', 'settings', 'isup_server', 'redis_monitor', 'middleware_logs',
+  'api_helper'
+]
+
+const PERMISSION_GROUPS = [
+  {
+    key: 'general',
+    title_uz: 'Umumiy',
+    title_ru: 'Общее',
+    items: [
+      { key: 'dashboard', label_uz: 'Boshqaruv paneli', label_ru: 'Панель управления', desc_uz: 'Asosiy dashboard va statistika', desc_ru: 'Главный дашборд и статистика' },
+      { key: 'about', label_uz: 'Tizim haqida', label_ru: 'О системе', desc_uz: 'Platforma haqida ma\'lumotlar', desc_ru: 'Информация о платформе' },
+    ]
+  },
+  {
+    key: 'cameras',
+    title_uz: 'Kameralar',
+    title_ru: 'Камеры',
+    items: [
+      { key: 'devices', label_uz: 'Kameralar', label_ru: 'Камеры', desc_uz: 'Kameralar ro\'yxati va boshqaruvi', desc_ru: 'Список и управление камерами' },
+      { key: 'commands', label_uz: 'Kamera buyruqlari', label_ru: 'Команды камеры', desc_uz: 'Kameraga yuboriladigan buyruqlar', desc_ru: 'Команды, отправляемые на камеры' },
+    ]
+  },
+  {
+    key: 'employees',
+    title_uz: 'Asosiy bo\'lim',
+    title_ru: 'Основной раздел',
+    items: [
+      { key: 'staff', label_uz: 'Hodimlar', label_ru: 'Сотрудники', desc_uz: 'Hodimlar va o\'qituvchilar kartalari', desc_ru: 'Карточки и данные сотрудников' },
+      { key: 'students', label_uz: 'O\'quvchi talabalar', label_ru: 'Ученики и студенты', desc_uz: 'O\'quvchilar ro\'yxati va ma\'lumotlari', desc_ru: 'Список и данные учеников' },
+      { key: 'shifts', label_uz: 'Smenalar', label_ru: 'Смены', desc_uz: 'Ish va o\'qish vaqti smenalari', desc_ru: 'Смены и рабочее время' },
+      { key: 'attendance', label_uz: 'Davomat', label_ru: 'Посещаемость', desc_uz: 'Jonli va saqlangan davomat yozuvlari', desc_ru: 'Живая и сохраненная посещаемость' },
+      { key: 'psychological_portrait', label_uz: 'Psixologik portret', label_ru: 'Психологический портрет', desc_uz: 'AI holat profillari va foizlari', desc_ru: 'AI-профили состояний и проценты' },
+      { key: 'reports', label_uz: 'Hisobotlar', label_ru: 'Отчеты', desc_uz: 'Kechikish va faoliyat hisobotlari', desc_ru: 'Отчеты по опозданиям и активности' },
+    ]
+  },
+  {
+    key: 'management',
+    title_uz: 'Boshqaruv',
+    title_ru: 'Управление',
+    items: [
+      { key: 'organizations', label_uz: 'Tashkilotlar', label_ru: 'Организации', desc_uz: 'Tashkilotlar ro\'yxati va boshqaruvi', desc_ru: 'Список и управление организациями' },
+      { key: 'users', label_uz: 'Foydalanuvchilar', label_ru: 'Пользователи', desc_uz: 'Tizim foydalanuvchilari va rollari', desc_ru: 'Системные пользователи и роли' },
+      { key: 'user_approvals', label_uz: 'Tasdiqlash navbati', label_ru: 'Очередь подтверждения', desc_uz: 'Google orqali kirgan kutilayotganlar', desc_ru: 'Пользователи, ожидающие подтверждения' },
+      { key: 'settings', label_uz: 'Sozlamalar', label_ru: 'Настройки', desc_uz: 'Umumiy tizim sozlamalari', desc_ru: 'Общие системные настройки' },
+    ]
+  },
+  {
+    key: 'system',
+    title_uz: 'Tizim',
+    title_ru: 'Система',
+    items: [
+      { key: 'isup_server', label_uz: 'ISUP server', label_ru: 'ISUP сервер', desc_uz: 'ISUP holati va integratsiya boshqaruvi', desc_ru: 'Состояние ISUP и управление интеграцией' },
+      { key: 'redis_monitor', label_uz: 'Redis monitor', label_ru: 'Монитор Redis', desc_uz: 'Redis holati va navbatlar tahlili', desc_ru: 'Состояние Redis и очереди' },
+      { key: 'middleware_logs', label_uz: 'Tizim loglari', label_ru: 'Системные логи', desc_uz: 'HTTP va middleware loglari jurnali', desc_ru: 'HTTP и middleware-логи' },
+      { key: 'api_helper', label_uz: 'API helper', label_ru: 'API helper', desc_uz: 'Texnik API yordamchi sahifa', desc_ru: 'Техническая страница API helper' },
+    ]
+  }
 ]
 
 export default function UserForm() {
@@ -77,11 +155,12 @@ export default function UserForm() {
     password_confirm: '',
     email: '',
     phone: '',
-    role: 'tashkilot_admin',
+    role: 'TashkilotAdmin',
     status: 'active',
     organization_ids: [],
     google_oauth_enabled: false,
     image_url: '',
+    menu_permissions: LIMITED_ADMIN_DEFAULTS,
   })
 
   const [imageFile, setImageFile] = useState(null)
@@ -113,6 +192,23 @@ export default function UserForm() {
             const list = await uRes.json()
             const u = (Array.isArray(list) ? list : []).find(x => String(x.id) === String(id))
             if (u && alive) {
+              const uRole = ROLES.find(r => r.label_uz.includes(u.role) || r.value.toLowerCase() === String(u.role || '').toLowerCase())?.value
+                || u.role
+                || 'TashkilotAdmin';
+              
+              let parsedPerms = [];
+              if (u.menu_permissions) {
+                try {
+                  const parsed = JSON.parse(u.menu_permissions);
+                  parsedPerms = Array.isArray(parsed) ? parsed : [];
+                } catch {
+                  parsedPerms = u.menu_permissions.split(',').map(x => x.trim()).filter(Boolean);
+                }
+              }
+              if (parsedPerms.length === 0) {
+                parsedPerms = uRole === 'SuperAdmin' ? ALL_PERMISSION_KEYS : LIMITED_ADMIN_DEFAULTS;
+              }
+
               setForm(prev => ({
                 ...prev,
                 first_name: u.first_name || '',
@@ -121,13 +217,12 @@ export default function UserForm() {
                 username: u.name || '',
                 email: u.email || '',
                 phone: u.phone || '',
-                role: ROLES.find(r => r.label_uz.includes(u.role) || r.value.toLowerCase() === String(u.role || '').toLowerCase())?.value
-                  || mapBackendRole(u.role)
-                  || 'tashkilot_admin',
+                role: uRole,
                 status: u.status || 'active',
                 organization_ids: (u.organization_ids || []).map(String),
                 google_oauth_enabled: !!u.google_oauth_enabled,
                 image_url: u.image_url || '',
+                menu_permissions: parsedPerms,
               }))
               setImagePreview(u.image_url || '')
             } else if (alive) {
@@ -180,6 +275,18 @@ export default function UserForm() {
     setForm(prev => ({ ...prev, [k]: v }))
   }
 
+  const onRoleChange = (e) => {
+    const nextRole = e.target.value
+    setForm(prev => {
+      const isSuper = nextRole === 'SuperAdmin'
+      return {
+        ...prev,
+        role: nextRole,
+        menu_permissions: isSuper ? ALL_PERMISSION_KEYS : LIMITED_ADMIN_DEFAULTS
+      }
+    })
+  }
+
   const toggleOrg = (orgId) => {
     setForm(prev => {
       const sid = String(orgId)
@@ -208,6 +315,9 @@ export default function UserForm() {
     if (!form.username.trim()) return 'Username majburiy'
     if (usernameStatus.available === false) return usernameStatus.message || (isRu ? 'Username недоступен' : "Username band")
     if (!form.email.trim()) return 'Email majburiy'
+    if (form.role !== 'SuperAdmin' && (!form.menu_permissions || form.menu_permissions.length === 0)) {
+      return isRu ? 'Выберите как минимум одно разрешение меню' : 'Kamida bitta menyu ruxsatini tanlang'
+    }
     if (!isEdit && !form.password.trim()) return isRu ? 'Пароль обязателен' : 'Parol majburiy'
     if (form.password.trim() && form.password !== form.password_confirm) {
       return isRu ? 'Пароли не совпадают' : 'Parollar mos kelmaydi'
@@ -233,6 +343,7 @@ export default function UserForm() {
       fd.set('role', form.role)
       fd.set('status', form.status)
       fd.set('google_oauth_enabled', form.google_oauth_enabled ? '1' : '0')
+      fd.set('menu_permissions', JSON.stringify(form.menu_permissions))
       const orgIds = form.organization_ids.map(Number).filter(Boolean)
       if (orgIds.length) {
         fd.set('organization_ids', orgIds.join(','))
@@ -423,7 +534,7 @@ export default function UserForm() {
                   <input value={form.phone} onChange={setField('phone')} style={inpStyle} placeholder="+998..." />
                 </Field>
                 <Field label={isRu ? 'Роль' : 'Huquqi'} required>
-                  <select value={form.role} onChange={setField('role')} style={inpStyle}>
+                  <select value={form.role} onChange={onRoleChange} style={inpStyle}>
                     {ROLES.map(r => <option key={r.value} value={r.value}>{isRu ? r.label_ru : r.label_uz}</option>)}
                   </select>
                 </Field>
@@ -470,39 +581,99 @@ export default function UserForm() {
               )}
             </Section>
 
-            {/* 5. Google OAuth */}
+            {/* 5. Menu Permissions */}
             <Section
-              kicker="Google"
-              title="Google OAuth"
+              kicker={isRu ? 'Права доступа' : 'Ruxsatnomalar'}
+              title={isRu ? 'Доступ к разделам меню' : 'Menyu bo\'limlariga ruxsat'}
+              hint={
+                form.role === 'SuperAdmin'
+                  ? (isRu ? 'Супер-администратор имеет полный доступ ко всем разделам меню.' : 'Super-administrator tizimdagi barcha menyu bo\'limlariga to\'liq ruxsatga ega.')
+                  : (isRu ? 'Выберите разделы, которые будут видны этому пользователю' : 'Ushbu foydalanuvchiga ko\'rinadigan menyu bo\'limlarini tanlang')
+              }
             >
-              <label style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-                padding: '12px 14px', borderRadius: 10,
-                border: '1px solid var(--border-2)', background: 'var(--bg)',
-                cursor: 'pointer',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{
-                    width: 36, height: 36, borderRadius: '50%',
-                    background: 'var(--surface-2)', color: 'var(--text-1)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontWeight: 800, fontSize: 14, flexShrink: 0,
-                  }}>G</div>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600 }}>Google OAuth</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-4)', marginTop: 2 }}>
-                      {isRu ? 'Разрешить вход через Google' : "Google orqali kirish ruxsati"}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {PERMISSION_GROUPS.map(group => (
+                  <div key={group.key} style={{
+                    border: '1px solid var(--border-2)',
+                    borderRadius: 10,
+                    padding: 14,
+                    background: 'var(--surface-2)',
+                  }}>
+                    <div style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: 'var(--accent-tx)',
+                      marginBottom: 10,
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.5,
+                    }}>
+                      {isRu ? group.title_ru : group.title_uz}
+                    </div>
+
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+                      gap: 10,
+                    }}>
+                      {group.items.map(item => {
+                        const isChecked = form.menu_permissions.includes(item.key)
+                        const disabled = form.role === 'SuperAdmin' // Disable since SuperAdmin always has full access
+
+                        const handleToggle = () => {
+                          if (disabled) return
+                          setForm(prev => {
+                            const has = prev.menu_permissions.includes(item.key)
+                            const nextPerms = has
+                              ? prev.menu_permissions.filter(p => p !== item.key)
+                              : [...prev.menu_permissions, item.key]
+                            return { ...prev, menu_permissions: nextPerms }
+                          })
+                        }
+
+                        return (
+                          <label
+                            key={item.key}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              gap: 10,
+                              padding: '10px 12px',
+                              borderRadius: 8,
+                              background: isChecked ? 'var(--accent-bg)' : 'var(--bg)',
+                              border: `1px solid ${isChecked ? 'var(--accent-bd)' : 'var(--border-2)'}`,
+                              cursor: disabled ? 'default' : 'pointer',
+                              opacity: disabled ? 0.75 : 1,
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              disabled={disabled}
+                              onChange={handleToggle}
+                              style={{
+                                accentColor: 'var(--accent)',
+                                marginTop: 3,
+                                cursor: disabled ? 'default' : 'pointer',
+                              }}
+                            />
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>
+                                {isRu ? item.label_ru : item.label_uz}
+                              </span>
+                              <span style={{ fontSize: 11, color: 'var(--text-4)' }}>
+                                {isRu ? item.desc_ru : item.desc_uz}
+                              </span>
+                            </div>
+                          </label>
+                        )
+                      })}
                     </div>
                   </div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={form.google_oauth_enabled}
-                  onChange={setField('google_oauth_enabled')}
-                  style={{ accentColor: 'var(--accent)', width: 18, height: 18 }}
-                />
-              </label>
+                ))}
+              </div>
             </Section>
+
           </div>
 
           {/* SIDE COLUMN — Avatar */}
@@ -564,6 +735,40 @@ export default function UserForm() {
                 </Field>
               </div>
             </Section>
+
+            {/* 5. Google OAuth */}
+            <Section
+              kicker="Google"
+              title="Google OAuth"
+            >
+              <label style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                padding: '12px 14px', borderRadius: 10,
+                border: '1px solid var(--border-2)', background: 'var(--bg)',
+                cursor: 'pointer',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{
+                    width: 36, height: 36, borderRadius: '50%',
+                    background: 'var(--surface-2)', color: 'var(--text-1)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontWeight: 800, fontSize: 14, flexShrink: 0,
+                  }}>G</div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>Google OAuth</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-4)', marginTop: 2 }}>
+                      {isRu ? 'Разрешить вход через Google' : "Google orqali kirish ruxsati"}
+                    </div>
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={form.google_oauth_enabled}
+                  onChange={setField('google_oauth_enabled')}
+                  style={{ accentColor: 'var(--accent)', width: 18, height: 18 }}
+                />
+              </label>
+            </Section>
           </aside>
         </div>
 
@@ -591,18 +796,6 @@ export default function UserForm() {
 // Helpers and styles
 // ────────────────────────────────────────────────────────────────────────────
 
-function mapBackendRole(role) {
-  // backend ".name" qaytaradi (e.g. SuperAdmin), biz value sifatida "super_admin" kerak
-  const map = {
-    SuperAdmin: 'super_admin',
-    MahallaAdmin: 'mahalla_admin',
-    MaktabAdmin: 'maktab_admin',
-    KollejAdmin: 'kollej_admin',
-    TashkilotAdmin: 'tashkilot_admin',
-    KorxonaAdmin: 'korxona_admin',
-  }
-  return map[role] || null
-}
 
 function Section({ kicker, title, hint, children }) {
   return (

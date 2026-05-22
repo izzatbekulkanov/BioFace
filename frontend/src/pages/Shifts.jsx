@@ -5,16 +5,19 @@ import {
   CalendarClockRegular, CalendarLtrRegular, BuildingRegular,
   PeopleRegular, PulseSquareRegular, FilterRegular,
   ArrowSyncRegular, DocumentCopyRegular, SearchRegular,
-  CheckmarkSquareRegular, DeleteRegular, EditRegular, AddRegular
+  CheckmarkSquareRegular, DeleteRegular, EditRegular, AddRegular,
+  ChevronLeftRegular, ChevronRightRegular, DismissRegular, PersonRegular
 } from '@fluentui/react-icons'
 import PageHero from '../components/PageHero'
 import CustomSelect from '../components/CustomSelect'
 import { useConfirm } from '../components/ConfirmDialog'
+import { useToast } from '../components/Toaster'
 
 export default function Shifts() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const confirm = useConfirm()
+  const toast = useToast()
   const isRu = i18n.language === 'ru'
 
   // --- States ---
@@ -31,8 +34,6 @@ export default function Shifts() {
   // Filters
   const [search, setSearch] = useState('')
   const [orgFilter, setOrgFilter] = useState('')
-  const [sourceFilter, setSourceFilter] = useState('')
-  const [deptFilter, setDeptFilter] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
   
   // Schedule Manager
@@ -45,6 +46,41 @@ export default function Shifts() {
   const [holidays, setHolidays] = useState([])
   const [holidayLoading, setHolidayLoading] = useState(false)
   const [currentDate, setCurrentDate] = useState(new Date())
+  const [holidayViewMode, setHolidayViewMode] = useState('calendar') // 'calendar' or 'list'
+
+  // Modal States
+  // 1. Schedule Modal
+  const [isSchModalOpen, setIsSchModalOpen] = useState(false)
+  const [schEditing, setSchEditing] = useState(null)
+  const [schName, setSchName] = useState('')
+  const [schStart, setSchStart] = useState('09:00')
+  const [schEnd, setSchEnd] = useState('18:00')
+  const [schFlexible, setSchFlexible] = useState(false)
+  const [schSubmitting, setSchSubmitting] = useState(false)
+  const [schError, setSchError] = useState('')
+
+  // 2. Holiday Modal
+  const [isHolModalOpen, setIsHolModalOpen] = useState(false)
+  const [holEditing, setHolEditing] = useState(null)
+  const [holTitle, setHolTitle] = useState('')
+  const [holDate, setHolDate] = useState('')
+  const [holIsWeekend, setHolIsWeekend] = useState(false)
+  const [holSubmitting, setHolSubmitting] = useState(false)
+  const [holError, setHolError] = useState('')
+
+  // 3. Bulk Schedule Modal
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false)
+  const [bulkSelectSch, setBulkSelectSch] = useState('')
+  const [bulkClearOver, setBulkClearOver] = useState(true)
+  const [bulkSubmitting, setBulkSubmitting] = useState(false)
+  const [bulkError, setBulkError] = useState('')
+
+  // Bulk Selection State
+  const [selectedIds, setSelectedIds] = useState([])
+
+  // Attendance Monitor Status State
+  const [monitorStatus, setMonitorStatus] = useState(null)
+  const [monitorRunning, setMonitorRunning] = useState(false)
 
   // Initial Load
   useEffect(() => {
@@ -61,6 +97,21 @@ export default function Shifts() {
       .catch(console.error)
   }, [])
 
+  // Load Monitor Status
+  const loadMonitorStatus = useCallback(async () => {
+    try {
+      const res = await fetch('/api/attendance-monitor/status')
+      const data = await res.json()
+      if (data.ok) setMonitorStatus(data.status)
+    } catch (e) {
+      console.error(e)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadMonitorStatus()
+  }, [loadMonitorStatus])
+
   // Load Employees
   const loadEmployees = useCallback(async () => {
     setLoading(true)
@@ -70,7 +121,6 @@ export default function Shifts() {
       params.append('page_size', pageSize)
       if (search) params.append('query', search)
       if (orgFilter) params.append('organization_id', orgFilter)
-      if (deptFilter) params.append('department', deptFilter)
       if (typeFilter) params.append('employee_type', typeFilter)
       
       const res = await fetch(`/api/employees/search?${params.toString()}`)
@@ -85,7 +135,7 @@ export default function Shifts() {
     } finally {
       setLoading(false)
     }
-  }, [page, pageSize, search, orgFilter, deptFilter, typeFilter])
+  }, [page, pageSize, search, orgFilter, typeFilter])
 
   useEffect(() => { loadEmployees() }, [loadEmployees])
 
@@ -129,6 +179,503 @@ export default function Shifts() {
 
   useEffect(() => { loadHolidays() }, [loadHolidays])
 
+  // --- Modal Open Handlers ---
+  const handleOpenSchModal = (sch = null) => {
+    setSchEditing(sch)
+    setSchName(sch ? sch.name : '')
+    setSchStart(sch ? sch.start_time : '09:00')
+    setSchEnd(sch ? sch.end_time : '18:00')
+    setSchFlexible(sch ? sch.is_flexible : false)
+    setSchError('')
+    setIsSchModalOpen(true)
+  }
+
+  const handleOpenHolModal = (hol = null) => {
+    setHolEditing(hol)
+    setHolTitle(hol ? hol.title : '')
+    const defaultDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-01`
+    setHolDate(hol ? hol.date : defaultDate)
+    setHolIsWeekend(hol ? hol.is_weekend : false)
+    setHolError('')
+    setIsHolModalOpen(true)
+  }
+
+  const handleOpenBulkModal = () => {
+    const selectedEmps = employees.filter(emp => selectedIds.includes(emp.id))
+    const orgIds = Array.from(new Set(selectedEmps.map(emp => emp.organization_id).filter(Boolean)))
+    if (orgIds.length > 1) {
+      toast.warning(
+        isRu 
+          ? 'Групповая смена применяется только к одной организации. Пожалуйста, отфильтруйте сотрудников по организации.' 
+          : 'Bulk smena faqat bitta tashkilot bo\'yicha qo\'llanadi. Avval tashkilot bo\'yicha filtrlang.'
+      )
+      return
+    }
+    setBulkSelectSch('')
+    setBulkClearOver(true)
+    setBulkError('')
+    setIsBulkModalOpen(true)
+  }
+
+  // --- CRUD Submission Handlers ---
+  const handleSchSubmit = async (e) => {
+    e.preventDefault()
+    if (!schName.trim()) {
+      setSchError(isRu ? 'Название смены обязательно' : 'Smena nomi majburiy')
+      return
+    }
+    if (!scheduleOrg) {
+      setSchError(isRu ? 'Выберите организацию' : 'Tashkilot tanlanmagan')
+      return
+    }
+    setSchSubmitting(true)
+    setSchError('')
+    try {
+      const url = schEditing 
+        ? `/api/schedules/${schEditing.id}` 
+        : `/api/organizations/${scheduleOrg}/schedules`
+      const method = schEditing ? 'PUT' : 'POST'
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: schName.trim(),
+          start_time: schStart,
+          end_time: schEnd,
+          is_flexible: schFlexible
+        })
+      })
+      const data = await res.json()
+      if (data.ok) {
+        toast.success(
+          schEditing 
+            ? (isRu ? 'Смена успешно обновлена' : 'Smena muvaffaqiyatli yangilandi')
+            : (isRu ? 'Смена успешно создана' : 'Smena muvaffaqiyatli yaratildi')
+        )
+        setIsSchModalOpen(false)
+        loadSchedules()
+        loadEmployees()
+      } else {
+        setSchError(data.detail || (isRu ? 'Ошибка при сохранении' : 'Saqlashda xatolik'))
+      }
+    } catch (err) {
+      console.error(err)
+      setSchError(isRu ? 'Сетевая ошибка' : 'Tarmoq xatoligi')
+    } finally {
+      setSchSubmitting(false)
+    }
+  }
+
+  const handleHolSubmit = async (e) => {
+    e.preventDefault()
+    if (!holTitle.trim()) {
+      setHolError(isRu ? 'Название праздника обязательно' : 'Bayram nomi majburiy')
+      return
+    }
+    if (!holDate) {
+      setHolError(isRu ? 'Укажите дату' : 'Sanani kiriting')
+      return
+    }
+    setHolSubmitting(true)
+    setHolError('')
+    try {
+      const url = holEditing 
+        ? `/api/holidays/${holEditing.id}` 
+        : `/api/holidays`
+      const method = holEditing ? 'PUT' : 'POST'
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: holTitle.trim(),
+          date: holDate,
+          organization_id: holidayOrg === 'global' ? null : Number(holidayOrg),
+          is_weekend: holIsWeekend
+        })
+      })
+      const data = await res.json()
+      if (data.ok) {
+        toast.success(
+          holEditing 
+            ? (isRu ? 'Запись успешно обновлена' : 'Yozuv muvaffaqiyatli yangilandi')
+            : (isRu ? 'Запись успешно создана' : 'Yozuv muvaffaqiyatli yaratildi')
+        )
+        setIsHolModalOpen(false)
+        loadHolidays()
+      } else {
+        setHolError(data.detail || (isRu ? 'Ошибка при сохранении' : 'Saqlashda xatolik'))
+      }
+    } catch (err) {
+      console.error(err)
+      setHolError(isRu ? 'Сетевая ошибка' : 'Tarmoq xatoligi')
+    } finally {
+      setHolSubmitting(false)
+    }
+  }
+
+  const handleBulkSubmit = async (e) => {
+    e.preventDefault()
+    setBulkSubmitting(true)
+    setBulkError('')
+    try {
+      const res = await fetch('/api/schedules/bulk-assign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employee_ids: selectedIds.map(Number),
+          schedule_id: bulkSelectSch ? Number(bulkSelectSch) : null,
+          clear_overrides: bulkClearOver
+        })
+      })
+      const data = await res.json()
+      if (data.ok) {
+        toast.success(isRu ? 'Смены успешно обновлены для выбранных профилей' : 'Tanlangan profillar smenalari muvaffaqiyatli almashtirildi')
+        setIsBulkModalOpen(false)
+        setSelectedIds([])
+        loadEmployees()
+      } else {
+        setBulkError(data.detail || (isRu ? 'Ошибка при групповом изменении' : 'Bulk o\'zgartirishda xatolik'))
+      }
+    } catch (err) {
+      console.error(err)
+      setBulkError(isRu ? 'Сетевая ошибка' : 'Tarmoq xatoligi')
+    } finally {
+      setBulkSubmitting(false)
+    }
+  }
+
+  // --- Delete Actions ---
+  const handleDeleteSch = async (sch) => {
+    const confirmed = await confirm({
+      title: isRu ? 'Удалить смену' : 'Smenani o\'chirish',
+      message: isRu 
+        ? `Вы уверены, что хотите удалить смену "${sch.name}"?` 
+        : `Haqiqatan ham "${sch.name}" smenasini o'chirmoqchimisiz?`,
+      confirmText: isRu ? 'Удалить' : 'O\'chirish',
+      danger: true
+    })
+    if (!confirmed) return
+    try {
+      const res = await fetch(`/api/schedules/${sch.id}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (data.ok) {
+        toast.success(isRu ? 'Смена удалена' : 'Smena o\'chirildi')
+        loadSchedules()
+        loadEmployees()
+      } else {
+        toast.error(data.detail || (isRu ? 'Ошибка при удалении' : 'O\'chirishda xatolik'))
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error(isRu ? 'Сетевая ошибка' : 'Tarmoq xatoligi')
+    }
+  }
+
+  const handleDeleteHol = async (h) => {
+    const confirmed = await confirm({
+      title: isRu ? 'Удалить праздник/выходной' : 'Yozuvni o\'chirish',
+      message: isRu 
+        ? `Вы уверены, что хотите удалить "${h.title}" на ${h.date}?` 
+        : `Haqiqatan ham ${h.date} dagi "${h.title}" yozuvini o'chirmoqchimisiz?`,
+      confirmText: isRu ? 'Удалить' : 'O\'chirish',
+      danger: true
+    })
+    if (!confirmed) return
+    try {
+      const res = await fetch(`/api/holidays/${h.id}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (data.ok) {
+        toast.success(isRu ? 'Запись удалена' : 'Yozuv o\'chirildi')
+        loadHolidays()
+      } else {
+        toast.error(data.detail || (isRu ? 'Ошибка при удалении' : 'O\'chirishda xatolik'))
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error(isRu ? 'Сетевая ошибка' : 'Tarmoq xatoligi')
+    }
+  }
+
+  // --- Attendance Monitor Run Action ---
+  const handleRunMonitor = async () => {
+    setMonitorRunning(true)
+    try {
+      const res = await fetch('/api/attendance-monitor/run', { method: 'POST' })
+      const data = await res.json()
+      if (data.ok) {
+        loadMonitorStatus()
+        const result = data.result || {}
+        toast.success(
+          isRu 
+            ? `Проверено: ${result.checked || 0} • Оповещено: ${result.notified || 0}`
+            : `Tekshirildi: ${result.checked || 0} • Xabar yuborildi: ${result.notified || 0}`
+        )
+      } else {
+        toast.error(data.detail || (isRu ? 'Не удалось запустить монитор' : 'Tekshirgichni ishga tushirib bo\'lmadi'))
+      }
+    } catch (e) {
+      console.error(e)
+      toast.error(isRu ? 'Ошибка при запуске монитора' : 'Tekshirgichni ishga tushirishda xatolik')
+    } finally {
+      setMonitorRunning(false)
+    }
+  }
+
+  // --- Selection Helpers ---
+  const allVisibleIds = employees.map(emp => emp.id)
+  const isAllVisibleSelected = allVisibleIds.length > 0 && allVisibleIds.every(id => selectedIds.includes(id))
+
+  const handleSelectAllVisible = () => {
+    if (isAllVisibleSelected) {
+      setSelectedIds(prev => prev.filter(id => !allVisibleIds.includes(id)))
+    } else {
+      setSelectedIds(prev => {
+        const next = [...prev]
+        allVisibleIds.forEach(id => {
+          if (!next.includes(id)) next.push(id)
+        })
+        return next
+      })
+    }
+  }
+
+  const handleToggleSelect = (id) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+
+  // --- Calendar Grid Generator ---
+  const weekdays = isRu 
+    ? ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+    : ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya']
+
+  const year = currentDate.getFullYear()
+  const month = currentDate.getMonth()
+
+  // Days in current month
+  const numDays = new Date(year, month + 1, 0).getDate()
+
+  // Weekday of the first day (0 = Sun, 1 = Mon, ..., 6 = Sat)
+  const firstDayIndex = new Date(year, month, 1).getDay()
+  let startDay = firstDayIndex - 1 // Shift so Monday is 0
+  if (startDay < 0) startDay = 6
+
+  // Days from previous month
+  const prevMonthNumDays = new Date(year, month, 0).getDate()
+
+  const calendarCells = []
+
+  // Add previous month days (pad the beginning)
+  for (let i = startDay - 1; i >= 0; i--) {
+    const d = prevMonthNumDays - i
+    const prevDate = new Date(year, month - 1, d)
+    calendarCells.push({
+      day: d,
+      date: prevDate,
+      isCurrentMonth: false,
+      dateStr: `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}-${String(prevDate.getDate()).padStart(2, '0')}`
+    })
+  }
+
+  // Add current month days
+  for (let d = 1; d <= numDays; d++) {
+    const currDate = new Date(year, month, d)
+    calendarCells.push({
+      day: d,
+      date: currDate,
+      isCurrentMonth: true,
+      dateStr: `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+    })
+  }
+
+  // Add next month days (pad the end to make multiple of 7, 42 cells total)
+  const remaining = 42 - calendarCells.length
+  for (let d = 1; d <= remaining; d++) {
+    const nextDate = new Date(year, month + 1, d)
+    calendarCells.push({
+      day: d,
+      date: nextDate,
+      isCurrentMonth: false,
+      dateStr: `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`
+    })
+  }
+
+  const renderCalendarView = () => {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {/* Weekday headers */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6, textAlign: 'center', marginBottom: 4 }}>
+          {weekdays.map((wd, i) => {
+            const isWeekendHeader = i === 5 || i === 6
+            return (
+              <div 
+                key={wd} 
+                style={{ 
+                  fontSize: 11, 
+                  fontWeight: 700, 
+                  color: isWeekendHeader ? '#f59e0b' : 'var(--text-4)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}
+              >
+                {wd}
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Days grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
+          {calendarCells.map((cell, idx) => {
+            const isToday = new Date().toDateString() === cell.date.toDateString()
+            const dayOfWeek = cell.date.getDay()
+            const isStandardWeekend = dayOfWeek === 0 || dayOfWeek === 6
+
+            // Filter holidays/weekends for this cell
+            const cellHolidays = holidays.filter(h => h.date === cell.dateStr)
+            const cellHoliday = cellHolidays.find(h => !h.is_weekend)
+            const cellWeekend = cellHolidays.find(h => h.is_weekend)
+
+            // Styling variables
+            let bg = 'var(--bg)'
+            let border = '1px solid var(--border-2)'
+            let color = 'var(--text-1)'
+            let titleText = cell.dateStr
+
+            if (!cell.isCurrentMonth) {
+              color = 'var(--text-4)'
+              border = '1px solid transparent'
+              bg = 'transparent'
+            } else {
+              if (cellHoliday) {
+                bg = 'rgba(244, 63, 94, 0.12)'
+                border = '1px solid var(--red)'
+                color = 'var(--red)'
+                titleText += ` • ${cellHoliday.title} (${isRu ? 'Праздник' : 'Bayram'})`
+              } else if (cellWeekend) {
+                bg = 'rgba(245, 158, 11, 0.12)'
+                border = '1px solid #f59e0b'
+                color = '#f59e0b'
+                titleText += ` • ${cellWeekend.title} (${isRu ? 'Выходной' : 'Dam olish'})`
+              } else if (isStandardWeekend) {
+                bg = 'var(--surface-2)'
+                border = '1px dashed var(--border-3)'
+                color = 'var(--text-3)'
+                titleText += ` • ${isRu ? 'Выходной день (Сб/Вс)' : 'Dam olish kuni (Sh/Ya)'}`
+              }
+              
+              if (isToday) {
+                border = '2px solid var(--accent)'
+              }
+            }
+
+            // Click action
+            const handleCellClick = () => {
+              if (!cell.isCurrentMonth) return
+              
+              if (cellHoliday) {
+                handleOpenHolModal(cellHoliday)
+              } else if (cellWeekend) {
+                handleOpenHolModal(cellWeekend)
+              } else {
+                // Pre-fill date and open empty holiday modal
+                setHolEditing(null)
+                setHolTitle('')
+                setHolDate(cell.dateStr)
+                setHolIsWeekend(isStandardWeekend)
+                setHolError('')
+                setIsHolModalOpen(true)
+              }
+            }
+
+            return (
+              <div
+                key={`${cell.dateStr}-${idx}`}
+                onClick={handleCellClick}
+                title={titleText}
+                style={{
+                  aspectRatio: '1',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: 8,
+                  background: bg,
+                  border: border,
+                  color: color,
+                  fontSize: 13,
+                  fontWeight: cell.isCurrentMonth ? 600 : 400,
+                  cursor: cell.isCurrentMonth ? 'pointer' : 'default',
+                  position: 'relative',
+                  transition: 'all 0.15s ease',
+                  opacity: cell.isCurrentMonth ? 1 : 0.45,
+                }}
+                onMouseEnter={e => {
+                  if (cell.isCurrentMonth) {
+                    e.currentTarget.style.transform = 'scale(1.05)'
+                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (cell.isCurrentMonth) {
+                    e.currentTarget.style.transform = 'none'
+                    e.currentTarget.style.boxShadow = 'none'
+                  }
+                }}
+              >
+                {/* Day number */}
+                <span>{cell.day}</span>
+
+                {/* Indicators */}
+                <div style={{ display: 'flex', gap: 3, position: 'absolute', bottom: 4 }}>
+                  {cellHoliday && (
+                    <div style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--red)' }} />
+                  )}
+                  {cellWeekend && (
+                    <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#f59e0b' }} />
+                  )}
+                  {isToday && (
+                    <div style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--accent)' }} />
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        
+        {/* Calendar Legend */}
+        <div style={{ display: 'flex', gap: 12, justifycontent: 'center', justifyContent: 'center', marginTop: 8, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-3)' }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--red)' }} />
+            <span>{isRu ? 'Праздник' : 'Bayram'}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-3)' }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b' }} />
+            <span>{isRu ? 'Выходной' : 'Dam olish'}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-3)' }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)' }} />
+            <span>{isRu ? 'Сегодня' : 'Bugun'}</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Common input/select CSS rules
+  const inpStyle = {
+    width: '100%', padding: '10px 12px', borderRadius: 8,
+    border: '1px solid var(--border-2)', background: 'var(--bg)',
+    color: 'var(--text-1)', fontSize: 13, outline: 'none', boxSizing: 'border-box',
+    transition: 'border-color 0.2s',
+  }
+
+  const selectStyle = {
+    width: '100%', padding: '10px 12px', borderRadius: 8,
+    border: '1px solid var(--border-2)', background: 'var(--bg)',
+    color: 'var(--text-1)', fontSize: 13, outline: 'none', boxSizing: 'border-box',
+    cursor: 'pointer'
+  }
+
   return (
     <div style={{ minHeight: 'calc(100vh - 52px)', background: 'var(--bg)', color: 'var(--text-1)', overflowY: 'auto' }}>
       <PageHero
@@ -162,6 +709,7 @@ export default function Shifts() {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 24, marginBottom: 24 }}>
+          
           {/* Schedule Manager */}
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, display: 'flex', flexDirection: 'column' }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', background: 'var(--surface-2)', borderTopLeftRadius: 12, borderTopRightRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -178,7 +726,10 @@ export default function Shifts() {
                     placeholder={isRu ? 'Организация' : 'Tashkilot'}
                   />
                 </div>
-                <button style={{ background: 'var(--accent)', border: 'none', color: '#fff', padding: '0 16px', borderRadius: 8, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <button 
+                  onClick={() => handleOpenSchModal()}
+                  style={{ background: 'var(--accent)', border: 'none', color: '#fff', padding: '0 16px', borderRadius: 8, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
+                >
                   <AddRegular />
                 </button>
               </div>
@@ -194,11 +745,21 @@ export default function Shifts() {
                     <div key={sch.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8 }}>
                       <div>
                         <div style={{ fontWeight: 600, fontSize: 14 }}>{sch.name}</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-4)' }}>{sch.start_time} - {sch.end_time} • {sch.is_flexible ? 'Erkin' : 'Qat\'iy'}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-4)' }}>{sch.start_time} - {sch.end_time} • {sch.is_flexible ? (isRu ? 'Свободный' : 'Erkin') : (isRu ? 'Фиксированный' : 'Qat\'iy')}</div>
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
-                         <button style={{ background: 'var(--surface)', border: '1px solid var(--border-3)', color: 'var(--text-1)', padding: 6, borderRadius: 6, cursor: 'pointer' }}><EditRegular /></button>
-                         <button style={{ background: 'var(--red-bg)', border: '1px solid var(--red-bd)', color: 'var(--red)', padding: 6, borderRadius: 6, cursor: 'pointer' }}><DeleteRegular /></button>
+                         <button 
+                           onClick={() => handleOpenSchModal(sch)}
+                           style={{ background: 'var(--surface)', border: '1px solid var(--border-3)', color: 'var(--text-1)', padding: 6, borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                         >
+                           <EditRegular />
+                         </button>
+                         <button 
+                           onClick={() => handleDeleteSch(sch)}
+                           style={{ background: 'var(--red-bg)', border: '1px solid var(--red-bd)', color: 'var(--red)', padding: 6, borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                         >
+                           <DeleteRegular />
+                         </button>
                       </div>
                     </div>
                   ))}
@@ -212,7 +773,64 @@ export default function Shifts() {
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', background: 'var(--surface-2)', borderTopLeftRadius: 12, borderTopRightRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{isRu ? 'Праздники и выходные' : 'Dam olish kunlari'}</h3>
-                <p style={{ margin: 0, fontSize: 12, color: 'var(--text-4)' }}>{currentDate.getFullYear()}-{String(currentDate.getMonth()+1).padStart(2, '0')}</p>
+                
+                {/* Month navigation controls & toggle */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <button 
+                      onClick={() => setCurrentDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))}
+                      style={{ background: 'transparent', border: 'none', color: 'var(--text-3)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 2 }}
+                    >
+                      <ChevronLeftRegular fontSize={14} />
+                    </button>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)', minWidth: 60, textAlign: 'center' }}>
+                      {currentDate.getFullYear()}-{String(currentDate.getMonth()+1).padStart(2, '0')}
+                    </span>
+                    <button 
+                      onClick={() => setCurrentDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))}
+                      style={{ background: 'transparent', border: 'none', color: 'var(--text-3)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 2 }}
+                    >
+                      <ChevronRightRegular fontSize={14} />
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', background: 'var(--bg)', border: '1px solid var(--border-2)', borderRadius: 6, padding: 2, marginLeft: 8 }}>
+                    <button
+                      type="button"
+                      onClick={() => setHolidayViewMode('calendar')}
+                      style={{
+                        padding: '3px 8px',
+                        fontSize: 10,
+                        fontWeight: 600,
+                        border: 'none',
+                        borderRadius: 4,
+                        cursor: 'pointer',
+                        background: holidayViewMode === 'calendar' ? 'var(--accent)' : 'transparent',
+                        color: holidayViewMode === 'calendar' ? '#fff' : 'var(--text-3)',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      {isRu ? 'Календарь' : 'Kalendar'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setHolidayViewMode('list')}
+                      style={{
+                        padding: '3px 8px',
+                        fontSize: 10,
+                        fontWeight: 600,
+                        border: 'none',
+                        borderRadius: 4,
+                        cursor: 'pointer',
+                        background: holidayViewMode === 'list' ? 'var(--accent)' : 'transparent',
+                        color: holidayViewMode === 'list' ? '#fff' : 'var(--text-3)',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      {isRu ? 'Список' : 'Ro\'yxat'}
+                    </button>
+                  </div>
+                </div>
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
                 <div style={{ width: 140 }}>
@@ -225,7 +843,10 @@ export default function Shifts() {
                     ]}
                   />
                 </div>
-                <button style={{ background: 'var(--red)', border: 'none', color: '#fff', padding: '0 16px', borderRadius: 8, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <button 
+                  onClick={() => handleOpenHolModal()}
+                  style={{ background: 'var(--red)', border: 'none', color: '#fff', padding: '0 16px', borderRadius: 8, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
+                >
                   <AddRegular />
                 </button>
               </div>
@@ -233,6 +854,8 @@ export default function Shifts() {
             <div style={{ padding: 20, flex: 1, overflowY: 'auto', minHeight: 200 }}>
               {holidayLoading ? (
                 <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-4)' }}><ArrowSyncRegular style={{ animation: 'spin 1s linear infinite', fontSize: 24 }} /></div>
+              ) : holidayViewMode === 'calendar' ? (
+                renderCalendarView()
               ) : holidays.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-4)' }}>{isRu ? 'Записей нет' : 'Yozuvlar yo\'q'}</div>
               ) : (
@@ -240,7 +863,7 @@ export default function Shifts() {
                   {holidays.map(h => (
                     <div key={h.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div style={{ width: 40, height: 40, borderRadius: 8, background: h.is_weekend ? 'var(--yellow-bg)' : 'var(--red-bg)', color: h.is_weekend ? 'var(--yellow)' : 'var(--red)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ width: 40, height: 40, borderRadius: 8, background: h.is_weekend ? 'rgba(245,158,11,0.1)' : 'rgba(244,63,94,0.1)', color: h.is_weekend ? '#f59e0b' : '#f43f5e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <CalendarLtrRegular />
                         </div>
                         <div>
@@ -249,13 +872,54 @@ export default function Shifts() {
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
-                         <button style={{ background: 'var(--surface)', border: '1px solid var(--border-3)', color: 'var(--text-1)', padding: 6, borderRadius: 6, cursor: 'pointer' }}><EditRegular /></button>
-                         <button style={{ background: 'var(--red-bg)', border: '1px solid var(--red-bd)', color: 'var(--red)', padding: 6, borderRadius: 6, cursor: 'pointer' }}><DeleteRegular /></button>
+                         <button 
+                           onClick={() => handleOpenHolModal(h)}
+                           style={{ background: 'var(--surface)', border: '1px solid var(--border-3)', color: 'var(--text-1)', padding: 6, borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                         >
+                           <EditRegular />
+                         </button>
+                         <button 
+                           onClick={() => handleDeleteHol(h)}
+                           style={{ background: 'var(--red-bg)', border: '1px solid var(--red-bd)', color: 'var(--red)', padding: 6, borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                         >
+                           <DeleteRegular />
+                         </button>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Attendance Monitor Status and Runner Button */}
+            <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border)', background: 'var(--surface-2)', borderBottomLeftRadius: 12, borderBottomRightRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: 12 }}>
+                <span style={{ fontWeight: 600, color: 'var(--text-2)', display: 'block' }}>
+                  {isRu ? 'Проверка посещаемости' : 'Tekshirgich holati'}
+                </span>
+                <span style={{ color: 'var(--text-4)', fontSize: 11 }}>
+                  {monitorStatus ? (
+                    isRu 
+                      ? `${monitorStatus.running ? 'Активен' : 'Отключен'} • Последний: ${monitorStatus.last_run_at || '-'}`
+                      : `${monitorStatus.running ? 'Aktiv' : 'O\'chiq'} • Oxirgi run: ${monitorStatus.last_run_at || '-'}`
+                  ) : (
+                    isRu ? 'Загрузка...' : 'Yuklanmoqda...'
+                  )}
+                </span>
+              </div>
+              <button
+                disabled={monitorRunning}
+                onClick={handleRunMonitor}
+                style={{
+                  background: 'var(--accent)', border: 'none', color: '#fff', 
+                  padding: '8px 16px', borderRadius: 8, cursor: monitorRunning ? 'not-allowed' : 'pointer', 
+                  fontWeight: 600, fontSize: 12, display: 'flex', alignItems: 'center', gap: 6,
+                  opacity: monitorRunning ? 0.7 : 1
+                }}
+              >
+                <ArrowSyncRegular style={{ animation: monitorRunning ? 'spin 1s linear infinite' : 'none' }} />
+                {isRu ? 'Запустить' : 'Ishga tushirish'}
+              </button>
             </div>
           </div>
         </div>
@@ -276,7 +940,7 @@ export default function Shifts() {
               <div style={{ width: 180 }}>
                  <CustomSelect 
                     value={orgFilter}
-                    onChange={v => { setOrgFilter(v); setPage(1); }}
+                    onChange={v => { setOrgFilter(v); setPage(1); setSelectedIds([]); }}
                     options={[{label: isRu ? 'Все организации' : 'Barcha tashkilotlar', value: ''}, ...filterOptions.organizations.map(o => ({ label: o.name, value: o.id.toString() }))]}
                     placeholder={isRu ? 'Организация' : 'Tashkilot'}
                  />
@@ -285,17 +949,62 @@ export default function Shifts() {
                  <CustomSelect 
                     value={typeFilter}
                     onChange={v => { setTypeFilter(v); setPage(1); }}
-                    options={[{label: 'Tur: Barchasi', value: ''}, {label: 'Hodim', value: 'hodim'}, {label: 'O\'qituvchi', value: 'oqituvchi'}, {label: 'O\'quvchi', value: 'oquvchi'}]}
+                    options={[{label: isRu ? 'Тип: Все' : 'Tur: Barchasi', value: ''}, {label: isRu ? 'Сотрудник' : 'Hodim', value: 'hodim'}, {label: isRu ? 'Преподаватель' : 'O\'qituvchi', value: 'oqituvchi'}, {label: isRu ? 'Ученик' : 'O\'quvchi', value: 'oquvchi'}]}
                     placeholder="Tur"
                  />
               </div>
            </div>
+
+           {/* Bulk Action Bar */}
+           {selectedIds.length > 0 && (
+             <div style={{ 
+               padding: '12px 16px', 
+               background: 'var(--bg)', 
+               borderBottom: '1px solid var(--border)', 
+               display: 'flex', 
+               justifyContent: 'space-between', 
+               alignItems: 'center',
+               flexWrap: 'wrap',
+               gap: 12,
+               animation: 'bfToastIn 0.2s ease'
+             }}>
+               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                 <span style={{ fontSize: 13, fontWeight: 700, background: 'rgba(0,120,212,0.1)', color: 'var(--accent)', padding: '6px 10px', borderRadius: 6 }}>
+                   {isRu ? `Выбрано: ${selectedIds.length}` : `Tanlangan: ${selectedIds.length}`}
+                 </span>
+                 <span style={{ fontSize: 12.5, color: 'var(--text-3)', fontWeight: 500 }}>
+                   {isRu ? 'Примените смену к выбранным профилям' : 'Tanlangan profillarga smenani bir zumda o\'rnating'}
+                 </span>
+               </div>
+               <div style={{ display: 'flex', gap: 8 }}>
+                 <button 
+                   onClick={() => setSelectedIds([])}
+                   style={{ padding: '6px 12px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-2)', cursor: 'pointer', fontSize: 12 }}
+                 >
+                   {isRu ? 'Очистить выбор' : 'Tanlovni tozalash'}
+                 </button>
+                 <button 
+                   onClick={handleOpenBulkModal}
+                   style={{ padding: '6px 14px', background: 'var(--accent)', border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: 12 }}
+                 >
+                   {isRu ? 'Применить смену' : 'Smenani qo\'llash'}
+                 </button>
+               </div>
+             </div>
+           )}
            
            <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                  <thead>
                    <tr style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
-                     <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-4)', fontWeight: 600, width: 40 }}><CheckmarkSquareRegular /></th>
+                     <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-4)', fontWeight: 600, width: 40 }}>
+                       <input 
+                         type="checkbox" 
+                         checked={isAllVisibleSelected} 
+                         onChange={handleSelectAllVisible}
+                         style={{ cursor: 'pointer' }} 
+                       />
+                     </th>
                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-4)', fontWeight: 600 }}>{isRu ? 'Пользователь' : 'Foydalanuvchi'}</th>
                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-4)', fontWeight: 600 }}>{isRu ? 'Организация' : 'Tashkilot'}</th>
                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-4)', fontWeight: 600 }}>{isRu ? 'Тип' : 'Tur'}</th>
@@ -318,24 +1027,34 @@ export default function Shifts() {
                         <td colSpan={5} style={{ padding: 40, textAlign: 'center', color: 'var(--text-4)' }}>{isRu ? 'Нет данных' : 'Ma\'lumot yo\'q'}</td>
                       </tr>
                     ) : (
-                      employees.map(emp => (
-                        <tr key={emp.id} style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-2)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                           <td style={{ padding: '12px 16px' }}><input type="checkbox" style={{ cursor: 'pointer' }} /></td>
-                           <td style={{ padding: '12px 16px' }}>
-                              <div style={{ fontWeight: 600, fontSize: 13 }}>{emp.first_name} {emp.last_name}</div>
-                              <div style={{ fontSize: 11, color: 'var(--text-4)' }}>ID: {emp.personal_id || '-'}</div>
-                           </td>
-                           <td style={{ padding: '12px 16px', fontSize: 13 }}>{emp.organization_name || '-'}</td>
-                           <td style={{ padding: '12px 16px', fontSize: 13 }}>{emp.employee_type_label || '-'}</td>
-                           <td style={{ padding: '12px 16px', fontSize: 13 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <div style={{ background: 'var(--surface-2)', padding: '4px 8px', borderRadius: 6, fontWeight: 600, fontSize: 12, color: 'var(--text-1)' }}>
-                                   {emp.schedule_name || 'Tashkilot Default'}
+                      employees.map(emp => {
+                        const isChecked = selectedIds.includes(emp.id)
+                        return (
+                          <tr key={emp.id} style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.2s', background: isChecked ? 'rgba(0,120,212,0.02)' : 'transparent' }} onMouseEnter={e => e.currentTarget.style.background = isChecked ? 'rgba(0,120,212,0.04)' : 'var(--surface-2)'} onMouseLeave={e => e.currentTarget.style.background = isChecked ? 'rgba(0,120,212,0.02)' : 'transparent'}>
+                             <td style={{ padding: '12px 16px' }}>
+                               <input 
+                                 type="checkbox" 
+                                 checked={isChecked} 
+                                 onChange={() => handleToggleSelect(emp.id)}
+                                 style={{ cursor: 'pointer' }} 
+                               />
+                             </td>
+                             <td style={{ padding: '12px 16px' }}>
+                                <div style={{ fontWeight: 600, fontSize: 13 }}>{emp.first_name} {emp.last_name}</div>
+                                <div style={{ fontSize: 11, color: 'var(--text-4)' }}>ID: {emp.personal_id || '-'}</div>
+                             </td>
+                             <td style={{ padding: '12px 16px', fontSize: 13 }}>{emp.organization_name || '-'}</td>
+                             <td style={{ padding: '12px 16px', fontSize: 13 }}>{emp.employee_type_label || '-'}</td>
+                             <td style={{ padding: '12px 16px', fontSize: 13 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <div style={{ background: 'var(--surface-2)', padding: '4px 8px', borderRadius: 6, fontWeight: 600, fontSize: 12, color: 'var(--text-1)', border: '1px solid var(--border)' }}>
+                                     {emp.schedule_name || 'Tashkilot Default'}
+                                  </div>
                                 </div>
-                              </div>
-                           </td>
-                        </tr>
-                      ))
+                             </td>
+                          </tr>
+                        )
+                      })
                     )}
                  </tbody>
               </table>
@@ -360,6 +1079,310 @@ export default function Shifts() {
         </div>
 
       </div>
+
+      {/* --- MODALS --- */}
+      
+      {/* 1. Schedule Modal */}
+      {isSchModalOpen && (
+        <Modal 
+          title={schEditing ? (isRu ? 'Редактировать смену' : 'Smenani tahrirlash') : (isRu ? 'Новая смена' : 'Yangi smena')} 
+          onClose={() => setIsSchModalOpen(false)}
+        >
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10, padding: 12,
+            background: 'var(--surface-2)', borderRadius: 8, border: '1px solid var(--border)',
+            marginBottom: 16, fontSize: 12.5, color: 'var(--text-2)'
+          }}>
+            <BuildingRegular fontSize={18} style={{ color: 'var(--accent)' }} />
+            <span>
+              {isRu 
+                ? 'Вы управляете графиком времени и типом смены в этой форме.' 
+                : 'Tashkilot ichidagi smena nomi, vaqt oralig\'i va grafik turini shu blokda boshqarasiz.'
+              }
+            </span>
+          </div>
+
+          <form onSubmit={handleSchSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {schError && (
+              <div style={{ color: '#f43f5e', background: 'rgba(244,63,94,0.1)', border: '1px solid rgba(244,63,94,0.25)', padding: 10, borderRadius: 8, fontSize: 13 }}>
+                {schError}
+              </div>
+            )}
+
+            <Field label={isRu ? 'Название смены' : 'Smena nomi'} required>
+              <input 
+                type="text" 
+                value={schName} 
+                onChange={e => setSchName(e.target.value)} 
+                style={inpStyle} 
+                placeholder={isRu ? 'Напр: Дневная смена' : 'Masalan: Kunduzgi smena'}
+              />
+            </Field>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <Field label={isRu ? 'Время начала' : 'Boshlanish vaqti'} required>
+                <input 
+                  type="time" 
+                  value={schStart} 
+                  onChange={e => setSchStart(e.target.value)} 
+                  style={inpStyle} 
+                />
+              </Field>
+              <Field label={isRu ? 'Время окончания' : 'Tugash vaqti'} required>
+                <input 
+                  type="time" 
+                  value={schEnd} 
+                  onChange={e => setSchEnd(e.target.value)} 
+                  style={inpStyle} 
+                />
+              </Field>
+            </div>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', margin: '4px 0 12px 0', fontSize: 13, userSelect: 'none' }}>
+              <input 
+                type="checkbox" 
+                checked={schFlexible} 
+                onChange={e => setSchFlexible(e.target.checked)} 
+                style={{ cursor: 'pointer', width: 16, height: 16 }} 
+              />
+              <span style={{ fontWeight: 500, color: 'var(--text-1)' }}>
+                {isRu ? 'Свободный график (без учета опозданий)' : 'Erkin grafik (kechikish hisoblanmaydi)'}
+              </span>
+            </label>
+
+            <div style={{ height: 1, background: 'var(--border)', margin: '12px -24px' }} />
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button 
+                type="button" 
+                onClick={() => setIsSchModalOpen(false)} 
+                style={{ padding: '9px 20px', borderRadius: 9, background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-2)', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
+              >
+                {isRu ? 'Отмена' : 'Bekor qilish'}
+              </button>
+              <button 
+                type="submit" 
+                disabled={schSubmitting}
+                style={{ padding: '9px 20px', borderRadius: 9, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: schSubmitting ? 'not-allowed' : 'pointer', opacity: schSubmitting ? 0.8 : 1 }}
+              >
+                {schSubmitting ? (isRu ? 'Сохранение...' : 'Saqlanmoqda...') : (schEditing ? (isRu ? 'Обновить' : 'Yangilash') : (isRu ? 'Сохранить' : 'Saqlash'))}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* 2. Holiday Modal */}
+      {isHolModalOpen && (
+        <Modal 
+          title={holEditing ? (isRu ? 'Редактировать день' : 'Bayram/dam olishni tahrirlash') : (isRu ? 'Новый день' : 'Bayram/dam olish qo\'shish')} 
+          onClose={() => setIsHolModalOpen(false)}
+        >
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10, padding: 12,
+            background: 'var(--surface-2)', borderRadius: 8, border: '1px solid var(--border)',
+            marginBottom: 16, fontSize: 12.5, color: 'var(--text-2)'
+          }}>
+            <CalendarLtrRegular fontSize={18} style={{ color: 'var(--red)' }} />
+            <span>
+              {isRu 
+                ? `Уровень действия: ${holidayOrg === 'global' ? 'Глобально' : 'Только для выбранной организации'}` 
+                : `Amal qilish darajasi: ${holidayOrg === 'global' ? 'Global bayramlar' : 'Faqatgina tanlangan tashkilot'}`
+              }
+            </span>
+          </div>
+
+          <form onSubmit={handleHolSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {holError && (
+              <div style={{ color: '#f43f5e', background: 'rgba(244,63,94,0.1)', border: '1px solid rgba(244,63,94,0.25)', padding: 10, borderRadius: 8, fontSize: 13 }}>
+                {holError}
+              </div>
+            )}
+
+            <Field label={isRu ? 'Название праздника/события' : 'Bayram nomi'} required>
+              <input 
+                type="text" 
+                value={holTitle} 
+                onChange={e => setHolTitle(e.target.value)} 
+                style={inpStyle} 
+                placeholder={isRu ? 'Напр: День Независимости' : 'Masalan: Mustaqillik kuni'}
+              />
+            </Field>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <Field label={isRu ? 'Дата' : 'Sana'} required>
+                <input 
+                  type="date" 
+                  value={holDate} 
+                  onChange={e => setHolDate(e.target.value)} 
+                  style={inpStyle} 
+                />
+              </Field>
+              <Field label={isRu ? 'Тип дня' : 'Kun turi'} required>
+                <select 
+                  value={holIsWeekend ? 'weekend' : 'holiday'} 
+                  onChange={e => setHolIsWeekend(e.target.value === 'weekend')} 
+                  style={selectStyle}
+                >
+                  <option value="holiday">{isRu ? 'Праздник' : 'Bayram'}</option>
+                  <option value="weekend">{isRu ? 'Выходной' : 'Dam olish kuni'}</option>
+                </select>
+              </Field>
+            </div>
+
+            <div style={{ height: 1, background: 'var(--border)', margin: '12px -24px' }} />
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button 
+                type="button" 
+                onClick={() => setIsHolModalOpen(false)} 
+                style={{ padding: '9px 20px', borderRadius: 9, background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-2)', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
+              >
+                {isRu ? 'Отмена' : 'Bekor qilish'}
+              </button>
+              <button 
+                type="submit" 
+                disabled={holSubmitting}
+                style={{ padding: '9px 20px', borderRadius: 9, border: 'none', background: 'var(--red)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: holSubmitting ? 'not-allowed' : 'pointer', opacity: holSubmitting ? 0.8 : 1 }}
+              >
+                {holSubmitting ? (isRu ? 'Сохранение...' : 'Saqlanmoqda...') : (holEditing ? (isRu ? 'Обновить' : 'Yangilash') : (isRu ? 'Сохранить' : 'Saqlash'))}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* 3. Bulk Schedule Modal */}
+      {isBulkModalOpen && (
+        <Modal 
+          title={isRu ? 'Групповое изменение смены' : 'Bulk smena almashtirish'} 
+          onClose={() => setIsBulkModalOpen(false)}
+        >
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10, padding: 12,
+            background: 'var(--surface-2)', borderRadius: 8, border: '1px solid var(--border)',
+            marginBottom: 16, fontSize: 12.5, color: 'var(--text-2)'
+          }}>
+            <PeopleRegular fontSize={18} style={{ color: 'var(--accent)' }} />
+            <span>
+              {isRu 
+                ? `Выбрано профилей: ${selectedIds.length} • Организация: ${employees.find(e => selectedIds.includes(e.id))?.organization_name || '-'}` 
+                : `Tanlangan profillar soni: ${selectedIds.length} ta • Tashkilot: ${employees.find(e => selectedIds.includes(e.id))?.organization_name || '-'}`
+              }
+            </span>
+          </div>
+
+          <form onSubmit={handleBulkSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {bulkError && (
+              <div style={{ color: '#f43f5e', background: 'rgba(244,63,94,0.1)', border: '1px solid rgba(244,63,94,0.25)', padding: 10, borderRadius: 8, fontSize: 13 }}>
+                {bulkError}
+              </div>
+            )}
+
+            <Field label={isRu ? 'Выберите новую смену' : 'Yangi smena'} required>
+              <select 
+                value={bulkSelectSch} 
+                onChange={e => setBulkSelectSch(e.target.value)} 
+                style={selectStyle}
+              >
+                <option value="">{isRu ? 'Сбросить на настройки организации' : 'Tashkilot defaultiga qaytarish'}</option>
+                {schedules.map(item => (
+                  <option key={item.id} value={item.id}>
+                    {item.name} — {item.start_time}-{item.end_time} {item.is_flexible ? `(${isRu ? 'Свободный' : 'Erkin'})` : ''}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', margin: '4px 0 12px 0', fontSize: 13, userSelect: 'none' }}>
+              <input 
+                type="checkbox" 
+                checked={bulkClearOver} 
+                onChange={e => setBulkClearOver(e.target.checked)} 
+                style={{ cursor: 'pointer', width: 16, height: 16 }} 
+              />
+              <span style={{ fontWeight: 500, color: 'var(--text-1)' }}>
+                {isRu 
+                  ? 'Сбросить персональные настройки времени и применить принудительно' 
+                  : 'Shaxsiy vaqt override\'larini tozalab, yangi smenani majburan qo\'llash'
+                }
+              </span>
+            </label>
+
+            <div style={{ height: 1, background: 'var(--border)', margin: '12px -24px' }} />
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button 
+                type="button" 
+                onClick={() => setIsBulkModalOpen(false)} 
+                style={{ padding: '9px 20px', borderRadius: 9, background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-2)', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
+              >
+                {isRu ? 'Отмена' : 'Bekor qilish'}
+              </button>
+              <button 
+                type="submit" 
+                disabled={bulkSubmitting}
+                style={{ padding: '9px 20px', borderRadius: 9, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: bulkSubmitting ? 'not-allowed' : 'pointer', opacity: bulkSubmitting ? 0.8 : 1 }}
+              >
+                {bulkSubmitting ? (isRu ? 'Применение...' : 'Qo\'llanilmoqda...') : (isRu ? 'Применить' : 'Qo\'llash')}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
     </div>
+  )
+}
+
+// --- Local Helpers ---
+
+function Modal({ title, onClose, children }) {
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 1000, padding: 16, backdropFilter: 'blur(4px)',
+        animation: 'fadeInOverlay 0.15s ease'
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: 520,
+          background: 'var(--surface)', border: '1px solid var(--border)',
+          borderRadius: 16, padding: 24, maxHeight: '90vh', overflowY: 'auto',
+          boxShadow: '0 10px 35px rgba(0,0,0,0.25)',
+          animation: 'slideUpDialog 0.18s cubic-bezier(0.34, 1.56, 0.64, 1)'
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-1)' }}>{title}</h3>
+          <button type="button" onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-3)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+            <DismissRegular fontSize={20} />
+          </button>
+        </div>
+        {children}
+      </div>
+
+      <style>{`
+        @keyframes fadeInOverlay { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes slideUpDialog { from { opacity: 0; transform: scale(0.95) translateY(10px) } to { opacity: 1; transform: scale(1) translateY(0) } }
+      `}</style>
+    </div>
+  )
+}
+
+function Field({ label, hint, required, children }) {
+  return (
+    <label style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+      <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+        {label}{required && <span style={{ color: '#f43f5e' }}> *</span>}
+      </span>
+      {children}
+      {hint && <span style={{ fontSize: 10, color: 'var(--text-4)' }}>{hint}</span>}
+    </label>
   )
 }

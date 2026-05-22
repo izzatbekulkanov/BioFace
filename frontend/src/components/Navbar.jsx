@@ -192,6 +192,45 @@ export default function Navbar({ isLoggedIn, onLogout, onLangChange }) {
   const [logoUrl, setLogoUrl] = useState('')
   const [faviconUrl, setFaviconUrl] = useState('')
   const [appName, setAppName] = useState('BioFace')
+  const [currentUser, setCurrentUser] = useState(null)
+
+  useEffect(() => {
+    const fetchUser = () => {
+      if (isLoggedIn) {
+        fetch('/api/auth/me', { credentials: 'include' })
+          .then(res => {
+            if (res.ok) return res.json()
+            throw new Error('Unauthorized')
+          })
+          .then(data => {
+            setCurrentUser(data)
+          })
+          .catch(err => {
+            console.log('Error loading current user:', err)
+          })
+      } else {
+        setCurrentUser(null)
+      }
+    }
+
+    fetchUser()
+    window.addEventListener('user-profile-updated', fetchUser)
+    return () => window.removeEventListener('user-profile-updated', fetchUser)
+  }, [isLoggedIn])
+
+  const getUserInitials = () => {
+    if (!currentUser) return ''
+    const last = (currentUser.last_name || '').trim()
+    const first = (currentUser.first_name || '').trim()
+    if (last && first) {
+      return `${last}.${first.charAt(0).toUpperCase()}.`
+    }
+    if (last) return last
+    if (first) return first
+    return (currentUser.display_name || currentUser.name || '').trim()
+  }
+
+  const initials = getUserInitials()
 
   useEffect(() => {
     fetch('/api/settings')
@@ -327,6 +366,23 @@ export default function Navbar({ isLoggedIn, onLogout, onLangChange }) {
       </div>
 
       {/* Auth button */}
+      {isLoggedIn && (
+        <Tooltip content={i18n.language === 'ru' ? 'Профиль' : 'Profil'} relationship="label">
+          <button onClick={() => navigate('/profile')} style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '5px 13px', borderRadius: 6,
+            border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)',
+            color: '#fff', fontSize: 13, cursor: 'pointer',
+            marginRight: 8,
+          }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
+          >
+            <PersonRegular fontSize={15} />
+            {initials || (i18n.language === 'ru' ? 'Профиль' : 'Profil')}
+          </button>
+        </Tooltip>
+      )}
       {isLoggedIn ? (
         <Tooltip content={t('nav.logout')} relationship="label">
           <button onClick={handleLogout} style={{

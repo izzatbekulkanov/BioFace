@@ -40,6 +40,10 @@ export default function Attendance() {
   const [orgs, setOrgs] = useState([])
   const [cameras, setCameras] = useState([])
 
+  const [totalCount, setTotalCount] = useState(0)
+  const [knownCount, setKnownCount] = useState(0)
+  const [unknownCount, setUnknownCount] = useState(0)
+
   const [orgFilter, setOrgFilter] = useState('all')
   const [camFilter, setCamFilter] = useState('all')
   const [todayOnly, setTodayOnly] = useState(false)
@@ -89,6 +93,9 @@ export default function Attendance() {
       const list = Array.isArray(data?.items) ? data.items : []
       if (aliveRef.current) {
         setItems(list)
+        setTotalCount(data?.total || list.length)
+        setKnownCount(data?.known || list.filter(x => x.employee_id != null).length)
+        setUnknownCount(data?.unknown || list.filter(x => x.employee_id == null).length)
         lastIdRef.current = Number(data?.last_id || (list[0]?.id || 0))
         oldestIdRef.current = list.length ? Number(list[list.length - 1].id) : null
         reachedEndRef.current = list.length < 100
@@ -125,6 +132,11 @@ export default function Attendance() {
           const filtered = prev.filter(x => !newIds.has(x.id))
           return [...fresh.slice().reverse(), ...filtered]
         })
+        if (data?.total !== undefined) {
+          setTotalCount(data.total)
+          setKnownCount(data.known)
+          setUnknownCount(data.unknown)
+        }
         const maxId = Number(data?.last_id || fresh[fresh.length - 1].id)
         if (maxId > lastIdRef.current) lastIdRef.current = maxId
       }
@@ -133,15 +145,13 @@ export default function Attendance() {
     }
   }, [orgFilter, camFilter, todayOnly])
 
-  // Eski yozuvlarni yuklash
+  // Eski yozuvlarni yuklash (pagination)
   const loadMore = useCallback(async () => {
     if (loadingMore || reachedEndRef.current || !oldestIdRef.current) return
     setLoadingMore(true)
     try {
       const before = oldestIdRef.current
-      // /api/attendance da `before` filtri yo'q — limit'ni oshirib qaytadan olamiz va
-      // hozirgi pastki ID dan kichigini ajratamiz
-      const params = new URLSearchParams({ limit: String((items.length + 100)) })
+      const params = new URLSearchParams({ limit: '100', before_id: String(before) })
       if (orgFilter !== 'all') params.set('organization_id', orgFilter)
       if (camFilter !== 'all') params.set('camera_id', camFilter)
       if (todayOnly) params.set('today_only', 'true')
@@ -149,14 +159,14 @@ export default function Attendance() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       const list = Array.isArray(data?.items) ? data.items : []
-      const older = list.filter(x => Number(x.id) < before)
       if (aliveRef.current) {
-        if (!older.length) {
+        if (!list.length) {
           reachedEndRef.current = true
           toast.info(isRu ? 'Больше записей нет' : "Yana yozuvlar yo'q")
         } else {
-          setItems(prev => [...prev, ...older])
-          oldestIdRef.current = Number(older[older.length - 1].id)
+          setItems(prev => [...prev, ...list])
+          oldestIdRef.current = Number(list[list.length - 1].id)
+          reachedEndRef.current = list.length < 100
         }
       }
     } catch (e) {
@@ -164,7 +174,7 @@ export default function Attendance() {
     } finally {
       if (aliveRef.current) setLoadingMore(false)
     }
-  }, [loadingMore, items.length, orgFilter, camFilter, todayOnly, toast, isRu])
+  }, [loadingMore, orgFilter, camFilter, todayOnly, toast, isRu])
 
   // Mount
   useEffect(() => {
@@ -248,9 +258,9 @@ export default function Attendance() {
 
         {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 18 }}>
-          <StatCard icon={<ClipboardTaskListLtrRegular />} label={isRu ? 'Всего' : 'Jami'} value={stats.total} color="#3b82f6" />
-          <StatCard icon={<CheckmarkCircleRegular />} label={isRu ? 'Распознано' : 'Aniqlandi'} value={stats.known} color="#10b981" />
-          <StatCard icon={<QuestionCircleRegular />} label={isRu ? 'Неизвестные' : "Noma'lum"} value={stats.unknown} color="#f59e0b" />
+          <StatCard icon={<ClipboardTaskListLtrRegular />} label={isRu ? 'Всего' : 'Jami'} value={totalCount} color="#3b82f6" />
+          <StatCard icon={<CheckmarkCircleRegular />} label={isRu ? 'Распознано' : 'Aniqlandi'} value={knownCount} color="#10b981" />
+          <StatCard icon={<QuestionCircleRegular />} label={isRu ? 'Неизвестные' : "Noma'lum"} value={unknownCount} color="#f59e0b" />
         </div>
 
         {/* Toolbar */}
@@ -302,7 +312,15 @@ export default function Attendance() {
             </label>
           </div>
           <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-4)' }}>
-            {filtered.length} / {items.length} {isRu ? 'записей' : 'yozuv'}
+            {search.trim() ? (
+              isRu 
+                ? `Найдено: ${filtered.length} из ${totalCount} записей (Загружено: ${items.length})`
+                : `Topildi: ${filtered.length} / ${totalCount} yozuv (Yuklangan: ${items.length})`
+            ) : (
+              isRu
+                ? `Показано: ${items.length} из ${totalCount} записей`
+                : `Ko'rsatilmoqda: ${items.length} / ${totalCount} yozuv`
+            )}
           </div>
         </div>
 
