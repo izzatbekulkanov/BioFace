@@ -61,9 +61,10 @@ export default function Commands() {
 
     try {
       const [cams, orgList] = await Promise.all([
-        smartFetch('/api/cameras', { signal, force }),
-        smartFetch('/api/organizations', { signal, force }).catch(() => []),
+        smartFetch('/api/cameras', { signal, force }).catch(err => { if (err.name === 'AbortError') return null; throw err; }),
+        smartFetch('/api/organizations', { signal, force }).catch(err => { if (err.name === 'AbortError') return null; return []; }),
       ])
+      if (signal.aborted || cams === null || orgList === null) return
       setCameras(cams || [])
       setOrgs(orgList || [])
       setLoading(false)

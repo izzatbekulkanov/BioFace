@@ -96,12 +96,18 @@ export default function CameraDetail() {
     setError('')
     if (abortRef.current) abortRef.current.abort()
     abortRef.current = new AbortController()
+    const signal = abortRef.current.signal
     try {
+      const camPromise = fetch(`/api/cameras/${id}`, { signal }).catch(err => { if (err.name === 'AbortError') return null; throw err; })
+      const orgsPromise = fetch('/api/organizations', { signal }).catch(err => { if (err.name === 'AbortError') return null; throw err; })
+
       const [camRes, orgsRes] = await Promise.all([
-        fetch(`/api/cameras/${id}`, { signal: abortRef.current.signal }),
-        fetch('/api/organizations',  { signal: abortRef.current.signal }),
+        camPromise,
+        orgsPromise,
         new Promise(resolve => setTimeout(resolve, 800)) // Skeleton animatsiyasi chiroyli ishlashi uchun minimal vaqt
       ])
+      if (signal.aborted || !camRes || !orgsRes) return
+
       if (camRes.status === 401) { navigate('/login'); return }
       if (camRes.status === 404) throw new Error(isRu ? 'Камера не найдена' : 'Kamera topilmadi')
       if (!camRes.ok) throw new Error(isRu ? 'Камера не загружена' : 'Kamera yuklanmadi')

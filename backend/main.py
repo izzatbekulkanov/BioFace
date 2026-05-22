@@ -4,6 +4,7 @@ import time
 
 from utils.access_control import resolve_menu_key_for_path, resolve_user_menu_permissions, user_has_menu_access
 from services.attendance_monitor import start_attendance_monitor, stop_attendance_monitor
+from services.self_healing_monitor import start_self_healing_monitor, stop_self_healing_monitor
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
@@ -222,11 +223,13 @@ app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 @app.on_event("startup")
 async def startup_background_services():
     start_attendance_monitor()
+    start_self_healing_monitor()
 
 
 @app.on_event("shutdown")
 async def shutdown_background_services():
     stop_attendance_monitor()
+    stop_self_healing_monitor()
 
 # --- Routerlarni ulaymiz ---
 app.include_router(auth.router, tags=["Auth"])

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload, selectinload
 
 from database import SessionLocal, ensure_schema
 from models import Employee, EmployeeWellbeingNote
@@ -25,8 +25,8 @@ def find_employee_by_id(employee_id: int | str | None):
         statement = (
             select(Employee)
             .options(
-                selectinload(Employee.organization),
-                selectinload(Employee.schedule)
+                joinedload(Employee.organization),
+                joinedload(Employee.schedule)
             )
             .where(Employee.id == safe_id)
         )
@@ -43,8 +43,8 @@ def find_employee_by_personal_id(personal_id: str | None):
         statement = (
             select(Employee)
             .options(
-                selectinload(Employee.organization),
-                selectinload(Employee.schedule)
+                joinedload(Employee.organization),
+                joinedload(Employee.schedule)
             )
             .where(Employee.personal_id == identifier)
         )

@@ -31,7 +31,7 @@ from utils.attendance_utils import ATTENDANCE_FLOOD_GUARD_SECONDS, build_attenda
 from database import SessionLocal, get_db
 from services.hikvision_sdk import get_sdk_status
 from services.isup_manager import get_process_status
-from models import Device, AttendanceLog, Employee, EmployeeWellbeingNote, Organization, EmployeeCameraLink, UserOrganizationLink
+from models import Device, AttendanceLog, Employee, EmployeeWellbeingNote, Organization, EmployeeCameraLink, UserOrganizationLink, Schedule
 from utils.schedule_utils import get_late_minutes, is_holiday_for_org, resolve_employee_schedule
 from utils.time_utils import now_tashkent, normalize_timestamp_tashkent, today_tashkent_range
 from config.system_config import (
@@ -65,6 +65,7 @@ from routers.cameras_parts.psychology_utils import (
     upsert_daily_psychological_state,
 )
 from utils.access_control import normalize_role_value
+from utils.liveness_utils import check_liveness
 from models import UserRole
 
 # ISUP server manzili (default localhost:7670) — health/info uchun ichki URL
@@ -301,6 +302,11 @@ def _publish_attendance_event_redis(
     wellbeing_note_uz: Optional[str] = None,
     wellbeing_note_ru: Optional[str] = None,
     wellbeing_note_source: Optional[str] = None,
+    liveness_score: Optional[float] = None,
+    liveness_status: Optional[str] = None,
+    stress_score: Optional[float] = None,
+    stress_status_uz: Optional[str] = None,
+    stress_status_ru: Optional[str] = None,
 ) -> None:
     payload = {
         "source": source,
@@ -326,6 +332,11 @@ def _publish_attendance_event_redis(
         "wellbeing_note_uz": str(wellbeing_note_uz or ""),
         "wellbeing_note_ru": str(wellbeing_note_ru or ""),
         "wellbeing_note_source": str(wellbeing_note_source or ""),
+        "liveness_score": float(liveness_score) if liveness_score is not None else None,
+        "liveness_status": str(liveness_status or ""),
+        "stress_score": float(stress_score) if stress_score is not None else None,
+        "stress_status_uz": str(stress_status_uz or ""),
+        "stress_status_ru": str(stress_status_ru or ""),
     }
     publish_camera_event(payload)
 
@@ -1532,6 +1543,12 @@ def camera_webhook(payload: WebhookPayload, db: Session = Depends(get_db)):
     emotion_scores = dict(psychological_profile.get("emotion_scores") or {})
     psychological_profile_uz = str(psychological_profile.get("profile_text_uz") or "")
     psychological_profile_ru = str(psychological_profile.get("profile_text_ru") or "")
+    
+    stress_score = psychological_profile.get("stress_score", 0.0)
+    stress_status_uz = psychological_profile.get("stress_status_uz", "Normal")
+    stress_status_ru = psychological_profile.get("stress_status_ru", "Нормальный")
+
+    liveness_score, liveness_status = check_liveness(photo_path)
 
     if employee is not None:
         upsert_daily_psychological_state(
@@ -1558,6 +1575,9 @@ def camera_webhook(payload: WebhookPayload, db: Session = Depends(get_db)):
         wellbeing_note_uz=note_uz or None,
         wellbeing_note_ru=note_ru or None,
         wellbeing_note_source=note_source or None,
+        liveness_score=liveness_score,
+        liveness_status=liveness_status,
+        direction=device.direction if device else None,
         timestamp=ts,
         status="aniqlandi" if employee else "noma'lum",
     )
@@ -1588,6 +1608,11 @@ def camera_webhook(payload: WebhookPayload, db: Session = Depends(get_db)):
         wellbeing_note_uz=note_uz,
         wellbeing_note_ru=note_ru,
         wellbeing_note_source=note_source,
+        liveness_score=liveness_score,
+        liveness_status=liveness_status,
+        stress_score=stress_score,
+        stress_status_uz=stress_status_uz,
+        stress_status_ru=stress_status_ru,
     )
 
     return {
@@ -1602,6 +1627,11 @@ def camera_webhook(payload: WebhookPayload, db: Session = Depends(get_db)):
         "psychological_state_ru": psychological_state_ru,
         "psychological_profile_uz": psychological_profile_uz,
         "psychological_profile_ru": psychological_profile_ru,
+        "liveness_score": liveness_score,
+        "liveness_status": liveness_status,
+        "stress_score": stress_score,
+        "stress_status_uz": stress_status_uz,
+        "stress_status_ru": stress_status_ru,
         "message": "Ma'lumot qabul qilindi",
     }
 
@@ -3077,6 +3107,8 @@ def get_attendance(
     after_id: Optional[int] = None,
     before_id: Optional[int] = None,
     today_only: bool = False,
+    employee_type: Optional[str] = None,
+    schedule_id: Optional[int] = None,
     db: Session = Depends(get_db),
 ):
     safe_limit = max(1, min(int(limit), 3000))
@@ -3086,7 +3118,7 @@ def get_attendance(
     allowed_org_ids = list(scope.get("allowed_org_ids") or [])
     is_super = bool(scope.get("is_super_admin"))
 
-    query = db.query(AttendanceLog)
+    query = db.query(AttendanceLog).outerjoin(Device, Device.id == AttendanceLog.device_id).outerjoin(Employee, Employee.id == AttendanceLog.employee_id)
 
     if today_only:
         day_start, day_end = _today_utc_range()
@@ -3094,15 +3126,10 @@ def get_attendance(
 
     # Agar super_admin emas bo'lsa — faqat allowed_org_ids bo'yicha filter
     if not is_super and allowed_org_ids:
-        query = (
-            query
-            .outerjoin(Device, Device.id == AttendanceLog.device_id)
-            .outerjoin(Employee, Employee.id == AttendanceLog.employee_id)
-            .filter(
-                or_(
-                    Device.organization_id.in_(allowed_org_ids),
-                    Employee.organization_id.in_(allowed_org_ids),
-                )
+        query = query.filter(
+            or_(
+                Device.organization_id.in_(allowed_org_ids),
+                Employee.organization_id.in_(allowed_org_ids),
             )
         )
     elif not is_super and not allowed_org_ids:
@@ -3111,13 +3138,6 @@ def get_attendance(
 
     # Qo'shimcha filtr: specific tashkilot yoki kamera
     if organization_id is not None:
-        if is_super:
-            # Super_admin uchun join qo'shamiz (yuqorida yo'q)
-            query = (
-                query
-                .outerjoin(Device, Device.id == AttendanceLog.device_id)
-                .outerjoin(Employee, Employee.id == AttendanceLog.employee_id)
-            )
         query = query.filter(
             or_(
                 Device.organization_id == organization_id,
@@ -3126,6 +3146,11 @@ def get_attendance(
         )
     if camera_id is not None:
         query = query.filter(AttendanceLog.device_id == camera_id)
+
+    if employee_type is not None and employee_type != 'all':
+        query = query.filter(Employee.employee_type == employee_type)
+    if schedule_id is not None:
+        query = query.filter(Employee.schedule_id == schedule_id)
 
     # Calculate grand totals for this filter (excluding pagination)
     total = query.count()
@@ -3164,6 +3189,10 @@ def get_attendance(
         if not employee_name:
             employee_name = l.person_name or "Noma'lum"
 
+        from routers.cameras_parts.psychology_utils import deserialize_emotion_scores, calculate_stress_score
+        emotions = deserialize_emotion_scores(l.emotion_scores_json)
+        stress_data = calculate_stress_score(emotions)
+
         items.append(
             {
                 "id": l.id,
@@ -3180,6 +3209,12 @@ def get_attendance(
                 "organization_id": organization.id if organization else None,
                 "organization_name": organization.name if organization else None,
                 "snapshot_url": l.snapshot_url,
+                "liveness_score": l.liveness_score,
+                "liveness_status": l.liveness_status,
+                "stress_score": stress_data["stress_score"],
+                "stress_status_uz": stress_data["stress_status_uz"],
+                "stress_status_ru": stress_data["stress_status_ru"],
+                "direction": l.direction or (l.device.direction if l.device else None),
             }
         )
     return {
@@ -3358,6 +3393,12 @@ def get_attendance_filter_data(request: Request, db: Session = Depends(get_db)):
         .order_by(Device.name.asc())
         .all()
     )
+    schedule_rows = (
+        db.query(Schedule.id, Schedule.name, Schedule.organization_id)
+        .filter(Schedule.organization_id.in_(allowed_org_ids))
+        .order_by(Schedule.name.asc())
+        .all()
+    )
 
     return {
         "ok": True,
@@ -3372,6 +3413,14 @@ def get_attendance_filter_data(request: Request, db: Session = Depends(get_db)):
                 "organization_id": int(row.organization_id) if row.organization_id is not None else None,
             }
             for row in cam_rows
+        ],
+        "schedules": [
+            {
+                "id": int(row.id),
+                "name": str(row.name or ""),
+                "organization_id": int(row.organization_id) if row.organization_id is not None else None,
+            }
+            for row in schedule_rows
         ],
     }
 
@@ -4004,7 +4053,7 @@ def get_attendance_groups(
                 "visit_count": int(session_summary.get("session_count") or 0),
                 "raw_event_count": int(session_summary.get("raw_event_count") or row.visit_count or 0),
                 "camera_count": camera_count,
-                "status": row.status,
+                "status": "kech" if (employee is not None and late_minutes > 0) else row.status,
                 "late_minutes": max(0, late_minutes),
                 "events": events,
             }
@@ -4752,14 +4801,17 @@ os.makedirs(_HIK_SNAP_DIR, exist_ok=True)
 def _hik_store_snapshot_bytes(raw: bytes, *, ext: str = "jpg") -> Optional[str]:
     if not _hik_is_valid_image_bytes(raw):
         return None
-    safe_ext = str(ext or "jpg").strip().lower().lstrip(".")
-    if safe_ext not in {"jpg", "jpeg", "png", "gif", "bmp", "webp"}:
-        safe_ext = "jpg"
+    try:
+        from utils.image_utils import compress_to_webp
+        webp_bytes = compress_to_webp(raw)
+    except Exception:
+        webp_bytes = raw
+        
     ts_str = now_tashkent().strftime("%Y%m%d_%H%M%S_%f")
-    fname = f"hik_{ts_str}.{safe_ext if safe_ext != 'jpeg' else 'jpg'}"
+    fname = f"hik_{ts_str}.webp"
     fpath = os.path.join(_HIK_SNAP_DIR, fname)
     with open(fpath, "wb") as f:
-        f.write(raw)
+        f.write(webp_bytes)
     return f"/static/uploads/isup/{fname}"
 
 
@@ -5414,7 +5466,8 @@ async def hik_event_webhook(
         }
 
     if not is_dup:
-        psychological_profile = detect_psychological_profile(resolve_snapshot_path(snap_url))
+        photo_path = resolve_snapshot_path(snap_url)
+        psychological_profile = detect_psychological_profile(photo_path)
         psychological_state_key = str(psychological_profile.get("state_key") or "")
         psychological_state_uz = str(psychological_profile.get("state_uz") or "")
         psychological_state_ru = str(psychological_profile.get("state_ru") or "")
@@ -5422,6 +5475,13 @@ async def hik_event_webhook(
         emotion_scores = dict(psychological_profile.get("emotion_scores") or {})
         psychological_profile_uz = str(psychological_profile.get("profile_text_uz") or "")
         psychological_profile_ru = str(psychological_profile.get("profile_text_ru") or "")
+        
+        stress_score = psychological_profile.get("stress_score", 0.0)
+        stress_status_uz = psychological_profile.get("stress_status_uz", "Normal")
+        stress_status_ru = psychological_profile.get("stress_status_ru", "Нормальный")
+
+        liveness_score, liveness_status = check_liveness(photo_path)
+
         new_log = AttendanceLog(
             employee_id=emp.id if emp else None,
             device_id=device.id if device else None,
@@ -5435,6 +5495,9 @@ async def hik_event_webhook(
             wellbeing_note_uz=note_uz or None,
             wellbeing_note_ru=note_ru or None,
             wellbeing_note_source=note_source or None,
+            liveness_score=liveness_score,
+            liveness_status=liveness_status,
+            direction=device.direction if device else None,
             timestamp=ts_event,
             status="aniqlandi" if emp else "noma'lum",
         )
@@ -5474,6 +5537,11 @@ async def hik_event_webhook(
             wellbeing_note_uz=note_uz,
             wellbeing_note_ru=note_ru,
             wellbeing_note_source=note_source,
+            liveness_score=liveness_score,
+            liveness_status=liveness_status,
+            stress_score=stress_score,
+            stress_status_uz=stress_status_uz,
+            stress_status_ru=stress_status_ru,
         )
         _camera_event_debug(f"[HIK-EVENT] Saqlandi: log_id={log_id}, person={person_id_val}/{person_name_val}, snap={snap_url}")
     else:

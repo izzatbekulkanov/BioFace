@@ -64,6 +64,8 @@ def serialize_schedule_row(schedule: Schedule) -> dict[str, Any]:
 def resolve_employee_schedule(employee: Employee) -> dict[str, Any]:
     organization = getattr(employee, "organization", None)
     schedule = getattr(employee, "schedule", None)
+    schedule_type = getattr(employee, "schedule_type", None)
+
     default_start = normalize_hhmm(
         getattr(organization, "default_start_time", None),
         DEFAULT_START_TIME,
@@ -72,31 +74,50 @@ def resolve_employee_schedule(employee: Employee) -> dict[str, Any]:
         getattr(organization, "default_end_time", None),
         DEFAULT_END_TIME,
     )
-    schedule_start = normalize_hhmm(getattr(schedule, "start_time", None), default_start)
-    schedule_end = normalize_hhmm(getattr(schedule, "end_time", None), default_end)
-    has_override = bool(str(getattr(employee, "start_time", "") or "").strip() or str(getattr(employee, "end_time", "") or "").strip())
-    start_time = normalize_hhmm(getattr(employee, "start_time", None), schedule_start)
-    end_time = normalize_hhmm(getattr(employee, "end_time", None), schedule_end)
-    schedule_name = str(getattr(schedule, "name", "") or "").strip()
 
-    if has_override:
-        source = "employee_override"
-    elif schedule is not None:
-        source = "schedule"
+    if not schedule_type:
+        has_override = bool(str(getattr(employee, "start_time", "") or "").strip() or str(getattr(employee, "end_time", "") or "").strip())
+        if has_override:
+            schedule_type = "individual"
+        elif schedule is not None:
+            schedule_type = "shift"
+        else:
+            schedule_type = "organization"
+
+    if schedule_type == "individual":
+        start_time = normalize_hhmm(getattr(employee, "start_time", None), default_start)
+        end_time = normalize_hhmm(getattr(employee, "end_time", None), default_end)
+        source = "individual"
+        is_flexible = False
+        schedule_id = None
+        schedule_name = "Individual"
+    elif schedule_type == "shift" and schedule is not None:
+        start_time = normalize_hhmm(getattr(schedule, "start_time", None), default_start)
+        end_time = normalize_hhmm(getattr(schedule, "end_time", None), default_end)
+        source = "shift"
+        is_flexible = bool(getattr(schedule, "is_flexible", False))
+        schedule_id = int(schedule.id) if schedule.id is not None else None
+        schedule_name = str(getattr(schedule, "name", "") or "").strip() or "Smena"
     else:
-        source = "organization_default"
+        start_time = default_start
+        end_time = default_end
+        source = "organization"
+        is_flexible = False
+        schedule_id = None
+        schedule_name = "Tashkilot vaqti"
 
     return {
-        "schedule_id": int(schedule.id) if schedule is not None and schedule.id is not None else None,
-        "schedule_name": schedule_name or ("Asosiy smena" if source == "organization_default" else ""),
+        "schedule_id": schedule_id,
+        "schedule_name": schedule_name,
         "start_time": start_time,
         "end_time": end_time,
         "default_start_time": default_start,
         "default_end_time": default_end,
-        "schedule_start_time": schedule_start,
-        "schedule_end_time": schedule_end,
-        "is_flexible": bool(getattr(schedule, "is_flexible", False)),
-        "has_override": has_override,
+        "schedule_start_time": normalize_hhmm(getattr(schedule, "start_time", None), default_start) if schedule else default_start,
+        "schedule_end_time": normalize_hhmm(getattr(schedule, "end_time", None), default_end) if schedule else default_end,
+        "is_flexible": is_flexible,
+        "has_override": schedule_type == "individual",
+        "schedule_type": schedule_type,
         "source": source,
     }
 

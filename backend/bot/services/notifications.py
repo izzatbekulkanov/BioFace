@@ -118,6 +118,12 @@ class CameraEventNotifier:
         psychological_state = payload_state_key or str((detected_profile or {}).get("state_key") or "")
         emotion_scores = payload_emotion_scores or dict((detected_profile or {}).get("emotion_scores") or {})
 
+        liveness_score = payload.get("liveness_score")
+        liveness_status = payload.get("liveness_status")
+        stress_score = payload.get("stress_score")
+        stress_status_uz = payload.get("stress_status_uz")
+        stress_status_ru = payload.get("stress_status_ru")
+
         for binding in bindings:
             chat_id = str(binding.telegram_chat_id or "").strip()
             if not chat_id:
@@ -155,6 +161,11 @@ class CameraEventNotifier:
                 wellbeing_note=wellbeing_note,
                 psychological_state=psychological_text,
                 psychological_profile=psychological_profile_text,
+                liveness_score=liveness_score,
+                liveness_status=liveness_status,
+                stress_score=stress_score,
+                stress_status_uz=stress_status_uz,
+                stress_status_ru=stress_status_ru,
             )
             self._enqueue_notification(chat_id=int(chat_id), message=message, photo_path=photo_path)
 

@@ -51,10 +51,12 @@ def _format_duration_hms(seconds: int | None) -> str:
 
 def _status_label(language: str, status: str) -> str:
     status = (status or "").lower().strip()
-    if status == "present":
-        return get_message(language, "status_present")
-    if status == "late":
-        return get_message(language, "status_late")
+    if status in ("present", "aniqlandi"):
+        return "Распознан" if language == "ru" else "Aniqlandi"
+    if status in ("late", "kech"):
+        return "Опоздал" if language == "ru" else "Kech qoldi"
+    if status in ("absent", "kelmagan"):
+        return "Не пришел" if language == "ru" else "Kelmagan"
     if status == "holiday":
         return "Выходной" if language == "ru" else "Dam olish"
     return get_message(language, "status_absent")
@@ -62,10 +64,12 @@ def _status_label(language: str, status: str) -> str:
 
 def _status_emoji(status: str) -> str:
     normalized = (status or "").strip().lower()
-    if normalized == "present":
+    if normalized in ("present", "aniqlandi"):
         return "✅"
-    if normalized == "late":
+    if normalized in ("late", "kech"):
         return "⚠️"
+    if normalized in ("absent", "kelmagan"):
+        return "❌"
     if normalized == "holiday":
         return "🟦"
     return "❌"
@@ -144,7 +148,47 @@ def format_camera_event_message(
     wellbeing_note: str | None = None,
     psychological_state: str | None = None,
     psychological_profile: str | None = None,
+    liveness_score: float | None = None,
+    liveness_status: str | None = None,
+    stress_score: float | None = None,
+    stress_status_uz: str | None = None,
+    stress_status_ru: str | None = None,
 ) -> str:
+    # Liveness formatlash
+    liveness_text = ""
+    if liveness_score is not None:
+        score_pct = round(float(liveness_score) * 100, 1)
+        is_real = str(liveness_status).strip().lower() == "real" or float(liveness_score) >= 0.60
+        if is_real:
+            if language == "ru":
+                liveness_text = f"🛡️ Подлинность (Liveness): 🟢 НАСТОЯЩИЙ ({score_pct}%)"
+            else:
+                liveness_text = f"🛡️ Haqiqiylik (Liveness): 🟢 HAQIQIY ({score_pct}%)"
+        else:
+            if language == "ru":
+                liveness_text = f"⚠️ Подлинность (Liveness): 🔴 ПОДДЕЛКА ({score_pct}%)"
+            else:
+                liveness_text = f"⚠️ Haqiqiylik (Liveness): 🔴 SOXTA / EKRAN ({score_pct}%)"
+
+    # Stress formatlash
+    stress_text = ""
+    if stress_score is not None:
+        score_val = float(stress_score)
+        if score_val <= 35.0:
+            badge = "🟢"
+            status = str(stress_status_ru or "Низкий").strip() if language == "ru" else str(stress_status_uz or "Past").strip()
+        elif score_val <= 70.0:
+            badge = "🟡"
+            status = str(stress_status_ru or "Средний").strip() if language == "ru" else str(stress_status_uz or "O'rtacha").strip()
+        else:
+            badge = "🔴"
+            status = str(stress_status_ru or "Высокий").strip() if language == "ru" else str(stress_status_uz or "Yuqori").strip()
+
+        if language == "ru":
+            stress_text = f"{badge} Уровень стресса: {status} ({score_val:.1f}%)"
+        else:
+            stress_text = f"{badge} Stress darajasi: {status} ({score_val:.1f}%)"
+
     if language == "ru":
         lines = [
             "📸 BioFace",
@@ -170,6 +214,12 @@ def format_camera_event_message(
             lines.extend([
                 f"📊 Профиль эмоций: {profile_text}",
             ])
+        if liveness_text:
+            lines.extend(["", liveness_text])
+        if stress_text:
+            if not liveness_text:
+                lines.append("")
+            lines.append(stress_text)
         return "\n".join(lines)
 
     lines = [
@@ -196,6 +246,12 @@ def format_camera_event_message(
         lines.extend([
             f"📊 Emotsiya profili: {profile_text}",
         ])
+    if liveness_text:
+        lines.extend(["", liveness_text])
+    if stress_text:
+        if not liveness_text:
+            lines.append("")
+        lines.append(stress_text)
     return "\n".join(lines)
 
 
@@ -243,11 +299,12 @@ def build_month_calendar_keyboard(days: list[MonthlyAttendanceDay], year: int, m
             item = day_map.get(day_num)
             label = f"{day_num:02d}"
             if item is not None:
-                if item.status == "present":
+                status_val = item.status.lower()
+                if status_val in ("present", "aniqlandi"):
                     label = f"🟩{day_num:02d}"
-                elif item.status == "late":
+                elif status_val in ("late", "kech"):
                     label = f"🟨{day_num:02d}"
-                elif item.status == "holiday":
+                elif status_val == "holiday":
                     label = f"🟦{day_num:02d}"
                 else:
                     label = f"🟥{day_num:02d}"

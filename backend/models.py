@@ -144,6 +144,7 @@ class Employee(Base):
     has_access = Column(Boolean, default=True)
     start_time = Column(String, nullable=True)  # HH:MM format, override default
     end_time = Column(String, nullable=True)    # HH:MM format, override default
+    schedule_type = Column(String, default="organization", nullable=False)
     created_at = Column(DateTime, default=utc_now)
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
     organization = relationship("Organization", back_populates="employees")
@@ -225,6 +226,9 @@ class AttendanceLog(Base):
     wellbeing_note_uz = Column(String, nullable=True)
     wellbeing_note_ru = Column(String, nullable=True)
     wellbeing_note_source = Column(String, nullable=True)
+    liveness_score = Column(Float, nullable=True)
+    liveness_status = Column(String, nullable=True)
+    direction = Column(String, nullable=True)
     timestamp = Column(DateTime, default=utc_now)
     status = Column(String, nullable=False, default="aniqlandi")  # "aniqlandi", "noma'lum"
     employee = relationship("Employee", back_populates="attendance_logs")
@@ -342,4 +346,5 @@ class ContactMessage(Base):
     phone = Column(String, nullable=False)
     message = Column(String, nullable=False)
     created_at = Column(DateTime, default=now_tashkent, index=True)
+    is_read = Column(Boolean, default=False, nullable=False)
 

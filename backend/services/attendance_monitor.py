@@ -4,7 +4,7 @@ import logging
 import os
 import threading
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 import httpx
@@ -16,6 +16,7 @@ from models import AttendanceLog, Employee, Organization
 from utils.schedule_utils import (
     ATTENDANCE_GRACE_MINUTES,
     get_attendance_deadline,
+    get_expected_end_dt,
     is_holiday_for_org,
     resolve_employee_schedule,
 )
@@ -41,6 +42,14 @@ def _build_neutral_message(employee: Employee, *, target_date: date, start_time:
     return f"{full_name} {date_label} kuni soat {start_time} holatiga ko'ra o'z smenasiga yetib kelmadi."
 
 
+def _build_missed_exit_message(employee: Employee, *, target_date: date, language: str) -> str:
+    full_name = _format_employee_name(employee)
+    date_label = target_date.strftime("%d.%m.%Y")
+    if str(language or "").strip().lower() == "ru":
+        return f"Предупреждение: Данный ученик/студент {full_name} {date_label} не прошел через камеру на выходе."
+    return f"Ushbu o'quvchi/talaba {full_name} {date_label} kuni ketishda kameradan o'tmadi."
+
+
 def _send_telegram_message(token: str, chat_id: str, text_message: str) -> None:
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     with httpx.Client(timeout=12.0, trust_env=False) as client:
@@ -57,7 +66,7 @@ def _send_telegram_message(token: str, chat_id: str, text_message: str) -> None:
         raise RuntimeError(str(payload.get("description") or "Telegram API xatoligi"))
 
 
-def _claim_notification_slot(db, *, employee_id: int, target_date: date, schedule_id: int | None) -> bool:
+def _claim_notification_slot(db, *, employee_id: int, target_date: date, schedule_id: int | None, notification_type: str = NEUTRAL_NOTIFICATION_TYPE) -> bool:
     result = db.execute(
         text(
             """
@@ -69,14 +78,14 @@ def _claim_notification_slot(db, *, employee_id: int, target_date: date, schedul
         {
             "employee_id": int(employee_id),
             "target_date": target_date.isoformat(),
-            "notification_type": NEUTRAL_NOTIFICATION_TYPE,
+            "notification_type": notification_type,
             "schedule_id": int(schedule_id) if schedule_id is not None else None,
         },
     )
     return int(getattr(result, "rowcount", 0) or 0) > 0
 
 
-def _release_notification_slot(db, *, employee_id: int, target_date: date) -> None:
+def _release_notification_slot(db, *, employee_id: int, target_date: date, notification_type: str = NEUTRAL_NOTIFICATION_TYPE) -> None:
     db.execute(
         text(
             """
@@ -89,7 +98,7 @@ def _release_notification_slot(db, *, employee_id: int, target_date: date) -> No
         {
             "employee_id": int(employee_id),
             "target_date": target_date.isoformat(),
-            "notification_type": NEUTRAL_NOTIFICATION_TYPE,
+            "notification_type": notification_type,
         },
     )
 
@@ -221,54 +230,122 @@ class AttendanceMonitor:
                     continue
 
                 schedule_payload = resolve_employee_schedule(employee)
-                deadline = get_attendance_deadline(employee, today, grace_minutes=ATTENDANCE_GRACE_MINUTES)
-                if now_local < deadline:
-                    skipped += 1
-                    continue
+                is_student = employee.employee_type in ["oquvchi", "talaba"]
+                is_present = int(employee.id) in present_employee_ids
 
-                if int(employee.id) in present_employee_ids:
-                    skipped += 1
-                    continue
-
-                claimed = _claim_notification_slot(
-                    db,
-                    employee_id=int(employee.id),
-                    target_date=today,
-                    schedule_id=schedule_payload.get("schedule_id"),
-                )
-                if not claimed:
-                    skipped += 1
-                    continue
-
-                sent_any = False
-                try:
-                    for contact in contacts:
-                        chat_id = str(contact.telegram_chat_id or "").strip()
-                        if not chat_id:
-                            continue
-                        message_text = _build_neutral_message(
-                            employee,
-                            target_date=today,
-                            start_time=str(schedule_payload.get("start_time") or "09:00"),
-                            language=str(contact.language or "uz"),
-                        )
-                        _send_telegram_message(token, chat_id, message_text)
-                        sent_any = True
-                    if sent_any:
-                        db.commit()
-                        notified += 1
-                    else:
-                        _release_notification_slot(db, employee_id=int(employee.id), target_date=today)
-                        db.commit()
+                if is_present:
+                    if not is_student:
                         skipped += 1
-                except Exception as exc:
-                    db.rollback()
-                    with db.begin():
-                        _release_notification_slot(db, employee_id=int(employee.id), target_date=today)
-                    LOGGER.exception("Attendance monitor failed to send notification for employee %s", employee.id)
-                    skipped += 1
-                    with self._lock:
-                        self._state["last_error"] = str(exc)
+                        continue
+
+                    expected_end = get_expected_end_dt(employee, today)
+                    deadline_exit = expected_end + timedelta(minutes=15)
+                    if now_local < deadline_exit:
+                        skipped += 1
+                        continue
+
+                    has_exit = (
+                        db.query(AttendanceLog.id)
+                        .filter(
+                            AttendanceLog.employee_id == employee.id,
+                            AttendanceLog.status == "aniqlandi",
+                            AttendanceLog.direction == "out",
+                            AttendanceLog.timestamp >= today_start,
+                            AttendanceLog.timestamp < today_end,
+                        )
+                        .first()
+                    ) is not None
+
+                    if has_exit:
+                        skipped += 1
+                        continue
+
+                    claimed = _claim_notification_slot(
+                        db,
+                        employee_id=int(employee.id),
+                        target_date=today,
+                        notification_type="missed_exit",
+                        schedule_id=schedule_payload.get("schedule_id"),
+                    )
+                    if not claimed:
+                        skipped += 1
+                        continue
+
+                    sent_any = False
+                    try:
+                        for contact in contacts:
+                            chat_id = str(contact.telegram_chat_id or "").strip()
+                            if not chat_id:
+                                continue
+                            message_text = _build_missed_exit_message(
+                                employee,
+                                target_date=today,
+                                language=str(contact.language or "uz"),
+                            )
+                            _send_telegram_message(token, chat_id, message_text)
+                            sent_any = True
+                        if sent_any:
+                            db.commit()
+                            notified += 1
+                        else:
+                            _release_notification_slot(db, employee_id=int(employee.id), target_date=today, notification_type="missed_exit")
+                            db.commit()
+                            skipped += 1
+                    except Exception as exc:
+                        db.rollback()
+                        with db.begin():
+                            _release_notification_slot(db, employee_id=int(employee.id), target_date=today, notification_type="missed_exit")
+                        LOGGER.exception("Attendance monitor failed to send missed_exit notification for employee %s", employee.id)
+                        skipped += 1
+                        with self._lock:
+                            self._state["last_error"] = str(exc)
+
+                else:
+                    deadline = get_attendance_deadline(employee, today, grace_minutes=ATTENDANCE_GRACE_MINUTES)
+                    if now_local < deadline:
+                        skipped += 1
+                        continue
+
+                    claimed = _claim_notification_slot(
+                        db,
+                        employee_id=int(employee.id),
+                        target_date=today,
+                        notification_type="missed_shift",
+                        schedule_id=schedule_payload.get("schedule_id"),
+                    )
+                    if not claimed:
+                        skipped += 1
+                        continue
+
+                    sent_any = False
+                    try:
+                        for contact in contacts:
+                            chat_id = str(contact.telegram_chat_id or "").strip()
+                            if not chat_id:
+                                continue
+                            message_text = _build_neutral_message(
+                                employee,
+                                target_date=today,
+                                start_time=str(schedule_payload.get("start_time") or "09:00"),
+                                language=str(contact.language or "uz"),
+                            )
+                            _send_telegram_message(token, chat_id, message_text)
+                            sent_any = True
+                        if sent_any:
+                            db.commit()
+                            notified += 1
+                        else:
+                            _release_notification_slot(db, employee_id=int(employee.id), target_date=today, notification_type="missed_shift")
+                            db.commit()
+                            skipped += 1
+                    except Exception as exc:
+                        db.rollback()
+                        with db.begin():
+                            _release_notification_slot(db, employee_id=int(employee.id), target_date=today, notification_type="missed_shift")
+                        LOGGER.exception("Attendance monitor failed to send missed_shift notification for employee %s", employee.id)
+                        skipped += 1
+                        with self._lock:
+                            self._state["last_error"] = str(exc)
 
         with self._lock:
             self._state["last_success_at"] = now_local.isoformat()

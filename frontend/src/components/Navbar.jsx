@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { useToast } from './Toaster'
 import { useTheme } from 'next-themes'
 import { useTranslation } from 'react-i18next'
 import { Tooltip } from '@fluentui/react-components'
@@ -9,7 +10,7 @@ import {
   SettingsRegular, HistoryRegular, CalendarClockRegular,
   ServerRegular, DatabaseRegular, PlugConnectedRegular, ChevronDownRegular,
   PeopleRegular, ShieldRegular, HatGraduationRegular,
-  ClipboardTaskListLtrRegular, BrainCircuitRegular, BuildingRegular,
+  ClipboardTaskListLtrRegular, BrainCircuitRegular, BuildingRegular, AlertRegular,
 } from '@fluentui/react-icons'
 
 const PUBLIC_LINKS  = ['map', 'about', 'contact']
@@ -186,10 +187,146 @@ export default function Navbar({ isLoggedIn, onLogout, onLangChange }) {
   const navigate = useNavigate()
   const location = useLocation()
   const { t, i18n } = useTranslation()
+  const isRu = i18n.language === 'ru'
   const { resolvedTheme, setTheme } = useTheme()
   const isLogin = location.pathname === '/login'
   const isDark  = resolvedTheme === 'dark'
   const [menuOpen, setMenuOpen] = useState(false)
+  const toast = useToast()
+
+  const [notifications, setNotifications] = useState([])
+  const [isNotifOpen, setIsNotifOpen] = useState(false)
+  const notifRef = useRef(null)
+
+  // Load dismissed system/camera alerts from localStorage
+  const [dismissedAlerts, setDismissedAlerts] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dismissedAlerts')
+      return saved ? JSON.parse(saved) : []
+    } catch {
+      return []
+    }
+  })
+
+  // Save dismissed alerts to localStorage
+  const dismissAlert = (alertId) => {
+    const updated = [...dismissedAlerts, alertId]
+    setDismissedAlerts(updated)
+    localStorage.setItem('dismissedAlerts', JSON.stringify(updated))
+  }
+
+  // Fetch notifications
+  const fetchNavbarStatus = async () => {
+    if (!isLoggedIn) return
+    try {
+      // 1. Fetch system status
+      const res = await fetch('/api/system-monitor/navbar-status', { credentials: 'include' })
+      if (!res.ok) return
+      const data = await res.json()
+
+      const list = []
+
+      // Telegram bot offline alert
+      if (data.telegram && data.telegram.online === false) {
+        list.push({
+          id: 'bot-offline',
+          isBotOffline: true,
+          titleUz: 'Telegram bot to\'xtagan!',
+          titleRu: 'Telegram-бот остановлен!',
+          descUz: 'Tizimdagi xabar yuborish telegram boti ishlamayapti.',
+          descRu: 'Служба Telegram-бота не активна.',
+          type: 'error',
+          icon: <AlertRegular style={{ color: '#f87171' }} fontSize={18} />,
+        })
+      }
+
+      // Camera offline alerts
+      if (data.camera_alerts && data.camera_alerts.items) {
+        data.camera_alerts.items.forEach(cam => {
+          const alertId = `cam-offline-${cam.id}-${cam.last_seen_at || 'never'}`
+          list.push({
+            id: alertId,
+            titleUz: `${cam.name} kamerasi oflayn!`,
+            titleRu: `Камера ${cam.name} отключена!`,
+            descUz: cam.organization_name 
+              ? `${cam.organization_name}. Oxirgi faollik: ${cam.last_seen_at ? new Date(cam.last_seen_at).toLocaleString() : 'hech qachon'}`
+              : `Oxirgi faollik: ${cam.last_seen_at ? new Date(cam.last_seen_at).toLocaleString() : 'hech qachon'}`,
+            descRu: cam.organization_name
+              ? `${cam.organization_name}. Последняя активность: ${cam.last_seen_at ? new Date(cam.last_seen_at).toLocaleString() : 'никогда'}`
+              : `Последняя активность: ${cam.last_seen_at ? new Date(cam.last_seen_at).toLocaleString() : 'никогда'}`,
+            type: 'warning',
+            path: '/devices',
+            icon: <CameraRegular style={{ color: '#fb923c' }} fontSize={18} />,
+          })
+        })
+      }
+
+      // 2. Fetch unread appeals (contact messages)
+      if (data.unread_appeals_count > 0) {
+        const appealsRes = await fetch('/api/settings/contact-messages', { credentials: 'include' })
+        if (appealsRes.ok) {
+          const appealsData = await appealsRes.json()
+          if (appealsData.messages) {
+            appealsData.messages.forEach(msg => {
+              if (!msg.is_read) {
+                list.push({
+                  id: `appeal-${msg.id}`,
+                  appealId: msg.id,
+                  titleUz: `Yangi murojaat: ${msg.name}`,
+                  titleRu: `Новое обращение: ${msg.name}`,
+                  descUz: msg.message.length > 60 ? `${msg.message.substring(0, 60)}...` : msg.message,
+                  descRu: msg.message.length > 60 ? `${msg.message.substring(0, 60)}...` : msg.message,
+                  type: 'info',
+                  path: '/settings/messages',
+                  icon: <MailRegular style={{ color: '#38bdf8' }} fontSize={18} />,
+                })
+              }
+            })
+          }
+        }
+      }
+
+      setNotifications(list)
+    } catch (err) {
+      console.error('Error fetching navbar status alerts:', err)
+    }
+  }
+
+  // Poll notifications
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetchNavbarStatus()
+      const interval = setInterval(fetchNavbarStatus, 8000)
+
+      const handleRefresh = () => {
+        fetchNavbarStatus()
+      }
+      window.addEventListener('navbar-refresh', handleRefresh)
+
+      return () => {
+        clearInterval(interval)
+        window.removeEventListener('navbar-refresh', handleRefresh)
+      }
+    } else {
+      setNotifications([])
+    }
+  }, [isLoggedIn])
+
+  // Handle click outside notifications dropdown
+  useEffect(() => {
+    function handleOutside(e) {
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setIsNotifOpen(false)
+      }
+    }
+    if (isNotifOpen) document.addEventListener('mousedown', handleOutside)
+    return () => document.removeEventListener('mousedown', handleOutside)
+  }, [isNotifOpen])
+
+  const activeNotifications = notifications.filter(notif => {
+    if (notif.appealId) return true
+    return !dismissedAlerts.includes(notif.id)
+  })
 
   const [logoUrl, setLogoUrl] = useState('')
   const [faviconUrl, setFaviconUrl] = useState('')
@@ -419,6 +556,227 @@ export default function Navbar({ isLoggedIn, onLogout, onLangChange }) {
             </button>
           ) : null}
         </div>
+
+        {/* Notifications Bell Dropdown */}
+        {isLoggedIn && (
+          <div ref={notifRef} style={{ position: 'relative', marginRight: 8 }}>
+            <Tooltip content={isRu ? 'Уведомления' : 'Bildirishnomalar'} relationship="label">
+              <button onClick={() => setIsNotifOpen(!isNotifOpen)} aria-label="Notifications"
+                style={{
+                  width: 34, height: 34, borderRadius: 8,
+                  background: isNotifOpen ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.08)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: activeNotifications.length > 0 ? '#fb7185' : 'rgba(255,255,255,0.6)',
+                  cursor: 'pointer', flexShrink: 0,
+                  position: 'relative',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.14)'; e.currentTarget.style.color = activeNotifications.length > 0 ? '#fda4af' : '#fff' }}
+                onMouseLeave={e => { e.currentTarget.style.background = isNotifOpen ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = activeNotifications.length > 0 ? '#fb7185' : 'rgba(255,255,255,0.6)' }}
+              >
+                <AlertRegular fontSize={18} style={{
+                  animation: activeNotifications.length > 0 ? 'pulse 2s infinite' : 'none'
+                }} />
+                {activeNotifications.length > 0 && (
+                  <span style={{
+                    position: 'absolute', top: -3, right: -3,
+                    background: '#e11d48', color: '#fff',
+                    fontSize: 9.5, fontWeight: 700,
+                    minWidth: 16, height: 16, borderRadius: 8,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '0 4px', border: `2px solid ${NAV_BG}`,
+                    boxShadow: '0 0 10px rgba(225,29,72,0.5)',
+                  }}>
+                    {activeNotifications.length}
+                  </span>
+                )}
+              </button>
+            </Tooltip>
+
+            {isNotifOpen && (
+              <div style={{
+                position: 'absolute', top: '100%', right: 0, marginTop: 6,
+                background: 'rgba(26, 34, 54, 0.95)', backdropFilter: 'blur(16px)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: 12, padding: '12px 0 8px 0', minWidth: 320, maxWidth: 360,
+                boxShadow: '0 20px 50px rgba(0,0,0,0.6)',
+                zIndex: 9999, animation: 'fadeInNotif 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+              }}>
+                {/* Header */}
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '0 16px 10px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)',
+                }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 700, color: '#fff' }}>
+                    {isRu ? 'Уведомления' : 'Bildirishnomalar'}
+                    {activeNotifications.length > 0 && (
+                      <span style={{ marginLeft: 6, color: '#fb7185', fontSize: 12 }}>
+                        ({activeNotifications.length})
+                      </span>
+                    )}
+                  </span>
+                  {activeNotifications.length > 0 && (
+                    <button onClick={async () => {
+                      // 1. Mark all system/camera alerts as read locally
+                      const systemAlertIds = activeNotifications.filter(n => !n.appealId).map(n => n.id)
+                      if (systemAlertIds.length > 0) {
+                        const updated = [...dismissedAlerts, ...systemAlertIds]
+                        setDismissedAlerts(updated)
+                        localStorage.setItem('dismissedAlerts', JSON.stringify(updated))
+                      }
+                      // 2. Mark all appeals as read on backend
+                      const hasAppeals = activeNotifications.some(n => n.appealId)
+                      if (hasAppeals) {
+                        try {
+                          await fetch('/api/settings/contact-messages/read-all', { method: 'POST', credentials: 'include' })
+                        } catch (e) {
+                          console.error(e)
+                        }
+                      }
+                      fetchNavbarStatus()
+                    }} style={{
+                      background: 'transparent', border: 'none', color: 'var(--accent)',
+                      fontSize: 11.5, fontWeight: 600, cursor: 'pointer', padding: 0,
+                    }}
+                      onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
+                      onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}
+                    >
+                      {isRu ? 'Прочитать все' : 'Hammasini o\'qish'}
+                    </button>
+                  )}
+                </div>
+
+                {/* List */}
+                <div style={{
+                  maxHeight: 320, overflowY: 'auto', padding: '4px 0',
+                }}>
+                  {activeNotifications.length === 0 ? (
+                    <div style={{
+                      padding: '24px 16px', textAlign: 'center', color: 'rgba(255,255,255,0.4)',
+                      fontSize: 12.5, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                    }}>
+                      <AlertRegular fontSize={24} style={{ opacity: 0.5 }} />
+                      <div>{isRu ? 'Новых уведомлений нет' : 'Yangi bildirishnomalar mavjud emas'}</div>
+                    </div>
+                  ) : (
+                    activeNotifications.map(notif => (
+                      <div key={notif.id} 
+                        onClick={() => {
+                          if (notif.path) {
+                            navigate(notif.path)
+                            setIsNotifOpen(false)
+                          }
+                        }}
+                        style={{
+                          display: 'flex', gap: 10, padding: '10px 16px',
+                          borderBottom: '1px solid rgba(255,255,255,0.03)',
+                          cursor: notif.path ? 'pointer' : 'default',
+                          transition: 'background 0.15s',
+                          background: 'transparent',
+                        }}
+                        onMouseEnter={e => { if (notif.path) e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                          {notif.icon}
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 600, color: '#fff', lineHeight: 1.3 }}>
+                            {isRu ? notif.titleRu : notif.titleUz}
+                          </div>
+                          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', lineHeight: 1.3 }}>
+                            {isRu ? notif.descRu : notif.descUz}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                          {notif.isBotOffline ? (
+                            <>
+                              <button 
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  try {
+                                    const res = await fetch('/api/telegram/process/start', { method: 'POST', credentials: 'include' })
+                                    if (res.ok) {
+                                      toast.success(isRu ? 'Telegram-бот успешно запущен' : 'Telegram bot muvaffaqiyatli ishga tushirildi')
+                                      window.dispatchEvent(new CustomEvent('navbar-refresh'))
+                                    } else {
+                                      const errData = await res.json()
+                                      toast.error(errData.detail || (isRu ? 'Ошибка при запуске' : 'Ishga tushirishda xatolik'))
+                                    }
+                                  } catch (err) {
+                                    toast.error(err.message)
+                                  }
+                                }}
+                                style={{
+                                  background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)',
+                                  color: '#34d399', borderRadius: 5, padding: '3px 8px',
+                                  fontSize: 10.5, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.25)'; e.currentTarget.style.color = '#fff' }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.15)'; e.currentTarget.style.color = '#34d399' }}
+                              >
+                                {isRu ? 'Запустить' : 'Tiklash'}
+                              </button>
+                              <button onClick={(e) => {
+                                e.stopPropagation()
+                                dismissAlert(notif.id)
+                              }} style={{
+                                background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+                                color: 'rgba(255,255,255,0.6)', borderRadius: 5, padding: '3px 8px',
+                                fontSize: 10.5, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
+                              }}
+                                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; e.currentTarget.style.color = '#fff' }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = 'rgba(255,255,255,0.6)' }}
+                              >
+                                {isRu ? 'ОК' : 'O\'qildi'}
+                              </button>
+                            </>
+                          ) : (
+                            <button onClick={async (e) => {
+                              e.stopPropagation() // Prevent navigation if clicking dismiss
+                              if (notif.appealId) {
+                                try {
+                                  const res = await fetch(`/api/settings/contact-messages/${notif.appealId}/read`, { method: 'POST', credentials: 'include' })
+                                  if (res.ok) fetchNavbarStatus()
+                                } catch (err) {
+                                  console.error(err)
+                                }
+                              } else {
+                                dismissAlert(notif.id)
+                              }
+                            }} style={{
+                              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+                              color: 'rgba(255,255,255,0.6)', borderRadius: 5, padding: '3px 8px',
+                              fontSize: 10.5, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
+                            }}
+                              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; e.currentTarget.style.color = '#fff' }}
+                              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = 'rgba(255,255,255,0.6)' }}
+                            >
+                              {isRu ? 'ОК' : 'O\'qildi'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+            
+            <style>{`
+              @keyframes fadeInNotif {
+                from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+                to { opacity: 1; transform: translateY(0) scale(1); }
+              }
+              @keyframes pulse {
+                0% { transform: scale(1); }
+                50% { transform: scale(1.08); }
+                100% { transform: scale(1); }
+              }
+            `}</style>
+          </div>
+        )}
 
         {/* Animated Hamburger Button for Mobile */}
         <button

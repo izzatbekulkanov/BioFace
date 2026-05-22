@@ -11,6 +11,8 @@ import {
   CheckmarkCircleRegular,
   QuestionCircleRegular,
   EyeRegular,
+  ClockRegular,
+  DismissCircleRegular,
 } from '@fluentui/react-icons'
 import PageHero from '../components/PageHero'
 import Skeleton from '../components/Skeleton'
@@ -39,6 +41,7 @@ export default function Attendance() {
   const [items, setItems] = useState([])
   const [orgs, setOrgs] = useState([])
   const [cameras, setCameras] = useState([])
+  const [schedules, setSchedules] = useState([])
 
   const [totalCount, setTotalCount] = useState(0)
   const [knownCount, setKnownCount] = useState(0)
@@ -46,6 +49,8 @@ export default function Attendance() {
 
   const [orgFilter, setOrgFilter] = useState('all')
   const [camFilter, setCamFilter] = useState('all')
+  const [employeeTypeFilter, setEmployeeTypeFilter] = useState('all')
+  const [shiftFilter, setShiftFilter] = useState('all')
   const [todayOnly, setTodayOnly] = useState(false)
   const [search, setSearch] = useState('')
   const [isSuperAdmin, setIsSuperAdmin] = useState(true) // default true, keyin aniqlanadi
@@ -77,10 +82,12 @@ export default function Attendance() {
 
       const orgList = Array.isArray(data?.organizations) ? data.organizations : []
       const camList = Array.isArray(data?.cameras) ? data.cameras : []
+      const schedList = Array.isArray(data?.schedules) ? data.schedules : []
 
       if (aliveRef.current) {
         setOrgs(orgList)
         setCameras(camList)
+        setSchedules(schedList)
         // Agar faqat 1 ta tashkilot bo'lsa, avtomatik tanlash
         if (!superAdmin && orgList.length === 1) {
           setOrgFilter(String(orgList[0].id))
@@ -99,6 +106,8 @@ export default function Attendance() {
       const params = new URLSearchParams({ limit: '100' })
       if (orgFilter !== 'all') params.set('organization_id', orgFilter)
       if (camFilter !== 'all') params.set('camera_id', camFilter)
+      if (employeeTypeFilter !== 'all') params.set('employee_type', employeeTypeFilter)
+      if (shiftFilter !== 'all') params.set('schedule_id', shiftFilter)
       if (todayOnly) params.set('today_only', 'true')
 
       const res = await fetch(`/api/attendance?${params}`, { credentials: 'include' })
@@ -125,7 +134,7 @@ export default function Attendance() {
         setRefreshing(false)
       }
     }
-  }, [orgFilter, camFilter, todayOnly, isRu])
+  }, [orgFilter, camFilter, employeeTypeFilter, shiftFilter, todayOnly, isRu])
 
   // Polling — yangi yozuvlar
   const pollNew = useCallback(async () => {
@@ -134,6 +143,8 @@ export default function Attendance() {
       const params = new URLSearchParams({ limit: '50', after_id: String(lastIdRef.current) })
       if (orgFilter !== 'all') params.set('organization_id', orgFilter)
       if (camFilter !== 'all') params.set('camera_id', camFilter)
+      if (employeeTypeFilter !== 'all') params.set('employee_type', employeeTypeFilter)
+      if (shiftFilter !== 'all') params.set('schedule_id', shiftFilter)
       if (todayOnly) params.set('today_only', 'true')
 
       const res = await fetch(`/api/attendance?${params}`, { credentials: 'include' })
@@ -160,7 +171,7 @@ export default function Attendance() {
     } catch {
       // silent
     }
-  }, [orgFilter, camFilter, todayOnly])
+  }, [orgFilter, camFilter, employeeTypeFilter, shiftFilter, todayOnly])
 
   // Eski yozuvlarni yuklash (pagination)
   const loadMore = useCallback(async () => {
@@ -171,6 +182,8 @@ export default function Attendance() {
       const params = new URLSearchParams({ limit: '100', before_id: String(before) })
       if (orgFilter !== 'all') params.set('organization_id', orgFilter)
       if (camFilter !== 'all') params.set('camera_id', camFilter)
+      if (employeeTypeFilter !== 'all') params.set('employee_type', employeeTypeFilter)
+      if (shiftFilter !== 'all') params.set('schedule_id', shiftFilter)
       if (todayOnly) params.set('today_only', 'true')
       const res = await fetch(`/api/attendance?${params}`, { credentials: 'include' })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -191,7 +204,7 @@ export default function Attendance() {
     } finally {
       if (aliveRef.current) setLoadingMore(false)
     }
-  }, [loadingMore, orgFilter, camFilter, todayOnly, toast, isRu])
+  }, [loadingMore, orgFilter, camFilter, employeeTypeFilter, shiftFilter, todayOnly, toast, isRu])
 
   // Mount
   useEffect(() => {
@@ -221,6 +234,11 @@ export default function Attendance() {
     if (orgFilter === 'all') return cameras
     return cameras.filter(c => String(c.organization_id) === String(orgFilter))
   }, [cameras, orgFilter])
+
+  const schedulesByOrg = useMemo(() => {
+    if (orgFilter === 'all') return schedules
+    return schedules.filter(s => String(s.organization_id) === String(orgFilter))
+  }, [schedules, orgFilter])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -344,11 +362,30 @@ export default function Attendance() {
               </div>
             )}
 
-            <div style={{ flex: '1 1 200px' }}>
+            <div style={{ flex: '1 1 180px' }}>
               <FieldLabel>{isRu ? 'Камера' : 'Kamera'}</FieldLabel>
               <select value={camFilter} onChange={e => setCamFilter(e.target.value)} style={inpStyle}>
                 <option value="all">{isRu ? 'Все камеры' : 'Hamma kameralar'}</option>
                 {camerasByOrg.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+
+            <div style={{ flex: '1 1 180px' }}>
+              <FieldLabel>{isRu ? 'Тип' : 'Turi'}</FieldLabel>
+              <select value={employeeTypeFilter} onChange={e => setEmployeeTypeFilter(e.target.value)} style={inpStyle}>
+                <option value="all">{isRu ? 'Все типы' : 'Barcha turlar'}</option>
+                <option value="hodim">{isRu ? 'Сотрудник' : 'Hodim'}</option>
+                <option value="oqituvchi">{isRu ? 'Учитель' : 'O\'qituvchi'}</option>
+                <option value="oquvchi">{isRu ? 'Ученик' : 'O\'quvchi'}</option>
+                <option value="talaba">{isRu ? 'Студент' : 'Talaba'}</option>
+              </select>
+            </div>
+
+            <div style={{ flex: '1 1 180px' }}>
+              <FieldLabel>{isRu ? 'Смена' : 'Smena'}</FieldLabel>
+              <select value={shiftFilter} onChange={e => setShiftFilter(e.target.value)} style={inpStyle}>
+                <option value="all">{isRu ? 'Все смены' : 'Barcha smenalar'}</option>
+                {schedulesByOrg.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             </div>
 
@@ -406,9 +443,12 @@ export default function Attendance() {
                         isRu ? 'Время' : 'Vaqt',
                         isRu ? 'Сотрудник' : 'Xodim',
                         isRu ? 'ID' : 'ID',
+                        isRu ? 'Направление' : 'Yo\'nalish',
                         isRu ? 'Камера' : 'Kamera',
                         isRu ? 'Организация' : 'Tashkilot',
                         isRu ? 'Статус' : 'Holat',
+                        isRu ? 'Подлинность' : 'Liveness',
+                        isRu ? 'Стресс' : 'Stress',
                         isRu ? 'Снимок' : 'Snapshot',
                       ].map((h, i) => <th key={i} style={thStyle}>{h}</th>)}
                     </tr>
@@ -450,6 +490,9 @@ export default function Attendance() {
                           <code style={{ fontSize: 12, color: 'var(--text-1)' }}>{it.personal_id || '—'}</code>
                         </td>
                         <td style={tdStyle}>
+                          <DirectionPill direction={it.direction} isRu={isRu} />
+                        </td>
+                        <td style={tdStyle}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
                             <CameraRegular fontSize={13} style={{ color: 'var(--text-4)' }} />
                             {it.camera_name || it.camera_isup_device_id || '—'}
@@ -468,6 +511,50 @@ export default function Attendance() {
                         </td>
                         <td style={tdStyle}>
                           <StatusPill status={it.status} hasEmployee={it.employee_id != null} isRu={isRu} />
+                        </td>
+                        <td style={tdStyle}>
+                          {it.liveness_score != null ? (() => {
+                            const scorePct = Math.round(it.liveness_score * 100)
+                            const isReal = it.liveness_status === 'real' || it.liveness_score >= 0.60
+                            return (
+                              <span style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                                padding: '3px 9px', borderRadius: 999,
+                                background: isReal ? 'var(--green-bg)' : 'var(--red-bg)',
+                                color: isReal ? 'var(--green)' : 'var(--red)',
+                                fontSize: 11, fontWeight: 600,
+                                border: `1px solid ${isReal ? 'var(--green-bd)' : 'var(--red-bd)'}`,
+                                whiteSpace: 'nowrap',
+                              }}>
+                                {isReal ? '🟢 ' : '🔴 '}
+                                {isReal 
+                                  ? (isRu ? `Настоящий (${scorePct}%)` : `Haqiqiy (${scorePct}%)`)
+                                  : (isRu ? `Подделка (${scorePct}%)` : `Soxta (${scorePct}%)`)}
+                              </span>
+                            )
+                          })() : (
+                            <span style={{ color: 'var(--text-4)' }}>—</span>
+                          )}
+                        </td>
+                        <td style={tdStyle}>
+                          {it.stress_score != null ? (() => {
+                            const stressScore = Math.round(it.stress_score)
+                            const stressColor = stressScore <= 35 ? '#10b981' : stressScore <= 70 ? '#f59e0b' : '#f43f5e'
+                            const stressStatusText = isRu ? it.stress_status_ru : it.stress_status_uz
+                            return (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 95 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
+                                  <span style={{ fontWeight: 600, color: stressColor }}>{stressStatusText}</span>
+                                  <span style={{ fontWeight: 700, color: 'var(--text-2)' }}>{stressScore}%</span>
+                                </div>
+                                <div style={{ height: 5, background: 'var(--bg)', borderRadius: 999, border: '1px solid var(--border)', overflow: 'hidden' }}>
+                                  <div style={{ width: `${stressScore}%`, height: '100%', background: stressColor, borderRadius: 999 }} />
+                                </div>
+                              </div>
+                            )
+                          })() : (
+                            <span style={{ color: 'var(--text-4)' }}>—</span>
+                          )}
                         </td>
                         <td style={tdStyle}>
                           {it.snapshot_url ? (
@@ -596,10 +683,31 @@ function StatCard({ icon, label, value, color, bg, border }) {
 }
 
 function StatusPill({ status, hasEmployee, isRu }) {
-  const isKnown = hasEmployee || (status && String(status).toLowerCase().includes('aniq'))
-  const tone = isKnown
-    ? { bg: 'var(--green-bg)', color: 'var(--green)', border: 'var(--green-bd)', icon: <CheckmarkCircleRegular fontSize={12} />, text: isRu ? 'Распознан' : 'Aniqlandi' }
-    : { bg: 'var(--yellow-bg)', color: 'var(--yellow)', border: 'var(--yellow-bd)', icon: <QuestionCircleRegular fontSize={12} />, text: isRu ? 'Неизвестный' : "Noma'lum" }
+  const statusStr = String(status || '').toLowerCase()
+  let tone
+  if (statusStr === 'kech') {
+    tone = {
+      bg: 'rgba(247, 108, 12, 0.1)',
+      color: '#f76c0c',
+      border: 'rgba(247, 108, 12, 0.25)',
+      icon: <ClockRegular fontSize={12} />,
+      text: isRu ? 'Опоздал' : 'Kech qoldi'
+    }
+  } else if (statusStr === 'kelmagan') {
+    tone = {
+      bg: 'rgba(232, 17, 35, 0.1)',
+      color: '#e81123',
+      border: 'rgba(232, 17, 35, 0.25)',
+      icon: <DismissCircleRegular fontSize={12} />,
+      text: isRu ? 'Не пришел' : 'Kelmagan'
+    }
+  } else {
+    const isKnown = hasEmployee || statusStr.includes('aniq')
+    tone = isKnown
+      ? { bg: 'var(--green-bg)', color: 'var(--green)', border: 'var(--green-bd)', icon: <CheckmarkCircleRegular fontSize={12} />, text: isRu ? 'Распознан' : 'Aniqlandi' }
+      : { bg: 'var(--yellow-bg)', color: 'var(--yellow)', border: 'var(--yellow-bd)', icon: <QuestionCircleRegular fontSize={12} />, text: isRu ? 'Неизвестный' : "Noma'lum" }
+  }
+
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 4,
@@ -608,6 +716,44 @@ function StatusPill({ status, hasEmployee, isRu }) {
       fontSize: 11, fontWeight: 600,
       border: `1px solid ${tone.border}`,
     }}>{tone.icon}{tone.text}</span>
+  )
+}
+
+function DirectionPill({ direction, isRu }) {
+  const dir = String(direction || '').toLowerCase().trim()
+  let bg = 'rgba(100, 116, 139, 0.1)'
+  let color = 'var(--text-3)'
+  let border = 'var(--border-2)'
+  let text = isRu ? 'Неизвестно' : "Noma'lum"
+  let icon = '🔄'
+
+  if (dir === 'in') {
+    bg = 'var(--green-bg)'
+    color = 'var(--green)'
+    border = 'var(--green-bd)'
+    text = isRu ? 'Вход (Keldi)' : 'Kirish (Keldi)'
+    icon = '📥'
+  } else if (dir === 'out') {
+    bg = 'var(--red-bg)'
+    color = 'var(--red)'
+    border = 'var(--red-bd)'
+    text = isRu ? 'Выход (Ketdi)' : 'Chiqish (Ketdi)'
+    icon = '📤'
+  }
+
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 6,
+      padding: '3px 9px', borderRadius: 999,
+      background: bg, color: color,
+      fontSize: 11, fontWeight: 600,
+      border: `1px solid ${border}`,
+      whiteSpace: 'nowrap',
+      transition: 'all 0.2s ease',
+    }}>
+      <span style={{ fontSize: 12 }}>{icon}</span>
+      <span>{text}</span>
+    </span>
   )
 }
 

@@ -70,6 +70,8 @@ export default function EmployeeForm() {
     employee_type: initialType,
     start_time: '',
     end_time: '',
+    schedule_type: 'organization',
+    schedule_id: '',
     organization_id: '',
     camera_ids: [],
     phone: '',
@@ -83,6 +85,7 @@ export default function EmployeeForm() {
 
   const [catalogDepts, setCatalogDepts] = useState([])
   const [catalogPoss, setCatalogPoss] = useState([])
+  const [schedules, setSchedules] = useState([])
 
   const [showAddOrgModal, setShowAddOrgModal] = useState(false)
   const [showAddDeptModal, setShowAddDeptModal] = useState(false)
@@ -310,6 +313,8 @@ export default function EmployeeForm() {
               employee_type: it.employee_type || 'hodim',
               start_time: it.start_time || '',
               end_time: it.end_time || '',
+              schedule_type: it.schedule_type || 'organization',
+              schedule_id: it.schedule_id != null ? String(it.schedule_id) : '',
               organization_id: it.organization_id != null ? String(it.organization_id) : '',
               camera_ids: (it.camera_ids || []).map(Number),
               phone: it.phone || '',
@@ -331,22 +336,32 @@ export default function EmployeeForm() {
     })()
   }, [id, isEdit])
 
-  // Fetch departments and positions whenever organization_id changes
+  // Fetch departments, positions, and schedules whenever organization_id changes
   useEffect(() => {
     if (!form.organization_id) {
       setCatalogDepts([])
       setCatalogPoss([])
+      setSchedules([])
       return
     }
     let alive = true
     ;(async () => {
       try {
-        const res = await fetch(`/api/organizations/${form.organization_id}/employee-catalogs`, { credentials: 'include' })
-        if (res.ok) {
-          const data = await res.json()
+        const [catRes, schRes] = await Promise.all([
+          fetch(`/api/organizations/${form.organization_id}/employee-catalogs`, { credentials: 'include' }),
+          fetch(`/api/organizations/${form.organization_id}/schedules`, { credentials: 'include' }),
+        ])
+        if (catRes.ok) {
+          const data = await catRes.json()
           if (alive && data.ok) {
             setCatalogDepts(data.departments || [])
             setCatalogPoss(data.positions || [])
+          }
+        }
+        if (schRes.ok) {
+          const data = await schRes.json()
+          if (alive && data.ok) {
+            setSchedules(data.items || [])
           }
         }
       } catch (err) {
@@ -480,6 +495,8 @@ export default function EmployeeForm() {
       if (form.employee_type)       fd.set('employee_type', form.employee_type)
       if (form.start_time)          fd.set('start_time', form.start_time)
       if (form.end_time)            fd.set('end_time', form.end_time)
+      fd.set('schedule_type', form.schedule_type)
+      if (form.schedule_id)         fd.set('schedule_id', String(form.schedule_id))
       if (form.organization_id)     fd.set('organization_id', String(form.organization_id))
       if (form.camera_ids.length)   fd.set('camera_ids', form.camera_ids.join(','))
       if (imageFile)                fd.set('image', imageFile)
@@ -745,19 +762,100 @@ export default function EmployeeForm() {
               </div>
             </Section>
 
-            {/* 3. Ish vaqti */}
+            {/* 3. Ish vaqti rejimi */}
             <Section
-              kicker={isRu ? 'График' : 'Smena'}
-              title={isRu ? 'Индивидуальное время' : 'Individual ish vaqti'}
-              hint={isRu ? 'Если оставите пустым — будет использован график организации' : "Bo'sh qoldirsangiz tashkilot smenasi ishlatiladi"}
+              kicker={isRu ? 'Режим работы' : 'Ish vaqti rejimi'}
+              title={isRu ? 'Настройка графика работы' : 'Ish vaqtini sozlash'}
+              hint={isRu ? 'Выберите один из трех режимов определения времени прихода и ухода' : 'Kelish va ketish vaqtini aniqlash uchun uchta rejimdan birini tanlang'}
             >
-              <div className="emp-grid-2">
-                <Field label={isRu ? 'Начало' : 'Boshlanish'}>
-                  <input type="time" value={form.start_time || ''} onChange={setField('start_time')} style={inpStyle} />
-                </Field>
-                <Field label={isRu ? 'Конец' : 'Tugash'}>
-                  <input type="time" value={form.end_time || ''} onChange={setField('end_time')} style={inpStyle} />
-                </Field>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {/* 3 ta rejim tanlovi */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
+                  <label style={{
+                    display: 'flex', flexDirection: 'column', padding: '12px 16px', borderRadius: 8,
+                    border: form.schedule_type === 'organization' ? '2px solid var(--accent)' : '1px solid var(--border)',
+                    background: form.schedule_type === 'organization' ? 'var(--accent-bg)' : 'var(--surface-1)',
+                    cursor: 'pointer', transition: 'all 0.2s ease', gap: 4
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: form.schedule_type === 'organization' ? 'var(--accent)' : 'var(--text-1)' }}>
+                      <input type="radio" name="schedule_type" value="organization" checked={form.schedule_type === 'organization'} onChange={(e) => setForm(prev => ({ ...prev, schedule_type: e.target.value }))} style={{ accentColor: 'var(--accent)' }} />
+                      {isRu ? 'Организация' : 'Tashkilot rejimi'}
+                    </div>
+                    <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
+                      {isRu ? 'Используется стандартное время организации' : 'Tashkilotning standart kirish-chiqish vaqti ishlatiladi'}
+                    </span>
+                  </label>
+
+                  <label style={{
+                    display: 'flex', flexDirection: 'column', padding: '12px 16px', borderRadius: 8,
+                    border: form.schedule_type === 'shift' ? '2px solid var(--accent)' : '1px solid var(--border)',
+                    background: form.schedule_type === 'shift' ? 'var(--accent-bg)' : 'var(--surface-1)',
+                    cursor: 'pointer', transition: 'all 0.2s ease', gap: 4
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: form.schedule_type === 'shift' ? 'var(--accent)' : 'var(--text-1)' }}>
+                      <input type="radio" name="schedule_type" value="shift" checked={form.schedule_type === 'shift'} onChange={(e) => setForm(prev => ({ ...prev, schedule_type: e.target.value }))} style={{ accentColor: 'var(--accent)' }} />
+                      {isRu ? 'Смена' : 'Smena biriktirish'}
+                    </div>
+                    <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
+                      {isRu ? 'Выбор одной из созданных смен организации' : 'Tashkilot smenalaridan birini tanlash'}
+                    </span>
+                  </label>
+
+                  <label style={{
+                    display: 'flex', flexDirection: 'column', padding: '12px 16px', borderRadius: 8,
+                    border: form.schedule_type === 'individual' ? '2px solid var(--accent)' : '1px solid var(--border)',
+                    background: form.schedule_type === 'individual' ? 'var(--accent-bg)' : 'var(--surface-1)',
+                    cursor: 'pointer', transition: 'all 0.2s ease', gap: 4
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: form.schedule_type === 'individual' ? 'var(--accent)' : 'var(--text-1)' }}>
+                      <input type="radio" name="schedule_type" value="individual" checked={form.schedule_type === 'individual'} onChange={(e) => setForm(prev => ({ ...prev, schedule_type: e.target.value }))} style={{ accentColor: 'var(--accent)' }} />
+                      {isRu ? 'Индивидуальный' : 'Individual vaqt'}
+                    </div>
+                    <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
+                      {isRu ? 'Указание отдельного времени прихода и ухода' : 'Alohida kirish va chiqish vaqtini belgilash'}
+                    </span>
+                  </label>
+                </div>
+
+                {/* Smena tanlash qismi */}
+                {form.schedule_type === 'shift' && (
+                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14 }}>
+                    <Field label={isRu ? 'Выберите смену' : 'Smenani tanlang'} required>
+                      <select
+                        value={form.schedule_id || ''}
+                        onChange={(e) => setForm(prev => ({ ...prev, schedule_id: e.target.value }))}
+                        disabled={!form.organization_id}
+                        style={inpStyle}
+                      >
+                        <option value="">— {isRu ? 'Выберите смену' : 'Smenani tanlang'} —</option>
+                        {schedules.map(sch => (
+                          <option key={sch.id} value={sch.id}>
+                            {sch.name} ({sch.start_time} - {sch.end_time})
+                          </option>
+                        ))}
+                      </select>
+                      {!form.organization_id && (
+                        <span style={{ fontSize: 11, color: 'var(--red)', marginTop: 4, display: 'block' }}>
+                          {isRu ? 'Сначала выберите организацию' : 'Avval tashkilotni tanlang'}
+                        </span>
+                      )}
+                    </Field>
+                  </div>
+                )}
+
+                {/* Individual vaqt kiritish qismi */}
+                {form.schedule_type === 'individual' && (
+                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14 }}>
+                    <div className="emp-grid-2">
+                      <Field label={isRu ? 'Время прихода (Начало)' : 'Kelish vaqti (Boshlanish)'} required>
+                        <input type="time" value={form.start_time || ''} onChange={setField('start_time')} style={inpStyle} />
+                      </Field>
+                      <Field label={isRu ? 'Время ухода (Конец)' : 'Ketish vaqti (Tugash)'} required>
+                        <input type="time" value={form.end_time || ''} onChange={setField('end_time')} style={inpStyle} />
+                      </Field>
+                    </div>
+                  </div>
+                )}
               </div>
             </Section>
 

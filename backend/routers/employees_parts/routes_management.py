@@ -101,6 +101,7 @@ def _serialize_employee_record(employee: Employee, org_map: dict[int, str], cam_
         "effective_end_time": schedule_payload.get("end_time"),
         "schedule_id": employee.schedule_id,
         "schedule_name": schedule_payload.get("schedule_name"),
+        "schedule_type": employee.schedule_type or "organization",
         "schedule_is_flexible": bool(schedule_payload.get("is_flexible")),
         "schedule_source": schedule_payload.get("source"),
         "avatar": employee.image_url or "",
@@ -1493,6 +1494,7 @@ def create_employee(
     middle_name: Optional[str] = Form(None),
     personal_id: Optional[str] = Form(None),
     schedule_id: Optional[str] = Form(None),
+    schedule_type: Optional[str] = Form(None),
     department_id: Optional[str] = Form(None),
     position_id: Optional[str] = Form(None),
     department: Optional[str] = Form(None),
@@ -1515,6 +1517,22 @@ def create_employee(
     parsed_camera_ids = parse_camera_ids(camera_ids)
     normalized_employee_type = normalize_employee_type(employee_type)
     resolved_org_id = resolve_effective_org_id(request, db, organization_id)
+
+    # Schedule Type validation & clean
+    st = str(schedule_type or "").strip().lower()
+    if st not in {"organization", "shift", "individual"}:
+        st = "organization"
+
+    if st == "organization":
+        schedule_id = None
+        start_time = None
+        end_time = None
+    elif st == "shift":
+        start_time = None
+        end_time = None
+    elif st == "individual":
+        schedule_id = None
+
     schedule_item = _resolve_schedule_selection(
         db,
         organization_id=resolved_org_id,
@@ -1560,6 +1578,7 @@ def create_employee(
         middle_name=(middle_name.strip() if middle_name else None),
         personal_id=normalized_personal_id,
         schedule_id=int(schedule_item.id) if isinstance(schedule_item, Schedule) else None,
+        schedule_type=st,
         department_id=int(department_item.id) if isinstance(department_item, Department) else None,
         department=department_item.name if isinstance(department_item, Department) else None,
         position_id=int(position_item.id) if isinstance(position_item, Position) else None,
@@ -1608,6 +1627,7 @@ def update_employee(
     middle_name: Optional[str] = Form(None),
     personal_id: Optional[str] = Form(None),
     schedule_id: Optional[str] = Form(None),
+    schedule_type: Optional[str] = Form(None),
     department_id: Optional[str] = Form(None),
     position_id: Optional[str] = Form(None),
     department: Optional[str] = Form(None),
@@ -1630,6 +1650,31 @@ def update_employee(
     emp = db.query(Employee).filter(Employee.id == emp_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Xodim topilmadi")
+
+    # Schedule Type validation & clean
+    if schedule_type is not None:
+        st = str(schedule_type or "").strip().lower()
+        if st not in {"organization", "shift", "individual"}:
+            st = "organization"
+        emp.schedule_type = st
+    else:
+        st = emp.schedule_type or "organization"
+
+    if st == "organization":
+        emp.schedule_id = None
+        emp.start_time = None
+        emp.end_time = None
+        schedule_id = None
+        start_time = None
+        end_time = None
+    elif st == "shift":
+        emp.start_time = None
+        emp.end_time = None
+        start_time = None
+        end_time = None
+    elif st == "individual":
+        emp.schedule_id = None
+        schedule_id = None
     if emp.organization_id is not None:
         get_accessible_organization_or_raise(request, db, int(emp.organization_id))
 

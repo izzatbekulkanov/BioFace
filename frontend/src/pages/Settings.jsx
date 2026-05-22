@@ -329,6 +329,29 @@ export default function Settings() {
   const [googleClientSecret, setGoogleClientSecret] = useState('')
   const [googleRedirectUri, setGoogleRedirectUri] = useState('')
 
+  // Archive
+  const [archiving, setArchiving] = useState(false)
+  const [archiveResult, setArchiveResult] = useState(null)
+  const [archiveError, setArchiveError] = useState('')
+
+  const handleArchive = async () => {
+    setArchiving(true)
+    setArchiveError('')
+    setArchiveResult(null)
+    try {
+      const res = await fetch('/api/settings/archive', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok || !data.ok) {
+        throw new Error(data.detail || (isRu ? 'Ошибка архивирования' : 'Arxivlashda xatolik'))
+      }
+      setArchiveResult(data.result)
+    } catch (e) {
+      setArchiveError(e.message)
+    } finally {
+      setArchiving(false)
+    }
+  }
+
   const loadSettings = useCallback(async () => {
     setLoading(true)
     setError('')
@@ -459,6 +482,7 @@ export default function Settings() {
         restart: isRu ? 'Бот перезапущен' : 'Bot qayta ishga tushirildi',
       }
       toast.success(labels[action] || (isRu ? 'Готово' : 'Bajarildi'))
+      window.dispatchEvent(new CustomEvent('navbar-refresh'))
     } catch (e) {
       toast.error(e.message)
     } finally {
@@ -839,6 +863,114 @@ export default function Settings() {
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* ============ DATABASE ARCHIVE CARD ============ */}
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.05)', position: 'relative', overflow: 'hidden' }}>
+              {/* Decorative gradient accent */}
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg, #6366f1, #8b5cf6, #a855f7)', borderRadius: '12px 12px 0 0' }} />
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+                <div>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontSize: 20 }}>&#128190;</span>
+                    {t('archive.cardTitle')}
+                  </h3>
+                  <div style={{ fontSize: 12.5, color: 'var(--text-4)', maxWidth: 480 }}>{t('archive.cardSub')}</div>
+                </div>
+                <div style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, background: 'var(--accent-bg)', color: 'var(--accent)', border: '1px solid var(--accent-bd)', fontWeight: 600, flexShrink: 0 }}>
+                  bioface_archive.db
+                </div>
+              </div>
+
+              {/* Policy info box */}
+              <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '16px 18px', marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <span style={{ fontSize: 15, color: '#fff' }}>&#9432;</span>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)', marginBottom: 4 }}>{t('archive.policyTitle')}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-3)', lineHeight: 1.6 }}>{t('archive.policyDesc')}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Warning box */}
+              <div style={{ background: 'var(--yellow-bg)', border: '1px solid var(--yellow-bd)', borderRadius: 10, padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <span style={{ fontSize: 16, flexShrink: 0 }}>&#9888;</span>
+                <div>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--yellow)', marginBottom: 2 }}>{t('archive.warningTitle')}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{t('archive.warningDesc')}</div>
+                </div>
+              </div>
+
+              {/* Error */}
+              {archiveError && (
+                <div style={{ background: 'var(--red-bg)', border: '1px solid var(--red-bd)', borderRadius: 8, padding: '12px 16px', marginBottom: 16, color: 'var(--red)', fontSize: 13 }}>
+                  {archiveError}
+                </div>
+              )}
+
+              {/* Success result card */}
+              {archiveResult && (
+                <div style={{ background: 'var(--green-bg)', border: '1px solid var(--green-bd)', borderRadius: 10, padding: '18px 20px', marginBottom: 16 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--green)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span>&#10004;</span> {t('archive.successTitle')}
+                  </div>
+                  {archiveResult.archived_count === 0 ? (
+                    <div style={{ fontSize: 13, color: 'var(--text-3)' }}>{t('archive.noRecords')}</div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      <div style={{ background: 'var(--surface)', borderRadius: 8, padding: '12px 16px', textAlign: 'center' }}>
+                        <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--green)' }}>{archiveResult.archived_count}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-4)', marginTop: 2 }}>{t('archive.successArchived', { count: '' }).replace(' ', '')}</div>
+                      </div>
+                      <div style={{ background: 'var(--surface)', borderRadius: 8, padding: '12px 16px', textAlign: 'center' }}>
+                        <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--accent)' }}>{archiveResult.reclaimed_space_kb ? (archiveResult.reclaimed_space_kb / 1024).toFixed(1) : '0'} MB</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-4)', marginTop: 2 }}>{isRu ? 'Освобождено' : 'Bo\'shadi'}</div>
+                      </div>
+                    </div>
+                  )}
+                  {(archiveResult.initial_size_mb || archiveResult.final_size_mb) && (
+                    <div style={{ marginTop: 12, display: 'flex', gap: 8, fontSize: 12, color: 'var(--text-3)' }}>
+                      <span>{t('archive.currentSize')}: <strong>{archiveResult.initial_size_mb} MB</strong></span>
+                      <span style={{ color: 'var(--text-4)' }}>→</span>
+                      <span>{t('archive.afterSize')}: <strong>{archiveResult.final_size_mb} MB</strong></span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Archive button */}
+              <button
+                id="settings-archive-btn"
+                onClick={handleArchive}
+                disabled={archiving}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '13px 24px',
+                  background: archiving ? 'var(--surface-2)' : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                  color: archiving ? 'var(--text-4)' : '#fff',
+                  border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700,
+                  cursor: archiving ? 'not-allowed' : 'pointer',
+                  boxShadow: archiving ? 'none' : '0 4px 14px rgba(99,102,241,0.4)',
+                  transition: 'all 0.2s',
+                  width: '100%', justifyContent: 'center'
+                }}
+              >
+                {archiving ? (
+                  <>
+                    <span style={{ display: 'inline-block', width: 16, height: 16, border: '2px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                    {t('archive.btnRunning')}
+                  </>
+                ) : (
+                  <>
+                    <span style={{ fontSize: 18 }}>&#128190;</span>
+                    {t('archive.btnArchive')}
+                  </>
+                )}
+              </button>
             </div>
 
           </div>

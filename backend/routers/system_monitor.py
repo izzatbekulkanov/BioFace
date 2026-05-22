@@ -27,16 +27,38 @@ def _port_listening(status: dict, key: str) -> bool:
     return False
 
 
-def _get_camera_offline_alerts(request: Request, db: Session) -> dict:
+def _get_user_allowed_org_ids(request: Request, db: Session) -> list[int] | None:
     auth_user = request.session.get("auth_user") or {}
     role = str(auth_user.get("role") or "").strip().lower()
     is_super_admin = role in {"superadmin", "super_admin"}
-    if not is_super_admin:
+    if is_super_admin:
+        return None
+
+    org_ids = set()
+    user_id = auth_user.get("id")
+    if user_id is not None:
+        rows = (
+            db.query(models.UserOrganizationLink.organization_id)
+            .filter(models.UserOrganizationLink.user_id == int(user_id))
+            .all()
+        )
+        for row in rows:
+            if row.organization_id is not None:
+                org_ids.add(int(row.organization_id))
+
+    fallback_org_id = auth_user.get("organization_id")
+    if fallback_org_id is not None:
+        org_ids.add(int(fallback_org_id))
+
+    return list(org_ids)
+
+
+def _get_camera_offline_alerts(request: Request, db: Session) -> dict:
+    allowed_orgs = _get_user_allowed_org_ids(request, db)
+    if allowed_orgs is not None and not allowed_orgs:
         return {"count": 0, "items": []}
 
-    now = now_tashkent()
-    threshold = timedelta(minutes=10)
-    rows = (
+    query = (
         db.query(
             models.Device.id,
             models.Device.name,
@@ -46,9 +68,12 @@ def _get_camera_offline_alerts(request: Request, db: Session) -> dict:
             models.Organization.name.label("organization_name"),
         )
         .outerjoin(models.Organization, models.Organization.id == models.Device.organization_id)
-        .order_by(models.Device.id.asc())
-        .all()
     )
+
+    if allowed_orgs is not None:
+        query = query.filter(models.Device.organization_id.in_(allowed_orgs))
+
+    rows = query.order_by(models.Device.id.asc()).all()
 
     items: list[dict] = []
     for row in rows:
@@ -56,14 +81,11 @@ def _get_camera_offline_alerts(request: Request, db: Session) -> dict:
             continue
 
         last_seen = row.last_seen_at
-        if not last_seen:
-            continue
-
         items.append({
             "id": int(row.id),
             "name": str(row.name or f"Kamera #{row.id}"),
             "organization_name": str(row.organization_name or ""),
-            "last_seen_at": last_seen.isoformat(),
+            "last_seen_at": last_seen.isoformat() if last_seen else None,
             "is_online": False,
         })
 
@@ -84,6 +106,11 @@ def navbar_status(request: Request, db: Session = Depends(get_db)):
         camera_alerts = _get_camera_offline_alerts(request, db)
     except Exception:
         camera_alerts = {"count": 0, "items": []}
+
+    try:
+        unread_appeals_count = db.query(models.ContactMessage).filter(models.ContactMessage.is_read == False).count()
+    except Exception:
+        unread_appeals_count = 0
 
     isup_online = bool(isup_status.get("running")) and (
         _port_listening(isup_status, "register") or _port_listening(isup_status, "api")
@@ -115,6 +142,7 @@ def navbar_status(request: Request, db: Session = Depends(get_db)):
             "error": redis_status.get("error"),
         },
         "camera_alerts": camera_alerts,
+        "unread_appeals_count": unread_appeals_count,
     }
 
 

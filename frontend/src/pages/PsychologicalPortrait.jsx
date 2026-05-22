@@ -103,6 +103,14 @@ export default function PsychologicalPortrait() {
 
   const levelTone = LEVEL_TONES[stats.level] || { color: 'var(--text-4)', label_uz: '—', label_ru: '—' }
 
+  const avgStress = useMemo(() => {
+    if (!items.length) return null
+    const valid = items.filter(x => x.stress_score != null)
+    if (!valid.length) return null
+    const sum = valid.reduce((acc, x) => acc + x.stress_score, 0)
+    return Math.round(sum / valid.length)
+  }, [items])
+
   const maxStateCount = useMemo(() => Math.max(1, ...states.map(s => s.count || 0)), [states])
   const maxSourceCount = useMemo(() => Math.max(1, ...sources.map(s => s.count || 0)), [sources])
 
@@ -216,10 +224,10 @@ export default function PsychologicalPortrait() {
         {/* Stat kartalari */}
         {showSkeleton ? (
           <div style={{ marginBottom: 18 }}>
-            <Skeleton.Stats count={4} />
+            <Skeleton.Stats count={5} />
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 18 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 18 }}>
             <BigStatCard
               icon={<PersonRegular fontSize={20} />}
               label={isRu ? 'Сотрудники' : 'Xodimlar'}
@@ -240,6 +248,29 @@ export default function PsychologicalPortrait() {
               value={`${stats.coverage_percent ?? 0}%`}
               hint={isRu ? 'Доля сотрудников с записями' : 'Yozuvlari bor xodimlar foizi'}
               color="#22c55e"
+            />
+            <BigStatCard
+              icon={<BrainCircuitRegular fontSize={20} />}
+              label={isRu ? 'Средний стресс' : "O'rtacha stress"}
+              value={avgStress != null ? `${avgStress}%` : '—'}
+              hint={
+                avgStress == null
+                  ? (isRu ? 'Нет данных' : "Ma'lumot yo'q")
+                  : avgStress <= 35
+                  ? (isRu ? 'Низкий / Норма' : 'Past / Normal')
+                  : avgStress <= 70
+                  ? (isRu ? 'Умеренный' : "O'rtacha")
+                  : (isRu ? 'Высокий уровень!' : 'Yuqori daraja!')
+              }
+              color={
+                avgStress == null
+                  ? 'var(--text-4)'
+                  : avgStress <= 35
+                  ? '#10b981'
+                  : avgStress <= 70
+                  ? '#f59e0b'
+                  : '#f43f5e'
+              }
             />
             <BigStatCard
               icon={<HeartRegular fontSize={20} />}
@@ -385,6 +416,7 @@ export default function PsychologicalPortrait() {
                       isRu ? 'Профиль' : 'Profil',
                       isRu ? 'Топ эмоции' : 'Top emotsiyalar',
                       isRu ? 'Уверенность' : 'Ishonchlilik',
+                      isRu ? 'Стресс' : 'Stress',
                       isRu ? 'Дата' : 'Sana',
                       isRu ? 'Снимок' : 'Snapshot',
                     ].map((h, i) => <th key={i} style={thStyle}>{h}</th>)}
@@ -431,6 +463,26 @@ export default function PsychologicalPortrait() {
                       </td>
                       <td style={tdStyle}>
                         <ConfidenceBar value={it.confidence} />
+                      </td>
+                      <td style={tdStyle}>
+                        {it.stress_score != null ? (() => {
+                          const stressScore = Math.round(it.stress_score)
+                          const stressColor = stressScore <= 35 ? '#10b981' : stressScore <= 70 ? '#f59e0b' : '#f43f5e'
+                          const stressStatusText = isRu ? it.stress_status_ru : it.stress_status_uz
+                          return (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 95 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
+                                <span style={{ fontWeight: 600, color: stressColor }}>{stressStatusText}</span>
+                                <span style={{ fontWeight: 700, color: 'var(--text-2)' }}>{stressScore}%</span>
+                              </div>
+                              <div style={{ height: 5, background: 'var(--bg)', borderRadius: 999, border: '1px solid var(--border)', overflow: 'hidden' }}>
+                                <div style={{ width: `${stressScore}%`, height: '100%', background: stressColor, borderRadius: 999 }} />
+                              </div>
+                            </div>
+                          )
+                        })() : (
+                          <span style={{ color: 'var(--text-4)' }}>—</span>
+                        )}
                       </td>
                       <td style={tdStyle}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>

@@ -44,11 +44,17 @@ export default function OrganizationForm() {
   const load = useCallback(async () => {
     if (abortRef.current) abortRef.current.abort()
     abortRef.current = new AbortController()
+    const signal = abortRef.current.signal
     try {
+      const typesPromise = fetch(`/api/organizations/types?lang=${i18n.language}`, { signal }).catch(err => { if (err.name === 'AbortError') return null; throw err; })
+      const orgPromise = isEdit ? fetch(`/api/organizations/${id}?lang=${i18n.language}`, { signal }).catch(err => { if (err.name === 'AbortError') return null; throw err; }) : Promise.resolve(null)
+
       const [typesRes, orgRes] = await Promise.all([
-        fetch(`/api/organizations/types?lang=${i18n.language}`, { signal: abortRef.current.signal }),
-        isEdit ? fetch(`/api/organizations/${id}?lang=${i18n.language}`, { signal: abortRef.current.signal }) : Promise.resolve(null),
+        typesPromise,
+        orgPromise,
       ])
+      if (signal.aborted || !typesRes || (isEdit && !orgRes)) return
+
       const typesData = typesRes.ok ? await typesRes.json() : []
       setTypes(Array.isArray(typesData) ? typesData : [])
 

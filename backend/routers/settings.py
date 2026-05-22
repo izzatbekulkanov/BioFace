@@ -462,10 +462,28 @@ def get_contact_messages(db: Session = Depends(get_db)):
                 "email": m.email,
                 "phone": m.phone,
                 "message": m.message,
-                "created_at": m.created_at.isoformat() if m.created_at else None
+                "created_at": m.created_at.isoformat() if m.created_at else None,
+                "is_read": bool(getattr(m, "is_read", False)),
             } for m in messages
         ]
     }
+
+
+@router.post("/api/settings/contact-messages/{msg_id}/read")
+def mark_contact_message_read(msg_id: int, db: Session = Depends(get_db)):
+    msg = db.query(ContactMessage).filter(ContactMessage.id == msg_id).first()
+    if not msg:
+        raise HTTPException(status_code=404, detail="Xabar topilmadi.")
+    msg.is_read = True
+    db.commit()
+    return {"ok": True, "message": "Xabar o'qildi deb belgilandi."}
+
+
+@router.post("/api/settings/contact-messages/read-all")
+def mark_all_contact_messages_read(db: Session = Depends(get_db)):
+    db.query(ContactMessage).filter(ContactMessage.is_read == False).update({"is_read": True}, synchronize_session=False)
+    db.commit()
+    return {"ok": True, "message": "Barcha xabarlar o'qildi deb belgilandi."}
 
 
 @router.delete("/api/settings/contact-messages/{msg_id}")
@@ -476,4 +494,17 @@ def delete_contact_message(msg_id: int, db: Session = Depends(get_db)):
     db.delete(msg)
     db.commit()
     return {"ok": True, "message": "Xabar muvaffaqiyatli o'chirildi."}
+
+
+@router.post("/api/settings/archive")
+def run_db_archive():
+    from scripts.archive_db import archive_old_logs
+    try:
+        res = archive_old_logs(180)
+        if not res.get("success"):
+            raise HTTPException(status_code=500, detail=res.get("error") or "Arxivlash xatoligi yuz berdi")
+        return {"ok": True, "result": res}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 

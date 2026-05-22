@@ -15,7 +15,7 @@ from models import (
     UserOrganizationLink,
 )
 from utils.time_utils import now_tashkent, today_tashkent_range
-from utils.schedule_utils import get_attendance_deadline, get_late_minutes, load_holiday_dates
+from utils.schedule_utils import get_attendance_deadline, get_late_minutes, load_holiday_dates, resolve_employee_schedule, combine_day_and_hhmm
 
 router = APIRouter()
 
@@ -421,3 +421,248 @@ def dashboard_recent_events(request: Request, db: Session = Depends(get_db)):
             "device_name": log.device.name if log.device else None,
         })
     return {"ok": True, "events": events}
+
+
+@router.get("/api/dashboard/analytics/heatmap")
+def dashboard_analytics_heatmap(request: Request, db: Session = Depends(get_db)):
+    """
+    So'nggi 30 kun mobaynidagi kechikishlar issiqlik xaritasi.
+    Hafta kunlari (0=Dushanba..6=Yakshanba) va soatlar (0-23) kesimida.
+    5 daqiqali cache.
+    """
+    import time as _time
+    auth_user = request.session.get("auth_user") or {}
+    user_id = auth_user.get("id") or "anon"
+    cache_key = f"dash_heatmap_{user_id}"
+    cache = getattr(dashboard_analytics_heatmap, "_cache", {})
+    now_ts = _time.time()
+    cached = cache.get(cache_key)
+    if cached and now_ts - cached["ts"] < 300:
+        return {"ok": True, "heatmap": cached["data"], "cached": True}
+
+    allowed_org_ids = _resolve_allowed_org_ids(request, db)
+    if not allowed_org_ids:
+        return {"ok": True, "heatmap": [], "cached": False}
+
+    now_local = now_tashkent()
+    since = now_local - timedelta(days=30)
+    since_str = since.strftime("%Y-%m-%d") + "T00:00:00"
+
+    # Pull all 'aniqlandi' logs for the last 30 days scoped to orgs
+    logs = (
+        db.query(AttendanceLog)
+        .join(Employee, Employee.id == AttendanceLog.employee_id)
+        .options(selectinload(AttendanceLog.employee))
+        .filter(
+            AttendanceLog.status == "aniqlandi",
+            Employee.organization_id.in_(allowed_org_ids),
+            AttendanceLog.timestamp >= since_str,
+        )
+        .order_by(AttendanceLog.timestamp.asc())
+        .all()
+    )
+
+    # Group to get first log per employee per day
+    first_logs: dict[tuple, AttendanceLog] = {}
+    for log in logs:
+        if log.employee_id is None or log.timestamp is None:
+            continue
+        day_key = log.timestamp.date()
+        key = (int(log.employee_id), day_key)
+        if key not in first_logs:
+            first_logs[key] = log
+
+    # Build heatmap: accumulate late counts per (weekday, hour)
+    heatmap_counts: dict[tuple[int, int], int] = defaultdict(int)
+    for (emp_id, day_key), log in first_logs.items():
+        emp = log.employee
+        if emp is None:
+            continue
+        late_mins = get_late_minutes(emp, day_key, log.timestamp)
+        if late_mins > 0:
+            weekday = day_key.weekday()  # Monday=0 … Sunday=6
+            hour = log.timestamp.hour
+            heatmap_counts[(weekday, hour)] += 1
+
+    heatmap = [
+        {"weekday": wd, "hour": hr, "count": cnt}
+        for (wd, hr), cnt in heatmap_counts.items()
+    ]
+
+    cache[cache_key] = {"ts": now_ts, "data": heatmap}
+    if len(cache) > 100:
+        for k in [k for k, v in cache.items() if now_ts - v["ts"] > 1800]:
+            cache.pop(k, None)
+    dashboard_analytics_heatmap._cache = cache
+    return {"ok": True, "heatmap": heatmap, "cached": False}
+
+
+@router.get("/api/dashboard/analytics/anomaly-ranking")
+def dashboard_analytics_anomaly(request: Request, db: Session = Depends(get_db)):
+    """
+    Bo'limlar kesimida davomat foizlari,
+    eng ko'p kechikadigan top 10 xodim,
+    muntazam erta ketadigan top 10 xodim.
+    5 daqiqali cache.
+    """
+    import time as _time
+    from models import Department
+    auth_user = request.session.get("auth_user") or {}
+    user_id = auth_user.get("id") or "anon"
+    cache_key = f"dash_anomaly_{user_id}"
+    cache = getattr(dashboard_analytics_anomaly, "_cache", {})
+    now_ts = _time.time()
+    cached = cache.get(cache_key)
+    if cached and now_ts - cached["ts"] < 300:
+        return {"ok": True, "ranking": cached["data"], "cached": True}
+
+    allowed_org_ids = _resolve_allowed_org_ids(request, db)
+    if not allowed_org_ids:
+        return {"ok": True, "ranking": {"departments": [], "latecomers": [], "early_leavers": []}, "cached": False}
+
+    now_local = now_tashkent()
+    since = now_local - timedelta(days=30)
+    since_str = since.strftime("%Y-%m-%d") + "T00:00:00"
+
+    # --- Load employees with their schedule/organization ---
+    employees = (
+        db.query(Employee)
+        .options(selectinload(Employee.organization), selectinload(Employee.schedule))
+        .filter(Employee.organization_id.in_(allowed_org_ids), Employee.has_access.is_(True))
+        .all()
+    )
+    emp_map = {int(e.id): e for e in employees}
+    emp_ids = list(emp_map.keys())
+
+    if not emp_ids:
+        return {"ok": True, "ranking": {"departments": [], "latecomers": [], "early_leavers": []}, "cached": False}
+
+    # --- Load all logs for last 30 days ---
+    logs = (
+        db.query(AttendanceLog)
+        .filter(
+            AttendanceLog.status == "aniqlandi",
+            AttendanceLog.employee_id.in_(emp_ids),
+            AttendanceLog.timestamp >= since_str,
+        )
+        .order_by(AttendanceLog.timestamp.asc())
+        .all()
+    )
+
+    # Build per-employee per-day: first_log, last_log
+    first_logs_by_day: dict[tuple, AttendanceLog] = {}
+    last_logs_by_day: dict[tuple, AttendanceLog] = {}
+    for log in logs:
+        if log.employee_id is None or log.timestamp is None:
+            continue
+        day_key = log.timestamp.date()
+        key = (int(log.employee_id), day_key)
+        if key not in first_logs_by_day:
+            first_logs_by_day[key] = log
+        last_logs_by_day[key] = log
+
+    # Collect all working days (unique dates in range)
+    all_days: set = set()
+    for _, day_key in first_logs_by_day.keys():
+        all_days.add(day_key)
+
+    # --- Department attendance rates ---
+    departments_raw = (
+        db.query(Department)
+        .filter(Department.organization_id.in_(allowed_org_ids))
+        .all()
+    )
+    dept_map = {int(d.id): str(d.name) for d in departments_raw}
+
+    dept_present: dict[int, int] = defaultdict(int)
+    dept_total: dict[int, int] = defaultdict(int)
+
+    for emp in employees:
+        dept_id = emp.department_id
+        if dept_id is None:
+            continue
+        dept_id = int(dept_id)
+        # Count days this employee was present in range
+        present_days = sum(1 for d in all_days if (int(emp.id), d) in first_logs_by_day)
+        dept_present[dept_id] += present_days
+        dept_total[dept_id] += len(all_days)
+
+    departments = []
+    for dept_id, dept_name in dept_map.items():
+        total = dept_total.get(dept_id, 0)
+        present = dept_present.get(dept_id, 0)
+        rate = round(present * 100 / total, 1) if total > 0 else 0.0
+        departments.append({"id": dept_id, "name": dept_name, "rate": rate, "present_days": present, "total_days": total})
+    departments.sort(key=lambda x: x["rate"], reverse=True)
+
+    # --- Top latecomers ---
+    late_totals: dict[int, int] = defaultdict(int)  # emp_id -> total late minutes
+    late_counts: dict[int, int] = defaultdict(int)  # emp_id -> number of late days
+
+    for (emp_id, day_key), log in first_logs_by_day.items():
+        emp = emp_map.get(emp_id)
+        if emp is None:
+            continue
+        late_mins = get_late_minutes(emp, day_key, log.timestamp)
+        if late_mins > 0:
+            late_totals[emp_id] += late_mins
+            late_counts[emp_id] += 1
+
+    latecomers = []
+    for emp_id, total_mins in sorted(late_totals.items(), key=lambda x: x[1], reverse=True)[:10]:
+        emp = emp_map.get(emp_id)
+        if emp is None:
+            continue
+        latecomers.append({
+            "id": emp_id,
+            "name": f"{emp.first_name} {emp.last_name}",
+            "department": emp.department or "",
+            "late_days": late_counts[emp_id],
+            "total_late_minutes": late_totals[emp_id],
+            "avg_late_minutes": round(late_totals[emp_id] / max(late_counts[emp_id], 1)),
+        })
+
+    # --- Top early leavers ---
+    early_totals: dict[int, int] = defaultdict(int)
+    early_counts: dict[int, int] = defaultdict(int)
+
+    for (emp_id, day_key), log in last_logs_by_day.items():
+        emp = emp_map.get(emp_id)
+        if emp is None:
+            continue
+        schedule = resolve_employee_schedule(emp)
+        if schedule.get("is_flexible"):
+            continue
+        expected_end = combine_day_and_hhmm(day_key, schedule.get("end_time"), "18:00")
+        if log.timestamp < expected_end:
+            early_mins = int((expected_end - log.timestamp).total_seconds() // 60)
+            if early_mins >= 5:  # Ignore <5 minute differences
+                early_totals[emp_id] += early_mins
+                early_counts[emp_id] += 1
+
+    early_leavers = []
+    for emp_id, total_mins in sorted(early_totals.items(), key=lambda x: x[1], reverse=True)[:10]:
+        emp = emp_map.get(emp_id)
+        if emp is None:
+            continue
+        early_leavers.append({
+            "id": emp_id,
+            "name": f"{emp.first_name} {emp.last_name}",
+            "department": emp.department or "",
+            "early_days": early_counts[emp_id],
+            "total_early_minutes": early_totals[emp_id],
+            "avg_early_minutes": round(early_totals[emp_id] / max(early_counts[emp_id], 1)),
+        })
+
+    result = {
+        "departments": departments,
+        "latecomers": latecomers,
+        "early_leavers": early_leavers,
+    }
+
+    cache[cache_key] = {"ts": now_ts, "data": result}
+    if len(cache) > 100:
+        for k in [k for k, v in cache.items() if now_ts - v["ts"] > 1800]:
+            cache.pop(k, None)
+    dashboard_analytics_anomaly._cache = cache
+    return {"ok": True, "ranking": result, "cached": False}

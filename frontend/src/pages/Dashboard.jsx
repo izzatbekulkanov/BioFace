@@ -6,7 +6,8 @@ import {
   BuildingRegular, PeopleRegular, CameraRegular,
   CheckmarkCircleRegular, DismissCircleRegular, ClockRegular,
   ArrowSyncRegular, PersonRegular, ShieldRegular,
-  ChartMultipleRegular, GlobeRegular, GridDotsRegular
+  ChartMultipleRegular, GlobeRegular, GridDotsRegular,
+  DataBarVerticalRegular, DataTrendingRegular
 } from '@fluentui/react-icons'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
@@ -108,9 +109,122 @@ function EventRow({ event, isRu }) {
   )
 }
 
+// ============================================================
+// HEATMAP COMPONENT
+// ============================================================
+function LatenessHeatmap({ heatmapData, isRu, t }) {
+  const WEEKDAYS = [
+    t('analytics.weekdayMon'), t('analytics.weekdayTue'), t('analytics.weekdayWed'),
+    t('analytics.weekdayThu'), t('analytics.weekdayFri'), t('analytics.weekdaySat'), t('analytics.weekdaySun')
+  ]
+  const HOURS = Array.from({ length: 24 }, (_, i) => i)
+
+  // Build lookup map
+  const cellMap = useMemo(() => {
+    const m = {}
+    heatmapData.forEach(({ weekday, hour, count }) => {
+      m[`${weekday}-${hour}`] = count
+    })
+    return m
+  }, [heatmapData])
+
+  const maxCount = useMemo(() => Math.max(1, ...heatmapData.map(d => d.count)), [heatmapData])
+
+  const getColor = (count) => {
+    if (!count) return 'transparent'
+    const intensity = count / maxCount
+    // Vibrant orange-red gradient using HSL
+    const hue = 20 - intensity * 10  // 20° (orange) → 10° (red-orange)
+    const sat = 70 + intensity * 25
+    const light = 75 - intensity * 40
+    return `hsl(${hue}, ${sat}%, ${light}%)`
+  }
+
+  const [tooltip, setTooltip] = useState(null)
+
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <div style={{ minWidth: 700 }}>
+        {/* Hour axis */}
+        <div style={{ display: 'flex', marginLeft: 40, marginBottom: 4 }}>
+          {HOURS.map(h => (
+            <div key={h} style={{ flex: 1, textAlign: 'center', fontSize: 9, color: 'var(--text-4)', fontWeight: 600 }}>
+              {h % 2 === 0 ? `${h}:00` : ''}
+            </div>
+          ))}
+        </div>
+        {/* Grid rows per weekday */}
+        {WEEKDAYS.map((dayLabel, wd) => (
+          <div key={wd} style={{ display: 'flex', alignItems: 'center', marginBottom: 3 }}>
+            <div style={{ width: 34, flexShrink: 0, fontSize: 10, fontWeight: 700, color: 'var(--text-3)', textAlign: 'right', paddingRight: 8 }}>
+              {dayLabel}
+            </div>
+            {HOURS.map(hr => {
+              const count = cellMap[`${wd}-${hr}`] || 0
+              const bg = getColor(count)
+              return (
+                <div
+                  key={hr}
+                  style={{
+                    flex: 1,
+                    height: 24,
+                    background: bg,
+                    border: count > 0 ? '1px solid rgba(255,255,255,0.1)' : '1px solid var(--border)',
+                    borderRadius: 3,
+                    cursor: count > 0 ? 'pointer' : 'default',
+                    transition: 'transform 0.15s, box-shadow 0.15s',
+                    position: 'relative',
+                    margin: '0 1px'
+                  }}
+                  onMouseEnter={e => {
+                    if (count > 0) {
+                      e.currentTarget.style.transform = 'scale(1.35)'
+                      e.currentTarget.style.zIndex = '10'
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)'
+                      setTooltip({ wd, hr, count })
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.transform = 'scale(1)'
+                    e.currentTarget.style.zIndex = ''
+                    e.currentTarget.style.boxShadow = ''
+                    setTooltip(null)
+                  }}
+                />
+              )
+            })}
+          </div>
+        ))}
+        {/* Legend */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, marginTop: 12, fontSize: 10, color: 'var(--text-4)' }}>
+          <span>{isRu ? 'Меньше' : 'Kam'}</span>
+          {[0, 0.25, 0.5, 0.75, 1].map((v, i) => (
+            <div key={i} style={{ width: 14, height: 14, borderRadius: 3, background: v === 0 ? 'var(--border)' : getColor(Math.round(v * maxCount)), border: '1px solid var(--border)' }} />
+          ))}
+          <span>{isRu ? 'Больше' : 'Ko\'p'}</span>
+        </div>
+        {/* Tooltip */}
+        {tooltip && (
+          <div style={{ marginTop: 12, padding: '8px 16px', background: 'var(--surface-2)', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12, color: 'var(--text-2)' }}>
+            <strong>{WEEKDAYS[tooltip.wd]}</strong> — {tooltip.hr}:00–{tooltip.hr + 1}:00: {' '}
+            <strong style={{ color: 'var(--red)' }}>{tooltip.count}</strong> {isRu ? 'опозданий' : 'ta kechikish'}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function Dashboard() {
   const { t, i18n } = useTranslation()
-  
+
+  // Analytics tab state
+  const [activeTab, setActiveTab] = useState('summary')  // 'summary' | 'analytics'
+  const [heatmapData, setHeatmapData] = useState([])
+  const [anomalyData, setAnomalyData] = useState(null)
+  const [analyticsLoading, setAnalyticsLoading] = useState(false)
+  const [analyticsError, setAnalyticsError] = useState('')
+
   // Cache helpers — read with TTL check
   const readCache = (key, ttlMs) => {
     try {
@@ -220,6 +334,29 @@ export default function Dashboard() {
     }
   }, [fetchMetrics, fetchTrend, fetchEvents, t])
 
+  const fetchAnalytics = useCallback(async () => {
+    setAnalyticsLoading(true)
+    setAnalyticsError('')
+    try {
+      const [hmRes, anRes] = await Promise.all([
+        fetch('/api/dashboard/analytics/heatmap'),
+        fetch('/api/dashboard/analytics/anomaly-ranking')
+      ])
+      if (hmRes.ok) {
+        const hmJson = await hmRes.json()
+        setHeatmapData(hmJson.heatmap || [])
+      }
+      if (anRes.ok) {
+        const anJson = await anRes.json()
+        setAnomalyData(anJson.ranking || null)
+      }
+    } catch (e) {
+      setAnalyticsError(t('analytics.errLoad') || 'Analitika yuklanmadi')
+    } finally {
+      setAnalyticsLoading(false)
+    }
+  }, [t])
+
   useEffect(() => {
     load(false)
     // Refresh only the live data (events) every 30s, full refresh every 5 min
@@ -235,6 +372,13 @@ export default function Dashboard() {
       if (abortRef.current) abortRef.current.abort()
     }
   }, [load, fetchEvents])
+
+  // Load analytics when tab is switched to analytics
+  useEffect(() => {
+    if (activeTab === 'analytics' && !anomalyData && !analyticsLoading) {
+      fetchAnalytics()
+    }
+  }, [activeTab, anomalyData, analyticsLoading, fetchAnalytics])
 
   const summary = data?.summary || {}
   const orgs = data?.org_cards || []
@@ -309,6 +453,37 @@ export default function Dashboard() {
         sub={dateStr}
         right={
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {/* Tab Toggle */}
+            <div style={{ display: 'flex', background: 'rgba(255,255,255,0.08)', borderRadius: 10, padding: 3, gap: 2, border: '1px solid rgba(255,255,255,0.12)' }}>
+              <button
+                id="dash-tab-summary"
+                onClick={() => setActiveTab('summary')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '6px 14px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                  background: activeTab === 'summary' ? 'rgba(255,255,255,0.9)' : 'transparent',
+                  color: activeTab === 'summary' ? '#111' : 'rgba(255,255,255,0.75)',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <GridDotsRegular fontSize={13} />
+                {t('analytics.tabSummary')}
+              </button>
+              <button
+                id="dash-tab-analytics"
+                onClick={() => setActiveTab('analytics')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '6px 14px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                  background: activeTab === 'analytics' ? 'rgba(255,255,255,0.9)' : 'transparent',
+                  color: activeTab === 'analytics' ? '#111' : 'rgba(255,255,255,0.75)',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <DataTrendingRegular fontSize={13} />
+                {t('analytics.tabAnalytics')}
+              </button>
+            </div>
             {lastUpdated && (
               <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', textAlign: 'right' }}>
                 {isRu ? 'Обновлено' : 'Yangilandi'}: {(() => {
@@ -319,7 +494,7 @@ export default function Dashboard() {
                 })()}
               </div>
             )}
-            <button onClick={() => load(true)} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 16px', borderRadius: 8, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.14)', color: '#fff', fontSize: 13, cursor: 'pointer' }}>
+            <button onClick={() => { load(true); if (activeTab === 'analytics') fetchAnalytics() }} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 16px', borderRadius: 8, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.14)', color: '#fff', fontSize: 13, cursor: 'pointer' }}>
               <ArrowSyncRegular fontSize={14} className={spin ? 'spin' : ''} />
               {isRu ? 'Обновить' : 'Yangilash'}
             </button>
@@ -383,7 +558,141 @@ export default function Dashboard() {
           </div>
         )}
 
-        {data && (
+        {/* ============= ANALYTICS TAB ============= */}
+        {activeTab === 'analytics' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            {analyticsLoading && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '80px 0', gap: 16 }}>
+                <Spinner size="medium" />
+                <span style={{ color: 'var(--text-3)', fontSize: 14 }}>{t('analytics.loading')}</span>
+              </div>
+            )}
+            {analyticsError && (
+              <div style={{ background: 'var(--red-bg)', border: '1px solid var(--red-bd)', borderRadius: 8, padding: '14px 20px', color: 'var(--red)', fontSize: 13 }}>
+                {analyticsError}
+              </div>
+            )}
+
+            {!analyticsLoading && (
+              <>
+                {/* === HEATMAP === */}
+                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '28px 32px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                        <div style={{ width: 34, height: 34, borderRadius: 9, background: 'linear-gradient(135deg, #ff6b35, #f7c59f)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <DataBarVerticalRegular fontSize={18} style={{ color: '#fff' }} />
+                        </div>
+                        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)' }}>{t('analytics.heatmapTitle')}</div>
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--text-4)', maxWidth: 480 }}>{t('analytics.heatmapSub')}</div>
+                    </div>
+                    <div style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, background: 'var(--accent-bg)', color: 'var(--accent)', border: '1px solid var(--accent-bd)', fontWeight: 600 }}>
+                      {isRu ? 'Последние 30 дней' : 'So\'nggi 30 kun'}
+                    </div>
+                  </div>
+                  {heatmapData.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-4)', fontSize: 14 }}>
+                      {t('analytics.noData')}
+                    </div>
+                  ) : (
+                    <LatenessHeatmap heatmapData={heatmapData} isRu={isRu} t={t} />
+                  )}
+                </div>
+
+                {/* === DEPT RATES + LATECOMERS + EARLY LEAVERS === */}
+                {anomalyData && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20 }} className="db-grid-row5">
+                    {/* Department rates */}
+                    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '24px 24px', boxShadow: '0 4px 16px rgba(0,0,0,0.05)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                        <BuildingRegular fontSize={16} style={{ color: 'var(--accent)' }} />
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)' }}>{t('analytics.deptRatesTitle')}</div>
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-4)', marginBottom: 20 }}>{t('analytics.deptRatesSub')}</div>
+                      {anomalyData.departments.length === 0 ? (
+                        <div style={{ color: 'var(--text-4)', fontSize: 13, textAlign: 'center', padding: '24px 0' }}>{t('analytics.noData')}</div>
+                      ) : (
+                        anomalyData.departments.map(dept => {
+                          const color = dept.rate >= 75 ? 'var(--green)' : dept.rate >= 50 ? 'var(--yellow)' : 'var(--red)'
+                          return (
+                            <div key={dept.id} style={{ marginBottom: 16 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, marginBottom: 6, fontWeight: 600 }}>
+                                <span style={{ color: 'var(--text-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '65%' }}>{dept.name}</span>
+                                <span style={{ color }}>{dept.rate}%</span>
+                              </div>
+                              <div style={{ height: 7, background: 'var(--border)', borderRadius: 99 }}>
+                                <div style={{ height: '100%', width: `${Math.min(100, dept.rate)}%`, background: color, borderRadius: 99, transition: 'width 0.7s ease' }} />
+                              </div>
+                            </div>
+                          )
+                        })
+                      )}
+                    </div>
+
+                    {/* Latecomers */}
+                    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '24px 24px', boxShadow: '0 4px 16px rgba(0,0,0,0.05)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                        <ClockRegular fontSize={16} style={{ color: '#f59e0b' }} />
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)' }}>{t('analytics.latecomerTitle')}</div>
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-4)', marginBottom: 20 }}>{t('analytics.latecomerSub')}</div>
+                      {anomalyData.latecomers.length === 0 ? (
+                        <div style={{ color: 'var(--text-4)', fontSize: 13, textAlign: 'center', padding: '24px 0' }}>{t('analytics.noData')}</div>
+                      ) : (
+                        anomalyData.latecomers.map((emp, idx) => (
+                          <div key={emp.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: '1px solid var(--border)' }}>
+                            <div style={{ width: 24, height: 24, borderRadius: '50%', background: idx < 3 ? 'linear-gradient(135deg, #f59e0b, #ef4444)' : 'var(--surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: idx < 3 ? '#fff' : 'var(--text-3)', flexShrink: 0 }}>
+                              {idx + 1}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{emp.name}</div>
+                              <div style={{ fontSize: 10, color: 'var(--text-4)' }}>{emp.department || '—'}</div>
+                            </div>
+                            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                              <div style={{ fontSize: 11, fontWeight: 700, color: '#f59e0b' }}>{emp.late_days} {t('analytics.lateDays')}</div>
+                              <div style={{ fontSize: 10, color: 'var(--text-4)' }}>∅ {emp.avg_late_minutes} {isRu ? 'мин.' : 'min'}</div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Early leavers */}
+                    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '24px 24px', boxShadow: '0 4px 16px rgba(0,0,0,0.05)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                        <DismissCircleRegular fontSize={16} style={{ color: '#8b5cf6' }} />
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)' }}>{t('analytics.earlyTitle')}</div>
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-4)', marginBottom: 20 }}>{t('analytics.earlySub')}</div>
+                      {anomalyData.early_leavers.length === 0 ? (
+                        <div style={{ color: 'var(--text-4)', fontSize: 13, textAlign: 'center', padding: '24px 0' }}>{t('analytics.noData')}</div>
+                      ) : (
+                        anomalyData.early_leavers.map((emp, idx) => (
+                          <div key={emp.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: '1px solid var(--border)' }}>
+                            <div style={{ width: 24, height: 24, borderRadius: '50%', background: idx < 3 ? 'linear-gradient(135deg, #8b5cf6, #6366f1)' : 'var(--surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: idx < 3 ? '#fff' : 'var(--text-3)', flexShrink: 0 }}>
+                              {idx + 1}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{emp.name}</div>
+                              <div style={{ fontSize: 10, color: 'var(--text-4)' }}>{emp.department || '—'}</div>
+                            </div>
+                            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                              <div style={{ fontSize: 11, fontWeight: 700, color: '#8b5cf6' }}>{emp.early_days} {t('analytics.earlyDays')}</div>
+                              <div style={{ fontSize: 10, color: 'var(--text-4)' }}>∅ {emp.avg_early_minutes} {isRu ? 'мин.' : 'min'}</div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'summary' && data && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
             {/* === ROW 1: System Pulse + Today Summary === */}
@@ -636,6 +945,7 @@ export default function Dashboard() {
 
           </div>
         )}
+
       </div>
     </div>
   )

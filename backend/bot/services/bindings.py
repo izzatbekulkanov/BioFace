@@ -2,7 +2,7 @@ from __future__ import annotations
 
 
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload, selectinload
 
 from database import SessionLocal, ensure_schema
 from models import Employee, TelegramUserBinding
@@ -25,8 +25,8 @@ def get_binding(telegram_user_id: int | str | None):
         statement = (
             select(TelegramUserBinding)
             .options(
-                selectinload(TelegramUserBinding.employee).selectinload(Employee.organization),
-                selectinload(TelegramUserBinding.employee).selectinload(Employee.schedule)
+                joinedload(TelegramUserBinding.employee).joinedload(Employee.organization),
+                joinedload(TelegramUserBinding.employee).joinedload(Employee.schedule)
             )
             .where(TelegramUserBinding.telegram_user_id == user_id)
         )
@@ -65,8 +65,17 @@ def upsert_binding(
             binding.employee_id = int(employee_id) if employee_id is not None else None
             binding.updated_at = now
         db.commit()
-        db.refresh(binding)
-        return binding
+        
+        # fully eager-load and return to avoid detached instance errors
+        statement_eager = (
+            select(TelegramUserBinding)
+            .options(
+                joinedload(TelegramUserBinding.employee).joinedload(Employee.organization),
+                joinedload(TelegramUserBinding.employee).joinedload(Employee.schedule)
+            )
+            .where(TelegramUserBinding.telegram_user_id == user_id)
+        )
+        return db.execute(statement_eager).scalar_one_or_none()
 
 
 def clear_employee_link(telegram_user_id: int | str | None):

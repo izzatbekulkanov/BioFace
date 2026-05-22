@@ -328,6 +328,10 @@ def ensure_schema() -> bool:
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_employees_schedule_id ON employees (schedule_id)"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_employees_organization_id ON employees (organization_id)"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_employees_org_access ON employees (organization_id, has_access)"))
+                if "schedule_type" not in emp_cols:
+                    conn.execute(text("ALTER TABLE employees ADD COLUMN schedule_type VARCHAR DEFAULT 'organization'"))
+                    conn.execute(text("UPDATE employees SET schedule_type = 'shift' WHERE schedule_id IS NOT NULL"))
+                    conn.execute(text("UPDATE employees SET schedule_type = 'individual' WHERE (start_time IS NOT NULL AND start_time != '')"))
 
             if "departments" not in inspector.get_table_names():
                 conn.execute(
@@ -594,6 +598,12 @@ def ensure_schema() -> bool:
                     conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN psychological_state_confidence FLOAT"))
                 if "emotion_scores_json" not in attendance_cols:
                     conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN emotion_scores_json VARCHAR"))
+                if "liveness_score" not in attendance_cols:
+                    conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN liveness_score FLOAT"))
+                if "liveness_status" not in attendance_cols:
+                    conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN liveness_status VARCHAR"))
+                if "direction" not in attendance_cols:
+                    conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN direction VARCHAR"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_attendance_logs_timestamp ON attendance_logs (timestamp)"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_attendance_logs_status_timestamp ON attendance_logs (status, timestamp)"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_attendance_logs_employee_timestamp ON attendance_logs (employee_id, timestamp)"))
@@ -855,6 +865,12 @@ def ensure_schema() -> bool:
                     "ON employee_psychological_states (employee_id, state_date)"
                 )
             )
+
+            # Migrate contact_messages if needed
+            if "contact_messages" in inspector.get_table_names():
+                msg_cols = {c["name"] for c in inspector.get_columns("contact_messages")}
+                if "is_read" not in msg_cols:
+                    conn.execute(text("ALTER TABLE contact_messages ADD COLUMN is_read BOOLEAN DEFAULT 0"))
 
             # Backfill legacy users.organization_id into link table.
             conn.execute(

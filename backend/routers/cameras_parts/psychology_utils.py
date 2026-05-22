@@ -298,6 +298,58 @@ def get_top_emotions(emotion_scores: Any, *, top_n: int = 3, language: str = "uz
     return result
 
 
+def calculate_stress_score(scores: dict[str, float]) -> dict[str, Any]:
+    """
+    HSEmotion emotsiya ehtimolliklari asosida biologik stress darajasini hisoblaydi.
+    Formula: happy*5 + neutral*15 + surprise*30 + sad*60 + disgust*55 + contempt*40 + angry*85 + fear*95 (0-100% oraliqda).
+    Statuslar: 0-35% - Normal, 36-70% - O'rtacha, 71-100% - Yuqori.
+    """
+    if not scores:
+        return {
+            "stress_score": 0.0,
+            "stress_status_uz": "Normal",
+            "stress_status_ru": "Нормальный"
+        }
+    
+    happy = float(scores.get("happy", 0.0))
+    neutral = float(scores.get("neutral", 0.0))
+    surprise = float(scores.get("surprise", 0.0))
+    sad = float(scores.get("sad", 0.0))
+    disgust = float(scores.get("disgust", 0.0))
+    contempt = float(scores.get("contempt", 0.0))
+    angry = float(scores.get("angry", 0.0))
+    fear = float(scores.get("fear", 0.0))
+    
+    score = (
+        happy * 5.0 +
+        neutral * 15.0 +
+        surprise * 30.0 +
+        sad * 60.0 +
+        disgust * 55.0 +
+        contempt * 40.0 +
+        angry * 85.0 +
+        fear * 95.0
+    )
+    
+    score = max(0.0, min(100.0, score))
+    
+    if score <= 35.0:
+        status_uz = "Normal"
+        status_ru = "Нормальный"
+    elif score <= 70.0:
+        status_uz = "O'rtacha"
+        status_ru = "Средний"
+    else:
+        status_uz = "Yuqori"
+        status_ru = "Высокий"
+        
+    return {
+        "stress_score": round(score, 2),
+        "stress_status_uz": status_uz,
+        "stress_status_ru": status_ru
+    }
+
+
 def build_psychological_profile(state_key: str, *, confidence: Any = None, emotion_scores: Any = None) -> dict[str, Any]:
     normalized_state = _normalize_label(str(state_key or "")) or "undetermined"
     normalized_scores = normalize_emotion_scores(emotion_scores, fallback_state_key=normalized_state)
@@ -317,6 +369,8 @@ def build_psychological_profile(state_key: str, *, confidence: Any = None, emoti
     top_uz = get_top_emotions(normalized_scores, top_n=3, language="uz")
     top_ru = get_top_emotions(normalized_scores, top_n=3, language="ru")
 
+    stress_data = calculate_stress_score(normalized_scores)
+
     return {
         "state_key": normalized_state,
         "state_uz": state_uz,
@@ -328,6 +382,9 @@ def build_psychological_profile(state_key: str, *, confidence: Any = None, emoti
         "top_emotions_ru": top_ru,
         "profile_text_uz": build_psychological_profile_text(normalized_state, normalized_scores, language="uz"),
         "profile_text_ru": build_psychological_profile_text(normalized_state, normalized_scores, language="ru"),
+        "stress_score": stress_data["stress_score"],
+        "stress_status_uz": stress_data["stress_status_uz"],
+        "stress_status_ru": stress_data["stress_status_ru"],
     }
 
 

@@ -241,6 +241,9 @@ def serialize_psychological_state_row(row: EmployeePsychologicalState) -> dict[s
         "profile_text_ru": profile.get("profile_text_ru"),
         "top_emotions_uz": profile.get("top_emotions_uz"),
         "top_emotions_ru": profile.get("top_emotions_ru"),
+        "stress_score": profile.get("stress_score", 0.0),
+        "stress_status_uz": profile.get("stress_status_uz", "Normal"),
+        "stress_status_ru": profile.get("stress_status_ru", "Нормальный"),
         "assessed_at": row.assessed_at.isoformat() if row.assessed_at else None,
         "updated_at": row.updated_at.isoformat() if row.updated_at else None,
     }

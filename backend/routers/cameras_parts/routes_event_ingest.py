@@ -89,11 +89,16 @@ async def camera_event_ingest(
     snapshot_url = str(data.get("snapshot_url") or "").strip() or None
     photo_path: Path | None = None
     if picture and picture.filename:
-        file_name = _safe_snapshot_name(picture.filename)
+        file_name = f"{uuid.uuid4().hex}.webp"
         file_path = os.path.join(_UPLOAD_DIR, file_name)
         payload = await picture.read()
+        try:
+            from utils.image_utils import compress_to_webp
+            webp_bytes = compress_to_webp(payload)
+        except Exception:
+            webp_bytes = payload
         with open(file_path, "wb") as file_object:
-            file_object.write(payload)
+            file_object.write(webp_bytes)
         snapshot_url = f"/static/uploads/{file_name}"
         photo_path = Path(file_path)
     elif snapshot_url:
@@ -122,6 +127,7 @@ async def camera_event_ingest(
         psychological_state_confidence=psychological_state_confidence,
         emotion_scores_json=psychological_profile.get("emotion_scores_json") or None,
         status=status,
+        direction=device.direction if device else None,
     )
 
     if employee is not None:

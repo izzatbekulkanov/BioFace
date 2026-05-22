@@ -73,15 +73,18 @@ export default function Devices() {
     setError('')
     if (abortRef.current) abortRef.current.abort()
     abortRef.current = new AbortController()
+    const signal = abortRef.current.signal
     try {
       const isFirstLoad = _camerasCache.length === 0 && !animate
-      const camsPromise = fetch('/api/cameras', { signal: abortRef.current.signal })
-      const orgsPromise = fetch('/api/organizations', { signal: abortRef.current.signal })
-      const mePromise   = fetch('/api/auth/me', { signal: abortRef.current.signal })
+      const camsPromise = fetch('/api/cameras', { signal }).catch(err => { if (err.name === 'AbortError') return null; throw err; })
+      const orgsPromise = fetch('/api/organizations', { signal }).catch(err => { if (err.name === 'AbortError') return null; throw err; })
+      const mePromise   = fetch('/api/auth/me', { signal }).catch(err => { if (err.name === 'AbortError') return null; throw err; })
 
       const [camsRes, orgsRes, meRes] = isFirstLoad
         ? await Promise.all([camsPromise, orgsPromise, mePromise, new Promise(r => setTimeout(r, 600))]).then(arr => [arr[0], arr[1], arr[2]])
         : await Promise.all([camsPromise, orgsPromise, mePromise])
+
+      if (signal.aborted || !camsRes || !orgsRes || !meRes) return
 
       if (camsRes.status === 401 || orgsRes.status === 401) { navigate('/login'); return }
       if (!camsRes.ok) throw new Error()
