@@ -134,8 +134,30 @@ export default function PsychologicalPortrait() {
           </button>
         }
       />
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+        .portrait-container {
+          max-width: 1280px;
+          margin: 0 auto;
+          padding: 24px 32px 80px;
+        }
+        .portrait-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 18px;
+          margin-bottom: 18px;
+        }
+        @media (max-width: 900px) {
+          .portrait-container {
+            padding: 16px 16px 60px !important;
+          }
+          .portrait-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
 
-      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '24px 32px 80px' }}>
+      <div className="portrait-container">
         {error && <div style={errBannerStyle}>{error}</div>}
 
         {/* Filtrlar */}
@@ -230,7 +252,7 @@ export default function PsychologicalPortrait() {
         )}
 
         {/* O'rtacha profil + Holat breakdown */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, marginBottom: 18 }}>
+        <div className="portrait-grid">
           <div style={cardStyle}>
             <h3 style={cardTitleStyle}>
               <EmojiRegular style={{ color: '#a855f7' }} />

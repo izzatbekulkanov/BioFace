@@ -16,7 +16,7 @@ from services.bot_process_manager import (
     stop_bot_process,
 )
 from services.isup_manager import restart_isup_server
-from models import Organization, TelegramUserBinding
+from models import Organization, TelegramUserBinding, ContactMessage
 from utils.menu_utils import get_menu_data, save_menu_data
 from config.system_config import (
     get_camera_event_push_base_url,
@@ -47,6 +47,10 @@ class SettingsUpdate(BaseModel):
     google_client_id: Optional[str] = None
     google_client_secret: Optional[str] = None
     google_redirect_uri: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    contact_address_uz: Optional[str] = None
+    contact_address_ru: Optional[str] = None
 
 
 def _mask_secret(value: str | None) -> str:
@@ -106,6 +110,10 @@ def get_settings(db: Session = Depends(get_db)):
         "google_client_secret_configured": bool((org.google_client_secret or "").strip()),
         "google_client_secret_masked": _mask_secret(org.google_client_secret),
         "google_redirect_uri": org.google_redirect_uri or "",
+        "contact_email": saved_data.get("contact_email", "support@bioface.uz"),
+        "contact_phone": saved_data.get("contact_phone", "+998 90 123 45 67"),
+        "contact_address_uz": saved_data.get("contact_address_uz", "Toshkent, O'zbekiston\nTexnologiya Parki, 4-bino"),
+        "contact_address_ru": saved_data.get("contact_address_ru", "Ташкент, Узбекистан\nТехнопарк, корпус 4"),
     }
 
 @router.put("/api/settings")
@@ -175,6 +183,10 @@ def update_settings(data: SettingsUpdate, db: Session = Depends(get_db)):
         or data.isup_public_host is not None
         or data.public_web_base_url is not None
         or data.camera_event_push_base_url is not None
+        or data.contact_email is not None
+        or data.contact_phone is not None
+        or data.contact_address_uz is not None
+        or data.contact_address_ru is not None
     ):
         import json
         from utils.menu_utils import MENU_FILE
@@ -192,6 +204,14 @@ def update_settings(data: SettingsUpdate, db: Session = Depends(get_db)):
             menu_data["public_web_base_url"] = normalized_public_web_base_url
         if data.camera_event_push_base_url is not None and normalized_camera_event_push_base_url is not None:
             menu_data["camera_event_push_base_url"] = normalized_camera_event_push_base_url
+        if data.contact_email is not None:
+            menu_data["contact_email"] = data.contact_email.strip()
+        if data.contact_phone is not None:
+            menu_data["contact_phone"] = data.contact_phone.strip()
+        if data.contact_address_uz is not None:
+            menu_data["contact_address_uz"] = data.contact_address_uz.strip()
+        if data.contact_address_ru is not None:
+            menu_data["contact_address_ru"] = data.contact_address_ru.strip()
 
         try:
             with open(MENU_FILE, "w", encoding="utf-8") as f:
@@ -404,3 +424,56 @@ async def upload_favicon(file: UploadFile = File(...)):
         return {"ok": True, "url": f"/static/uploads/{filename}"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+class ContactMessageCreate(BaseModel):
+    name: str
+    email: str
+    phone: str
+    message: str
+
+
+@router.post("/api/public/contact")
+def create_contact_message(data: ContactMessageCreate, db: Session = Depends(get_db)):
+    if not data.name.strip() or not data.email.strip() or not data.phone.strip() or not data.message.strip():
+        raise HTTPException(status_code=400, detail="Barcha maydonlarni to'ldirish majburiy.")
+    
+    msg = ContactMessage(
+        name=data.name.strip(),
+        email=data.email.strip(),
+        phone=data.phone.strip(),
+        message=data.message.strip()
+    )
+    db.add(msg)
+    db.commit()
+    db.refresh(msg)
+    return {"ok": True, "message": "Xabaringiz muvaffaqiyatli yuborildi. Rahmat!"}
+
+
+@router.get("/api/settings/contact-messages")
+def get_contact_messages(db: Session = Depends(get_db)):
+    messages = db.query(ContactMessage).order_by(ContactMessage.created_at.desc()).all()
+    return {
+        "ok": True,
+        "messages": [
+            {
+                "id": m.id,
+                "name": m.name,
+                "email": m.email,
+                "phone": m.phone,
+                "message": m.message,
+                "created_at": m.created_at.isoformat() if m.created_at else None
+            } for m in messages
+        ]
+    }
+
+
+@router.delete("/api/settings/contact-messages/{msg_id}")
+def delete_contact_message(msg_id: int, db: Session = Depends(get_db)):
+    msg = db.query(ContactMessage).filter(ContactMessage.id == msg_id).first()
+    if not msg:
+        raise HTTPException(status_code=404, detail="Xabar topilmadi.")
+    db.delete(msg)
+    db.commit()
+    return {"ok": True, "message": "Xabar muvaffaqiyatli o'chirildi."}
+

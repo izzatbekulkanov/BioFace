@@ -48,6 +48,7 @@ export default function Attendance() {
   const [camFilter, setCamFilter] = useState('all')
   const [todayOnly, setTodayOnly] = useState(false)
   const [search, setSearch] = useState('')
+  const [isSuperAdmin, setIsSuperAdmin] = useState(true) // default true, keyin aniqlanadi
 
   const [initialLoading, setInitialLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -62,12 +63,28 @@ export default function Attendance() {
 
   const loadFilters = useCallback(async () => {
     try {
-      const res = await fetch('/api/attendance/filter-data', { credentials: 'include' })
-      if (!res.ok) return
-      const data = await res.json()
+      const [filterRes, meRes] = await Promise.all([
+        fetch('/api/attendance/filter-data', { credentials: 'include' }),
+        fetch('/api/auth/me', { credentials: 'include' }),
+      ])
+      if (!filterRes.ok) return
+      const data = await filterRes.json()
+      const meData = meRes.ok ? await meRes.json() : {}
+
+      const role = String(meData.role || '').toLowerCase()
+      const superAdmin = role === 'super_admin' || role === 'superadmin'
+      setIsSuperAdmin(superAdmin)
+
+      const orgList = Array.isArray(data?.organizations) ? data.organizations : []
+      const camList = Array.isArray(data?.cameras) ? data.cameras : []
+
       if (aliveRef.current) {
-        setOrgs(Array.isArray(data?.organizations) ? data.organizations : [])
-        setCameras(Array.isArray(data?.cameras) ? data.cameras : [])
+        setOrgs(orgList)
+        setCameras(camList)
+        // Agar faqat 1 ta tashkilot bo'lsa, avtomatik tanlash
+        if (!superAdmin && orgList.length === 1) {
+          setOrgFilter(String(orgList[0].id))
+        }
       }
     } catch {
       // silent
@@ -251,21 +268,50 @@ export default function Attendance() {
         }
       />
 
-      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '24px 32px 80px' }}>
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+        .attendance-container {
+          max-width: 1280px;
+          margin: 0 auto;
+          padding: 24px 32px 80px;
+        }
+        .attendance-toolbar {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 12px;
+          align-items: flex-end;
+        }
+        @media (max-width: 768px) {
+          .attendance-container {
+            padding: 16px 16px 60px !important;
+          }
+          .attendance-toolbar {
+            flex-direction: column;
+            align-items: stretch !important;
+          }
+          .attendance-toolbar > div,
+          .attendance-toolbar > label {
+            flex: 1 1 100% !important;
+            width: 100% !important;
+          }
+        }
+      `}</style>
+
+      <div className="attendance-container">
         {error && (
           <div style={errBannerStyle}>{error}</div>
         )}
 
         {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 18 }}>
-          <StatCard icon={<ClipboardTaskListLtrRegular />} label={isRu ? 'Всего' : 'Jami'} value={totalCount} color="#3b82f6" />
-          <StatCard icon={<CheckmarkCircleRegular />} label={isRu ? 'Распознано' : 'Aniqlandi'} value={knownCount} color="#10b981" />
-          <StatCard icon={<QuestionCircleRegular />} label={isRu ? 'Неизвестные' : "Noma'lum"} value={unknownCount} color="#f59e0b" />
+          <StatCard icon={<ClipboardTaskListLtrRegular />} label={isRu ? 'Всего' : 'Jami'} value={totalCount} color="var(--accent)" bg="var(--accent-bg)" border="var(--accent-bd)" />
+          <StatCard icon={<CheckmarkCircleRegular />} label={isRu ? 'Распознано' : 'Aniqlandi'} value={knownCount} color="var(--green)" bg="var(--green-bg)" border="var(--green-bd)" />
+          <StatCard icon={<QuestionCircleRegular />} label={isRu ? 'Неизвестные' : "Noma'lum"} value={unknownCount} color="var(--yellow)" bg="var(--yellow-bg)" border="var(--yellow-bd)" />
         </div>
 
         {/* Toolbar */}
         <div style={{ ...cardStyle, marginBottom: 20 }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
+          <div className="attendance-toolbar">
             <div style={{ flex: '1 1 240px', minWidth: 200 }}>
               <FieldLabel>{isRu ? 'Поиск' : 'Qidiruv'}</FieldLabel>
               <input
@@ -277,13 +323,26 @@ export default function Attendance() {
               />
             </div>
 
-            <div style={{ flex: '1 1 200px' }}>
-              <FieldLabel>{isRu ? 'Организация' : 'Tashkilot'}</FieldLabel>
-              <select value={orgFilter} onChange={e => { setOrgFilter(e.target.value); setCamFilter('all') }} style={inpStyle}>
-                <option value="all">{isRu ? 'Все организации' : 'Hamma tashkilotlar'}</option>
-                {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-              </select>
-            </div>
+            {/* Tashkilot filtri — faqat super admin yoki ko'p tashkilot uchun */}
+            {(isSuperAdmin || orgs.length > 1) && (
+              <div style={{ flex: '1 1 200px' }}>
+                <FieldLabel>{isRu ? 'Организация' : 'Tashkilot'}</FieldLabel>
+                <select value={orgFilter} onChange={e => { setOrgFilter(e.target.value); setCamFilter('all') }} style={inpStyle}>
+                  <option value="all">{isRu ? 'Все организации' : 'Hamma tashkilotlar'}</option>
+                  {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                </select>
+              </div>
+            )}
+            {/* Yagona tashkilot nomi ko'rinishi */}
+            {!isSuperAdmin && orgs.length === 1 && (
+              <div style={{ flex: '1 1 200px' }}>
+                <FieldLabel>{isRu ? 'Организация' : 'Tashkilot'}</FieldLabel>
+                <div style={{ ...inpStyle, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-1)', fontWeight: 600, cursor: 'default' }}>
+                  <BuildingRegular fontSize={14} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                  {orgs[0].name}
+                </div>
+              </div>
+            )}
 
             <div style={{ flex: '1 1 200px' }}>
               <FieldLabel>{isRu ? 'Камера' : 'Kamera'}</FieldLabel>
@@ -515,12 +574,14 @@ function formatDate(iso) {
   }
 }
 
-function StatCard({ icon, label, value, color }) {
+function StatCard({ icon, label, value, color, bg, border }) {
   return (
     <div style={{ padding: 14, background: 'var(--surface)', borderRadius: 10, border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12 }}>
       <div style={{
         width: 40, height: 40, borderRadius: 9,
-        background: color + '22', color, border: `1px solid ${color}55`,
+        background: bg || (color + '22'), 
+        color, 
+        border: `1px solid ${border || (color + '55')}`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontSize: 18, flexShrink: 0,
       }}>
@@ -537,15 +598,15 @@ function StatCard({ icon, label, value, color }) {
 function StatusPill({ status, hasEmployee, isRu }) {
   const isKnown = hasEmployee || (status && String(status).toLowerCase().includes('aniq'))
   const tone = isKnown
-    ? { bg: 'rgba(16,185,129,0.12)', color: '#10b981', icon: <CheckmarkCircleRegular fontSize={12} />, text: isRu ? 'Распознан' : 'Aniqlandi' }
-    : { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b', icon: <QuestionCircleRegular fontSize={12} />, text: isRu ? 'Неизвестный' : "Noma'lum" }
+    ? { bg: 'var(--green-bg)', color: 'var(--green)', border: 'var(--green-bd)', icon: <CheckmarkCircleRegular fontSize={12} />, text: isRu ? 'Распознан' : 'Aniqlandi' }
+    : { bg: 'var(--yellow-bg)', color: 'var(--yellow)', border: 'var(--yellow-bd)', icon: <QuestionCircleRegular fontSize={12} />, text: isRu ? 'Неизвестный' : "Noma'lum" }
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 4,
       padding: '3px 9px', borderRadius: 999,
       background: tone.bg, color: tone.color,
       fontSize: 11, fontWeight: 600,
-      border: `1px solid ${tone.color}33`,
+      border: `1px solid ${tone.border}`,
     }}>{tone.icon}{tone.text}</span>
   )
 }

@@ -57,6 +57,7 @@ export default function SystemUsers() {
   const [initialLoading, setInitialLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
+  const [isForbidden, setIsForbidden] = useState(false)
 
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
@@ -75,7 +76,11 @@ export default function SystemUsers() {
       ])
       if (!uRes.ok) {
         if (uRes.status === 401) throw new Error(isRu ? 'Не авторизован' : 'Avtorizatsiya talab qilinadi')
-        throw new Error(`HTTP ${uRes.status}`)
+        if (uRes.status === 403) {
+          if (aliveRef.current) { setIsForbidden(true); setInitialLoading(false); setRefreshing(false) }
+          return
+        }
+        throw new Error(isRu ? `Server xatosi (${uRes.status})` : `Server xatosi (${uRes.status})`)
       }
       const usersData = await uRes.json()
       const pendingData = pRes.ok ? await pRes.json() : { users: [] }
@@ -142,6 +147,50 @@ export default function SystemUsers() {
     } catch (e) {
       toast.error(e.message)
     }
+  }
+
+  // 403 — Ruxsat yo'q sahifasi
+  if (isForbidden) {
+    return (
+      <div style={{ minHeight: 'calc(100vh - 52px)', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+        <div style={{
+          textAlign: 'center', maxWidth: 440,
+          background: 'var(--surface)', border: '1px solid var(--red-bd)',
+          borderRadius: 20, padding: '48px 40px',
+          boxShadow: '0 8px 40px rgba(0,0,0,0.3)'
+        }}>
+          <div style={{
+            width: 72, height: 72, borderRadius: '50%',
+            background: 'var(--red-bg)', border: '2px solid var(--red-bd)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 24px', fontSize: 32
+          }}>
+            <ShieldRegular fontSize={36} style={{ color: 'var(--red)' }} />
+          </div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--red)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>
+            {isRu ? 'Доступ запрещён' : 'Ruxsat yo\u02bcq'}
+          </div>
+          <h2 style={{ margin: '0 0 12px', fontSize: 22, fontWeight: 800, color: 'var(--text-1)' }}>
+            {isRu ? 'Недостаточно прав' : 'Kirish huquqi yo\u02bcq'}
+          </h2>
+          <p style={{ margin: '0 0 28px', fontSize: 14, color: 'var(--text-3)', lineHeight: 1.6 }}>
+            {isRu
+              ? 'У вас нет разрешения на просмотр этой страницы. Обратитесь к главному администратору.'
+              : 'Bu sahifani ko\u02bcrishga ruxsatingiz yo\u02bcq. Iltimos, asosiy administratorga murojaat qiling.'}
+          </p>
+          <button
+            onClick={() => window.history.back()}
+            style={{
+              padding: '10px 24px', borderRadius: 9,
+              background: 'var(--accent)', border: 'none',
+              color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer'
+            }}
+          >
+            {isRu ? '← Назад' : '← Orqaga'}
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (

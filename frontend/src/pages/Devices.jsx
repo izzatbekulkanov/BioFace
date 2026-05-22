@@ -33,10 +33,10 @@ function StatusDot({ online }) {
   )
 }
 
-function StatCard({ icon, label, value, color }) {
+function StatCard({ icon, label, value, color, bg, border }) {
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
-      <div style={{ width: 40, height: 40, borderRadius: 10, background: color + '18', border: `1px solid ${color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', color, flexShrink: 0 }}>
+      <div style={{ width: 40, height: 40, borderRadius: 10, background: bg || (color + '18'), border: `1px solid ${border || (color + '30')}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color, flexShrink: 0 }}>
         {icon}
       </div>
       <div>
@@ -63,6 +63,7 @@ export default function Devices() {
   const [search, setSearch]     = useState('')
   const [filter, setFilter]     = useState('all')
   const [deleting, setDeleting] = useState(null)
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const abortRef = useRef(null)
 
   const isRu = i18n.language === 'ru'
@@ -70,30 +71,42 @@ export default function Devices() {
   const load = useCallback(async (animate = false) => {
     if (animate) setSpin(true)
     setError('')
-    // Oldingi so'rovni bekor qilamiz
     if (abortRef.current) abortRef.current.abort()
     abortRef.current = new AbortController()
     try {
       const isFirstLoad = _camerasCache.length === 0 && !animate
       const camsPromise = fetch('/api/cameras', { signal: abortRef.current.signal })
       const orgsPromise = fetch('/api/organizations', { signal: abortRef.current.signal })
-      
-      const [camsRes, orgsRes] = isFirstLoad 
-        ? await Promise.all([camsPromise, orgsPromise, new Promise(r => setTimeout(r, 800))]).then(arr => [arr[0], arr[1]])
-        : await Promise.all([camsPromise, orgsPromise])
-        
+      const mePromise   = fetch('/api/auth/me', { signal: abortRef.current.signal })
+
+      const [camsRes, orgsRes, meRes] = isFirstLoad
+        ? await Promise.all([camsPromise, orgsPromise, mePromise, new Promise(r => setTimeout(r, 600))]).then(arr => [arr[0], arr[1], arr[2]])
+        : await Promise.all([camsPromise, orgsPromise, mePromise])
+
       if (camsRes.status === 401 || orgsRes.status === 401) { navigate('/login'); return }
-      if (!camsRes.ok || !orgsRes.ok) throw new Error()
-      
+      if (!camsRes.ok) throw new Error()
+
       const camsData = await camsRes.json()
-      const orgsData = await orgsRes.json()
-      
+      const orgsData = orgsRes.ok ? await orgsRes.json() : []
+      const meData   = meRes.ok   ? await meRes.json()   : {}
+
+      const role = String(meData.role || '').toLowerCase()
+      const superAdmin = role === 'super_admin' || role === 'superadmin'
+      setIsSuperAdmin(superAdmin)
+
       const list = Array.isArray(camsData) ? camsData : camsData.items || []
       _camerasCache = list
       _cacheTime = Date.now()
-      
+
+      const orgList = Array.isArray(orgsData) ? orgsData : []
       setCameras(list)
-      setOrganizations(Array.isArray(orgsData) ? orgsData : [])
+      setOrganizations(orgList)
+
+      // Agar SuperAdmin emas va faqat 1 ta tashkilot bo'lsa — to'g'ridan kameralarga o'tamiz
+      if (!superAdmin && orgList.length === 1 && !searchParams.get('org')) {
+        setSearchParams({ org: String(orgList[0].id) })
+      }
+
       setLoading(false)
       if (animate) setTimeout(() => setSpin(false), 500)
     } catch (e) {
@@ -102,7 +115,7 @@ export default function Devices() {
       setLoading(false)
       if (animate) setTimeout(() => setSpin(false), 500)
     }
-  }, [navigate, t])
+  }, [navigate, t, searchParams, setSearchParams])
 
   useEffect(() => {
     load()
@@ -245,14 +258,16 @@ export default function Devices() {
               <ArrowSyncRegular fontSize={14} style={{ animation: spin ? 'spin 0.6s linear infinite' : 'none' }} />
               {t('devices.refresh')}
             </button>
-            <button onClick={() => navigate('/devices/add')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, background: 'var(--accent)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-              <AddRegular fontSize={15} />
-              {t('devices.add')}
-            </button>
+            {isSuperAdmin && (
+              <button onClick={() => navigate('/devices/add')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, background: 'var(--accent)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                <AddRegular fontSize={15} />
+                {t('devices.add')}
+              </button>
+            )}
           </div>
         }
       />
-      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '24px 32px 80px' }}>
+      <div className="devices-container">
  
         {/* ── LOADING STATE: Skeleton ── */}
         {loading && (
@@ -270,7 +285,7 @@ export default function Devices() {
               ))}
             </div>
             {/* Skeleton camera cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
               {[1,2,3,4,5,6].map(i => (
                 <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
                   <div style={{ padding: '16px 18px 14px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid var(--border-2)' }}>
@@ -296,10 +311,10 @@ export default function Devices() {
           <>
             {/* Stats */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 20 }}>
-              <StatCard icon={<BuildingRegular fontSize={18} />} label={isRu ? 'Организации' : 'Tashkilotlar'} value={organizations.length} color="#a855f7" />
-              <StatCard icon={<CameraRegular fontSize={18} />}  label={orgParam ? (isRu ? 'Всего камер в орг.' : 'Tashkilotda jami') : t('devices.total')}   value={totalCount} color="#0078d4" />
-              <StatCard icon={<Wifi4Regular fontSize={18} />}   label={t('devices.online')}  value={online}         color="#4ade80" />
-              <StatCard icon={<WifiOffRegular fontSize={18} />} label={t('devices.offline')} value={offline}        color="#f87171" />
+              <StatCard icon={<BuildingRegular fontSize={18} />} label={isRu ? 'Организации' : 'Tashkilotlar'} value={organizations.length} color="var(--purple)" bg="var(--purple-bg)" border="var(--purple-bd)" />
+              <StatCard icon={<CameraRegular fontSize={18} />}  label={orgParam ? (isRu ? 'Всего камер в орг.' : 'Tashkilotda jami') : t('devices.total')}   value={totalCount} color="var(--accent)" bg="var(--accent-bg)" border="var(--accent-bd)" />
+              <StatCard icon={<Wifi4Regular fontSize={18} />}   label={t('devices.online')}  value={online}         color="var(--green)" bg="var(--green-bg)" border="var(--green-bd)" />
+              <StatCard icon={<WifiOffRegular fontSize={18} />} label={t('devices.offline')} value={offline}        color="var(--red)" bg="var(--red-bg)" border="var(--red-bd)" />
             </div>
 
             {/* Back Button */}
@@ -363,7 +378,7 @@ export default function Devices() {
               orgParam ? (
                 /* CAMERA GRID */
                 filtered.length > 0 && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 14 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
                     {filtered.map(cam => (
                       <div key={cam.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}
                         onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent-bd)'}
@@ -380,9 +395,9 @@ export default function Devices() {
                               {cam.direction && (
                                 <span style={{
                                   fontSize: 10, fontWeight: 700,
-                                  color: cam.direction === 'in' ? '#38bdf8' : '#fb923c',
-                                  background: cam.direction === 'in' ? 'rgba(56,189,248,0.12)' : 'rgba(251,146,60,0.12)',
-                                  border: `1px solid ${cam.direction === 'in' ? '#38bdf830' : '#fb923c30'}`,
+                                  color: cam.direction === 'in' ? 'var(--dir-in)' : 'var(--dir-out)',
+                                  background: cam.direction === 'in' ? 'var(--dir-in-bg)' : 'var(--dir-out-bg)',
+                                  border: `1px solid ${cam.direction === 'in' ? 'var(--dir-in-bd)' : 'var(--dir-out-bd)'}`,
                                   borderRadius: 100, padding: '2px 8px', textTransform: 'uppercase'
                                 }}>
                                   {cam.direction === 'in' ? (i18n.language === 'ru' ? 'Вход' : 'Kirish') : (i18n.language === 'ru' ? 'Выход' : 'Chiqish')}
@@ -406,14 +421,16 @@ export default function Devices() {
                               <CodeRegular fontSize={14} />
                             </button>
                           </Tooltip>
-                          <Tooltip content={t('devices.delete')} relationship="label">
-                            <button onClick={() => handleDelete(cam)} disabled={deleting === cam.id} style={{ width: 30, height: 30, borderRadius: 7, background: 'transparent', border: '1px solid transparent', color: 'var(--text-4)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                              onMouseEnter={e => { e.currentTarget.style.background = 'var(--red-bg)'; e.currentTarget.style.borderColor = 'var(--red-bd)'; e.currentTarget.style.color = 'var(--red)' }}
-                              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.color = 'var(--text-4)' }}
-                            >
-                              {deleting === cam.id ? <Spinner size="tiny" /> : <DeleteRegular fontSize={14} />}
-                            </button>
-                          </Tooltip>
+                          {isSuperAdmin && (
+                            <Tooltip content={t('devices.delete')} relationship="label">
+                              <button onClick={() => handleDelete(cam)} disabled={deleting === cam.id} style={{ width: 30, height: 30, borderRadius: 7, background: 'transparent', border: '1px solid transparent', color: 'var(--text-4)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                                onMouseEnter={e => { e.currentTarget.style.background = 'var(--red-bg)'; e.currentTarget.style.borderColor = 'var(--red-bd)'; e.currentTarget.style.color = 'var(--red)' }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.color = 'var(--text-4)' }}
+                              >
+                                {deleting === cam.id ? <Spinner size="tiny" /> : <DeleteRegular fontSize={14} />}
+                              </button>
+                            </Tooltip>
+                          )}
                         </div>
                         <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 9 }}>
                           {[
@@ -425,7 +442,7 @@ export default function Devices() {
                               label: i18n.language === 'ru' ? 'Направление' : "Yo'nalish", 
                               val: cam.direction ? (
                                 <span style={{ 
-                                  color: cam.direction === 'in' ? '#38bdf8' : '#fb923c', 
+                                  color: cam.direction === 'in' ? 'var(--dir-in)' : 'var(--dir-out)', 
                                   fontWeight: 700 
                                 }}>
                                   {cam.direction === 'in' ? (i18n.language === 'ru' ? 'Вход' : 'Kirish') : (i18n.language === 'ru' ? 'Выход' : 'Chiqish')}
@@ -464,7 +481,7 @@ export default function Devices() {
               ) : (
                 /* ORGANIZATIONS GRID */
                 orgGroups.length > 0 && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
                     {orgGroups.map(g => (
                       <div key={g.id} style={{
                         background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16,
@@ -589,6 +606,16 @@ export default function Devices() {
       <style>{`
         @keyframes spin { from { transform:rotate(0deg) } to { transform:rotate(360deg) } }
         @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.4 } }
+        .devices-container {
+          max-width: 1280px;
+          margin: 0 auto;
+          padding: 24px 32px 80px;
+        }
+        @media (max-width: 768px) {
+          .devices-container {
+            padding: 16px 16px 60px !important;
+          }
+        }
       `}</style>
     </div>
   )

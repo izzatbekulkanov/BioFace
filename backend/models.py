@@ -332,3 +332,14 @@ class RequestLog(Base):
     response_time_ms = Column(Integer)
     created_at = Column(DateTime, default=now_tashkent, index=True)
     details = Column(String, nullable=True)
+
+
+class ContactMessage(Base):
+    __tablename__ = 'contact_messages'
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    email = Column(String, nullable=False)
+    phone = Column(String, nullable=False)
+    message = Column(String, nullable=False)
+    created_at = Column(DateTime, default=now_tashkent, index=True)
+

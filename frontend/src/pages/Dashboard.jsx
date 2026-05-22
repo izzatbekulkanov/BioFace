@@ -5,8 +5,8 @@ import { Spinner } from '@fluentui/react-components'
 import {
   BuildingRegular, PeopleRegular, CameraRegular,
   CheckmarkCircleRegular, DismissCircleRegular, ClockRegular,
-  ArrowSyncRegular, PersonRegular, HeartPulseRegular,
-  PulseSquareRegular, TargetRegular, GridRegular
+  ArrowSyncRegular, PersonRegular, ShieldRegular,
+  ChartMultipleRegular, GlobeRegular, GridDotsRegular
 } from '@fluentui/react-icons'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
@@ -18,17 +18,17 @@ import PageHero from '../components/PageHero'
 function safeRatio(num, den) { return den > 0 ? num / den : 0 }
 function clampScore(value) { return Math.max(20, Math.min(95, Math.round(value))) }
 
-function StatBox({ label, value, icon, color, sub }) {
+function StatBox({ label, value, icon, color, bg, border, sub }) {
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '18px 20px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', transition: 'border-color 0.2s' }}
-      onMouseEnter={e => e.currentTarget.style.borderColor = color + '55'}
+      onMouseEnter={e => e.currentTarget.style.borderColor = color}
       onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
       <div>
         <div style={{ fontSize: 11, color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8, fontWeight: 600 }}>{label}</div>
         <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-1)', lineHeight: 1 }}>{value}</div>
         {sub && <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 6 }}>{sub}</div>}
       </div>
-      <div style={{ width: 42, height: 42, borderRadius: 10, background: color + '15', border: `1px solid ${color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', color }}>
+      <div style={{ width: 42, height: 42, borderRadius: 10, background: bg, border: `1px solid ${border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color }}>
         {icon}
       </div>
     </div>
@@ -52,9 +52,13 @@ function ProgressBar({ label, percent, color }) {
 function OrgCard({ org, isRu }) {
   const total = (org.present_today || 0) + (org.absent_today || 0)
   const rate = total > 0 ? Math.round((org.present_today / total) * 100) : 0
-  const statusColors = { active: '#10b981', pending: '#f59e0b', expired: '#ef4444' }
+  const statusColors = { active: 'var(--green)', pending: 'var(--yellow)', expired: 'var(--red)' }
+  const statusBgs = { active: 'var(--green-bg)', pending: 'var(--yellow-bg)', expired: 'var(--red-bg)' }
+  const statusBds = { active: 'var(--green-bd)', pending: 'var(--yellow-bd)', expired: 'var(--red-bd)' }
   const statusLabels = { active: isRu ? 'Активна' : 'Faol', pending: isRu ? 'Ожидание' : 'Kutilmoqda', expired: isRu ? 'Истекла' : 'Tugagan' }
-  const color = statusColors[org.subscription_status] || '#64748b'
+  const color = statusColors[org.subscription_status] || 'var(--gray)'
+  const bg = statusBgs[org.subscription_status] || 'var(--gray-bg)'
+  const border = statusBds[org.subscription_status] || 'var(--gray-bd)'
 
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '18px 20px', transition: 'border-color 0.2s' }}
@@ -62,7 +66,7 @@ function OrgCard({ org, isRu }) {
       onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)' }}>{org.name}</div>
-        <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 99, background: color + '18', color, fontWeight: 600, textTransform: 'uppercase' }}>
+        <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 99, background: bg, color, border: `1px solid ${border}`, fontWeight: 600, textTransform: 'uppercase' }}>
           {statusLabels[org.subscription_status] || org.subscription_status}
         </span>
       </div>
@@ -76,19 +80,19 @@ function OrgCard({ org, isRu }) {
           <div style={{ fontSize: 10, color: 'var(--text-4)' }}>{isRu ? 'Камер' : 'Kamera'}</div>
         </div>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 18, fontWeight: 700, color: rate > 70 ? '#10b981' : rate > 40 ? '#f59e0b' : '#ef4444' }}>{rate}%</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: rate > 70 ? 'var(--green)' : rate > 40 ? 'var(--yellow)' : 'var(--red)' }}>{rate}%</div>
           <div style={{ fontSize: 10, color: 'var(--text-4)' }}>{isRu ? 'Явка' : 'Davomat'}</div>
         </div>
       </div>
       <div style={{ height: 4, background: 'var(--border)', borderRadius: 99 }}>
-        <div style={{ height: '100%', width: `${rate}%`, background: rate > 70 ? '#10b981' : rate > 40 ? '#f59e0b' : '#ef4444', borderRadius: 99, transition: 'width 0.5s' }} />
+        <div style={{ height: '100%', width: `${rate}%`, background: rate > 70 ? 'var(--green)' : rate > 40 ? 'var(--yellow)' : 'var(--red)', borderRadius: 99, transition: 'width 0.5s' }} />
       </div>
     </div>
   )
 }
 
 function EventRow({ event, isRu }) {
-  const statusColor = event.status === 'aniqlandi' ? '#10b981' : '#f59e0b'
+  const statusColor = event.status === 'aniqlandi' ? 'var(--green)' : 'var(--yellow)'
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
       <div style={{ width: 8, height: 8, borderRadius: '50%', background: statusColor, flexShrink: 0 }} />
@@ -269,7 +273,7 @@ export default function Dashboard() {
   }, [summary, attendanceTotal, isRu])
 
   const attendanceData = useMemo(() => {
-    const colors = ['#10b981', '#64748b', '#f59e0b']
+    const colors = ['var(--green)', 'var(--gray)', 'var(--yellow)']
     const lblMap = { present: isRu ? 'Пришли' : 'Kelgan', absent: isRu ? 'Отсутствуют' : 'Kelmadi', late: isRu ? 'Опоздали' : 'Kechikkan' }
     if (!charts.attendance_today) return []
     return charts.attendance_today.labels.map((lbl, i) => ({
@@ -316,15 +320,63 @@ export default function Dashboard() {
               </div>
             )}
             <button onClick={() => load(true)} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 16px', borderRadius: 8, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.14)', color: '#fff', fontSize: 13, cursor: 'pointer' }}>
-              <ArrowSyncRegular fontSize={14} style={{ animation: spin ? 'spin 0.6s linear infinite' : 'none' }} />
-              {t('dashboard.refresh')}
+              <ArrowSyncRegular fontSize={14} className={spin ? 'spin' : ''} />
+              {isRu ? 'Обновить' : 'Yangilash'}
             </button>
           </div>
         }
       />
-      <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+        .db-container {
+          max-width: 1400px;
+          margin: 0 auto;
+          padding: 24px 32px 80px;
+        }
+        .db-grid-row1 {
+          display: grid;
+          grid-template-columns: 320px 1fr;
+        }
+        .db-grid-today {
+          display: grid;
+          grid-template-columns: repeat(5, 1fr);
+        }
+        .db-grid-row3 {
+          display: grid;
+          grid-template-columns: 2fr 1fr;
+        }
+        .db-grid-row5 {
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
+        }
+        .db-grid-row6 {
+          display: grid;
+          grid-template-columns: 3fr 2fr;
+        }
+        .db-grid-row6.single {
+          grid-template-columns: 1fr;
+        }
+        @media (max-width: 1024px) {
+          .db-grid-row5 {
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          }
+        }
+        @media (max-width: 900px) {
+          .db-container {
+            padding: 16px 16px 60px !important;
+          }
+          .db-grid-row1, .db-grid-row3, .db-grid-row5, .db-grid-row6 {
+            grid-template-columns: 1fr;
+          }
+        }
+        @media (max-width: 768px) {
+          .db-grid-today {
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+          }
+        }
+      `}</style>
 
-      <div style={{ maxWidth: 1400, margin: '0 auto', padding: '24px 32px 80px' }}>
+      <div className="db-container">
         {error && (
           <div style={{ background: 'var(--red-bg)', border: '1px solid var(--red-bd)', borderRadius: 8, padding: '14px 20px', color: 'var(--red)', fontSize: 13, marginBottom: 24 }}>
             {error}
@@ -335,12 +387,12 @@ export default function Dashboard() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
             {/* === ROW 1: System Pulse + Today Summary === */}
-            <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 16 }}>
+            <div className="db-grid-row1" style={{ gap: 16 }}>
               {/* System Pulse */}
               <div style={{ background: 'var(--accent-bg)', border: '1px solid var(--accent-bd)', borderRadius: 10, padding: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
                   <div style={{ fontSize: 11, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-                    <HeartPulseRegular fontSize={15} />
+                    <ShieldRegular fontSize={15} />
                     {isRu ? 'Индекс системы' : 'Tizim indeksi'}
                   </div>
                   <div style={{ fontSize: 36, fontWeight: 700, color: 'var(--text-1)', lineHeight: 1 }}>
@@ -352,7 +404,7 @@ export default function Dashboard() {
                 </div>
                 <div style={{ width: 80, height: 80, borderRadius: '50%', background: `conic-gradient(var(--accent) ${systemPulse * 3.6}deg, var(--border) 0deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <div style={{ width: 64, height: 64, background: 'var(--accent-bg)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)' }}>
-                    <PulseSquareRegular fontSize={28} />
+                    <ChartMultipleRegular fontSize={28} />
                   </div>
                 </div>
               </div>
@@ -360,10 +412,10 @@ export default function Dashboard() {
               {/* Today Summary */}
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '24px' }}>
                 <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <GridRegular fontSize={16} color="var(--accent)" />
+                  <GridDotsRegular fontSize={16} color="var(--accent)" />
                   {isRu ? 'Сводка на сегодня' : 'Bugungi xulosa'}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12 }}>
+                <div className="db-grid-today" style={{ gap: 12 }}>
                   <div>
                     <div style={{ fontSize: 11, color: 'var(--text-4)', textTransform: 'uppercase', marginBottom: 4 }}>{isRu ? 'Организации' : 'Tashkilotlar'}</div>
                     <div style={{ fontSize: 22, fontWeight: 700 }}>{summary.organizations}</div>
@@ -378,7 +430,7 @@ export default function Dashboard() {
                   </div>
                   <div>
                     <div style={{ fontSize: 11, color: 'var(--text-4)', textTransform: 'uppercase', marginBottom: 4 }}>{isRu ? 'Явка' : 'Davomat'}</div>
-                    <div style={{ fontSize: 22, fontWeight: 700, color: attendanceRate > 70 ? '#10b981' : '#f59e0b' }}>{Math.round(attendanceRate)}%</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: attendanceRate > 70 ? 'var(--green)' : 'var(--yellow)' }}>{Math.round(attendanceRate)}%</div>
                   </div>
                   <div>
                     <div style={{ fontSize: 11, color: 'var(--text-4)', textTransform: 'uppercase', marginBottom: 4 }}>{isRu ? 'Опоздания' : 'Kechikish'}</div>
@@ -390,19 +442,19 @@ export default function Dashboard() {
 
             {/* === ROW 2: Stat Cards === */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
-              <StatBox label={isRu ? 'Присутствуют' : 'Kelganlar'} value={summary.present_today} icon={<CheckmarkCircleRegular fontSize={22} />} color="#10b981" sub={`${Math.round(attendanceRate)}% ${isRu ? 'от общего' : 'umumiydan'}`} />
-              <StatBox label={isRu ? 'Отсутствуют' : 'Kelmaganlar'} value={summary.absent_today} icon={<DismissCircleRegular fontSize={22} />} color="#64748b" />
-              <StatBox label={isRu ? 'Опоздали' : 'Kechikkanlar'} value={summary.late_today} icon={<ClockRegular fontSize={22} />} color="#f59e0b" sub={`${Math.round(lateRate)}% ${isRu ? 'от пришедших' : 'kelganlardan'}`} />
-              <StatBox label={isRu ? 'Пользователи' : 'Foydalanuvchilar'} value={summary.users} icon={<PersonRegular fontSize={22} />} color="#0ea5e9" />
-              <StatBox label={isRu ? 'Камеры онлайн' : 'Online kameralar'} value={summary.active_cameras} icon={<CameraRegular fontSize={22} />} color="#8b5cf6" sub={`${Math.round(cameraHealth)}% ${isRu ? 'активны' : 'faol'}`} />
+              <StatBox label={isRu ? 'Присутствуют' : 'Kelganlar'} value={summary.present_today} icon={<CheckmarkCircleRegular fontSize={22} />} color="var(--green)" bg="var(--green-bg)" border="var(--green-bd)" sub={`${Math.round(attendanceRate)}% ${isRu ? 'от общего' : 'umumiydan'}`} />
+              <StatBox label={isRu ? 'Отсутствуют' : 'Kelmaganlar'} value={summary.absent_today} icon={<DismissCircleRegular fontSize={22} />} color="var(--gray)" bg="var(--gray-bg)" border="var(--gray-bd)" />
+              <StatBox label={isRu ? 'Опоздали' : 'Kechikkanlar'} value={summary.late_today} icon={<ClockRegular fontSize={22} />} color="var(--yellow)" bg="var(--yellow-bg)" border="var(--yellow-bd)" sub={`${Math.round(lateRate)}% ${isRu ? 'от пришедших' : 'kelganlardan'}`} />
+              <StatBox label={isRu ? 'Пользователи' : 'Foydalanuvchilar'} value={summary.users} icon={<PersonRegular fontSize={22} />} color="var(--accent)" bg="var(--accent-bg)" border="var(--accent-bd)" />
+              <StatBox label={isRu ? 'Камеры онлайн' : 'Online kameralar'} value={summary.active_cameras} icon={<CameraRegular fontSize={22} />} color="var(--purple)" bg="var(--purple-bg)" border="var(--purple-bd)" sub={`${Math.round(cameraHealth)}% ${isRu ? 'активны' : 'faol'}`} />
             </div>
 
             {/* === ROW 3: Weekly Trend + Recent Events === */}
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20 }}>
+            <div className="db-grid-row3" style={{ gap: 20 }}>
               {/* Weekly Attendance Trend */}
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '24px' }}>
                 <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <ArrowSyncRegular fontSize={16} color="#3b82f6" />
+                  <ArrowSyncRegular fontSize={16} color="var(--accent)" />
                   {isRu ? 'Посещаемость за неделю' : 'Haftalik davomat'}
                 </div>
                 {weeklyTrend.length > 0 ? (
@@ -411,20 +463,20 @@ export default function Dashboard() {
                       <AreaChart data={weeklyTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                         <defs>
                           <linearGradient id="colorPresent" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                            <stop offset="5%" stopColor="var(--green)" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="var(--green)" stopOpacity={0} />
                           </linearGradient>
                           <linearGradient id="colorAbsent" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#ef4444" stopOpacity={0.2} />
-                            <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                            <stop offset="5%" stopColor="var(--red)" stopOpacity={0.2} />
+                            <stop offset="95%" stopColor="var(--red)" stopOpacity={0} />
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
                         <XAxis dataKey="date" stroke="var(--text-4)" fontSize={11} tickLine={false} axisLine={false} />
                         <YAxis stroke="var(--text-4)" fontSize={11} tickLine={false} axisLine={false} />
                         <RechartsTooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} />
-                        <Area type="monotone" dataKey="present" name={isRu ? 'Пришли' : 'Kelgan'} stroke="#10b981" strokeWidth={2} fill="url(#colorPresent)" />
-                        <Area type="monotone" dataKey="absent" name={isRu ? 'Отсутствуют' : 'Kelmagan'} stroke="#ef4444" strokeWidth={2} fill="url(#colorAbsent)" />
+                        <Area type="monotone" dataKey="present" name={isRu ? 'Пришли' : 'Kelgan'} stroke="var(--green)" strokeWidth={2} fill="url(#colorPresent)" />
+                        <Area type="monotone" dataKey="absent" name={isRu ? 'Отсутствуют' : 'Kelmagan'} stroke="var(--red)" strokeWidth={2} fill="url(#colorAbsent)" />
                         <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
                       </AreaChart>
                     </ResponsiveContainer>
@@ -439,7 +491,7 @@ export default function Dashboard() {
               {/* Recent Events */}
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '20px', maxHeight: 360, display: 'flex', flexDirection: 'column' }}>
                 <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <ClockRegular fontSize={16} color="#f59e0b" />
+                  <ClockRegular fontSize={16} color="var(--yellow)" />
                   {isRu ? 'Последние события' : 'Oxirgi hodisalar'}
                 </div>
                 <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -458,7 +510,7 @@ export default function Dashboard() {
             {orgs.length > 0 && (
               <div>
                 <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <BuildingRegular fontSize={16} color="#6366f1" />
+                  <BuildingRegular fontSize={16} color="var(--purple)" />
                   {isRu ? 'Организации' : 'Tashkilotlar'}
                   <span style={{ fontSize: 11, color: 'var(--text-4)', fontWeight: 400 }}>({orgs.length})</span>
                 </div>
@@ -469,7 +521,7 @@ export default function Dashboard() {
             )}
 
             {/* === ROW 5: Charts Section === */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20 }}>
+            <div className="db-grid-row5" style={{ gap: 20 }}>
               
               {/* Attendance Pie */}
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '24px' }}>
@@ -496,24 +548,24 @@ export default function Dashboard() {
               {/* Coefficients */}
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '24px' }}>
                 <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <TargetRegular fontSize={16} color="var(--accent)" />
+                  <GlobeRegular fontSize={16} color="var(--accent)" />
                   {isRu ? 'Коэффициенты' : 'Koeffitsiyentlar'}
                 </div>
-                <ProgressBar label={isRu ? 'Охват посещаемости' : 'Davomat qamrovi'} percent={attendanceRate} color="#10b981" />
-                <ProgressBar label={isRu ? 'Стабильность камер' : 'Kamera barqarorligi'} percent={cameraHealth} color="#3b82f6" />
-                <ProgressBar label={isRu ? 'Активные подписки' : 'Faol obunalar'} percent={subRate} color="#f59e0b" />
+                <ProgressBar label={isRu ? 'Охват посещаемости' : 'Davomat qamrovi'} percent={attendanceRate} color="var(--green)" />
+                <ProgressBar label={isRu ? 'Стабильность камер' : 'Kamera barqarorligi'} percent={cameraHealth} color="var(--accent)" />
+                <ProgressBar label={isRu ? 'Активные подписки' : 'Faol obunalar'} percent={subRate} color="var(--yellow)" />
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 20, textAlign: 'center' }}>
-                  <div style={{ background: 'rgba(16, 185, 129, 0.1)', padding: '10px 6px', borderRadius: 8 }}>
-                    <div style={{ fontSize: 9, textTransform: 'uppercase', color: '#10b981', fontWeight: 600 }}>{isRu ? 'Активные' : 'Faol'}</div>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: '#10b981', marginTop: 2 }}>{activeSub}</div>
+                  <div style={{ background: 'var(--green-bg)', border: '1px solid var(--green-bd)', padding: '10px 6px', borderRadius: 8 }}>
+                    <div style={{ fontSize: 9, textTransform: 'uppercase', color: 'var(--green)', fontWeight: 600 }}>{isRu ? 'Активные' : 'Faol'}</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--green)', marginTop: 2 }}>{activeSub}</div>
                   </div>
-                  <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '10px 6px', borderRadius: 8 }}>
-                    <div style={{ fontSize: 9, textTransform: 'uppercase', color: '#3b82f6', fontWeight: 600 }}>{isRu ? 'Ожидание' : 'Kutilmoqda'}</div>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: '#3b82f6', marginTop: 2 }}>{pendingSub}</div>
+                  <div style={{ background: 'var(--accent-bg)', border: '1px solid var(--accent-bd)', padding: '10px 6px', borderRadius: 8 }}>
+                    <div style={{ fontSize: 9, textTransform: 'uppercase', color: 'var(--accent)', fontWeight: 600 }}>{isRu ? 'Ожидание' : 'Kutilmoqda'}</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--accent)', marginTop: 2 }}>{pendingSub}</div>
                   </div>
-                  <div style={{ background: 'rgba(244, 63, 94, 0.1)', padding: '10px 6px', borderRadius: 8 }}>
-                    <div style={{ fontSize: 9, textTransform: 'uppercase', color: '#f43f5e', fontWeight: 600 }}>{isRu ? 'Истекли' : 'Tugagan'}</div>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: '#f43f5e', marginTop: 2 }}>{expiredSub}</div>
+                  <div style={{ background: 'var(--red-bg)', border: '1px solid var(--red-bd)', padding: '10px 6px', borderRadius: 8 }}>
+                    <div style={{ fontSize: 9, textTransform: 'uppercase', color: 'var(--red)', fontWeight: 600 }}>{isRu ? 'Истекли' : 'Tugagan'}</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--red)', marginTop: 2 }}>{expiredSub}</div>
                   </div>
                 </div>
               </div>
@@ -522,7 +574,7 @@ export default function Dashboard() {
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '24px' }}>
                 <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>{isRu ? 'Поведенческий профиль' : 'Xulqiy profil'}</div>
                 <div style={{ fontSize: 11, color: 'var(--text-4)', marginBottom: 12 }}>
-                  {isRu ? 'На основе дисциплины и покрытия' : 'Intizom va qamrovga asoslangan'}
+                  {isRu ? 'На основе дисциплины and покрытия' : 'Intizom va qamrovga asoslangan'}
                 </div>
                 <div style={{ height: 220, marginLeft: -16, marginRight: -16 }}>
                   <ResponsiveContainer width="100%" height="100%">
@@ -530,7 +582,7 @@ export default function Dashboard() {
                       <PolarGrid stroke="var(--border-3)" />
                       <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-3)', fontSize: 10 }} />
                       <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                      <Radar name="AI" dataKey="A" stroke="#0ea5e9" strokeWidth={2} fill="#0ea5e9" fillOpacity={0.2} />
+                      <Radar name="AI" dataKey="A" stroke="var(--accent)" strokeWidth={2} fill="var(--accent)" fillOpacity={0.2} />
                     </RadarChart>
                   </ResponsiveContainer>
                 </div>
@@ -538,7 +590,7 @@ export default function Dashboard() {
             </div>
 
             {/* === ROW 6: Org Comparison + Camera Load === */}
-            <div style={{ display: 'grid', gridTemplateColumns: orgs.length > 1 ? '3fr 2fr' : '1fr', gap: 20 }}>
+            <div className={orgs.length > 1 ? "db-grid-row6" : "db-grid-row6 single"} style={{ gap: 20 }}>
               {/* Org Comparison Bar Chart */}
               {orgs.length > 1 && orgOverviewData.length > 0 && (
                 <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '24px' }}>
@@ -551,9 +603,9 @@ export default function Dashboard() {
                         <YAxis stroke="var(--text-4)" fontSize={11} tickLine={false} axisLine={false} />
                         <RechartsTooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} />
                         <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-                        <Bar dataKey="employees" name={isRu ? 'Сотрудники' : 'Xodimlar'} fill="#0284c7" radius={[4,4,0,0]} />
-                        <Bar dataKey="cameras" name={isRu ? 'Камеры' : 'Kameralar'} fill="#f59e0b" radius={[4,4,0,0]} />
-                        <Bar dataKey="users" name={isRu ? 'Пользователи' : 'Users'} fill="#8b5cf6" radius={[4,4,0,0]} />
+                        <Bar dataKey="employees" name={isRu ? 'Сотрудники' : 'Xodimlar'} fill="var(--dir-in)" radius={[4,4,0,0]} />
+                        <Bar dataKey="cameras" name={isRu ? 'Камеры' : 'Kameralar'} fill="var(--yellow)" radius={[4,4,0,0]} />
+                        <Bar dataKey="users" name={isRu ? 'Пользователи' : 'Users'} fill="var(--purple)" radius={[4,4,0,0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -564,7 +616,7 @@ export default function Dashboard() {
               {cameraLoadData.length > 0 && (
                 <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '24px' }}>
                   <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <CameraRegular fontSize={16} color="#8b5cf6" />
+                    <CameraRegular fontSize={16} color="var(--purple)" />
                     {isRu ? 'Нагрузка камер' : 'Kamera yuklamasi'}
                   </div>
                   <div style={{ height: 260 }}>
@@ -574,7 +626,7 @@ export default function Dashboard() {
                         <XAxis type="number" stroke="var(--text-4)" fontSize={11} tickLine={false} axisLine={false} />
                         <YAxis type="category" dataKey="name" width={90} stroke="var(--text-4)" fontSize={11} tickLine={false} axisLine={false} />
                         <RechartsTooltip cursor={{ fill: 'var(--surface-2)' }} contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} />
-                        <Bar dataKey="value" name={isRu ? 'Сотрудники' : 'Xodimlar'} fill="#8b5cf6" radius={[0,4,4,0]} barSize={20} />
+                        <Bar dataKey="value" name={isRu ? 'Сотрудники' : 'Xodimlar'} fill="var(--purple)" radius={[0,4,4,0]} barSize={20} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>

@@ -78,6 +78,10 @@ export default function Shifts() {
   // Bulk Selection State
   const [selectedIds, setSelectedIds] = useState([])
 
+  // Selected organization info
+  const selectedOrgObj = filterOptions.organizations.find(o => o.id.toString() === scheduleOrg)
+  const selectedOrgName = selectedOrgObj ? selectedOrgObj.name : ''
+
   // Attendance Monitor Status State
   const [monitorStatus, setMonitorStatus] = useState(null)
   const [monitorRunning, setMonitorRunning] = useState(false)
@@ -677,17 +681,107 @@ export default function Shifts() {
   }
 
   return (
-    <div style={{ minHeight: 'calc(100vh - 52px)', background: 'var(--bg)', color: 'var(--text-1)', overflowY: 'auto' }}>
+    <div className="sh-page-wrap" style={{ minHeight: 'calc(100vh - 52px)', background: 'var(--bg)', color: 'var(--text-1)', overflowY: 'auto' }}>
+      <style>{`
+        .sh-page-container {
+          max-width: 1400px;
+          margin: 0 auto;
+          padding: 24px 32px 80px;
+        }
+        .sh-stats-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 16px;
+          margin-bottom: 24px;
+        }
+        .sh-main-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+          gap: 24px;
+          margin-bottom: 24px;
+        }
+        .sh-header-row {
+          padding: 16px 20px;
+          border-bottom: 1px solid var(--border);
+          background: var(--surface-2);
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        .sh-filter-bar {
+          padding: 16px;
+          border-bottom: 1px solid var(--border);
+          display: flex;
+          flex-wrap: wrap;
+          gap: 12px;
+          background: var(--surface-2);
+        }
+        .sh-bulk-bar {
+          padding: 12px 16px;
+          background: var(--bg);
+          border-bottom: 1px solid var(--border);
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 12px;
+          animation: bfToastIn 0.2s ease;
+        }
+        .sh-form-grid-2 {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+        }
+
+        @media (max-width: 900px) {
+          .sh-header-row {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 12px;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .sh-page-container {
+            padding: 16px 16px 60px;
+          }
+          .sh-main-grid {
+            grid-template-columns: 1fr;
+            gap: 16px;
+          }
+        }
+
+        @media (max-width: 600px) {
+          .sh-filter-bar {
+            flex-direction: column;
+            align-items: stretch;
+          }
+          .sh-filter-bar > div {
+            width: 100% !important;
+          }
+          .sh-bulk-bar {
+            flex-direction: column;
+            align-items: stretch;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .sh-form-grid-2 {
+            grid-template-columns: 1fr;
+            gap: 12px;
+          }
+        }
+      `}</style>
       <PageHero
         badge={`✦ ${isRu ? 'Система' : 'Tizim'}`}
         title={isRu ? 'Смены' : 'Smenalar'}
         sub={isRu ? 'Персональные и организационные графики сотрудников и учащихся.' : 'Hodim va o\'quvchilarning shaxsiy, tayyor va tashkilot smenalari nazorati.'}
       />
 
-      <div style={{ maxWidth: 1400, margin: '0 auto', padding: '24px 32px 80px' }}>
+      <div className="sh-page-container">
         
         {/* Stats Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
+        <div className="sh-stats-grid">
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16, boxShadow: '0 2px 4px rgba(0,0,0,0.04)' }}>
             <div style={{ fontSize: 11, color: 'var(--text-4)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
               <PeopleRegular /> {isRu ? 'Всего профилей' : 'Jami profillar'}
@@ -708,11 +802,11 @@ export default function Shifts() {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 24, marginBottom: 24 }}>
+        <div className="sh-main-grid">
           
           {/* Schedule Manager */}
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', background: 'var(--surface-2)', borderTopLeftRadius: 12, borderTopRightRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="sh-header-row" style={{ borderTopLeftRadius: 12, borderTopRightRadius: 12 }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{isRu ? 'Управление сменами' : 'Smenalar boshqaruvi'}</h3>
                 <p style={{ margin: 0, fontSize: 12, color: 'var(--text-4)' }}>{isRu ? 'Графики организации' : 'Tashkilot grafiki'}</p>
@@ -746,6 +840,10 @@ export default function Shifts() {
                       <div>
                         <div style={{ fontWeight: 600, fontSize: 14 }}>{sch.name}</div>
                         <div style={{ fontSize: 12, color: 'var(--text-4)' }}>{sch.start_time} - {sch.end_time} • {sch.is_flexible ? (isRu ? 'Свободный' : 'Erkin') : (isRu ? 'Фиксированный' : 'Qat\'iy')}</div>
+                        <div style={{ fontSize: 11, color: 'var(--accent)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <BuildingRegular style={{ fontSize: 12 }} />
+                          <span>{selectedOrgName || (isRu ? 'Организация' : 'Tashkilot')}</span>
+                        </div>
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
                          <button 
@@ -770,7 +868,7 @@ export default function Shifts() {
 
           {/* Holiday Manager */}
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', background: 'var(--surface-2)', borderTopLeftRadius: 12, borderTopRightRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="sh-header-row" style={{ borderTopLeftRadius: 12, borderTopRightRadius: 12 }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{isRu ? 'Праздники и выходные' : 'Dam olish kunlari'}</h3>
                 
@@ -926,8 +1024,8 @@ export default function Shifts() {
 
         {/* Employee Table */}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12 }}>
-           <div style={{ padding: 16, borderBottom: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', gap: 12, background: 'var(--surface-2)', borderTopLeftRadius: 12, borderTopRightRadius: 12 }}>
-              <div style={{ flex: '1 1 200px', display: 'flex', alignItems: 'center', background: 'var(--bg)', border: '1px solid var(--border-2)', borderRadius: 8, padding: '0 12px' }}>
+            <div className="sh-filter-bar" style={{ borderTopLeftRadius: 12, borderTopRightRadius: 12 }}>
+               <div style={{ flex: '1 1 200px', display: 'flex', alignItems: 'center', background: 'var(--bg)', border: '1px solid var(--border-2)', borderRadius: 8, padding: '0 12px' }}>
                 <SearchRegular style={{ color: 'var(--text-4)' }} />
                 <input 
                   type="text" 
@@ -957,17 +1055,7 @@ export default function Shifts() {
 
            {/* Bulk Action Bar */}
            {selectedIds.length > 0 && (
-             <div style={{ 
-               padding: '12px 16px', 
-               background: 'var(--bg)', 
-               borderBottom: '1px solid var(--border)', 
-               display: 'flex', 
-               justifyContent: 'space-between', 
-               alignItems: 'center',
-               flexWrap: 'wrap',
-               gap: 12,
-               animation: 'bfToastIn 0.2s ease'
-             }}>
+             <div className="sh-bulk-bar">
                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                  <span style={{ fontSize: 13, fontWeight: 700, background: 'rgba(0,120,212,0.1)', color: 'var(--accent)', padding: '6px 10px', borderRadius: 6 }}>
                    {isRu ? `Выбрано: ${selectedIds.length}` : `Tanlangan: ${selectedIds.length}`}
@@ -1094,12 +1182,17 @@ export default function Shifts() {
             marginBottom: 16, fontSize: 12.5, color: 'var(--text-2)'
           }}>
             <BuildingRegular fontSize={18} style={{ color: 'var(--accent)' }} />
-            <span>
-              {isRu 
-                ? 'Вы управляете графиком времени и типом смены в этой форме.' 
-                : 'Tashkilot ichidagi smena nomi, vaqt oralig\'i va grafik turini shu blokda boshqarasiz.'
-              }
-            </span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <span style={{ fontWeight: 600, color: 'var(--text-1)' }}>
+                {isRu ? `Организация: ${selectedOrgName}` : `Tashkilot: ${selectedOrgName}`}
+              </span>
+              <span>
+                {isRu 
+                  ? 'Вы управляете графиком времени и типом смены в этой форме.' 
+                  : 'Tashkilot ichidagi smena nomi, vaqt oralig\'i va grafik turini shu blokda boshqarasiz.'
+                }
+              </span>
+            </div>
           </div>
 
           <form onSubmit={handleSchSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -1119,7 +1212,7 @@ export default function Shifts() {
               />
             </Field>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div className="sh-form-grid-2">
               <Field label={isRu ? 'Время начала' : 'Boshlanish vaqti'} required>
                 <input 
                   type="time" 
@@ -1209,7 +1302,7 @@ export default function Shifts() {
               />
             </Field>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div className="sh-form-grid-2">
               <Field label={isRu ? 'Дата' : 'Sana'} required>
                 <input 
                   type="date" 

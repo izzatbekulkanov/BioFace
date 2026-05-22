@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from 'next-themes'
-import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet'
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { CameraRegular, Wifi4Regular, WifiOffRegular, ArrowSyncRegular } from '@fluentui/react-icons'
 
@@ -12,29 +12,104 @@ const MOCK = [
   { id:4, name:'Sport Zal',    locationUz:'D-blok',           locationRu:'Корпус D',           lat:41.2970, lng:69.2520, status:'online',  lastSeenUz:'30 sekund oldin',  lastSeenRu:'30 секунд назад', ip:'192.168.1.104', firmware:'3.2.0' },
 ]
 
+const parseCoords = (locStr) => {
+  if (!locStr) return null
+  const match = locStr.match(/(-?\d+(?:\.\d+)?)\s*[,;\s]\s*(-?\d+(?:\.\d+)?)/)
+  if (match) {
+    const lat = parseFloat(match[1])
+    const lng = parseFloat(match[2])
+    if (!isNaN(lat) && !isNaN(lng)) {
+      if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+        return { lat, lng }
+      }
+    }
+  }
+  return null
+}
+
+const cleanLocation = (locStr) => {
+  if (!locStr) return ''
+  let cleaned = locStr.replace(/-?\d+(?:\.\d+)?\s*[,;\s]\s*-?\d+(?:\.\d+)?/, '').trim()
+  cleaned = cleaned.replace(/^\((.*)\)$/, '$1').replace(/\(\s*\)/g, '').trim()
+  cleaned = cleaned.replace(/^[,;\s\-]+|[,;\s\-]+$/g, '').trim()
+  return cleaned || locStr
+}
+
 function Dot({ on }) {
-  return <span style={{ width:7, height:7, borderRadius:'50%', background: on ? '#4ade80' : '#f87171', display:'inline-block' }} />
+  return <span style={{ width:7, height:7, borderRadius:'50%', background: on ? 'var(--green)' : 'var(--red)', display:'inline-block' }} />
+}
+
+function MapController({ selectedCoords }) {
+  const map = useMap()
+  useEffect(() => {
+    if (selectedCoords) {
+      map.setView([selectedCoords.lat, selectedCoords.lng], 16, { animate: true, duration: 1 })
+    }
+  }, [selectedCoords, map])
+  return null
 }
 
 export default function MapView({ isLoggedIn = false }) {
   const { t, i18n } = useTranslation()
   const { resolvedTheme } = useTheme()
-  const [devices, setDevices]   = useState(MOCK)
+  const [activeTheme, setActiveTheme] = useState(() => {
+    return localStorage.getItem('bf_theme') || 'dark'
+  })
+  const [devices, setDevices]   = useState([])
   const [selected, setSelected] = useState(null)
   const [spin, setSpin]         = useState(false)
 
+  useEffect(() => {
+    if (resolvedTheme) {
+      setActiveTheme(resolvedTheme)
+    }
+  }, [resolvedTheme])
+
   const lang   = i18n.language
-  const isDark = resolvedTheme === 'dark'
+  const isDark = activeTheme === 'dark'
   const loc = (dev) => lang === 'ru' ? dev.locationRu : dev.locationUz
   const lastSeen = (dev) => lang === 'ru' ? dev.lastSeenRu : dev.lastSeenUz
 
   const refresh = async () => {
-    if (!isLoggedIn) return
     setSpin(true)
     try {
-      const res = await fetch('/api/devices')
-      if (res.ok) { const d = await res.json(); if (d?.items?.length) setDevices(d.items) }
-    } catch {}
+      const url = isLoggedIn ? '/api/cameras' : '/api/public/cameras'
+      const res = await fetch(url)
+      if (res.ok) {
+        const data = await res.json()
+        const cams = Array.isArray(data) ? data : data.items || []
+        const mapped = cams.map(c => {
+          const coords = parseCoords(c.location)
+          let lastSeenTextUz = '—'
+          let lastSeenTextRu = '—'
+          if (c.last_seen_at) {
+            try {
+              const date = new Date(c.last_seen_at)
+              if (!isNaN(date.getTime())) {
+                lastSeenTextUz = date.toLocaleString('uz-UZ', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+                lastSeenTextRu = date.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+              }
+            } catch {}
+          }
+          return {
+            id: c.id,
+            name: c.name,
+            locationUz: cleanLocation(c.location) || 'Tashkilot hududi',
+            locationRu: cleanLocation(c.location) || 'Территория организации',
+            lat: coords ? coords.lat : null,
+            lng: coords ? coords.lng : null,
+            status: c.is_online ? 'online' : 'offline',
+            lastSeenUz: lastSeenTextUz,
+            lastSeenRu: lastSeenTextRu,
+            ip: c.external_ip || '—',
+            firmware: c.firmware_version || '—',
+          }
+        })
+        setDevices(mapped)
+      }
+    } catch (err) {
+      console.error("Failed to load cameras on map:", err)
+    }
     setSpin(false)
   }
   useEffect(() => { refresh() }, [isLoggedIn])
@@ -51,7 +126,7 @@ export default function MapView({ isLoggedIn = false }) {
     <div style={{ display:'flex', height:'calc(100vh - 52px)', background:'var(--bg)' }}>
 
       {/* Sidebar */}
-      <aside style={{ width:300, flexShrink:0, background:'var(--nav)', borderRight:'1px solid var(--border)', display:'flex', flexDirection:'column', overflow:'hidden' }}>
+      <aside style={{ width:300, flexShrink:0, background:'var(--surface)', borderRight:'1px solid var(--border)', display:'flex', flexDirection:'column', overflow:'hidden' }}>
         {/* Header */}
         <div style={{ padding:'16px', borderBottom:'1px solid var(--border)' }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
@@ -118,26 +193,30 @@ export default function MapView({ isLoggedIn = false }) {
       {/* Map */}
       <div style={{ flex:1, position:'relative' }}>
         <MapContainer center={[41.3005, 69.2455]} zoom={14} style={{ width:'100%', height:'100%' }} zoomControl={false}>
-          <TileLayer attribution='&copy; CARTO' url={tileUrl} />
-          {devices.map(dev => (
-            <CircleMarker key={dev.id} center={[dev.lat, dev.lng]}
-              radius={selected === dev.id ? 13 : 9}
-              pathOptions={{ color: dev.status==='online'?'#4ade80':'#f87171', fillColor: dev.status==='online'?'#4ade80':'#f87171', fillOpacity:0.9, weight: selected===dev.id?3:1 }}
-              eventHandlers={{ click: () => setSelected(dev.id === selected ? null : dev.id) }}
-            >
-              <Popup>
-                <div style={{ fontFamily:'system-ui', fontSize:12, minWidth:140 }}>
-                  <strong style={{ display:'block', marginBottom:3 }}>{dev.name}</strong>
-                  <span style={{ color: dev.status==='online'?'#4ade80':'#f87171' }}>● {dev.status}</span><br />
-                  <span style={{ color:'#777' }}>{loc(dev)}</span>
-                </div>
-              </Popup>
-            </CircleMarker>
-          ))}
+          <TileLayer key={isDark ? 'dark' : 'light'} attribution='&copy; CARTO' url={tileUrl} />
+          <MapController selectedCoords={selDev && typeof selDev.lat === 'number' && typeof selDev.lng === 'number' ? { lat: selDev.lat, lng: selDev.lng } : null} />
+          {devices.map(dev => {
+            if (typeof dev.lat !== 'number' || typeof dev.lng !== 'number') return null
+            return (
+              <CircleMarker key={dev.id} center={[dev.lat, dev.lng]}
+                radius={selected === dev.id ? 13 : 9}
+                pathOptions={{ color: dev.status==='online'?'var(--green)':'var(--red)', fillColor: dev.status==='online'?'var(--green)':'var(--red)', fillOpacity:0.9, weight: selected===dev.id?3:1 }}
+                eventHandlers={{ click: () => setSelected(dev.id === selected ? null : dev.id) }}
+              >
+                <Popup>
+                  <div style={{ fontFamily:'system-ui', fontSize:12, minWidth:140 }}>
+                    <strong style={{ display:'block', marginBottom:3 }}>{dev.name}</strong>
+                    <span style={{ color: dev.status==='online'?'var(--green)':'var(--red)' }}>● {dev.status}</span><br />
+                    <span style={{ color:'var(--text-3)' }}>{loc(dev)}</span>
+                  </div>
+                </Popup>
+              </CircleMarker>
+            )
+          })}
         </MapContainer>
 
         {/* Legend */}
-        <div style={{ position:'absolute', bottom:18, right:16, zIndex:1000, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'11px 14px', fontSize:12 }}>
+        <div style={{ position:'absolute', bottom:18, right:16, zIndex:1000, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'11px 14px', fontSize:12, boxShadow:'var(--shadow)' }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:5 }}>
             <Dot on={true} /> <span style={{ color:'var(--text-3)' }}>{t('map.online')} ({online})</span>
           </div>
@@ -149,9 +228,12 @@ export default function MapView({ isLoggedIn = false }) {
 
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .leaflet-container { background: var(--bg) !important; }
         .leaflet-popup-content-wrapper { background: var(--surface) !important; border: 1px solid var(--border) !important; color: var(--text-1) !important; box-shadow: var(--shadow) !important; }
         .leaflet-popup-tip { background: var(--surface) !important; }
         .leaflet-popup-close-button { color: var(--text-3) !important; }
+        .leaflet-control-attribution { background: var(--surface) !important; color: var(--text-3) !important; border-top: 1px solid var(--border) !important; border-left: 1px solid var(--border) !important; font-size: 10px !important; }
+        .leaflet-control-attribution a { color: var(--accent-tx) !important; }
       `}</style>
     </div>
   )

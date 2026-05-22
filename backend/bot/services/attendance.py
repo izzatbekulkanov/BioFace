@@ -100,7 +100,10 @@ def get_employee_attendance_details(employee_id: int, target_date: date | None =
         employee = (
             db.execute(
                 select(Employee)
-                .options(selectinload(Employee.organization))
+                .options(
+                    selectinload(Employee.organization),
+                    selectinload(Employee.schedule)
+                )
                 .where(Employee.id == employee_id)
             )
             .scalar_one_or_none()

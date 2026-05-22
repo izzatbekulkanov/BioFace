@@ -24,7 +24,10 @@ def find_employee_by_id(employee_id: int | str | None):
     with SessionLocal() as db:
         statement = (
             select(Employee)
-            .options(selectinload(Employee.organization))
+            .options(
+                selectinload(Employee.organization),
+                selectinload(Employee.schedule)
+            )
             .where(Employee.id == safe_id)
         )
         return db.execute(statement).scalar_one_or_none()
@@ -39,7 +42,10 @@ def find_employee_by_personal_id(personal_id: str | None):
     with SessionLocal() as db:
         statement = (
             select(Employee)
-            .options(selectinload(Employee.organization))
+            .options(
+                selectinload(Employee.organization),
+                selectinload(Employee.schedule)
+            )
             .where(Employee.personal_id == identifier)
         )
         return db.execute(statement).scalar_one_or_none()

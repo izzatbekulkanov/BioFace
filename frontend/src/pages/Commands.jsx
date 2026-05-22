@@ -171,6 +171,28 @@ export default function Commands() {
 
   return (
     <div style={{ minHeight: 'calc(100vh - 52px)', background: 'var(--bg)', color: 'var(--text-1)', overflowY: 'auto' }}>
+      <style>{`
+        .commands-container {
+          padding: 24px 32px 80px;
+        }
+        @media (max-width: 768px) {
+          .commands-container {
+            padding: 16px 16px 60px !important;
+          }
+          .commands-layout {
+            flex-direction: column !important;
+            gap: 16px !important;
+          }
+          .commands-form-col {
+            max-width: 100% !important;
+            flex: 1 1 auto !important;
+          }
+          .commands-term-col {
+            min-height: 450px !important;
+            flex: 1 1 auto !important;
+          }
+        }
+      `}</style>
       <PageHero
         badge={`✦ ${isRu ? 'Терминал' : 'Terminal'}`}
         title={isRu ? 'Удалённое управление' : 'Kameraga Buyruqlar'}
@@ -183,7 +205,7 @@ export default function Commands() {
         }
       />
 
-      <div style={{ maxWidth: 1400, margin: '0 auto', padding: '24px 32px 80px' }}>
+      <div className="commands-container" style={{ maxWidth: 1400, margin: '0 auto' }}>
         
         {loading && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -248,10 +270,10 @@ export default function Commands() {
               </div>
             </div>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, alignItems: 'stretch' }}>
+            <div className="commands-layout" style={{ display: 'flex', flexWrap: 'wrap', gap: 24, alignItems: 'stretch' }}>
               
               {/* Left Column: Form & Commands */}
-              <div style={{ flex: '1 1 400px', maxWidth: '500px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+              <div className="commands-form-col" style={{ flex: '1 1 400px', maxWidth: '500px', display: 'flex', flexDirection: 'column', gap: 24 }}>
                 <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 2px 4px rgba(0,0,0,0.04), 0 0 2px rgba(0,0,0,0.06)', padding: '24px' }}>
                   
                   <div style={{ marginBottom: 20 }}>
@@ -331,7 +353,7 @@ export default function Commands() {
                     onClick={sendCommand} 
                     disabled={!canSend || sending}
                     style={{ 
-                      width: '100%', padding: '12px', borderRadius: 8, background: 'var(--accent)', color: '#fff', 
+                       width: '100%', padding: '12px', borderRadius: 8, background: 'var(--accent)', color: '#fff', 
                       fontSize: 14, fontWeight: 600, border: 'none', marginTop: 24, cursor: canSend && !sending ? 'pointer' : 'not-allowed',
                       opacity: canSend && !sending ? 1 : 0.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
                     }}
@@ -344,7 +366,7 @@ export default function Commands() {
               </div>
 
               {/* Right Column: Terminal */}
-              <div style={{ flex: '2 1 600px', display: 'flex', flexDirection: 'column', height: '100%', minHeight: 600 }}>
+              <div className="commands-term-col" style={{ flex: '2 1 600px', display: 'flex', flexDirection: 'column', height: '100%', minHeight: 600 }}>
                 <div style={{ 
                   background: '#020617', border: '1px solid var(--border)', borderRadius: 8, 
                   display: 'flex', flexDirection: 'column', height: '100%', minHeight: 600, boxShadow: '0 4px 6px rgba(0,0,0,0.1)'

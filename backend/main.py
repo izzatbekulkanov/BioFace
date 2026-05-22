@@ -43,6 +43,7 @@ PUBLIC_PATH_PREFIXES = (
     "/auth/google/",
     "/auth/callback",
     "/api/set_language",
+    "/api/public/",      # Public endpoints (e.g. /api/public/cameras)
     "/docs",
     "/redoc",
     "/openapi.json",
@@ -61,6 +62,13 @@ PUBLIC_PATHS = frozenset({
 AUTH_PERMISSION_EXEMPT_PATHS = frozenset({
     "/api/system-monitor/navbar-status",
 })
+
+# Prefix-based exemption: login qilgan har qanday foydalanuvchi kira oladi
+AUTH_PERMISSION_EXEMPT_PREFIXES = (
+    "/api/organizations",   # Barcha rollar uchun tashkilot ro'yxati (filter uchun kerak)
+    "/api/auth/",           # Auth endpointlari
+    "/api/profile/",        # Profil endpointlari
+)
 
 
 # ─── LOG YOZISH YORDAMCHISI (background thread'da) ──────────────────────────
@@ -177,7 +185,7 @@ async def require_auth(request, call_next):
             auth_user["menu_permissions"] = menu_permissions
             request.session["auth_user"] = auth_user
 
-        if path not in AUTH_PERMISSION_EXEMPT_PATHS:
+        if path not in AUTH_PERMISSION_EXEMPT_PATHS and not any(path.startswith(p) for p in AUTH_PERMISSION_EXEMPT_PREFIXES):
             required_menu_key = resolve_menu_key_for_path(path)
             if required_menu_key and not user_has_menu_access(menu_permissions, required_menu_key):
                 if path.startswith("/api/"):

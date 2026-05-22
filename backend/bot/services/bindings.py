@@ -24,7 +24,10 @@ def get_binding(telegram_user_id: int | str | None):
     with SessionLocal() as db:
         statement = (
             select(TelegramUserBinding)
-            .options(selectinload(TelegramUserBinding.employee).selectinload(Employee.organization))
+            .options(
+                selectinload(TelegramUserBinding.employee).selectinload(Employee.organization),
+                selectinload(TelegramUserBinding.employee).selectinload(Employee.schedule)
+            )
             .where(TelegramUserBinding.telegram_user_id == user_id)
         )
         return db.execute(statement).scalar_one_or_none()

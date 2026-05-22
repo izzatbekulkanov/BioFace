@@ -216,8 +216,31 @@ export default function IsupServer() {
           </button>
         }
       />
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+        .isup-container {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 24px 32px 80px;
+        }
+        .modal-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+        }
+        @media (max-width: 768px) {
+          .isup-container {
+            padding: 16px 16px 60px !important;
+          }
+        }
+        @media (max-width: 600px) {
+          .modal-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
 
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '24px 32px 80px' }}>
+      <div className="isup-container">
         {error && (
           <div style={{ marginBottom: 20, padding: 14, background: 'var(--red-bg)', color: 'var(--red)', borderRadius: 8, border: '1px solid var(--red-bd)' }}>
             {error}
@@ -651,7 +674,7 @@ function AddDeviceModal({ target, onClose, onSaved, isRu }) {
               </div>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="modal-grid">
               <Field label={isRu ? 'Имя' : 'Nomi'} required>
                 <input value={form.name} onChange={setField('name')} style={inp} />
               </Field>

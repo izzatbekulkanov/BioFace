@@ -398,6 +398,42 @@ export default function UserForm() {
 
   return (
     <div style={{ minHeight: 'calc(100vh - 52px)', background: 'var(--bg)', color: 'var(--text-1)', overflowY: 'auto' }}>
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+        .usr-form-container {
+          max-width: 1100px;
+          margin: 0 auto;
+          padding: 24px 32px 80px;
+        }
+        .usr-form-layout {
+          display: grid;
+          grid-template-columns: 1fr 320px;
+          gap: 20px;
+        }
+        .usr-grid-2 {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          gap: 12px;
+        }
+        .usr-grid-3 {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 12px;
+        }
+        @media (max-width: 900px) {
+          .usr-form-layout {
+            grid-template-columns: 1fr;
+          }
+        }
+        @media (max-width: 600px) {
+          .usr-form-container {
+            padding: 16px 16px 60px !important;
+          }
+          .usr-grid-2, .usr-grid-3 {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
       <PageHero
         badge={isEdit ? (isRu ? '✦ Редактирование' : '✦ Tahrirlash') : (isRu ? '✦ Новый пользователь' : '✦ Yangi foydalanuvchi')}
         title={isEdit ? (isRu ? 'Редактировать пользователя' : 'Foydalanuvchini tahrirlash') : (isRu ? 'Новый пользователь' : 'Yangi foydalanuvchi')}
@@ -422,12 +458,12 @@ export default function UserForm() {
         }
       />
 
-      <form onSubmit={onSubmit} style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 32px 80px' }}>
+      <form onSubmit={onSubmit} className="usr-form-container">
         {error && (
           <div style={errBannerStyle}>{error}</div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20 }}>
+        <div className="usr-form-layout">
           {/* MAIN COLUMN */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {/* 1. Shaxsiy ma'lumotlar */}
@@ -435,7 +471,7 @@ export default function UserForm() {
               kicker={isRu ? 'Личные данные' : "Shaxsiy ma'lumotlar"}
               title={isRu ? 'Имя пользователя' : "Foydalanuvchi ma'lumotlari"}
             >
-              <div style={grid3}>
+              <div className="usr-grid-3">
                 <Field label={isRu ? 'Имя' : 'Ism'} required>
                   <input value={form.first_name} onChange={setField('first_name')} style={inpStyle} />
                 </Field>
@@ -453,7 +489,7 @@ export default function UserForm() {
               kicker={isRu ? 'Учётные данные' : "Kirish ma'lumotlari"}
               title={isRu ? 'Логин, пароль' : 'Login, parol'}
             >
-              <div style={grid3}>
+              <div className="usr-grid-3">
                 <Field label="Username" required hint={
                   usernameStatus.message ||
                   (isRu ? 'Должно быть уникальным в системе' : "Tizimda yagona bo'lishi kerak")
@@ -526,7 +562,7 @@ export default function UserForm() {
               kicker={isRu ? 'Контакты и роль' : 'Kontakt va rol'}
               title={isRu ? 'Email, роль, статус' : 'Email, rol, status'}
             >
-              <div style={grid2}>
+              <div className="usr-grid-2">
                 <Field label="Email" required>
                   <input type="email" value={form.email} onChange={setField('email')} style={inpStyle} placeholder="user@example.com" />
                 </Field>

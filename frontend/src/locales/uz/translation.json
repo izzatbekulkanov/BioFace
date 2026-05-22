@@ -106,6 +106,11 @@
       "speed": "Tanish tezligi",
       "profiles": "Profil",
       "monitoring": "Monitoring"
+    },
+    "video": {
+      "demo": "Demo video",
+      "badge": "Tizim namoyishi",
+      "skip": "O'tkazib yuborish"
     }
   },
   "contact": {

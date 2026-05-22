@@ -368,12 +368,26 @@ export default function OrganizationDetail() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: 'calc(100vh - 52px)', background: 'var(--bg)', color: 'var(--text-1)', padding: 32 }}>
+      <div style={{ minHeight: 'calc(100vh - 52px)', background: 'var(--bg)', color: 'var(--text-1)', padding: '24px 16px' }}>
         <Skeleton width="100%" height={120} style={{ marginBottom: 24 }} />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginTop: 24 }}>
+        <div className="org-catalog-grid" style={{ marginTop: 24 }}>
           <Skeleton.Card />
           <Skeleton.Card />
         </div>
+        <style>{`
+          .org-catalog-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+          }
+          @media (max-width: 768px) {
+            .org-catalog-grid {
+              grid-template-columns: 1fr;
+              gap: 16px;
+            }
+          }
+        `}</style>
       </div>
     )
   }
@@ -391,6 +405,30 @@ export default function OrganizationDetail() {
 
   return (
     <div style={{ minHeight: 'calc(100vh - 52px)', background: 'var(--bg)', color: 'var(--text-1)', overflowY: 'auto' }}>
+      <style>{`
+        .org-container {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 24px 32px 80px;
+          box-sizing: border-box;
+        }
+        .org-catalog-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 24px;
+          margin-bottom: 24px;
+        }
+        @media (max-width: 768px) {
+          .org-container {
+            padding: 16px 16px 60px;
+          }
+          .org-catalog-grid {
+            grid-template-columns: 1fr;
+            gap: 16px;
+          }
+        }
+      `}</style>
+
       <PageHero
         badge={org?.organization_type_label || org?.organization_type}
         title={org?.name}
@@ -412,7 +450,7 @@ export default function OrganizationDetail() {
         }
       />
 
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '24px 32px 80px' }}>
+      <div className="org-container">
         {/* Info row */}
         <div style={{ ...cardStyle, marginBottom: 24, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20 }}>
           <div>
@@ -430,13 +468,13 @@ export default function OrganizationDetail() {
           <div>
             <div style={infoTitleStyle}>{isRu ? 'Статус подписки' : 'Obuna holati'}</div>
             <div style={{ marginTop: 4 }}>
-              <StatusPill status={org?.subscription_status} isRu={isRu} />
+               <StatusPill status={org?.subscription_status} isRu={isRu} />
             </div>
           </div>
         </div>
 
         {/* Catalog grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
+        <div className="org-catalog-grid">
           {/* Departments column */}
           <div style={cardStyle}>
             <div style={toolbarStyle}>

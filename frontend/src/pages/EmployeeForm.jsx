@@ -532,6 +532,42 @@ export default function EmployeeForm() {
 
   return (
     <div style={{ minHeight: 'calc(100vh - 52px)', background: 'var(--bg)', color: 'var(--text-1)', overflowY: 'auto' }}>
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+        .emp-form-container {
+          max-width: 1100px;
+          margin: 0 auto;
+          padding: 24px 32px 80px;
+        }
+        .emp-form-layout {
+          display: grid;
+          grid-template-columns: 1fr 320px;
+          gap: 20px;
+        }
+        .emp-grid-2 {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          gap: 12px;
+        }
+        .emp-grid-3 {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 12px;
+        }
+        @media (max-width: 900px) {
+          .emp-form-layout {
+            grid-template-columns: 1fr;
+          }
+        }
+        @media (max-width: 600px) {
+          .emp-form-container {
+            padding: 16px 16px 60px !important;
+          }
+          .emp-grid-2, .emp-grid-3 {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
       <PageHero
         badge={isEdit ? (isRu ? '✦ Редактирование' : '✦ Tahrirlash') : (isRu ? '✦ Новый сотрудник' : '✦ Yangi xodim')}
         title={isEdit
@@ -549,10 +585,10 @@ export default function EmployeeForm() {
         }
       />
 
-      <form onSubmit={onSubmit} style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 32px 80px' }}>
+      <form onSubmit={onSubmit} className="emp-form-container">
         {error && <div style={errBannerStyle}>{error}</div>}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20 }}>
+        <div className="emp-form-layout">
           {/* MAIN COLUMN */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {/* 1. Shaxsiy ma'lumotlar */}
@@ -560,7 +596,7 @@ export default function EmployeeForm() {
               kicker={isRu ? 'Личные данные' : "Shaxsiy ma'lumotlar"}
               title={isRu ? 'ФИО и ID' : "F.I.SH va ID"}
             >
-              <div style={grid3}>
+              <div className="emp-grid-3">
                 <Field label={isRu ? 'Имя' : 'Ism'} required>
                   <input value={form.first_name} onChange={setField('first_name')} style={inpStyle} />
                 </Field>
@@ -572,7 +608,7 @@ export default function EmployeeForm() {
                 </Field>
               </div>
 
-              <div style={{ ...grid2, marginTop: 12 }}>
+              <div className="emp-grid-2" style={{ marginTop: 12 }}>
                 <Field
                   label={isRu ? 'Личный ID (для камеры)' : 'Shaxsiy ID (kamera uchun)'}
                   hint={
@@ -599,7 +635,7 @@ export default function EmployeeForm() {
                       />
                       <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)' }}>
                         {pidStatus.checking
-                          ? <ArrowSyncRegular fontSize={14} style={{ animation: 'spin 1s linear infinite', color: 'var(--accent)' }} />
+                           ? <ArrowSyncRegular fontSize={14} style={{ animation: 'spin 1s linear infinite', color: 'var(--accent)' }} />
                           : pidStatus.available === true
                             ? <CheckmarkCircleRegular fontSize={16} style={{ color: '#10b981' }} />
                             : pidStatus.available === false
@@ -621,7 +657,7 @@ export default function EmployeeForm() {
                 </Field>
               </div>
 
-              <div style={{ ...grid2, marginTop: 12 }}>
+              <div className="emp-grid-2" style={{ marginTop: 12 }}>
                 <Field label={isRu ? 'Дата рождения' : "Tug'ilgan sana"}>
                   <input type="date" value={form.birth_date} onChange={setField('birth_date')} style={inpStyle} />
                 </Field>
@@ -640,7 +676,7 @@ export default function EmployeeForm() {
               kicker={isRu ? 'Контакты и адрес' : 'Aloqa va manzil'}
               title={isRu ? 'Контактная информация' : "Aloqa va manzil ma'lumotlari"}
             >
-              <div style={grid2}>
+              <div className="emp-grid-2">
                 <Field label={isRu ? 'Номер телефона' : 'Telefon raqami'}>
                   <input value={form.phone} onChange={setField('phone')} placeholder="+998901234567" style={inpStyle} />
                 </Field>
@@ -648,7 +684,7 @@ export default function EmployeeForm() {
                   <input value={form.parent_phone} onChange={setField('parent_phone')} placeholder="+998907654321" style={inpStyle} />
                 </Field>
               </div>
-              <div style={{ ...grid3, marginTop: 12 }}>
+              <div className="emp-grid-3" style={{ marginTop: 12 }}>
                 <Field label={isRu ? 'Область' : 'Viloyat'}>
                   <input value={form.region} onChange={setField('region')} placeholder={isRu ? 'Ташкентская область' : 'Toshkent viloyati'} style={inpStyle} />
                 </Field>
@@ -666,7 +702,7 @@ export default function EmployeeForm() {
               kicker={isRu ? 'Рабочее место' : 'Ish joyi'}
               title={isRu ? 'Организация, отдел, должность' : "Tashkilot, bo'lim, lavozim"}
             >
-              <div style={grid2}>
+              <div className="emp-grid-2">
                 <Field label={isRu ? 'Организация' : 'Tashkilot'}>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                     <select value={form.organization_id} onChange={handleOrgChange} style={inpStyle}>
@@ -715,7 +751,7 @@ export default function EmployeeForm() {
               title={isRu ? 'Индивидуальное время' : 'Individual ish vaqti'}
               hint={isRu ? 'Если оставите пустым — будет использован график организации' : "Bo'sh qoldirsangiz tashkilot smenasi ishlatiladi"}
             >
-              <div style={grid2}>
+              <div className="emp-grid-2">
                 <Field label={isRu ? 'Начало' : 'Boshlanish'}>
                   <input type="time" value={form.start_time || ''} onChange={setField('start_time')} style={inpStyle} />
                 </Field>

@@ -249,7 +249,54 @@ export default function EmployeeDetail() {
         }
       />
 
-      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '24px 32px 80px' }}>
+      <div className="emp-detail-container" style={{ maxWidth: 1280, margin: '0 auto', padding: '24px 32px 80px' }}>
+        <style>{`
+          .emp-main-layout {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 18px;
+            margin-bottom: 18px;
+          }
+          .calendar-cell {
+            aspect-ratio: 1 / 1;
+            min-height: 64px;
+            padding: 6px 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: space-between;
+            text-align: left;
+            transition: all 0.15s;
+          }
+          @media (max-width: 900px) {
+            .emp-main-layout {
+              grid-template-columns: 1fr;
+            }
+          }
+          @media (max-width: 600px) {
+            .emp-detail-container {
+              padding: 16px 16px 60px !important;
+            }
+            .calendar-cell {
+              min-height: 44px !important;
+              padding: 4px 6px !important;
+            }
+            .calendar-cell span {
+              font-size: 11px !important;
+            }
+          }
+          @media (max-width: 480px) {
+            .calendar-cell {
+              min-height: 36px !important;
+              padding: 3px 4px !important;
+            }
+            .calendar-cell span {
+              font-size: 9px !important;
+            }
+          }
+        `}</style>
         {/* Stat kartalari */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 18 }}>
           <StatCard
@@ -286,7 +333,7 @@ export default function EmployeeDetail() {
           />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 18, marginBottom: 18 }}>
+        <div className="emp-main-layout">
           {/* Asosiy ma'lumotlar (chap) */}
           <div style={cardStyle}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, paddingBottom: 14, borderBottom: '1px solid var(--border)' }}>
@@ -612,21 +659,11 @@ function CalendarPanel({ data, loading, month, onMonthChange, isRu }) {
                   key={d.day}
                   type="button"
                   onClick={() => setSelectedDay(isSel ? null : d)}
+                  className="calendar-cell"
                   style={{
-                    aspectRatio: '1 / 1',
-                    minHeight: 64,
-                    padding: '6px 8px',
                     background: tone.bg,
                     border: `1.5px solid ${isSel ? 'var(--accent)' : tone.bd}`,
-                    borderRadius: 8,
                     color: tone.fg,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'flex-start',
-                    justifyContent: 'space-between',
-                    textAlign: 'left',
-                    transition: 'all 0.15s',
                   }}
                   title={d.date}
                 >

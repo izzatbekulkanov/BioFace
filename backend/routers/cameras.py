@@ -1120,6 +1120,64 @@ def list_cameras(request: Request, db: Session = Depends(get_db)):
     return result
 
 
+# ── GET /api/public/cameras — ommaviy kameralar ro'yxati (xavfsiz) ───
+@router.get("/api/public/cameras")
+def list_public_cameras(request: Request, db: Session = Depends(get_db)):
+    cams = db.query(Device).order_by(Device.id).all()
+    if not cams:
+        return []
+
+    now = now_tashkent()
+    isup_map, source = _get_live_isup_map()
+    isup_available = source != "unavailable"
+    online_threshold = timedelta(minutes=10)
+
+    result = []
+    for c in cams:
+        isup_online = None
+        info = _find_live_device_for_camera(c, isup_map) if isup_available else None
+        if info is not None:
+            isup_online = _is_live_device_online(info)
+            live_device_id = _pick_first_nonempty(info, ("device_id",))
+            live_model = _pick_first_nonempty(info, ("device_model", "model", "model_name", "product", "deviceType"))
+            live_serial = _pick_first_nonempty(info, ("serial", "serial_no", "serialNumber", "device_serial"))
+            live_firmware = _pick_first_nonempty(info, ("firmware_version", "firmware"))
+            live_external_ip = _pick_first_nonempty(info, ("remote_ip", "ip"))
+            live_protocol_version = _pick_first_nonempty(info, ("isup_version", "protocol_version"))
+            if live_device_id and c.isup_device_id != live_device_id:
+                c.isup_device_id = live_device_id
+            resolved_model = _prefer_persistent_model(c.model, live_model)
+            if resolved_model and c.model != resolved_model:
+                c.model = resolved_model
+            if live_serial and c.serial_number != live_serial:
+                c.serial_number = live_serial
+            if live_firmware and c.firmware_version != live_firmware:
+                c.firmware_version = live_firmware
+            if live_external_ip and c.external_ip != live_external_ip:
+                c.external_ip = live_external_ip
+            if live_protocol_version and c.protocol_version != live_protocol_version:
+                c.protocol_version = live_protocol_version
+        elif isup_available and c.isup_device_id:
+            isup_online = False
+
+        if isup_online is None:
+            dynamic_online = bool(c.last_seen_at and (now - c.last_seen_at) <= online_threshold)
+        else:
+            dynamic_online = isup_online
+        if c.is_online != dynamic_online:
+            c.is_online = dynamic_online
+
+        result.append({
+            "id": c.id,
+            "name": c.name,
+            "location": c.location,
+            "is_online": dynamic_online,
+            "last_seen_at": c.last_seen_at.isoformat() if c.last_seen_at else None,
+        })
+    db.commit()
+    return result
+
+
 # ── GET /api/cameras/{id} — bitta kamera ─────────────────
 @router.get("/api/cameras/{cam_id}")
 def get_camera(request: Request, cam_id: int, db: Session = Depends(get_db)):
@@ -3012,6 +3070,7 @@ def get_events(
 
 @router.get("/api/attendance")
 def get_attendance(
+    request: Request,
     limit: int = 300,
     organization_id: Optional[int] = None,
     camera_id: Optional[int] = None,
@@ -3021,12 +3080,45 @@ def get_attendance(
     db: Session = Depends(get_db),
 ):
     safe_limit = max(1, min(int(limit), 3000))
+
+    # Session-based org scope — foydalanuvchi faqat o'z tashkilotini ko'ra oladi
+    scope = _resolve_camera_org_scope(request, db)
+    allowed_org_ids = list(scope.get("allowed_org_ids") or [])
+    is_super = bool(scope.get("is_super_admin"))
+
     query = db.query(AttendanceLog)
+
     if today_only:
         day_start, day_end = _today_utc_range()
         query = query.filter(AttendanceLog.timestamp >= day_start, AttendanceLog.timestamp < day_end)
+
+    # Agar super_admin emas bo'lsa — faqat allowed_org_ids bo'yicha filter
+    if not is_super and allowed_org_ids:
+        query = (
+            query
+            .outerjoin(Device, Device.id == AttendanceLog.device_id)
+            .outerjoin(Employee, Employee.id == AttendanceLog.employee_id)
+            .filter(
+                or_(
+                    Device.organization_id.in_(allowed_org_ids),
+                    Employee.organization_id.in_(allowed_org_ids),
+                )
+            )
+        )
+    elif not is_super and not allowed_org_ids:
+        # Biriktirilgan tashkilot yo'q — bo'sh ro'yxat
+        return {"ok": True, "count": 0, "total": 0, "known": 0, "unknown": 0, "items": [], "last_id": 0}
+
+    # Qo'shimcha filtr: specific tashkilot yoki kamera
     if organization_id is not None:
-        query = query.outerjoin(AttendanceLog.device).outerjoin(AttendanceLog.employee).filter(
+        if is_super:
+            # Super_admin uchun join qo'shamiz (yuqorida yo'q)
+            query = (
+                query
+                .outerjoin(Device, Device.id == AttendanceLog.device_id)
+                .outerjoin(Employee, Employee.id == AttendanceLog.employee_id)
+            )
+        query = query.filter(
             or_(
                 Device.organization_id == organization_id,
                 Employee.organization_id == organization_id,
@@ -3034,6 +3126,7 @@ def get_attendance(
         )
     if camera_id is not None:
         query = query.filter(AttendanceLog.device_id == camera_id)
+
     # Calculate grand totals for this filter (excluding pagination)
     total = query.count()
     known = query.filter(AttendanceLog.employee_id.isnot(None)).count()

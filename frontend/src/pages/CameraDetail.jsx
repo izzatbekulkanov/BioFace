@@ -214,6 +214,41 @@ export default function CameraDetail() {
 
   if (loading) return (
     <div style={{ minHeight: 'calc(100vh - 52px)', background: 'var(--bg)', color: 'var(--text-1)', overflowY: 'auto' }}>
+      <style>{`
+        @keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.4 } }
+        @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+        .cam-main-layout {
+          display: grid;
+          grid-template-columns: 1fr 320px;
+          gap: 24px;
+        }
+        .cam-grid-2 {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+        }
+        .cam-grid-3 {
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
+          gap: 16px;
+        }
+        @media (max-width: 900px) {
+          .cam-main-layout {
+            grid-template-columns: 1fr;
+          }
+        }
+        @media (max-width: 600px) {
+          .cam-grid-2, .cam-grid-3 {
+            grid-template-columns: 1fr;
+          }
+          .cam-grid-2 > div, .cam-grid-3 > div {
+            grid-column: span 1 !important;
+          }
+          .cam-main-layout {
+            padding: 16px 16px 60px !important;
+          }
+        }
+      `}</style>
       <PageHero
         badge={<div style={{ width: 120, height: 20, background: 'rgba(255,255,255,0.1)', borderRadius: 4, animation: 'pulse 1.5s infinite' }} />}
         title={<div style={{ width: 250, height: 32, background: 'rgba(255,255,255,0.1)', borderRadius: 6, animation: 'pulse 1.5s infinite' }} />}
@@ -221,14 +256,14 @@ export default function CameraDetail() {
         backPath="/devices"
       />
 
-      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '28px 32px 80px', display: 'grid', gridTemplateColumns: '1fr 320px', gap: 24 }}>
+      <div className="cam-main-layout" style={{ maxWidth: 1280, margin: '0 auto', padding: '28px 32px 80px' }}>
         {/* Chap: Formalar Skeleto */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           {[1, 2, 3].map(i => (
             <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '24px 28px' }}>
               <div style={{ width: 140, height: 12, background: 'var(--border)', borderRadius: 4, marginBottom: 10, animation: 'pulse 1.5s infinite' }} />
               <div style={{ width: 220, height: 20, background: 'var(--border)', borderRadius: 4, marginBottom: 24, animation: 'pulse 1.5s infinite' }} />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div className="cam-grid-2">
                 {[1, 2, 3, 4].map(j => (
                   <div key={j}>
                     <div style={{ width: 90, height: 12, background: 'var(--border-2)', borderRadius: 4, marginBottom: 8, animation: 'pulse 1.5s infinite' }} />
@@ -268,16 +303,47 @@ export default function CameraDetail() {
           </div>
         </div>
       </div>
-      <style>{`@keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.4 } }`}</style>
     </div>
   )
 
   const online = !!cam?.is_online
-  const grid2 = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }
-  const grid3 = { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }
 
   return (
     <div style={{ minHeight: 'calc(100vh - 52px)', background: 'var(--bg)', color: 'var(--text-1)', overflowY: 'auto' }}>
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+        .cam-main-layout {
+          display: grid;
+          grid-template-columns: 1fr 320px;
+          gap: 24px;
+        }
+        .cam-grid-2 {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+        }
+        .cam-grid-3 {
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
+          gap: 16px;
+        }
+        @media (max-width: 900px) {
+          .cam-main-layout {
+            grid-template-columns: 1fr;
+          }
+        }
+        @media (max-width: 600px) {
+          .cam-grid-2, .cam-grid-3 {
+            grid-template-columns: 1fr;
+          }
+          .cam-grid-2 > div, .cam-grid-3 > div {
+            grid-column: span 1 !important;
+          }
+          .cam-main-layout {
+            padding: 16px 16px 60px !important;
+          }
+        }
+      `}</style>
 
       <PageHero
         badge={isRu ? "✦ Редактирование камеры" : "✦ Kamerani Tahrirlash"}
@@ -308,7 +374,7 @@ export default function CameraDetail() {
         }
       />
 
-      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '28px 32px 80px', display: 'grid', gridTemplateColumns: '1fr 320px', gap: 24 }}>
+      <div className="cam-main-layout" style={{ maxWidth: 1280, margin: '0 auto', padding: '28px 32px 80px' }}>
 
         {/* LEFT: Form */}
         <div>
@@ -334,7 +400,7 @@ export default function CameraDetail() {
                 {isRu ? 'Профиль камеры' : 'Kamera profili'}
               </div>
             </div>
-            <div style={grid2}>
+            <div className="cam-grid-2">
               <Field label={isRu ? "Имя камеры *" : "Kamera Nomi *"} span={2}>
                 <input style={inp} value={f.name} onChange={update('name')} placeholder={isRu ? "Например: Главный вход" : "Masalan: Asosiy kirish"} />
               </Field>
@@ -392,7 +458,7 @@ export default function CameraDetail() {
                 {isRu ? 'Настройки связи' : 'Aloqa sozlamalari'}
               </div>
             </div>
-            <div style={grid2}>
+            <div className="cam-grid-2">
               <Field label={isRu ? "ISUP Device ID (Необязательно)" : "ISUP Device ID (Ixtiyoriy)"}>
                 <input style={{ ...inp, fontFamily: 'monospace', textTransform: 'uppercase' }} value={f.isup_device_id} onChange={update('isup_device_id')} placeholder="CAM1111" />
               </Field>
@@ -424,7 +490,7 @@ export default function CameraDetail() {
                 {isRu ? 'Данные, обновляемые через синхронизацию' : "Sync orqali yangilanadigan ma'lumotlar"}
               </div>
             </div>
-            <div style={grid3}>
+            <div className="cam-grid-3">
               <Field label={isRu ? "Прошивка" : "Firmware"}>
                 <input style={inpRO} readOnly value={cam?.firmware_version || ''} />
               </Field>
@@ -485,7 +551,7 @@ export default function CameraDetail() {
                 </div>
               )
             })}
-            <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <div className="cam-grid-2" style={{ marginTop: 12, gap: 8 }}>
               {[
                 { lbl: isRu ? 'Сегодня' : 'Bugungi', val: cam?.events_today || 0, color: 'var(--accent)' },
                 { lbl: isRu ? 'Статус онлайн' : 'Online holati', val: online ? 'Online' : 'Offline', color: online ? 'var(--green)' : 'var(--red)' },

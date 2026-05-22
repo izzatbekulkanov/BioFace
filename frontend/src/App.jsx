@@ -29,6 +29,7 @@ import Organizations  from './pages/Organizations'
 import OrganizationDetail from './pages/OrganizationDetail'
 import OrganizationForm from './pages/OrganizationForm'
 import Profile          from './pages/Profile'
+import ContactMessages  from './pages/ContactMessages'
 import { ConfirmProvider } from './components/ConfirmDialog'
 import { ToastProvider } from './components/Toaster'
 
@@ -52,11 +53,19 @@ export default function App() {
 
   const handleLogin = () => {
     localStorage.setItem('bf_logged_in', 'true')
+    // Dashboard cache ni tozalaymiz — yangi foydalanuvchi eski datani ko'rmasin
+    localStorage.removeItem('bf_dashboard_metrics')
+    localStorage.removeItem('bf_dashboard_trend')
+    localStorage.removeItem('bf_dashboard_events')
     setLoggedIn(true)
   }
 
   const handleLogout = () => {
     localStorage.removeItem('bf_logged_in')
+    // Dashboard cache ni tozalaymiz — keyingi foydalanuvchi eski datani ko'rmasin
+    localStorage.removeItem('bf_dashboard_metrics')
+    localStorage.removeItem('bf_dashboard_trend')
+    localStorage.removeItem('bf_dashboard_events')
     setLoggedIn(false)
   }
 
@@ -89,6 +98,7 @@ export default function App() {
               <Route path="/devices/:id" element={isLoggedIn ? <CameraDetail /> : <Navigate to="/login" replace />} />
               <Route path="/commands"        element={isLoggedIn ? <Commands />  : <Navigate to="/login" replace />} />
               <Route path="/settings"        element={isLoggedIn ? <Settings />     : <Navigate to="/login" replace />} />
+              <Route path="/settings/messages" element={isLoggedIn ? <ContactMessages /> : <Navigate to="/login" replace />} />
               <Route path="/settings/isup"   element={isLoggedIn ? <IsupServer />   : <Navigate to="/login" replace />} />
               <Route path="/settings/redis"  element={isLoggedIn ? <RedisMonitor /> : <Navigate to="/login" replace />} />
               <Route path="/settings/api"    element={isLoggedIn ? <ApiHelper />    : <Navigate to="/login" replace />} />

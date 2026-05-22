@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import {
   SettingsRegular, PlugConnectedRegular, SaveRegular,
   ClockRegular, CameraRegular, LockClosedRegular,
-  ArrowSyncRegular, ImageRegular, GlobeRegular, DeleteRegular, DismissRegular
+  ArrowSyncRegular, ImageRegular, GlobeRegular, DeleteRegular, DismissRegular, MailRegular
 } from '@fluentui/react-icons'
 import PageHero from '../components/PageHero'
 import { useToast } from '../components/Toaster'
@@ -255,6 +255,60 @@ export default function Settings() {
   const [isupHost, setIsupHost] = useState('')
   const [webBaseUrl, setWebBaseUrl] = useState('')
 
+  // Contact Info
+  const [contactEmail, setContactEmail] = useState('')
+  const [contactPhone, setContactPhone] = useState('')
+  const [contactAddressUz, setContactAddressUz] = useState('')
+  const [contactAddressRu, setContactAddressRu] = useState('')
+  const [emailFocused, setEmailFocused] = useState(false)
+  const [phoneFocused, setPhoneFocused] = useState(false)
+
+  const handlePhoneChange = (e) => {
+    let val = e.target.value;
+    let digits = val.replace(/\D/g, '');
+    if (digits === '') {
+      setContactPhone('');
+      return;
+    }
+    if (digits === '9' || digits === '99' || digits === '998') {
+      setContactPhone('+' + digits);
+      return;
+    }
+    if (!digits.startsWith('998')) {
+      digits = '998' + digits;
+    }
+    digits = digits.slice(0, 12);
+    let formatted = '+998';
+    if (digits.length > 3) formatted += ' ' + digits.slice(3, 5);
+    if (digits.length > 5) formatted += ' ' + digits.slice(5, 8);
+    if (digits.length > 8) formatted += ' ' + digits.slice(8, 10);
+    if (digits.length > 10) formatted += ' ' + digits.slice(10, 12);
+    setContactPhone(formatted);
+  }
+
+  const handlePhoneFocus = () => {
+    setPhoneFocused(true);
+    if (!contactPhone) {
+      setContactPhone('+998 ');
+    }
+  }
+
+  const handlePhoneBlur = () => {
+    setPhoneFocused(false);
+    if (contactPhone === '+998' || contactPhone === '+998 ' || contactPhone.trim() === '+998') {
+      setContactPhone('');
+    }
+  }
+
+  const DOMAINS = ['gmail.com', 'mail.ru', 'yandex.ru', 'outlook.com', 'yahoo.com', 'bioface.uz']
+  const atIndex = contactEmail.indexOf('@')
+  const showSuggestions = emailFocused && atIndex !== -1 && atIndex > 0
+  const username = atIndex !== -1 ? contactEmail.slice(0, atIndex) : ''
+  const typedDomain = atIndex !== -1 ? contactEmail.slice(atIndex + 1) : ''
+  const suggestions = DOMAINS
+    .filter(d => d.startsWith(typedDomain.toLowerCase()) && d !== typedDomain.toLowerCase())
+    .map(d => `${username}@${d}`)
+
   // Files
   const logoFileRef = useRef(null)
   const faviconFileRef = useRef(null)
@@ -295,6 +349,10 @@ export default function Settings() {
         setEndTime(data.default_end_time || '18:00')
         setIsupHost(data.isup_public_host || '')
         setWebBaseUrl(data.public_web_base_url || '')
+        setContactEmail(data.contact_email || '')
+        setContactPhone(data.contact_phone || '')
+        setContactAddressUz(data.contact_address_uz || '')
+        setContactAddressRu(data.contact_address_ru || '')
 
         setTgEnabled(!!data.telegram_enabled)
         setTgAdminId(data.telegram_admin_chat_id || '')
@@ -364,7 +422,11 @@ export default function Settings() {
         google_oauth_enabled: googleEnabled,
         google_client_id: googleClientId,
         google_client_secret: googleClientSecret,
-        google_redirect_uri: googleRedirectUri
+        google_redirect_uri: googleRedirectUri,
+        contact_email: contactEmail,
+        contact_phone: contactPhone,
+        contact_address_uz: contactAddressUz,
+        contact_address_ru: contactAddressRu
       }
 
       const setRes = await fetch('/api/settings', {
@@ -416,6 +478,30 @@ export default function Settings() {
 
   return (
     <div style={{ minHeight: 'calc(100vh - 52px)', background: 'var(--bg)', color: 'var(--text-1)', overflowY: 'auto' }}>
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+        @media (max-width: 768px) {
+          .settings-container {
+            padding: 16px 16px 60px !important;
+          }
+          .settings-grid-2col {
+            grid-template-columns: 1fr !important;
+            gap: 16px !important;
+          }
+        }
+        @media (max-width: 600px) {
+          .settings-bot-actions {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 12px !important;
+          }
+          .settings-bot-actions div {
+            margin-left: 0 !important;
+            text-align: left !important;
+          }
+        }
+      `}</style>
+
       <PageHero
         badge={`✦ ${isRu ? 'Настройки' : 'Sozlamalar'}`}
         title={isRu ? 'Настройки системы' : 'Tizim Sozlamalari'}
@@ -428,7 +514,7 @@ export default function Settings() {
         }
       />
 
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 32px 80px' }}>
+      <div className="settings-container" style={{ maxWidth: 900, margin: '0 auto', padding: '24px 32px 80px' }}>
         
         {error && (
           <div style={{ marginBottom: 20, padding: 16, background: 'var(--red-bg)', color: 'var(--red)', borderRadius: 8, border: '1px solid var(--red-bd)' }}>
@@ -472,7 +558,7 @@ export default function Settings() {
                 <input type="text" value={appName} onChange={e => setAppName(e.target.value)} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border-2)', background: 'var(--bg)', color: 'var(--text-1)', outline: 'none' }} />
               </div>
               
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+              <div className="settings-grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
                 <div>
                   <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{isRu ? 'Начало раб. дня' : 'Ish boslanish vaqti'}</label>
                   <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border-2)', background: 'var(--bg)', color: 'var(--text-1)', outline: 'none' }} />
@@ -494,7 +580,7 @@ export default function Settings() {
                 <input type="text" value={webBaseUrl} onChange={e => setWebBaseUrl(e.target.value)} placeholder="https://example.com" style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border-2)', background: 'var(--bg)', color: 'var(--text-1)', outline: 'none' }} />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginTop: 12 }}>
+              <div className="settings-grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginTop: 12 }}>
                 
                 {/* Logo Upload */}
                 <ImageUploader
@@ -533,6 +619,150 @@ export default function Settings() {
               </div>
 
             </div>
+
+            {/* Contact Information Section */}
+            <div style={{ borderTop: '1px solid var(--border-2)', marginTop: 28, paddingTop: 24 }}>
+              <div className="settings-grid-2col" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, gap: 16, flexWrap: 'wrap' }}>
+                <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <GlobeRegular /> {isRu ? 'Контактная информация' : 'Bog\'lanish ma\'lumotlari'}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => navigate('/settings/messages')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '6px 14px',
+                    borderRadius: 8,
+                    background: 'var(--accent-bg)',
+                    border: '1px solid var(--accent-bd)',
+                    color: 'var(--accent-tx)',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--border)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'var(--accent-bg)'}
+                >
+                  <MailRegular fontSize={14} />
+                  {isRu ? 'Просмотр обращений' : 'Murojaatlarni ko\'rish'}
+                </button>
+              </div>
+              
+              <div className="settings-grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+                <div style={{ position: 'relative' }}>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Email</label>
+                  <input
+                    type="email"
+                    value={contactEmail}
+                    onChange={e => setContactEmail(e.target.value)}
+                    placeholder="support@bioface.uz"
+                    onFocus={() => setEmailFocused(true)}
+                    onBlur={() => setEmailFocused(false)}
+                    style={{
+                      width: '100%', padding: '10px 14px',
+                      borderRadius: 8, border: `1px solid ${emailFocused ? 'var(--accent)' : 'var(--border-2)'}`,
+                      background: 'var(--bg)', color: 'var(--text-1)', outline: 'none'
+                    }}
+                  />
+                  {showSuggestions && suggestions.length > 0 && (
+                    <div style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 4px)',
+                      left: 0,
+                      right: 0,
+                      background: 'var(--surface-2)',
+                      border: '1px solid var(--border-3)',
+                      borderRadius: 8,
+                      boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
+                      zIndex: 100,
+                      maxHeight: 180,
+                      overflowY: 'auto',
+                      padding: '4px 0',
+                    }}>
+                      {suggestions.map((sug, idx) => (
+                        <div
+                          key={idx}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setContactEmail(sug);
+                            setEmailFocused(false);
+                          }}
+                          onTouchStart={(e) => {
+                            e.preventDefault();
+                            setContactEmail(sug);
+                            setEmailFocused(false);
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-bg)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                          style={{
+                            padding: '8px 12px',
+                            cursor: 'pointer',
+                            color: 'var(--text-1)',
+                            fontSize: 13,
+                            textAlign: 'left',
+                            transition: 'background 0.15s ease',
+                          }}
+                        >
+                          {sug}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{isRu ? 'Телефон' : 'Telefon raqam'}</label>
+                  <input
+                    type="text"
+                    value={contactPhone}
+                    onChange={handlePhoneChange}
+                    onFocus={handlePhoneFocus}
+                    onBlur={handlePhoneBlur}
+                    placeholder="+998 90 123 45 67"
+                    style={{
+                      width: '100%', padding: '10px 14px',
+                      borderRadius: 8, border: `1px solid ${phoneFocused ? 'var(--accent)' : 'var(--border-2)'}`,
+                      background: 'var(--bg)', color: 'var(--text-1)', outline: 'none'
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="settings-grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{isRu ? 'Адрес (UZ)' : 'Manzil (UZ)'}</label>
+                  <textarea
+                    rows={3}
+                    value={contactAddressUz}
+                    onChange={e => setContactAddressUz(e.target.value)}
+                    placeholder="Toshkent, O'zbekiston..."
+                    style={{
+                      width: '100%', padding: '10px 14px',
+                      borderRadius: 8, border: '1px solid var(--border-2)',
+                      background: 'var(--bg)', color: 'var(--text-1)', outline: 'none',
+                      resize: 'vertical', fontFamily: 'inherit'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{isRu ? 'Адрес (RU)' : 'Manzil (RU)'}</label>
+                  <textarea
+                    rows={3}
+                    value={contactAddressRu}
+                    onChange={e => setContactAddressRu(e.target.value)}
+                    placeholder="Ташкент, Узбекистан..."
+                    style={{
+                      width: '100%', padding: '10px 14px',
+                      borderRadius: 8, border: '1px solid var(--border-2)',
+                      background: 'var(--bg)', color: 'var(--text-1)', outline: 'none',
+                      resize: 'vertical', fontFamily: 'inherit'
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -567,7 +797,7 @@ export default function Settings() {
 
                   <div style={{ borderTop: '1px solid var(--border-2)', paddingTop: 16 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>{isRu ? 'Управление ботом' : 'Bot boshqaruvi'}</div>
-                    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                    <div className="settings-bot-actions" style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                       <button onClick={() => handleBotAction('start')} disabled={botProcess.running || botLoading} style={{ padding: '8px 16px', background: botProcess.running ? 'var(--surface-2)' : '#10b981', color: botProcess.running ? 'var(--text-4)' : '#fff', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: botProcess.running ? 'not-allowed' : 'pointer' }}>{isRu ? 'Запустить' : 'Ishga tushirish'}</button>
                       <button onClick={() => handleBotAction('stop')} disabled={!botProcess.running || botLoading} style={{ padding: '8px 16px', background: !botProcess.running ? 'var(--surface-2)' : '#f43f5e', color: !botProcess.running ? 'var(--text-4)' : '#fff', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: !botProcess.running ? 'not-allowed' : 'pointer' }}>{isRu ? 'Остановить' : 'To\'xtatish'}</button>
                       

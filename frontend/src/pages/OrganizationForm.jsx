@@ -186,16 +186,11 @@ export default function OrganizationForm() {
       />
 
       {/* ── Form wrapper ── */}
-      <div style={{ padding: '32px 32px 80px', maxWidth: 1100, margin: '0 auto' }}>
+      <div className="org-form-container">
         <form onSubmit={handleSubmit}>
 
           {/* ═══ ROW 1: Asosiy + Joylashuv ═══ */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: 20,
-            marginBottom: 20,
-          }}>
+          <div className="org-form-grid-2">
 
             {/* Card 1 — Asosiy ma'lumotlar */}
             <Card
@@ -326,12 +321,7 @@ export default function OrganizationForm() {
           </div>
 
           {/* ═══ ROW 2: Ish vaqti + Obuna holati ═══ */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: isEdit ? '1fr 1fr' : '1fr',
-            gap: 20,
-            marginBottom: 28,
-          }}>
+          <div className={isEdit ? "org-form-grid-2" : "org-form-grid-1"}>
 
             {/* Card 3 — Ish vaqti */}
             <Card
@@ -440,8 +430,32 @@ export default function OrganizationForm() {
 
       <style>{`
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-        @media (max-width: 700px) {
-          .org-form-grid-2 { grid-template-columns: 1fr !important; }
+        .org-form-container {
+          padding: 32px 32px 80px;
+          max-width: 1100px;
+          margin: 0 auto;
+          box-sizing: border-box;
+        }
+        .org-form-grid-2 {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 20px;
+          margin-bottom: 20px;
+        }
+        .org-form-grid-1 {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 20px;
+          margin-bottom: 28px;
+        }
+        @media (max-width: 768px) {
+          .org-form-container {
+            padding: 16px 16px 60px;
+          }
+          .org-form-grid-2 {
+            grid-template-columns: 1fr;
+            gap: 16px;
+          }
         }
       `}</style>
     </div>
@@ -535,11 +549,8 @@ function StatusBadge({ status, isRu }) {
 
 function LoadingSkeleton() {
   return (
-    <div style={{ padding: '40px 32px', maxWidth: 1100, margin: '0 auto' }}>
-      <div style={{
-        display: 'grid', gridTemplateColumns: '1fr 1fr',
-        gap: 20, marginBottom: 20,
-      }}>
+    <div className="org-form-container">
+      <div className="org-form-grid-2">
         {[1, 2].map(i => (
           <div key={i} style={{
             background: 'var(--surface)', border: '1.5px solid var(--border)',
@@ -554,7 +565,30 @@ function LoadingSkeleton() {
           </div>
         ))}
       </div>
-      <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }`}</style>
+      <style>{`
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        .org-form-container {
+          padding: 32px 32px 80px;
+          max-width: 1100px;
+          margin: 0 auto;
+          box-sizing: border-box;
+        }
+        .org-form-grid-2 {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 20px;
+          margin-bottom: 20px;
+        }
+        @media (max-width: 768px) {
+          .org-form-container {
+            padding: 16px 16px 60px;
+          }
+          .org-form-grid-2 {
+            grid-template-columns: 1fr;
+            gap: 16px;
+          }
+        }
+      `}</style>
     </div>
   )
 }
