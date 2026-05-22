@@ -14,7 +14,7 @@ from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 import models
 from database import engine, ensure_schema, SessionLocal
 from models import RequestLog
-from routers import auth, pages, webhook, cameras, employees, settings, organizations, users, system_monitor, planning
+from routers import auth, dashboard, webhook, cameras, employees, settings, organizations, users, system_monitor, planning
 from utils.time_utils import now_tashkent
 
 # Jadvallarni yaratish
@@ -28,7 +28,6 @@ app.add_middleware(GZipMiddleware, minimum_size=1024)
 # --- Statik fayllar ---
 os.makedirs("static/uploads", exist_ok=True)
 os.makedirs("static/uploads/users", exist_ok=True)
-os.makedirs("templates/components", exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # tuple shaklida — startswith() bilan ishlaydi
@@ -223,7 +222,7 @@ async def shutdown_background_services():
 
 # --- Routerlarni ulaymiz ---
 app.include_router(auth.router, tags=["Auth"])
-app.include_router(pages.router, tags=["Pages"])
+app.include_router(dashboard.router, tags=["Dashboard API"])
 app.include_router(webhook.router, prefix="/api", tags=["Webhooks"])
 app.include_router(cameras.router, tags=["Cameras API"])
 app.include_router(employees.router, tags=["Employees API"])
@@ -244,25 +243,10 @@ assets_dir = os.path.join(frontend_dist, 'assets')
 if os.path.exists(assets_dir):
     app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
 
-@app.get("/login")
-@app.get("/about")
-@app.get("/contact")
-@app.get("/map")
-@app.get("/dashboard")
-@app.get("/devices")
-@app.get("/settings")
-@app.get("/organizations")
-@app.get("/users")
-async def serve_react_app():
-    index_file = os.path.join(frontend_dist, 'index.html')
-    if os.path.exists(index_file):
-        return FileResponse(index_file)
-    return JSONResponse({"detail": "Frontend build topilmadi"}, status_code=404)
-
-@app.get("/devices/{path:path}")
-@app.get("/settings/{path:path}")
-@app.get("/organizations/{path:path}")
-async def serve_react_device_path(path: str):
+@app.get("/{path:path}")
+async def serve_react_app(path: str):
+    if path.startswith("api/") or path.startswith("static/") or path.startswith("assets/"):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
     index_file = os.path.join(frontend_dist, 'index.html')
     if os.path.exists(index_file):
         return FileResponse(index_file)

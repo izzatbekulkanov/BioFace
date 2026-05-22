@@ -2078,8 +2078,7 @@ def get_camera_users(request: Request, cam_id: int, limit: int = 300, db: Sessio
     }
 
 
-@router.post("/api/cameras/{cam_id}/import-camera-users")
-def import_camera_users_to_db(
+def import_camera_users_to_db_impl(
     cam_id: int,
     limit: int = 500,
     allow_camera_http_download: bool = True,
@@ -2088,7 +2087,7 @@ def import_camera_users_to_db(
     only_with_face: bool = False,
     prefer_face_records_only: bool = False,
     progress_cb: Optional[Callable[[int, int, Optional[str], dict[str, Any]], None]] = None,
-    db: Session = Depends(get_db),
+    db: Session = None,
 ):
     cam = db.query(Device).filter(Device.id == cam_id).first()
     if not cam:
@@ -2519,6 +2518,30 @@ def import_camera_users_to_db(
             + (" Faqat face biriktirilgan foydalanuvchilar import qilindi." if only_with_face or prefer_face_records_only else "")
         ),
     }
+
+
+@router.post("/api/cameras/{cam_id}/import-camera-users")
+def import_camera_users_to_db(
+    cam_id: int,
+    limit: int = 500,
+    allow_camera_http_download: bool = True,
+    face_import_mode: str = "if_missing",
+    employee_type: Optional[str] = None,
+    only_with_face: bool = False,
+    prefer_face_records_only: bool = False,
+    db: Session = Depends(get_db),
+):
+    return import_camera_users_to_db_impl(
+        cam_id=cam_id,
+        limit=limit,
+        allow_camera_http_download=allow_camera_http_download,
+        face_import_mode=face_import_mode,
+        employee_type=employee_type,
+        only_with_face=only_with_face,
+        prefer_face_records_only=prefer_face_records_only,
+        progress_cb=None,
+        db=db,
+    )
 
 
 class AddUserToCameraPayload(BaseModel):

@@ -11,7 +11,7 @@ from core.models import AttendanceLog, Device, Employee, EmployeeCameraLink, Org
 from routers.cameras import (
     _resolve_online_command_target,
     _send_isup_command_or_raise,
-    import_camera_users_to_db,
+    import_camera_users_to_db_impl,
 )
 from routers.employees_parts.common import (
     normalize_employee_type_for_import,
@@ -202,7 +202,7 @@ def _run_employees_import_job(*, job_id: str, camera_ids: list[int], employee_ty
                         heartbeat_at=now_iso(),
                     )
 
-                result = import_camera_users_to_db(
+                result = import_camera_users_to_db_impl(
                     cam_id=int(cam_id),
                     limit=5000,
                     allow_camera_http_download=False,

@@ -6,7 +6,6 @@ import bcrypt
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
@@ -20,7 +19,6 @@ from utils.translations import get_translations
 
 
 router = APIRouter()
-templates = Jinja2Templates(directory="templates")
 
 LOGIN_CAPTCHA_THRESHOLD = 3
 LOGIN_FAIL_COUNT_SESSION_KEY = "auth_login_fail_count"
@@ -38,18 +36,6 @@ class LoginPayload(BaseModel):
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
-
-
-def _get_brand_settings() -> dict:
-    data = get_menu_data()
-    app_name = (data.get("app_name") or "").strip() or "BioFace"
-    logo_url = (data.get("logo_url") or "").strip()
-    favicon_url = (data.get("favicon_url") or "").strip()
-    return {
-        "app_name": app_name,
-        "logo_url": logo_url,
-        "favicon_url": favicon_url,
-    }
 
 
 def _google_oauth_configured(db: Session) -> bool:
@@ -195,37 +181,6 @@ def _register_failed_login(request: Request, *, rotate_captcha: bool = False) ->
     return _get_login_captcha_payload(request, rotate=rotate_captcha or next_count > LOGIN_CAPTCHA_THRESHOLD)
 
 
-@router.get("/login")
-def login_page(request: Request, db: Session = Depends(get_db)):
-    if request.session.get("auth_user"):
-        return RedirectResponse(url="/", status_code=303)
-    lang = request.cookies.get("lang", "uz")
-    brand = _get_brand_settings()
-    google_error = (request.query_params.get("google_error") or "").strip()
-    google_error_messages = {
-        "not_configured": "Google OAuth sozlanmagan",
-        "cancelled": "Google orqali kirish bekor qilindi",
-        "invalid_state": "Google sessiyasi eskirdi. Qayta urinib ko'ring",
-        "token_failed": "Google tokenini olishda xatolik",
-        "profile_failed": "Google profilini olishda xatolik",
-        "email_unverified": "Google email tasdiqlanmagan",
-        "no_user": "Bu Google email uchun tizim foydalanuvchisi topilmadi",
-        "not_enabled": "Sizning tizimga kirish bo'yicha so'rovingiz administratorga yuborildi. Iltimos, administrator javobini kuting.",
-        "account_mismatch": "Google akkaunt boshqa foydalanuvchiga biriktirilgan",
-        "pending_approval": "Sizning tizimga kirish bo'yicha so'rovingiz administratorga yuborildi. Iltimos, administrator javobini kuting.",
-    }
-    return templates.TemplateResponse(
-        request=request,
-        name="login.html",
-        context={
-            "request": request,
-            "lang": lang,
-            "google_oauth_configured": _google_oauth_configured(db),
-            "google_error_message": google_error_messages.get(google_error, ""),
-            **_get_login_captcha_payload(request),
-            **brand,
-        },
-    )
 
 
 @router.get("/api/auth/google-status")
@@ -335,7 +290,7 @@ async def google_oauth_callback(
         db.commit()
         db.refresh(user)
 
-        return RedirectResponse(url="/pending-approval", status_code=303)
+        return RedirectResponse(url="/login?google_error=not_enabled", status_code=303)
 
     was_approved = bool(user.google_oauth_enabled) and (user.status or "") == "active"
 
@@ -354,7 +309,7 @@ async def google_oauth_callback(
     db.refresh(user)
 
     if not was_approved:
-        return RedirectResponse(url="/pending-approval", status_code=303)
+        return RedirectResponse(url="/login?google_error=not_enabled", status_code=303)
 
     request.session["auth_user"] = _build_auth_user(user)
     return RedirectResponse(url="/", status_code=303)
@@ -436,61 +391,3 @@ def logout(request: Request):
     return RedirectResponse(url="/login", status_code=303)
 
 
-@router.get("/pending-approval")
-def pending_approval_page(request: Request):
-    lang = request.cookies.get("lang", "uz")
-    brand = _get_brand_settings()
-    return templates.TemplateResponse(
-        request=request,
-        name="pending_approval.html",
-        context={
-            "request": request,
-            "lang": lang,
-            **brand,
-        },
-    )
-
-
-@router.get("/contact")
-def contact_page(request: Request):
-    lang = request.cookies.get("lang", "uz")
-    brand = _get_brand_settings()
-    return templates.TemplateResponse(
-        request=request,
-        name="contact.html",
-        context={
-            "request": request,
-            "lang": lang,
-            **brand,
-        },
-    )
-
-
-@router.get("/about")
-def about_public_page(request: Request):
-    lang = request.cookies.get("lang", "uz")
-    brand = _get_brand_settings()
-    return templates.TemplateResponse(
-        request=request,
-        name="about_public.html",
-        context={
-            "request": request,
-            "lang": lang,
-            **brand,
-        },
-    )
-
-
-@router.get("/map")
-def map_page(request: Request):
-    lang = request.cookies.get("lang", "uz")
-    brand = _get_brand_settings()
-    return templates.TemplateResponse(
-        request=request,
-        name="map.html",
-        context={
-            "request": request,
-            "lang": lang,
-            **brand,
-        },
-    )

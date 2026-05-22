@@ -16,48 +16,8 @@ print("  BioFace Setup Script")
 print("=" * 50)
 print()
 
-# 1. Fix templates
-print("[1/3] Templatelarni tuzatish...")
-file_path = BASE_DIR / "routers" / "pages.py"
-
-try:
-    with open(file_path, "r", encoding="utf-8") as f:
-        content = f.read()
-
-    # Count old patterns
-    old_count = len(re.findall(r'templates\.TemplateResponse\("', content))
-    
-    if old_count > 0:
-        print(f"      {old_count} ta eski sintaksis topildi...")
-        
-        # Fix pattern
-        content = re.sub(
-            r'templates\.TemplateResponse\("([^"]+)",\s*\{',
-            r'templates.TemplateResponse(request=request, name="\1", context={',
-            content
-        )
-
-        # Write back
-        with open(file_path, "w", encoding="utf-8") as f:
-            f.write(content)
-
-        # Verify
-        with open(file_path, "r", encoding="utf-8") as f:
-            new_content = f.read()
-        new_count = len(re.findall(r'templates\.TemplateResponse\("', new_content))
-
-        print(f"      ✓ {old_count - new_count} ta tuzatildi")
-        if new_count > 0:
-            print(f"      ⚠ {new_count} ta qoldi (bularni qo'lda tekshiring)")
-    else:
-        print(f"      ✓ Barcha templatelar allaqachon yangi sintaksisda")
-except Exception as e:
-    print(f"      ✗ Xato: {e}")
-
-print()
-
-# 2. Create superadmin
-print("[2/3] Superadmin yaratish...")
+# 1. Create superadmin
+print("[1/2] Superadmin yaratish...")
 try:
     from database import SessionLocal, engine
     import models
@@ -101,8 +61,8 @@ except Exception as e:
 
 print()
 
-# 3. Check ISUP
-print("[3/3] ISUP holatini tekshirish...")
+# 2. Check ISUP
+print("[2/2] ISUP holatini tekshirish...")
 try:
     from services.isup_manager import get_process_status, start_isup_server
     status = get_process_status()
