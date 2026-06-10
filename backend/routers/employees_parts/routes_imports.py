@@ -57,7 +57,7 @@ def _split_import_person_name(full_name: Optional[str], fallback_personal_id: st
 @router.get("/api/employees/import/sources")
 def get_employees_import_sources(
     request: Request,
-    organization_id: Optional[int] = Query(None),
+    organization_id: Optional[str] = Query(None),
     limit_per_camera: int = Query(1200, ge=1, le=5000),
     db: Session = Depends(get_db),
 ):
@@ -67,7 +67,13 @@ def get_employees_import_sources(
 
     org_query = db.query(Organization).filter(Organization.id.in_(allowed_org_ids))
     if organization_id is not None:
-        org_query = org_query.filter(Organization.id == int(organization_id))
+        org_obj = db.query(Organization).filter(Organization.uuid == str(organization_id)).first()
+        if org_obj is None and str(organization_id).isdigit():
+            org_obj = db.query(Organization).filter(Organization.id == int(organization_id)).first()
+        if org_obj is not None:
+            org_query = org_query.filter(Organization.id == org_obj.id)
+        else:
+            org_query = org_query.filter(Organization.id == -1)
     orgs = org_query.order_by(Organization.name.asc()).all()
 
     payload_orgs: list[dict[str, Any]] = []
@@ -96,6 +102,10 @@ def get_employees_import_sources(
                     )
                     rows = face_resp.get("records", []) if isinstance(face_resp, dict) else []
                     count = len(rows) if isinstance(rows, list) else 0
+                
+                if cam.used_faces != count:
+                    cam.used_faces = count
+                    db.commit()
             except HTTPException as exc:
                 txt = str(exc.detail or "")
                 unsupported = "notsupport" in txt.lower()

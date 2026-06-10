@@ -95,7 +95,7 @@ export default function Organizations() {
 
   const handleOpenAdd = () => navigate('/organizations/new')
 
-  const handleOpenEdit = (org) => navigate(`/organizations/${org.id}/edit`)
+  const handleOpenEdit = (org) => navigate(`/organizations/${org.uuid || org.id}/edit`)
 
   const handleDelete = async (org) => {
     const ok = await confirm({
@@ -110,7 +110,7 @@ export default function Organizations() {
     if (!ok) return
 
     try {
-      const res = await fetch(`/api/organizations/${org.id}`, {
+      const res = await fetch(`/api/organizations/${org.uuid || org.id}`, {
         method: 'DELETE',
         credentials: 'include',
       })
@@ -217,7 +217,7 @@ export default function Organizations() {
                           <div style={avatarFallback}><BuildingRegular fontSize={18} /></div>
                           <div>
                             <div>
-                              <Link to={`/organizations/${o.id}`} style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
+                              <Link to={`/organizations/${o.uuid || o.id}`} style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
                                 {o.name}
                               </Link>
                             </div>

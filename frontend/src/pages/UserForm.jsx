@@ -12,10 +12,33 @@ import {
   DismissRegular,
   CheckmarkCircleRegular,
   WarningRegular,
+  CameraRegular,
 } from '@fluentui/react-icons'
 import PageHero from '../components/PageHero'
 import Skeleton from '../components/Skeleton'
 import { useToast } from '../components/Toaster'
+
+// Email domain suggestions shown after "@"
+const EMAIL_DOMAINS = [
+  'gmail.com', 'mail.ru', 'inbox.uz', 'yahoo.com',
+  'outlook.com', 'hotmail.com', 'yandex.ru', 'bk.ru', 'list.ru'
+]
+
+// Phone mask helper — formats digits into +998 XX XXX XX XX
+function applyPhoneMask(raw) {
+  // Keep only digits
+  const digits = raw.replace(/\D/g, '')
+  // Always start with 998
+  const body = digits.startsWith('998') ? digits.slice(3) : digits
+  const d = body.slice(0, 9) // max 9 digits after country code
+  let result = '+998'
+  if (d.length === 0) return result
+  result += ' ' + d.slice(0, 2)
+  if (d.length > 2) result += ' ' + d.slice(2, 5)
+  if (d.length > 5) result += ' ' + d.slice(5, 7)
+  if (d.length > 7) result += ' ' + d.slice(7, 9)
+  return result
+}
 
 /**
  * Foydalanuvchini qo'shish / tahrirlash sahifasi (alohida sahifa, modal emas).
@@ -141,6 +164,10 @@ export default function UserForm() {
   const isEdit = Boolean(id)
   const toast = useToast()
 
+  const [permissionGroups, setPermissionGroups] = useState(PERMISSION_GROUPS)
+  const [allPermissionKeys, setAllPermissionKeys] = useState(ALL_PERMISSION_KEYS)
+  const [limitedAdminDefaults, setLimitedAdminDefaults] = useState(LIMITED_ADMIN_DEFAULTS)
+
   const [loading, setLoading] = useState(isEdit)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -158,6 +185,7 @@ export default function UserForm() {
     role: 'TashkilotAdmin',
     status: 'active',
     organization_ids: [],
+    branch_id: '',
     google_oauth_enabled: false,
     image_url: '',
     menu_permissions: LIMITED_ADMIN_DEFAULTS,
@@ -166,6 +194,17 @@ export default function UserForm() {
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState('')
   const [clearImage, setClearImage] = useState(false)
+  const [avatarHovered, setAvatarHovered] = useState(false)
+  const [imgError, setImgError] = useState('')
+  const fileRef = useRef(null)
+
+  // Face detection states
+  const [checkingFace, setCheckingFace] = useState(false)
+  const [faceSuccess, setFaceSuccess] = useState(false)
+  const [faceError, setFaceError] = useState(false)
+  const [trackerReady, setTrackerReady] = useState(false)
+  const [faceSelectionData, setFaceSelectionData] = useState(null)
+  const [showFaceSelector, setShowFaceSelector] = useState(false)
 
   // Username availability
   const [usernameStatus, setUsernameStatus] = useState({ checking: false, available: null, message: '' })
@@ -175,10 +214,92 @@ export default function UserForm() {
   const [showPwd, setShowPwd] = useState(false)
   const [showPwd2, setShowPwd2] = useState(false)
 
-  // Load orgs + (in edit mode) user data
+  // Email domain suggestions
+  const [emailSuggestions, setEmailSuggestions] = useState([])
+  const [showEmailSugg, setShowEmailSugg] = useState(false)
+  const emailRef = useRef(null)
+
+  const [branches, setBranches] = useState([])
+  const [loadingBranches, setLoadingBranches] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    const orgId = form.organization_ids[0]
+    if (form.organization_ids.length === 1 && orgId) {
+      setLoadingBranches(true)
+      fetch(`/api/organizations/${orgId}/branches`, { credentials: 'include' })
+        .then(res => res.json())
+        .then(data => {
+          if (active) {
+            setBranches(Array.isArray(data) ? data : [])
+            setLoadingBranches(false)
+          }
+        })
+        .catch(err => {
+          console.error('Error fetching branches:', err)
+          if (active) setLoadingBranches(false)
+        })
+    } else {
+      setBranches([])
+      setForm(prev => ({ ...prev, branch_id: '' }))
+    }
+    return () => { active = false }
+  }, [form.organization_ids])
+
+  // Load schema + orgs + (in edit mode) user data
   useEffect(() => {
     let alive = true
     ;(async () => {
+      let currentAllKeys = ALL_PERMISSION_KEYS
+      let currentLimitedDefaults = LIMITED_ADMIN_DEFAULTS
+
+      try {
+        const schemaRes = await fetch('/api/users/permissions-schema', { credentials: 'include' })
+        if (schemaRes.ok && alive) {
+          const data = await schemaRes.json()
+          
+          const groups = [
+            { key: 'general', title_uz: 'Umumiy', title_ru: 'Общее', items: [] },
+            { key: 'cameras', title_uz: 'Kameralar', title_ru: 'Камеры', items: [] },
+            { key: 'employees', title_uz: 'Asosiy bo\'lim', title_ru: 'Основной раздел', items: [] },
+            { key: 'management', title_uz: 'Boshqaruv', title_ru: 'Управление', items: [] },
+            { key: 'system', title_uz: 'Tizim', title_ru: 'Система', items: [] },
+          ]
+          
+          data.metadata.forEach(item => {
+            const groupObj = groups.find(g => g.key === item.group)
+            if (groupObj) {
+              groupObj.items.push({
+                key: item.key,
+                label_uz: item.titles.uz,
+                label_ru: item.titles.ru,
+                desc_uz: item.descriptions.uz,
+                desc_ru: item.descriptions.ru,
+              })
+            }
+          })
+          
+          const filteredGroups = groups.filter(g => g.items.length > 0)
+          const allKeys = data.metadata.map(m => m.key)
+          
+          currentAllKeys = allKeys
+          currentLimitedDefaults = data.limited_admin_defaults
+
+          setPermissionGroups(filteredGroups)
+          setAllPermissionKeys(allKeys)
+          setLimitedAdminDefaults(data.limited_admin_defaults)
+
+          if (!isEdit) {
+            setForm(prev => ({
+              ...prev,
+              menu_permissions: data.limited_admin_defaults
+            }))
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching permissions schema:', err)
+      }
+
       try {
         const orgRes = await fetch('/api/organizations', { credentials: 'include' })
         if (orgRes.ok) {
@@ -206,7 +327,7 @@ export default function UserForm() {
                 }
               }
               if (parsedPerms.length === 0) {
-                parsedPerms = uRole === 'SuperAdmin' ? ALL_PERMISSION_KEYS : LIMITED_ADMIN_DEFAULTS;
+                parsedPerms = uRole === 'SuperAdmin' ? currentAllKeys : currentLimitedDefaults;
               }
 
               setForm(prev => ({
@@ -220,11 +341,14 @@ export default function UserForm() {
                 role: uRole,
                 status: u.status || 'active',
                 organization_ids: (u.organization_ids || []).map(String),
+                branch_id: u.branch_id ? String(u.branch_id) : '',
                 google_oauth_enabled: !!u.google_oauth_enabled,
                 image_url: u.image_url || '',
                 menu_permissions: parsedPerms,
               }))
-              setImagePreview(u.image_url || '')
+              const imgUrl = u.image_url || ''
+              const isValidImg = imgUrl.startsWith('/static/') || imgUrl.startsWith('http://') || imgUrl.startsWith('https://')
+              setImagePreview(isValidImg ? imgUrl : '')
             } else if (alive) {
               setError(isRu ? 'Пользователь не найден' : 'Foydalanuvchi topilmadi')
             }
@@ -241,9 +365,20 @@ export default function UserForm() {
 
   // Username live check
   useEffect(() => {
-    const u = form.username.trim()
+    const u = form.username
     if (!u) {
       setUsernameStatus({ checking: false, available: null, message: '' })
+      return
+    }
+    const regex = /^[a-zA-Z0-9]+$/
+    if (!regex.test(u)) {
+      setUsernameStatus({
+        checking: false,
+        available: false,
+        message: isRu 
+          ? 'Только латинские буквы и цифры, без пробелов' 
+          : "Faqat lotin harflari va raqamlar bo'lishi kerak, bo'shliqlarsiz"
+      })
       return
     }
     if (u.length < 3) {
@@ -282,7 +417,7 @@ export default function UserForm() {
       return {
         ...prev,
         role: nextRole,
-        menu_permissions: isSuper ? ALL_PERMISSION_KEYS : LIMITED_ADMIN_DEFAULTS
+        menu_permissions: isSuper ? allPermissionKeys : limitedAdminDefaults
       }
     })
   }
@@ -295,19 +430,230 @@ export default function UserForm() {
     })
   }
 
-  const onPickImage = (e) => {
+  // Load tracking.js face detector dynamically
+  useEffect(() => {
+    if (window.tracking && window.tracking.ObjectTracker) {
+      setTrackerReady(true)
+      return
+    }
+    const s1 = document.createElement('script')
+    s1.src = 'https://cdnjs.cloudflare.com/ajax/libs/tracking.js/1.1.3/tracking-min.js'
+    s1.async = true
+    s1.onload = () => {
+      const s2 = document.createElement('script')
+      s2.src = 'https://cdnjs.cloudflare.com/ajax/libs/tracking.js/1.1.3/data/face-min.js'
+      s2.async = true
+      s2.onload = () => setTrackerReady(true)
+      s2.onerror = () => setTrackerReady(true)
+      document.body.appendChild(s2)
+    }
+    s1.onerror = () => setTrackerReady(true)
+    document.body.appendChild(s1)
+  }, [])
+
+  const validateFace = (file) => {
+    return new Promise((resolve) => {
+      let resolved = false
+      const safeResolve = (val) => { if (!resolved) { resolved = true; resolve(val) } }
+      const timeoutId = setTimeout(() => safeResolve({ ok: true, error: 'timeout' }), 4000)
+
+      if (!trackerReady || !window.tracking || !window.tracking.ObjectTracker) {
+        clearTimeout(timeoutId)
+        safeResolve({ ok: true, message: 'Tracker not ready' })
+        return
+      }
+      try {
+        const img = new Image()
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas')
+            const ctx = canvas.getContext('2d')
+            const maxDim = 600
+            let w = img.width, h = img.height
+            if (w > maxDim || h > maxDim) {
+              if (w > h) { h = Math.round(h * maxDim / w); w = maxDim }
+              else { w = Math.round(w * maxDim / h); h = maxDim }
+            }
+            canvas.width = w; canvas.height = h
+            ctx.drawImage(img, 0, 0, w, h)
+
+            if (!window.tracking.ViolaJones?.classifiers?.face) {
+              clearTimeout(timeoutId)
+              safeResolve({ ok: true, message: 'Classifier not registered' })
+              return
+            }
+            const tracker = new window.tracking.ObjectTracker('face')
+            tracker.setInitialScale(4)
+            tracker.setStepSize(2)
+            tracker.setEdgesDensity(0.1)
+            let trackerTask
+            const onTrack = (event) => {
+              try { tracker.removeListener('track', onTrack); if (trackerTask) trackerTask.stop() } catch (e) {}
+              clearTimeout(timeoutId)
+              if (event.data && event.data.length > 0) {
+                if (event.data.length > 1) {
+                  safeResolve({ ok: true, multiple: true, faces: event.data, img, w, h })
+                  return
+                }
+                const maxFace = event.data[0]
+                const scaleX = img.width / w, scaleY = img.height / h
+                const fx = maxFace.x * scaleX, fy = maxFace.y * scaleY
+                const fw = maxFace.width * scaleX, fh = maxFace.height * scaleY
+                let cropW = fw * 2.2, cropH = cropW * 1.333
+                let cropX = fx - (cropW - fw) / 2, cropY = fy - fh * 0.5
+                if (cropX < 0) cropX = 0
+                if (cropY < 0) cropY = 0
+                if (cropX + cropW > img.width) { cropW = img.width - cropX; cropH = cropW * 1.333 }
+                if (cropY + cropH > img.height) { cropH = img.height - cropY; cropW = cropH / 1.333; cropX = fx - (cropW - fw) / 2; if (cropX < 0) cropX = 0 }
+                const cc = document.createElement('canvas')
+                cc.width = 450; cc.height = 600
+                const cctx = cc.getContext('2d')
+                cctx.fillStyle = '#fff'; cctx.fillRect(0, 0, 450, 600)
+                cctx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, 450, 600)
+                cc.toBlob((blob) => {
+                  URL.revokeObjectURL(img.src)
+                  if (blob) {
+                    const croppedFile = new File([blob], file.name || 'avatar.jpg', { type: 'image/jpeg', lastModified: Date.now() })
+                    safeResolve({ ok: true, faces: event.data, croppedFile, previewUrl: URL.createObjectURL(croppedFile) })
+                  } else safeResolve({ ok: true, faces: event.data })
+                }, 'image/jpeg', 0.92)
+              } else {
+                URL.revokeObjectURL(img.src)
+                safeResolve({ ok: false, error: 'no_face_detected' })
+              }
+            }
+            tracker.on('track', onTrack)
+            trackerTask = window.tracking.track(canvas, tracker)
+          } catch (e) {
+            clearTimeout(timeoutId)
+            safeResolve({ ok: true, error: 'exception_inner' })
+          }
+        }
+        img.onerror = () => { clearTimeout(timeoutId); safeResolve({ ok: false, error: 'invalid_image' }) }
+        img.src = URL.createObjectURL(file)
+      } catch (e) {
+        clearTimeout(timeoutId)
+        safeResolve({ ok: true, error: 'exception_outer' })
+      }
+    })
+  }
+
+  const cropSelectedFace = (face, img, w, h, file) => {
+    const scaleX = img.width / w, scaleY = img.height / h
+    const fx = face.x * scaleX, fy = face.y * scaleY
+    const fw = face.width * scaleX, fh = face.height * scaleY
+    let cropW = fw * 2.2, cropH = cropW * 1.333
+    let cropX = fx - (cropW - fw) / 2, cropY = fy - fh * 0.5
+    if (cropX < 0) cropX = 0
+    if (cropY < 0) cropY = 0
+    if (cropX + cropW > img.width) { cropW = img.width - cropX; cropH = cropW * 1.333 }
+    if (cropY + cropH > img.height) { cropH = img.height - cropY; cropW = cropH / 1.333; cropX = fx - (cropW - fw) / 2; if (cropX < 0) cropX = 0 }
+    const cc = document.createElement('canvas')
+    cc.width = 450; cc.height = 600
+    const cctx = cc.getContext('2d')
+    cctx.fillStyle = '#fff'; cctx.fillRect(0, 0, 450, 600)
+    cctx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, 450, 600)
+    cc.toBlob((blob) => {
+      URL.revokeObjectURL(img.src)
+      if (blob) {
+        const croppedFile = new File([blob], file.name || 'avatar.jpg', { type: 'image/jpeg', lastModified: Date.now() })
+        setImageFile(croppedFile)
+        setImagePreview(URL.createObjectURL(croppedFile))
+        setFaceSuccess(true)
+        setImgError('')
+        toast.success(isRu ? 'Лицо успешно выбрано и обрезано!' : 'Yuz muvaffaqiyatli tanlandi va kesib olindi!')
+        setTimeout(() => setFaceSuccess(false), 2000)
+      } else toast.error('Crop failed')
+    }, 'image/jpeg', 0.92)
+  }
+
+  const handleCancelFaceSelection = () => {
+    if (faceSelectionData?.img) URL.revokeObjectURL(faceSelectionData.img.src)
+    setFaceSelectionData(null)
+    setShowFaceSelector(false)
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  const onPickImage = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
-    setImageFile(file)
-    setImagePreview(URL.createObjectURL(file))
-    setClearImage(false)
+    if (!file.type.startsWith('image/')) {
+      setImgError(isRu ? 'Faqat rasm fayllari qabul qilinadi' : 'Faqat rasm fayllari qabul qilinadi')
+      if (fileRef.current) fileRef.current.value = ''
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setImgError(isRu ? 'Rasm hajmi 5 MB dan oshmasin' : 'Rasm hajmi 5 MB dan oshmasin')
+      if (fileRef.current) fileRef.current.value = ''
+      return
+    }
+    setImgError('')
+    setCheckingFace(true)
+    setFaceSuccess(false)
+    setFaceError(false)
+    const result = await validateFace(file)
+    setCheckingFace(false)
+    if (result.ok) {
+      if (result.multiple) {
+        setFaceSelectionData({ faces: result.faces, img: result.img, w: result.w, h: result.h, file })
+        setShowFaceSelector(true)
+      } else {
+        const finalFile = result.croppedFile || file
+        const finalPreview = result.previewUrl || URL.createObjectURL(file)
+        setImageFile(finalFile)
+        setImagePreview(finalPreview)
+        setFaceSuccess(true)
+        toast.success(isRu ? 'Юз муваффақиятли аниқланди ва кесиб олинди!' : 'Inson yuzi muvaffaqiyatli aniqlandi va kesib olindi!')
+        setTimeout(() => setFaceSuccess(false), 2000)
+      }
+    } else {
+      setFaceError(true)
+      if (result.error === 'no_face_detected') {
+        toast.error(isRu
+          ? 'Лицо не обнаружено или фото нечеткое. Используйте качественное портретное фото.'
+          : 'Rasmda yuz aniqlanmadi yoki rasm sifatsiz. Sifatli portret rasm yuklang.')
+      } else {
+        toast.error(isRu ? 'Не удалось загрузить изображение.' : "Tasvirni yuklab bo'lmadi.")
+      }
+      if (fileRef.current) fileRef.current.value = ''
+      setTimeout(() => setFaceError(false), 2000)
+    }
   }
 
   const onClearImage = () => {
     setImageFile(null)
     setImagePreview('')
+    setImgError('')
+    setFaceSuccess(false)
+    setFaceError(false)
     setForm(prev => ({ ...prev, image_url: '' }))
     if (isEdit) setClearImage(true)
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  // Phone mask handler
+  const onPhoneChange = (e) => {
+    const masked = applyPhoneMask(e.target.value)
+    setForm(prev => ({ ...prev, phone: masked }))
+  }
+
+  // Email suggestions
+  const onEmailChange = (e) => {
+    const val = e.target.value
+    setForm(prev => ({ ...prev, email: val }))
+    const atIdx = val.indexOf('@')
+    if (atIdx !== -1) {
+      const after = val.slice(atIdx + 1).toLowerCase()
+      const prefix = val.slice(0, atIdx + 1)
+      const filtered = EMAIL_DOMAINS
+        .filter(d => d.startsWith(after))
+        .map(d => prefix + d)
+      setEmailSuggestions(filtered)
+      setShowEmailSugg(filtered.length > 0)
+    } else {
+      setEmailSuggestions([])
+      setShowEmailSugg(false)
+    }
   }
 
   const validate = () => {
@@ -351,9 +697,14 @@ export default function UserForm() {
       } else {
         fd.set('organization_ids', '')
       }
+      if (orgIds.length === 1 && form.branch_id) {
+        fd.set('branch_id', String(form.branch_id))
+      } else {
+        fd.set('branch_id', '')
+      }
       if (imageFile) {
         fd.set('image', imageFile)
-      } else if (form.image_url.trim()) {
+      } else if (form.image_url.trim() && (form.image_url.trim().startsWith('http://') || form.image_url.trim().startsWith('https://') || form.image_url.trim().startsWith('/static/'))) {
         fd.set('image_url', form.image_url.trim())
       }
       if (isEdit && clearImage && !imageFile) fd.set('clear_image', '1')
@@ -497,10 +848,15 @@ export default function UserForm() {
                   <div style={{ position: 'relative' }}>
                     <input
                       value={form.username}
-                      onChange={setField('username')}
+                      onChange={(e) => {
+                        // Strip anything that is not a Latin letter or digit
+                        const cleaned = e.target.value.replace(/[^a-zA-Z0-9]/g, '')
+                        setForm(prev => ({ ...prev, username: cleaned }))
+                      }}
                       style={{ ...inpStyle, paddingRight: 36 }}
                       placeholder="username"
                       autoComplete="username"
+                      spellCheck={false}
                     />
                     <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)' }}>
                       {usernameStatus.checking
@@ -564,10 +920,71 @@ export default function UserForm() {
             >
               <div className="usr-grid-2">
                 <Field label="Email" required>
-                  <input type="email" value={form.email} onChange={setField('email')} style={inpStyle} placeholder="user@example.com" />
+                  <div style={{ position: 'relative' }} ref={emailRef}>
+                    <input
+                      type="text"
+                      inputMode="email"
+                      value={form.email}
+                      onChange={onEmailChange}
+                      onFocus={() => {
+                        if (emailSuggestions.length > 0) setShowEmailSugg(true)
+                      }}
+                      onBlur={() => setTimeout(() => setShowEmailSugg(false), 150)}
+                      style={inpStyle}
+                      placeholder="user@example.com"
+                      autoComplete="email"
+                      spellCheck={false}
+                    />
+                    {showEmailSugg && emailSuggestions.length > 0 && (
+                      <div style={{
+                        position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100,
+                        background: 'var(--surface)', border: '1px solid var(--border-2)',
+                        borderRadius: 8, marginTop: 4, overflow: 'hidden',
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+                      }}>
+                        {emailSuggestions.map(s => (
+                          <div
+                            key={s}
+                            onMouseDown={() => {
+                              setForm(prev => ({ ...prev, email: s }))
+                              setShowEmailSugg(false)
+                              setEmailSuggestions([])
+                            }}
+                            style={{
+                              padding: '9px 12px', fontSize: 13, cursor: 'pointer',
+                              color: 'var(--text-1)', borderBottom: '1px solid var(--border)',
+                              display: 'flex', alignItems: 'center', gap: 8,
+                              transition: 'background 0.1s',
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-bg)'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                          >
+                            <span style={{ color: 'var(--text-4)', fontSize: 12 }}>@</span>
+                            <span>{s.split('@')[1]}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </Field>
-                <Field label={isRu ? 'Телефон' : 'Telefon'}>
-                  <input value={form.phone} onChange={setField('phone')} style={inpStyle} placeholder="+998..." />
+                <Field
+                  label={isRu ? 'Телефон' : 'Telefon'}
+                  hint="+998 XX XXX XX XX"
+                >
+                  <input
+                    type="tel"
+                    value={form.phone}
+                    onChange={onPhoneChange}
+                    onFocus={(e) => {
+                      if (!e.target.value) setForm(prev => ({ ...prev, phone: '+998 ' }))
+                    }}
+                    onBlur={(e) => {
+                      if (e.target.value === '+998 ') setForm(prev => ({ ...prev, phone: '' }))
+                    }}
+                    style={inpStyle}
+                    placeholder="+998 90 123 45 67"
+                    maxLength={17}
+                  />
                 </Field>
                 <Field label={isRu ? 'Роль' : 'Huquqi'} required>
                   <select value={form.role} onChange={onRoleChange} style={inpStyle}>
@@ -617,18 +1034,45 @@ export default function UserForm() {
               )}
             </Section>
 
+            {form.organization_ids.length === 1 && (
+              <Section
+                kicker={isRu ? 'Филиал' : 'Filial'}
+                title={isRu ? 'Доступ к конкретному филиалу' : 'Muayyan filialga ruxsat'}
+                hint={isRu ? 'Если выбрано, доступ пользователя будет ограничен этим филиалом' : 'Agar tanlansa, foydalanuvchi ruxsati faqat shu filial bilan cheklanadi'}
+              >
+                {loadingBranches ? (
+                  <Skeleton width="100%" height={38} />
+                ) : branches.length === 0 ? (
+                  <div style={{ color: 'var(--text-4)', fontSize: 13 }}>
+                    {isRu ? 'У этой организации нет филиалов' : "Ushbu tashkilotda filiallar mavjud emas"}
+                  </div>
+                ) : (
+                  <select
+                    value={form.branch_id}
+                    onChange={e => setForm(prev => ({ ...prev, branch_id: e.target.value }))}
+                    style={inpStyle}
+                  >
+                    <option value="">{isRu ? 'Все филиалы (Организация целиком)' : 'Barcha filiallar (Tashkilot darajasida)'}</option>
+                    {branches.map(b => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
+                    ))}
+                  </select>
+                )}
+              </Section>
+            )}
+
             {/* 5. Menu Permissions */}
             <Section
               kicker={isRu ? 'Права доступа' : 'Ruxsatnomalar'}
               title={isRu ? 'Доступ к разделам меню' : 'Menyu bo\'limlariga ruxsat'}
               hint={
                 form.role === 'SuperAdmin'
-                  ? (isRu ? 'Супер-администратор имеет полный доступ ко всем разделам меню.' : 'Super-administrator tizimdagi barcha menyu bo\'limlariga to\'liq ruxsatga ega.')
+                  ? null
                   : (isRu ? 'Выберите разделы, которые будут видны этому пользователю' : 'Ushbu foydalanuvchiga ko\'rinadigan menyu bo\'limlarini tanlang')
               }
             >
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {PERMISSION_GROUPS.map(group => (
+                {permissionGroups.map(group => (
                   <div key={group.key} style={{
                     border: '1px solid var(--border-2)',
                     borderRadius: 10,
@@ -718,57 +1162,231 @@ export default function UserForm() {
               kicker="Avatar"
               title={isRu ? 'Фотография' : 'Rasm'}
             >
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-                <div style={{
-                  width: 140, height: 140, borderRadius: '50%',
-                  background: 'var(--surface-2)', border: '1px solid var(--border)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  overflow: 'hidden', flexShrink: 0,
-                }}>
-                  {imagePreview
-                    ? <img src={imagePreview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={() => setImagePreview('')} />
-                    : <PersonRegular fontSize={48} style={{ color: 'var(--text-4)' }} />}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+                <style>{`
+                  @keyframes avatarScanUsr {
+                    0% { transform: translateY(-70px); opacity: 0.3; }
+                    50% { transform: translateY(70px); opacity: 1; }
+                    100% { transform: translateY(-70px); opacity: 0.3; }
+                  }
+                  @keyframes avatarShakeUsr {
+                    0%, 100% { transform: translateX(0); }
+                    20%, 60% { transform: translateX(-8px); }
+                    40%, 80% { transform: translateX(8px); }
+                  }
+                  @keyframes borderRotateUsr {
+                    100% { transform: rotate(360deg); }
+                  }
+                  @keyframes pulseGreenUsr {
+                    0% { box-shadow: 0 0 0 0 rgba(16,185,129,0.4); }
+                    70% { box-shadow: 0 0 0 10px rgba(16,185,129,0); }
+                    100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+                  }
+                  @keyframes pulseRedUsr {
+                    0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
+                    70% { box-shadow: 0 0 0 10px rgba(239,68,68,0); }
+                    100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+                  }
+                  .dashed-ring-usr {
+                    position: absolute;
+                    inset: -8px;
+                    border: 1.5px dashed var(--border-3);
+                    border-radius: 50%;
+                    animation: borderRotateUsr 24s linear infinite;
+                    opacity: 0.7;
+                    pointer-events: none;
+                    transition: all 0.3s;
+                  }
+                  .dashed-ring-usr.checking {
+                    animation: borderRotateUsr 4s linear infinite;
+                    border-color: var(--accent);
+                    opacity: 1;
+                  }
+                  .dashed-ring-usr.success {
+                    border-color: #10b981;
+                    animation: borderRotateUsr 30s linear infinite;
+                    opacity: 0.9;
+                  }
+                  .dashed-ring-usr.error {
+                    border-color: #ef4444;
+                    animation: none;
+                    opacity: 0.9;
+                  }
+                `}</style>
+
+                {/* Avatar circle */}
+                <div
+                  onClick={() => !checkingFace && fileRef.current?.click()}
+                  onMouseEnter={() => setAvatarHovered(true)}
+                  onMouseLeave={() => setAvatarHovered(false)}
+                  style={{
+                    width: 150, height: 150, borderRadius: '50%',
+                    background: 'var(--surface-2)',
+                    border: `2px solid ${faceSuccess ? '#10b981' : (faceError ? '#ef4444' : (checkingFace ? 'var(--accent)' : (imagePreview ? 'var(--accent)' : 'var(--border-3)')))}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    overflow: 'visible', flexShrink: 0, position: 'relative',
+                    cursor: checkingFace ? 'wait' : 'pointer',
+                    boxShadow: faceSuccess ? '0 0 18px rgba(16,185,129,0.5)' : (faceError ? '0 0 18px rgba(239,68,68,0.5)' : (checkingFace ? '0 0 18px rgba(0,120,212,0.4)' : 'none')),
+                    animation: faceSuccess ? 'pulseGreenUsr 2s infinite' : (faceError ? 'avatarShakeUsr 0.4s ease, pulseRedUsr 2s infinite' : 'none'),
+                    transition: 'all 0.3s cubic-bezier(0.4,0,0.2,1)',
+                  }}
+                >
+                  {/* Dashed rotating ring */}
+                  <div className={`dashed-ring-usr ${checkingFace ? 'checking' : (faceSuccess ? 'success' : (faceError ? 'error' : ''))}`} />
+
+                  {/* Inner circle */}
+                  <div style={{
+                    position: 'absolute', inset: 0, borderRadius: '50%', overflow: 'hidden',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'var(--surface-1)'
+                  }}>
+                    {imagePreview ? (
+                      <img src={imagePreview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={() => setImagePreview('')} />
+                    ) : (
+                      <PersonRegular fontSize={52} style={{ color: 'var(--text-4)', opacity: 0.4 }} />
+                    )}
+
+                    {/* Face scanning loader overlay */}
+                    {checkingFace && (
+                      <div style={{
+                        position: 'absolute', inset: 0, background: 'rgba(10,15,28,0.82)',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                        color: '#fff', fontSize: 11, fontWeight: 600, gap: 8, zIndex: 10,
+                        backdropFilter: 'blur(3px)'
+                      }}>
+                        <div style={{
+                          position: 'absolute', left: 0, right: 0, height: '4px',
+                          background: 'linear-gradient(90deg, transparent, var(--accent), transparent)',
+                          boxShadow: '0 0 10px var(--accent), 0 0 20px var(--accent)',
+                          animation: 'avatarScanUsr 2s infinite linear'
+                        }} />
+                        <ArrowSyncRegular fontSize={22} style={{ animation: 'spin 1.2s linear infinite', color: 'var(--accent)' }} />
+                        <span style={{ fontSize: 10, letterSpacing: '0.5px', textTransform: 'uppercase', color: 'var(--accent)' }}>
+                          {isRu ? 'Анализ...' : 'Tekshirilmoqda...'}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Hover overlay (only when not checking) */}
+                    {!checkingFace && avatarHovered && (
+                      <div style={{
+                        position: 'absolute', inset: 0,
+                        background: 'rgba(0,0,0,0.6)',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                        color: '#fff', gap: 6,
+                        backdropFilter: 'blur(1px)',
+                        animation: 'fadeIn 0.2s ease',
+                      }}>
+                        <CameraRegular fontSize={24} />
+                        <span style={{ fontSize: 10, letterSpacing: '0.5px', fontWeight: 600 }}>
+                          {imagePreview ? (isRu ? 'Изменить' : "O'zgartirish") : (isRu ? 'Загрузить' : 'Yuklash')}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <label style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '8px 14px', borderRadius: 8,
-                  background: 'var(--accent-bg)', color: 'var(--accent-tx)',
-                  border: '1px solid var(--accent-bd)',
-                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                }}>
-                  <ImageRegular fontSize={14} />
-                  {isRu ? 'Выбрать фото' : 'Rasm tanlash'}
-                  <input type="file" accept="image/*" onChange={onPickImage} style={{ display: 'none' }} />
-                </label>
+                <input type="file" ref={fileRef} accept="image/*" onChange={onPickImage} style={{ display: 'none' }} />
 
-                {imagePreview && (
-                  <button type="button" onClick={onClearImage} style={{
-                    display: 'flex', alignItems: 'center', gap: 5,
-                    padding: '6px 12px', borderRadius: 7,
-                    background: 'transparent', color: 'var(--red)',
-                    border: '1px solid var(--red-bd)',
-                    fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                  }}>
-                    <DismissRegular fontSize={13} />
-                    {isRu ? 'Удалить' : 'O\'chirish'}
-                  </button>
+                {/* Error message */}
+                {imgError && (
+                  <div style={{ color: '#f43f5e', fontSize: 11, textAlign: 'center', padding: '0 8px' }}>
+                    {imgError}
+                  </div>
                 )}
-              </div>
 
-              <div style={{ marginTop: 14 }}>
-                <Field label={isRu ? 'URL изображения' : 'Rasm URL'} hint={isRu ? 'Ixtiyoriy' : 'Ixtiyoriy'}>
-                  <input
-                    value={form.image_url}
-                    onChange={(e) => {
-                      const v = e.target.value
-                      setForm(prev => ({ ...prev, image_url: v }))
-                      if (!imageFile) setImagePreview(v)
+                {/* Action buttons */}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={() => !checkingFace && fileRef.current?.click()}
+                    disabled={checkingFace}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      padding: '7px 12px', borderRadius: 8,
+                      background: 'var(--accent-bg)', color: 'var(--accent-tx)',
+                      border: '1px solid var(--accent-bd)',
+                      fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
                     }}
-                    style={inpStyle}
-                    placeholder="https://..."
-                  />
-                </Field>
+                    onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                    onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                  >
+                    <ImageRegular fontSize={13} />
+                    {isRu ? 'Выбрать фото' : 'Rasm tanlash'}
+                  </button>
+
+                  {imagePreview && (
+                    <button
+                      type="button"
+                      onClick={onClearImage}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 5,
+                        padding: '7px 12px', borderRadius: 8,
+                        background: 'transparent', color: 'var(--red)',
+                        border: '1px solid var(--red-bd)',
+                        fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'var(--red-bg)' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                    >
+                      <DismissRegular fontSize={13} />
+                      {isRu ? 'Удалить' : "O'chirish"}
+                    </button>
+                  )}
+                </div>
+
+                {/* Photo guidelines */}
+                <div style={{
+                  marginTop: 4, padding: '12px 14px', borderRadius: 8,
+                  background: 'var(--surface-2)', border: '1px solid var(--border-2)',
+                  width: '100%', fontSize: 11, lineHeight: '1.6', color: 'var(--text-2)',
+                }}>
+                  <div style={{ fontWeight: 600, color: 'var(--text-1)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <CheckmarkCircleRegular fontSize={14} style={{ color: '#10b981' }} />
+                    {isRu ? 'Требования к фото:' : 'Rasm talablari:'}
+                  </div>
+                  <ul style={{ margin: 0, paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <li>{isRu ? 'Формат: JPG, PNG, WEBP' : 'Format: JPG, PNG, WEBP'}</li>
+                    <li>{isRu ? 'Максимум 5 МБ' : 'Maksimal hajm: 5 MB'}</li>
+                    <li>{isRu ? 'Лицо чёткое и по центру' : 'Yuz aniq va markazda bo\'lsin'}</li>
+                  </ul>
+                </div>
+
+                {/* Optional URL input */}
+                <div style={{ width: '100%' }}>
+                  {(() => {
+                    const urlVal = form.image_url.trim()
+                    const isValidUrl = !urlVal || urlVal.startsWith('http://') || urlVal.startsWith('https://') || urlVal.startsWith('/static/')
+                    return (
+                      <Field
+                        label={isRu ? 'URL изображения' : 'Rasm URL'}
+                        hint={urlVal && !isValidUrl
+                          ? (isRu ? '⚠ Noto\'g\'ri URL — faqat https:// yoki http:// dan boshlanishi kerak' : '⚠ Noto\'g\'ri URL — https:// yoki http:// bilan boshlang')
+                          : (isRu ? 'Ixtiyoriy' : 'Ixtiyoriy')}
+                        hintTone={urlVal && !isValidUrl ? 'err' : 'muted'}
+                      >
+                        <input
+                          value={form.image_url}
+                          onChange={(e) => {
+                            const v = e.target.value
+                            setForm(prev => ({ ...prev, image_url: v }))
+                            // Faqat valid URL bo'lsa preview ko'rsatamiz
+                            if (!imageFile) {
+                              const isValid = v.startsWith('http://') || v.startsWith('https://') || v.startsWith('/static/')
+                              setImagePreview(isValid ? v : '')
+                            }
+                          }}
+                          style={{
+                            ...inpStyle,
+                            borderColor: form.image_url.trim() && !form.image_url.trim().startsWith('http') && !form.image_url.trim().startsWith('/static/')
+                              ? '#ef4444' : undefined
+                          }}
+                          placeholder="https://example.com/photo.jpg"
+                        />
+                      </Field>
+                    )
+                  })()}
+                </div>
               </div>
             </Section>
 
@@ -824,6 +1442,52 @@ export default function UserForm() {
           </button>
         </div>
       </form>
+
+      {/* Face selector modal — shown when multiple faces detected */}
+      {showFaceSelector && faceSelectionData && (
+        <UsrModal
+          title={isRu ? 'Foydalanuvchi yuzini tanlang' : 'Foydalanuvchi yuzini tanlang'}
+          onClose={handleCancelFaceSelection}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--text-2)', lineHeight: '1.5' }}>
+              {isRu
+                ? 'На изображении обнаружено несколько лиц. Пожалуйста, выберите нужное:'
+                : 'Rasmda bir nechta yuz aniqlandi. Iltimos, foydalanuvchining yuzini tanlang:'}
+            </p>
+            <div style={{
+              display: 'flex', flexWrap: 'wrap', gap: 12,
+              justifyContent: 'center', padding: '10px 0',
+              maxHeight: 320, overflowY: 'auto'
+            }}>
+              {faceSelectionData.faces.map((face, idx) => (
+                <UsrFaceThumbnail
+                  key={idx}
+                  img={faceSelectionData.img}
+                  face={face}
+                  w={faceSelectionData.w}
+                  h={faceSelectionData.h}
+                  onClick={() => {
+                    cropSelectedFace(face, faceSelectionData.img, faceSelectionData.w, faceSelectionData.h, faceSelectionData.file)
+                    setFaceSelectionData(null)
+                    setShowFaceSelector(false)
+                  }}
+                />
+              ))}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button type="button" onClick={handleCancelFaceSelection} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '8px 14px', borderRadius: 7,
+                background: 'var(--surface-2)', color: 'var(--text-1)',
+                border: '1px solid var(--border-2)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              }}>
+                {isRu ? 'Отмена' : 'Bekor qilish'}
+              </button>
+            </div>
+          </div>
+        </UsrModal>
+      )}
     </div>
   )
 }
@@ -891,4 +1555,82 @@ function btnStyle(kind) {
     border: t.border || 'none',
     fontSize: 13, fontWeight: 600, cursor: 'pointer',
   }
+}
+
+// ─── Modal ───────────────────────────────────────────────────────────────────
+function UsrModal({ title, onClose, children }) {
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 1000, padding: 16,
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: 500,
+          background: 'var(--surface)', border: '1px solid var(--border)',
+          borderRadius: 14, padding: 24, maxHeight: '90vh', overflowY: 'auto',
+          boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{title}</h3>
+          <button type="button" onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 20 }}>
+            <DismissRegular fontSize={20} />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+// ─── FaceThumbnail ───────────────────────────────────────────────────────────
+function UsrFaceThumbnail({ img, face, w, h, onClick }) {
+  const canvasRef = useRef(null)
+  useEffect(() => {
+    if (!canvasRef.current || !img) return
+    const canvas = canvasRef.current
+    const ctx = canvas.getContext('2d')
+    const scaleX = img.width / w, scaleY = img.height / h
+    const fx = face.x * scaleX, fy = face.y * scaleY
+    const fw = face.width * scaleX, fh = face.height * scaleY
+    let cropW = fw * 2.2, cropH = cropW * 1.333
+    let cropX = fx - (cropW - fw) / 2, cropY = fy - fh * 0.5
+    if (cropX < 0) cropX = 0
+    if (cropY < 0) cropY = 0
+    if (cropX + cropW > img.width) cropW = img.width - cropX
+    if (cropY + cropH > img.height) cropH = img.height - cropY
+    ctx.fillStyle = '#fff'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    try { ctx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, canvas.width, canvas.height) } catch (e) {}
+  }, [img, face, w, h])
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        border: '2px solid var(--border-3)', borderRadius: 10, overflow: 'hidden',
+        background: 'var(--surface-2)', cursor: 'pointer', padding: 0,
+        width: 100, height: 133,
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        transition: 'all 0.2s cubic-bezier(0.4,0,0.2,1)',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.08)', position: 'relative',
+      }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,120,212,0.25)' }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-3)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)' }}
+    >
+      <canvas ref={canvasRef} width={96} height={128} style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover' }} />
+      <div style={{
+        position: 'absolute', right: 6, bottom: 6, width: 20, height: 20, borderRadius: '50%',
+        background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: '#fff', fontSize: 11, fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+      }}>✓</div>
+    </button>
+  )
 }

@@ -6,7 +6,8 @@ import {
   CameraRegular, ArrowSyncRegular, AddRegular,
   Wifi4Regular, WifiOffRegular, DeleteRegular,
   SearchRegular, FilterRegular, BuildingRegular,
-  ClockRegular, PersonRegular, MoreHorizontalRegular, CodeRegular
+  ClockRegular, PersonRegular, MoreHorizontalRegular, CodeRegular,
+  LocationRegular, EyeRegular, DatabaseRegular, TagRegular
 } from '@fluentui/react-icons'
 import PageHero from '../components/PageHero'
 import { useConfirm } from '../components/ConfirmDialog'
@@ -57,6 +58,9 @@ export default function Devices() {
   // Cache bo'lsa darhol ko'rsatamiz (stale-while-revalidate pattern)
   const [cameras, setCameras]   = useState(_camerasCache)
   const [organizations, setOrganizations] = useState([])
+  const [branches, setBranches] = useState([])          // tanlangan org filiallari
+  const [branchesLoading, setBranchesLoading] = useState(false)
+  const [collapsedBranches, setCollapsedBranches] = useState({})
   const [loading, setLoading]   = useState(_camerasCache.length === 0)
   const [error, setError]       = useState('')
   const [spin, setSpin]         = useState(false)
@@ -125,11 +129,30 @@ export default function Devices() {
     return () => { if (abortRef.current) abortRef.current.abort() }
   }, [load])
 
+  // orgParam o'zgarganda filialllarni yuklash
+  useEffect(() => {
+    if (!orgParam || orgParam === 'none') {
+      setBranches([])
+      return
+    }
+    setBranchesLoading(true)
+    fetch(`/api/branches?org=${orgParam}`)
+      .then(r => r.ok ? r.json() : [])
+      .then(data => {
+        const list = Array.isArray(data) ? data : data.items || []
+        setBranches(list)
+        setBranchesLoading(false)
+      })
+      .catch(() => setBranchesLoading(false))
+  }, [orgParam])
+
   useEffect(() => {
     if (orgParam && orgParam !== 'none' && filter === 'unassigned') {
       setFilter('all')
     }
   }, [orgParam, filter])
+
+  const toggleBranch = (id) => setCollapsedBranches(p => ({ ...p, [id]: !p[id] }))
 
   const handleDelete = async (cam) => {
     const ok = await confirm({
@@ -204,6 +227,7 @@ export default function Devices() {
         filteredCameras: filteredOrgCams,
         online: onlineCount,
         offline: offlineCount,
+        branches: org.branches || [],
       })
     }
   })
@@ -234,6 +258,7 @@ export default function Devices() {
       filteredCameras: filteredNoOrgCams,
       online: noOrgCams.filter(c => c.is_online).length,
       offline: noOrgCams.filter(c => !c.is_online).length,
+      branches: [],
     })
   }
 
@@ -379,108 +404,203 @@ export default function Devices() {
             {/* Grid display */}
             {!error && (
               orgParam ? (
-                /* CAMERA GRID */
-                filtered.length > 0 && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
-                    {filtered.map(cam => (
-                      <div key={cam.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}
-                        onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent-bd)'}
-                        onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
-                      >
-                        <div style={{ padding: '16px 18px 14px', display: 'flex', alignItems: 'flex-start', gap: 12, borderBottom: '1px solid var(--border-2)' }}>
-                          <div style={{ width: 42, height: 42, borderRadius: 11, flexShrink: 0, background: cam.is_online ? 'var(--green-bg)' : 'var(--surface-2)', border: `1px solid ${cam.is_online ? 'var(--green-bd)' : 'var(--border-3)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: cam.is_online ? 'var(--green)' : 'var(--text-4)' }}>
-                            <CameraRegular fontSize={20} />
-                          </div>
-                          <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => navigate(`/devices/${cam.id}`)}>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', marginBottom: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cam.name}</div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                              <StatusDot online={cam.is_online} />
-                              {cam.direction && (
-                                <span style={{
-                                  fontSize: 10, fontWeight: 700,
-                                  color: cam.direction === 'in' ? 'var(--dir-in)' : 'var(--dir-out)',
-                                  background: cam.direction === 'in' ? 'var(--dir-in-bg)' : 'var(--dir-out-bg)',
-                                  border: `1px solid ${cam.direction === 'in' ? 'var(--dir-in-bd)' : 'var(--dir-out-bd)'}`,
-                                  borderRadius: 100, padding: '2px 8px', textTransform: 'uppercase'
-                                }}>
-                                  {cam.direction === 'in' ? (i18n.language === 'ru' ? 'Вход' : 'Kirish') : (i18n.language === 'ru' ? 'Выход' : 'Chiqish')}
-                                </span>
+                /* ── BRANCH-GROUPED CAMERA VIEW ── */
+                (() => {
+                  const orgCams = selectedCams
+                  // filiallarga ajratish
+                  const branchGroups = branches.map(br => ({
+                    ...br,
+                    cameras: orgCams.filter(c => c.branch_id === br.id).filter(c => {
+                      const q = search.toLowerCase()
+                      const ms = !q || c.name?.toLowerCase().includes(q) || c.location?.toLowerCase().includes(q) || c.mac_address?.toLowerCase().includes(q)
+                      const mf = filter === 'all' || (filter === 'online' && c.is_online) || (filter === 'offline' && !c.is_online)
+                      return ms && mf
+                    })
+                  }))
+                  const unboundCams = orgCams.filter(c => !c.branch_id).filter(c => {
+                    const q = search.toLowerCase()
+                    const ms = !q || c.name?.toLowerCase().includes(q) || c.location?.toLowerCase().includes(q) || c.mac_address?.toLowerCase().includes(q)
+                    const mf = filter === 'all' || (filter === 'online' && c.is_online) || (filter === 'offline' && !c.is_online)
+                    return ms && mf
+                  })
+
+                  const renderCamGrid = (cams) => (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))', gap: 14, marginTop: 14 }}>
+                      {cams.map(cam => {
+                        const facePercent = cam.max_memory > 0 ? Math.min(100, Math.round(((cam.used_faces || 0) / cam.max_memory) * 100)) : 0
+                        const faceBarColor = facePercent >= 95 ? 'var(--red)' : facePercent >= 75 ? 'var(--yellow)' : 'var(--accent)'
+                        const cardBorderColor = cam.is_online ? 'var(--green-bd)' : 'var(--red-bd)'
+                        const cardShadow = cam.is_online ? '0 4px 14px rgba(74,222,128,0.08),var(--shadow-sm)' : '0 4px 14px rgba(248,113,113,0.08),var(--shadow-sm)'
+                        const cardHoverBorderColor = cam.is_online ? 'var(--green)' : 'var(--red)'
+                        const cardHoverShadow = cam.is_online ? '0 6px 24px rgba(74,222,128,0.22),var(--shadow)' : '0 6px 24px rgba(248,113,113,0.22),var(--shadow)'
+                        return (
+                          <div key={cam.id} className="camera-card" style={{ background:'var(--surface)', border:`1px solid ${cardBorderColor}`, borderRadius:16, overflow:'hidden', display:'flex', flexDirection:'column', justifyContent:'space-between', boxShadow:cardShadow, transition:'transform 0.22s ease,border-color 0.22s ease,box-shadow 0.22s ease' }}
+                            onMouseEnter={e=>{e.currentTarget.style.borderColor=cardHoverBorderColor;e.currentTarget.style.transform='translateY(-3px)';e.currentTarget.style.boxShadow=cardHoverShadow}}
+                            onMouseLeave={e=>{e.currentTarget.style.borderColor=cardBorderColor;e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow=cardShadow}}
+                          >
+                            <div style={{padding:'16px 18px',display:'flex',alignItems:'center',gap:12,borderBottom:'1px solid var(--border-2)'}}>
+                              <div style={{position:'relative',width:44,height:44,borderRadius:12,flexShrink:0,background:cam.is_online?'var(--green-bg)':'var(--surface-2)',border:`1px solid ${cam.is_online?'var(--green-bd)':'var(--border-3)'}`,display:'flex',alignItems:'center',justifyContent:'center',color:cam.is_online?'var(--green)':'var(--text-4)'}}>
+                                <CameraRegular fontSize={22}/>
+                                <span style={{position:'absolute',right:-2,bottom:-2,width:10,height:10,borderRadius:'50%',background:cam.is_online?'var(--green)':'var(--red)',border:'2px solid var(--surface)',animation:cam.is_online?'onlinePulse 2s infinite ease-in-out':'none',boxShadow:cam.is_online?'0 0 6px var(--green)':'none'}}/>
+                              </div>
+                              <div style={{flex:1,minWidth:0,cursor:'pointer'}} onClick={()=>navigate(`/devices/${cam.id}`)}>
+                                <div style={{fontSize:15,fontWeight:700,color:'var(--white)',marginBottom:4,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={cam.name}>{cam.name}</div>
+                                <div style={{display:'flex',alignItems:'center',gap:6}}>
+                                  <span style={{fontSize:10,fontWeight:700,color:cam.is_online?'var(--green)':'var(--text-3)',textTransform:'uppercase',letterSpacing:0.3}}>{cam.is_online?'Online':'Offline'}</span>
+                                  {cam.direction&&<span style={{fontSize:9,fontWeight:800,color:cam.direction==='in'?'var(--dir-in)':'var(--dir-out)',background:cam.direction==='in'?'var(--dir-in-bg)':'var(--dir-out-bg)',border:`1px solid ${cam.direction==='in'?'var(--dir-in-bd)':'var(--dir-out-bd)'}`,borderRadius:4,padding:'1px 5px',textTransform:'uppercase'}}>{cam.direction==='in'?(isRu?'Вход':'Kirish'):(isRu?'Выход':'Chiqish')}</span>}
+                                </div>
+                              </div>
+                            </div>
+                            <div style={{padding:'16px 18px',display:'flex',flexDirection:'column',gap:12,flexGrow:1}}>
+                              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                                <div style={{display:'flex',flexDirection:'column',gap:2}}>
+                                  <div style={{display:'flex',alignItems:'center',gap:5,color:'var(--text-4)',fontSize:11,fontWeight:600}}><LocationRegular fontSize={12}/><span>{t('devices.location')}</span></div>
+                                  <div style={{fontSize:13,color:'var(--text-1)',fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={cam.location||'—'}>{cam.location||'—'}</div>
+                                </div>
+                                <div style={{display:'flex',flexDirection:'column',gap:2}}>
+                                  <div style={{display:'flex',alignItems:'center',gap:5,color:'var(--text-4)',fontSize:11,fontWeight:600}}><TagRegular fontSize={12}/><span>{t('devices.model')}</span></div>
+                                  <div style={{fontSize:13,color:'var(--text-1)',fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={cam.model||'—'}>{cam.model||'—'}</div>
+                                </div>
+                                <div style={{display:'flex',flexDirection:'column',gap:2}}>
+                                  <div style={{display:'flex',alignItems:'center',gap:5,color:'var(--text-4)',fontSize:11,fontWeight:600}}><CodeRegular fontSize={12}/><span>MAC</span></div>
+                                  <div style={{fontSize:12,color:'var(--text-2)',fontFamily:'monospace',fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={cam.mac_address||'—'}>{cam.mac_address||'—'}</div>
+                                </div>
+                                <div style={{display:'flex',flexDirection:'column',gap:2}}>
+                                  <div style={{display:'flex',alignItems:'center',gap:5,color:'var(--text-4)',fontSize:11,fontWeight:600}}><ClockRegular fontSize={12}/><span>{t('devices.lastSeen')}</span></div>
+                                  <div style={{fontSize:12,color:'var(--text-1)',fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{fmtDate(cam.last_seen_at)}</div>
+                                </div>
+                              </div>
+                              {(cam.used_faces!==undefined||cam.max_memory!==undefined)&&(
+                                <div style={{marginTop:8,padding:'10px 12px',background:'var(--surface-2)',border:'1px solid var(--border-2)',borderRadius:8}}>
+                                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                                    <span style={{fontSize:11,color:'var(--text-3)',display:'flex',alignItems:'center',gap:5}}><DatabaseRegular fontSize={12}/>{t('devices.faces')}</span>
+                                    <span style={{fontSize:11,fontWeight:600,color:'var(--text-1)'}}>{cam.used_faces||0}/{cam.max_memory||'?'} ({facePercent}%)</span>
+                                  </div>
+                                  {cam.max_memory>0&&<div style={{height:4,background:'var(--border)',borderRadius:99,overflow:'hidden'}}><div style={{height:'100%',width:`${facePercent}%`,background:faceBarColor,borderRadius:99,boxShadow:`0 0 8px ${faceBarColor}`}}/></div>}
+                                </div>
+                              )}
+                            </div>
+                            <div style={{display:'flex',alignItems:'center',gap:8,padding:'10px 14px',background:'var(--surface-2)',borderTop:'1px solid var(--border-2)'}}>
+                              <button onClick={()=>navigate(`/devices/${cam.id}`)} style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'8px 12px',borderRadius:8,background:'var(--surface-3)',border:'1px solid var(--border-3)',color:'var(--text-1)',fontSize:12.5,fontWeight:600,cursor:'pointer',transition:'all 0.2s'}} onMouseEnter={e=>{e.currentTarget.style.background='var(--accent)';e.currentTarget.style.borderColor='var(--accent)';e.currentTarget.style.color='#fff'}} onMouseLeave={e=>{e.currentTarget.style.background='var(--surface-3)';e.currentTarget.style.borderColor='var(--border-3)';e.currentTarget.style.color='var(--text-1)'}}>
+                                <EyeRegular fontSize={14}/>{t('devices.details')}
+                              </button>
+                              <Tooltip content={t('nav.commands','Buyruq berish')} relationship="label">
+                                <button onClick={()=>navigate(`/commands?cam=${cam.id}&org=${cam.organization_id}`)} style={{width:34,height:34,borderRadius:8,background:'var(--surface-3)',border:'1px solid var(--border-3)',color:'var(--accent-tx)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.2s'}} onMouseEnter={e=>{e.currentTarget.style.background='var(--accent-bg)';e.currentTarget.style.borderColor='var(--accent-bd)'}} onMouseLeave={e=>{e.currentTarget.style.background='var(--surface-3)';e.currentTarget.style.borderColor='var(--border-3)'}}><CodeRegular fontSize={15}/></button>
+                              </Tooltip>
+                              {isSuperAdmin&&(
+                                <Tooltip content={t('devices.delete')} relationship="label">
+                                  <button onClick={()=>handleDelete(cam)} disabled={deleting===cam.id} style={{width:34,height:34,borderRadius:8,background:'var(--surface-3)',border:'1px solid var(--border-3)',color:'var(--red)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.2s'}} onMouseEnter={e=>{e.currentTarget.style.background='var(--red-bg)';e.currentTarget.style.borderColor='var(--red-bd)'}} onMouseLeave={e=>{e.currentTarget.style.background='var(--surface-3)';e.currentTarget.style.borderColor='var(--border-3)'}}>
+                                    {deleting===cam.id?<Spinner size="tiny"/>:<DeleteRegular fontSize={15}/>}
+                                  </button>
+                                </Tooltip>
                               )}
                             </div>
                           </div>
-                          <Tooltip content={t('devices.details')} relationship="label">
-                            <button onClick={() => navigate(`/devices/${cam.id}`)} style={{ width: 30, height: 30, borderRadius: 7, background: 'var(--surface-2)', border: '1px solid var(--border-3)', color: 'var(--text-3)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginRight: -6 }}
-                              onMouseEnter={e => { e.currentTarget.style.background = 'var(--border)'; e.currentTarget.style.color = 'var(--text-1)' }}
-                              onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface-2)'; e.currentTarget.style.color = 'var(--text-3)' }}
-                            >
-                              <MoreHorizontalRegular fontSize={14} />
-                            </button>
-                          </Tooltip>
-                          <Tooltip content={t('nav.commands', 'Buyruq berish')} relationship="label">
-                            <button onClick={() => navigate(`/commands?cam=${cam.id}&org=${cam.organization_id}`)} style={{ width: 30, height: 30, borderRadius: 7, background: 'transparent', border: '1px solid transparent', color: 'var(--accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginRight: -6 }}
-                              onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent-bg)'; e.currentTarget.style.borderColor = 'var(--accent-bd)' }}
-                              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent' }}
-                            >
-                              <CodeRegular fontSize={14} />
-                            </button>
-                          </Tooltip>
-                          {isSuperAdmin && (
-                            <Tooltip content={t('devices.delete')} relationship="label">
-                              <button onClick={() => handleDelete(cam)} disabled={deleting === cam.id} style={{ width: 30, height: 30, borderRadius: 7, background: 'transparent', border: '1px solid transparent', color: 'var(--text-4)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                                onMouseEnter={e => { e.currentTarget.style.background = 'var(--red-bg)'; e.currentTarget.style.borderColor = 'var(--red-bd)'; e.currentTarget.style.color = 'var(--red)' }}
-                                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.color = 'var(--text-4)' }}
-                              >
-                                {deleting === cam.id ? <Spinner size="tiny" /> : <DeleteRegular fontSize={14} />}
-                              </button>
-                            </Tooltip>
-                          )}
-                        </div>
-                        <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 9 }}>
-                          {[
-                            { icon: <BuildingRegular fontSize={13} />, label: t('devices.location'), val: cam.location || '—' },
-                            { icon: <MoreHorizontalRegular fontSize={13} />, label: t('devices.model'), val: cam.model || '—' },
-                            { icon: <MoreHorizontalRegular fontSize={13} />, label: 'MAC', val: cam.mac_address || '—' },
-                            { 
-                              icon: <ArrowSyncRegular fontSize={13} />, 
-                              label: i18n.language === 'ru' ? 'Направление' : "Yo'nalish", 
-                              val: cam.direction ? (
-                                <span style={{ 
-                                  color: cam.direction === 'in' ? 'var(--dir-in)' : 'var(--dir-out)', 
-                                  fontWeight: 700 
-                                }}>
-                                  {cam.direction === 'in' ? (i18n.language === 'ru' ? 'Вход' : 'Kirish') : (i18n.language === 'ru' ? 'Выход' : 'Chiqish')}
-                                </span>
-                              ) : (
-                                <span style={{ color: 'var(--text-4)' }}>
-                                  {i18n.language === 'ru' ? 'Не указано' : 'Ko\'rsatilmagan'}
-                                </span>
-                              )
-                            },
-                            { icon: <ClockRegular fontSize={13} />, label: t('devices.lastSeen'), val: fmtDate(cam.last_seen_at) },
-                          ].map((row, i) => (
-                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-4)', fontSize: 12, flexShrink: 0 }}>{row.icon} {row.label}</div>
-                              <div style={{ fontSize: 12.5, color: 'var(--text-1)', fontFamily: row.label === 'MAC' ? 'monospace' : 'inherit', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60%' }}>{row.val}</div>
+                        )
+                      })}
+                    </div>
+                  )
+
+                  const renderBranchSection = (br, cams) => {
+                    const isCollapsed = collapsedBranches[br.id]
+                    const onlineCount = cams.filter(c=>c.is_online).length
+                    const offlineCount = cams.filter(c=>!c.is_online).length
+                    return (
+                      <div key={br.id} style={{marginBottom:20}}>
+                        <div
+                          onClick={()=>toggleBranch(br.id)}
+                          style={{display:'flex',alignItems:'center',gap:12,padding:'12px 18px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:isCollapsed?12:'12px 12px 0 0',cursor:'pointer',userSelect:'none',transition:'border-color 0.2s'}}
+                          onMouseEnter={e=>e.currentTarget.style.borderColor='var(--accent-bd)'}
+                          onMouseLeave={e=>e.currentTarget.style.borderColor='var(--border)'}
+                        >
+                          <div style={{width:36,height:36,borderRadius:9,background:'rgba(99,102,241,0.12)',border:'1px solid rgba(99,102,241,0.25)',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--accent)',flexShrink:0}}>
+                            <BuildingRegular fontSize={18}/>
+                          </div>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontSize:14,fontWeight:700,color:'var(--white)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{br.name}</div>
+                            <div style={{fontSize:11,color:'var(--text-4)',marginTop:2,display:'flex',alignItems:'center',gap:8}}>
+                              <span>{isRu?'Jami':'Jami'}: {cams.length} {isRu?'камера':'kamera'}</span>
+                              <span style={{color:'var(--green)'}}>● {onlineCount}</span>
+                              <span style={{color:'var(--red)'}}>● {offlineCount}</span>
                             </div>
-                          ))}
+                          </div>
+                          <div style={{fontSize:11,color:'var(--text-4)',background:'var(--surface-2)',padding:'3px 10px',borderRadius:100,border:'1px solid var(--border-2)',fontWeight:600}}>
+                            {cams.length} {isRu?'кам.':'kamera'}
+                          </div>
+                          <span style={{fontSize:16,color:'var(--text-4)',marginLeft:4,transition:'transform 0.2s',transform:isCollapsed?'rotate(-90deg)':'rotate(0deg)'}}>
+                            ▾
+                          </span>
                         </div>
-                        {(cam.used_faces || cam.max_memory) && (
-                          <div style={{ padding: '10px 18px', borderTop: '1px solid var(--border-2)', background: 'var(--surface-2)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                              <span style={{ fontSize: 11, color: 'var(--text-4)' }}>{t('devices.faces')}</span>
-                              <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{cam.used_faces || 0} / {cam.max_memory || '?'}</span>
-                            </div>
-                            {cam.max_memory > 0 && (
-                              <div style={{ height: 3, background: 'var(--border)', borderRadius: 99 }}>
-                                <div style={{ height: '100%', width: `${Math.min(100, Math.round(((cam.used_faces || 0) / cam.max_memory) * 100))}%`, background: 'var(--accent)', borderRadius: 99 }} />
+                        {!isCollapsed&&(
+                          <div style={{border:'1px solid var(--border)',borderTop:'none',borderRadius:'0 0 12px 12px',padding:'14px 14px 16px',background:'var(--bg)'}}>
+                            {cams.length>0 ? renderCamGrid(cams) : (
+                              <div style={{textAlign:'center',padding:'24px 0',color:'var(--text-4)',fontSize:13}}>
+                                <CameraRegular fontSize={28} style={{display:'block',margin:'0 auto 8px'}}/>
+                                {isRu?'Камеры не найдены':'Kameralar topilmadi'}
                               </div>
                             )}
                           </div>
                         )}
                       </div>
-                    ))}
-                  </div>
-                )
+                    )
+                  }
+
+                  return (
+                    <div>
+                      {branchesLoading && (
+                        <div style={{display:'flex',alignItems:'center',gap:10,color:'var(--text-3)',marginBottom:16,fontSize:13}}>
+                          <Spinner size="tiny"/> {isRu?'Filiallar yuklanmoqda...':'Filiallar yuklanmoqda...'}
+                        </div>
+                      )}
+
+                      {/* Filiallar */}
+                      {!branchesLoading && branchGroups.map(br => renderBranchSection(br, br.cameras))}
+
+                      {/* Filialsiz kameralar */}
+                      {!branchesLoading && (() => {
+                        const nobrLabel = isRu?'Filialsiz kameralar':'Filialsiz kameralar'
+                        const isCollapsed = collapsedBranches['__unbound']
+                        const onlineCount = unboundCams.filter(c=>c.is_online).length
+                        const offlineCount = unboundCams.filter(c=>!c.is_online).length
+                        return (
+                          <div style={{marginBottom:20}}>
+                            <div
+                              onClick={()=>toggleBranch('__unbound')}
+                              style={{display:'flex',alignItems:'center',gap:12,padding:'12px 18px',background:'var(--surface)',border:'1px dashed var(--border)',borderRadius:isCollapsed?12:'12px 12px 0 0',cursor:'pointer',userSelect:'none',transition:'border-color 0.2s',opacity:unboundCams.length===0?0.55:1}}
+                              onMouseEnter={e=>e.currentTarget.style.borderColor='var(--accent-bd)'}
+                              onMouseLeave={e=>e.currentTarget.style.borderColor='var(--border)'}
+                            >
+                              <div style={{width:36,height:36,borderRadius:9,background:'rgba(161,161,170,0.12)',border:'1px dashed var(--border-3)',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--text-3)',flexShrink:0}}>
+                                <CameraRegular fontSize={18}/>
+                              </div>
+                              <div style={{flex:1,minWidth:0}}>
+                                <div style={{fontSize:14,fontWeight:700,color:'var(--text-2)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{nobrLabel}</div>
+                                <div style={{fontSize:11,color:'var(--text-4)',marginTop:2,display:'flex',alignItems:'center',gap:8}}>
+                                  <span>{isRu?'Filialsiz':'Filialsiz'}: {unboundCams.length}</span>
+                                  {unboundCams.length>0&&<><span style={{color:'var(--green)'}}>● {onlineCount}</span><span style={{color:'var(--red)'}}>● {offlineCount}</span></>}
+                                </div>
+                              </div>
+                              <div style={{fontSize:11,color:'var(--text-4)',background:'var(--surface-2)',padding:'3px 10px',borderRadius:100,border:'1px dashed var(--border-2)',fontWeight:600}}>
+                                {unboundCams.length} {isRu?'кам.':'kamera'}
+                              </div>
+                              <span style={{fontSize:16,color:'var(--text-4)',marginLeft:4,transform:isCollapsed?'rotate(-90deg)':'rotate(0deg)',transition:'transform 0.2s'}}>▾</span>
+                            </div>
+                            {!isCollapsed&&(
+                              <div style={{border:'1px dashed var(--border)',borderTop:'none',borderRadius:'0 0 12px 12px',padding:'14px 14px 16px',background:'var(--bg)'}}>
+                                {unboundCams.length>0 ? renderCamGrid(unboundCams) : (
+                                  <div style={{textAlign:'center',padding:'24px 0',color:'var(--text-4)',fontSize:13}}>
+                                    <CameraRegular fontSize={28} style={{display:'block',margin:'0 auto 8px'}}/>
+                                    {isRu?'Нет камер без филиала':'Filialsiz kameralar mavjud emas'}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })()}
+                    </div>
+                  )
+                })()
               ) : (
                 /* ORGANIZATIONS GRID */
                 orgGroups.length > 0 && (
@@ -515,7 +635,7 @@ export default function Devices() {
                               {g.name}
                             </h3>
                             <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-4)' }}>
-                              {isRu ? `Всего камер: ${g.cameras.length}` : `Jami kameralar: ${g.cameras.length}`}
+                              {isRu ? `Филиалов: ${(g.branches || []).length} • Камер: ${g.cameras.length}` : `Filiallar: ${(g.branches || []).length} • Kameralar: ${g.cameras.length}`}
                             </p>
                           </div>
                         </div>
@@ -548,28 +668,32 @@ export default function Devices() {
                           </div>
                         )}
 
-                        {/* Camera list preview */}
+                        {/* Branch list preview */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
-                          {g.cameras.slice(0, 3).map(c => (
-                            <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
-                              <span style={{ color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '75%' }}>
-                                {c.name}
-                              </span>
-                              <span style={{
-                                width: 6, height: 6, borderRadius: '50%',
-                                background: c.is_online ? 'var(--green)' : 'var(--red)',
-                                boxShadow: c.is_online ? '0 0 6px var(--green)' : 'none'
-                              }} />
-                            </div>
-                          ))}
-                          {g.cameras.length > 3 && (
+                          {(g.branches || []).slice(0, 3).map(br => {
+                            const brCams = g.cameras.filter(c => c.branch_id === br.id)
+                            const brOnline = brCams.filter(c => c.is_online).length
+                            const brOffline = brCams.filter(c => !c.is_online).length
+                            return (
+                              <div key={br.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
+                                <span style={{ color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%' }} title={br.name}>
+                                  🏢 {br.name}
+                                </span>
+                                <span style={{ fontSize: 11, color: 'var(--text-4)', display: 'flex', gap: 6, alignItems: 'center' }}>
+                                  <span style={{ color: 'var(--green)' }}>● {brOnline}</span>
+                                  <span style={{ color: 'var(--red)' }}>● {brOffline}</span>
+                                </span>
+                              </div>
+                            )
+                          })}
+                          {(g.branches || []).length > 3 && (
                             <div style={{ fontSize: 11, color: 'var(--text-4)', fontStyle: 'italic', textAlign: 'right', marginTop: 2 }}>
-                              {isRu ? `+ еще ${g.cameras.length - 3}` : `+ yana ${g.cameras.length - 3} ta`}
+                              {isRu ? `+ еще ${(g.branches || []).length - 3} фил.` : `+ yana ${(g.branches || []).length - 3} ta filial`}
                             </div>
                           )}
-                          {g.cameras.length === 0 && (
+                          {(g.branches || []).length === 0 && (
                             <div style={{ fontSize: 12, color: 'var(--text-4)', textAlign: 'center', padding: '10px 0' }}>
-                              {isRu ? 'Нет камер' : 'Kameralar mavjud emas'}
+                              {isRu ? 'Нет филиалов' : 'Filiallar mavjud emas'}
                             </div>
                           )}
                         </div>
@@ -606,9 +730,14 @@ export default function Devices() {
           </>
         )}
       </div>
-      <style>{`
+       <style>{`
         @keyframes spin { from { transform:rotate(0deg) } to { transform:rotate(360deg) } }
         @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.4 } }
+        @keyframes onlinePulse {
+          0% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.6); }
+          70% { box-shadow: 0 0 0 5px rgba(74, 222, 128, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+        }
         .devices-container {
           max-width: 1280px;
           margin: 0 auto;

@@ -15,7 +15,7 @@ from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 import models
 from database import engine, ensure_schema, SessionLocal
 from models import RequestLog
-from routers import auth, dashboard, webhook, cameras, employees, settings, organizations, users, system_monitor, planning
+from routers import auth, dashboard, webhook, cameras, employees, settings, organizations, users, system_monitor, planning, chat, versions
 from utils.time_utils import now_tashkent
 
 # Jadvallarni yaratish
@@ -31,7 +31,6 @@ os.makedirs("static/uploads", exist_ok=True)
 os.makedirs("static/uploads/users", exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# tuple shaklida — startswith() bilan ishlaydi
 PUBLIC_PATH_PREFIXES = (
     "/static/",
     "/assets/",          # React build assets
@@ -45,6 +44,9 @@ PUBLIC_PATH_PREFIXES = (
     "/auth/callback",
     "/api/set_language",
     "/api/public/",      # Public endpoints (e.g. /api/public/cameras)
+    "/api/organizations/geo/",  # Public geocoding proxy endpoints
+    "/api/versions",     # Public version info (shown on login page)
+    "/api/employees/mobile-checkin",
     "/docs",
     "/redoc",
     "/openapi.json",
@@ -54,6 +56,7 @@ PUBLIC_PATHS = frozenset({
     "/login",
     "/logout",
     "/favicon.ico",
+    "/uzbekistan.json",
     "/pending-approval",
     "/contact",
     "/about",
@@ -62,6 +65,7 @@ PUBLIC_PATHS = frozenset({
 
 AUTH_PERMISSION_EXEMPT_PATHS = frozenset({
     "/api/system-monitor/navbar-status",
+    "/api/users/permissions-schema",
 })
 
 # Prefix-based exemption: login qilgan har qanday foydalanuvchi kira oladi
@@ -177,6 +181,13 @@ async def require_auth(request, call_next):
 
     auth_user = request.session.get("auth_user")
     if auth_user:
+        try:
+            from routers.chat import ONLINE_USERS
+            import time
+            ONLINE_USERS[auth_user["id"]] = time.time()
+        except Exception:
+            pass
+
         menu_permissions = resolve_user_menu_permissions(
             role=auth_user.get("role"),
             stored_permissions=auth_user.get("menu_permissions"),
@@ -242,6 +253,8 @@ app.include_router(organizations.router, tags=["Organizations API"])
 app.include_router(users.router, tags=["Users API"])
 app.include_router(system_monitor.router, tags=["System Monitor API"])
 app.include_router(planning.router, tags=["Planning API"])
+app.include_router(chat.router, tags=["Chat API"])
+app.include_router(versions.router, tags=["Versions API"])
 
 # --- Frontend SPA Integration ---
 from fastapi.staticfiles import StaticFiles
@@ -258,6 +271,13 @@ if os.path.exists(assets_dir):
 async def serve_react_app(path: str):
     if path.startswith("api/") or path.startswith("static/") or path.startswith("assets/"):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
+    
+    # If the file exists in the frontend build folder (e.g. uzbekistan.json, favicon.ico), serve it
+    if path:
+        target_file = os.path.join(frontend_dist, path)
+        if os.path.exists(target_file) and os.path.isfile(target_file):
+            return FileResponse(target_file)
+
     index_file = os.path.join(frontend_dist, 'index.html')
     if os.path.exists(index_file):
         return FileResponse(index_file)

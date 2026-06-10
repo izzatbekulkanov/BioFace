@@ -45,8 +45,8 @@ export default function MiddlewareLogs() {
       if (search) params.append('search', search)
 
       const [statsRes, logsRes] = await Promise.all([
-        fetch('/api/middleware-logs/stats'),
-        fetch(`/api/middleware-logs?${params.toString()}`)
+        fetch('/api/middleware-logs/stats', { credentials: 'include' }),
+        fetch(`/api/middleware-logs?${params.toString()}`, { credentials: 'include' })
       ])
 
       if (statsRes.status === 401) { navigate('/login'); return }
@@ -75,24 +75,25 @@ export default function MiddlewareLogs() {
     loadData()
   }, [loadData])
 
-  const handleClear = () => {
-    confirm({
+  const handleClear = async () => {
+    const ok = await confirm({
       title: isRu ? 'Очистить логи' : 'Jurnallarni tozalash',
-      body: isRu ? 'Вы уверены, что хотите удалить все записи?' : 'Barcha yozuvlarni o\'chirib tashlashga ishonchingiz komilmi?',
+      message: isRu ? 'Вы уверены, что хотите удалить все записи?' : 'Barcha yozuvlarni o\'chirib tashlashga ishonchingiz komilmi?',
       confirmText: isRu ? 'Да, очистить' : 'Ha, tozalash',
       cancelText: isRu ? 'Отмена' : 'Bekor qilish',
-      onConfirm: async () => {
-        try {
-          const res = await fetch('/api/middleware-logs/clear', { method: 'DELETE' })
-          if (res.ok) {
-            setPage(1)
-            loadData()
-          }
-        } catch (e) {
-          console.error(e)
-        }
-      }
+      danger: true
     })
+    if (ok) {
+      try {
+        const res = await fetch('/api/middleware-logs/clear', { method: 'DELETE', credentials: 'include' })
+        if (res.ok) {
+          setPage(1)
+          loadData()
+        }
+      } catch (e) {
+        console.error(e)
+      }
+    }
   }
 
   const getStatusColor = (code) => {

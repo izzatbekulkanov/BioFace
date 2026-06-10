@@ -5,12 +5,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Optional
 from urllib.parse import urljoin
 
-from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Query, Request, UploadFile
+from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Query, Request, UploadFile, BackgroundTasks
 from sqlalchemy import String, and_, cast, exists, false, func, or_, true
 from sqlalchemy.orm import Session
 
 from core.database import get_db
-from core.models import Department, Device, Employee, EmployeeCameraLink, Organization, Position, Schedule, UserOrganizationLink
+from core.models import Department, Device, Employee, EmployeeCameraLink, Organization, Position, Schedule, UserOrganizationLink, Branch, User, UserRole
 from routers.employees_parts.catalogs import (
     UNSET,
     get_catalog_items_for_org,
@@ -42,8 +42,34 @@ from routers.cameras import (
     _send_isup_command_or_raise,
 )
 from utils.schedule_utils import resolve_employee_schedule
+from utils.face_embeddings import trigger_embedding_generation_bg
 
 router = APIRouter()
+
+def clean_salary_options(val):
+    if not val:
+        return None
+    if isinstance(val, list):
+        cleaned = []
+        for x in val:
+            try:
+                cleaned.append(str(int(str(x).replace(" ", "").replace(",", "").strip())))
+            except ValueError:
+                pass
+        return ",".join(cleaned) if cleaned else None
+    if isinstance(val, str):
+        parts = val.split(",")
+        cleaned = []
+        for p in parts:
+            p_clean = p.replace(" ", "").replace(",", "").strip()
+            try:
+                if p_clean:
+                    cleaned.append(str(int(p_clean)))
+            except ValueError:
+                pass
+        return ",".join(cleaned) if cleaned else None
+    return None
+
 
 
 def _resolve_employee_allowed_org_ids(request: Request, db: Session) -> list[int]:
@@ -79,8 +105,20 @@ def _resolve_employee_allowed_org_ids(request: Request, db: Session) -> list[int
     return sorted(org_ids)
 
 
-def _serialize_employee_record(employee: Employee, org_map: dict[int, str], cam_map: dict[int, str], camera_map: dict[int, list[int]]) -> dict:
+def _serialize_employee_record(
+    employee: Employee,
+    org_map: dict[int, str],
+    cam_map: dict[int, str],
+    camera_map: dict[int, list[int]],
+    embedding_set: Optional[set[int]] = None,
+) -> dict:
     schedule_payload = resolve_employee_schedule(employee)
+
+    if embedding_set is not None:
+        has_emb = int(employee.id) in embedding_set
+    else:
+        has_emb = len(employee.embeddings) > 0
+
     return {
         "id": employee.id,
         "personal_id": employee.personal_id,
@@ -113,9 +151,12 @@ def _serialize_employee_record(employee: Employee, org_map: dict[int, str], cam_
         "birth_date": employee.birth_date or "",
         "gender": employee.gender or "",
         "organization_id": employee.organization_id,
+        "branch_id": employee.branch_id,
         "organization_name": org_map.get(int(employee.organization_id)) if employee.organization_id is not None else None,
+        "salary": employee.salary,
         "camera_ids": camera_map.get(int(employee.id), []),
         "camera_names": [cam_map[cam_id] for cam_id in camera_map.get(int(employee.id), []) if cam_id in cam_map],
+        "has_embedding": has_emb,
     }
 
 
@@ -150,6 +191,8 @@ def _build_employee_payload(db: Session, employees: list[Employee], allowed_org_
     if not employee_ids:
         return []
 
+    from models import FaceEmbedding
+
     org_rows = (
         db.query(Organization.id, Organization.name)
         .filter(Organization.id.in_(allowed_org_ids))
@@ -169,13 +212,21 @@ def _build_employee_payload(db: Session, employees: list[Employee], allowed_org_
         .filter(EmployeeCameraLink.employee_id.in_(employee_ids))
         .all()
     )
+    emb_rows = (
+        db.query(FaceEmbedding.employee_id)
+        .filter(FaceEmbedding.employee_id.in_(employee_ids))
+        .all()
+    )
 
     org_map = {int(row[0]): str(row[1]) for row in org_rows}
     cam_map = {int(row[0]): str(row[1]) for row in cam_rows}
     camera_map: dict[int, list[int]] = {}
     for emp_id, cam_id in links:
         camera_map.setdefault(int(emp_id), []).append(int(cam_id))
-    return [_serialize_employee_record(emp, org_map, cam_map, camera_map) for emp in employees]
+
+    embedding_set = {int(row[0]) for row in emb_rows if row[0] is not None}
+
+    return [_serialize_employee_record(emp, org_map, cam_map, camera_map, embedding_set) for emp in employees]
 
 
 def _camera_user_exists_fast(target_id: str, personal_id: str, *, max_scan: int = 300) -> bool:
@@ -575,6 +626,7 @@ def _serialize_catalog_position(db: Session, position: Position) -> dict[str, An
         "organization_name": str(position.organization.name or "") if position.organization else "",
         "department_id": int(position.department_id) if position.department_id is not None else None,
         "department_name": str(position.department.name or "") if position.department else "",
+        "salary_options": position.salary_options,
         "employee_count": employee_count,
         "can_delete": employee_count == 0,
     }
@@ -664,37 +716,41 @@ def _employee_filter_options_payload(
         db.query(Organization.id, Organization.name)
         .join(employee_scope, employee_scope.c.organization_id == Organization.id)
         .distinct()
-        .order_by(func.lower(Organization.name).asc(), Organization.id.asc())
+        .order_by(Organization.id.asc())
         .all()
     )
+    org_rows = sorted(org_rows, key=lambda r: (r[1] or "").lower())
+
     camera_rows = (
         db.query(Device.id, Device.name, Device.organization_id)
         .join(EmployeeCameraLink, EmployeeCameraLink.camera_id == Device.id)
         .join(employee_scope, employee_scope.c.employee_id == EmployeeCameraLink.employee_id)
         .distinct()
-        .order_by(func.lower(Device.name).asc(), Device.id.asc())
+        .order_by(Device.id.asc())
         .all()
     )
+    camera_rows = sorted(camera_rows, key=lambda r: (r[1] or "").lower())
+
     dept_rows = (
         db.query(employee_scope.c.organization_id, employee_scope.c.department)
         .filter(employee_scope.c.department.isnot(None))
         .filter(func.trim(employee_scope.c.department) != "")
         .distinct()
-        .order_by(employee_scope.c.organization_id.asc(), func.lower(employee_scope.c.department).asc())
+        .order_by(employee_scope.c.organization_id.asc())
         .all()
     )
+    dept_rows = sorted(dept_rows, key=lambda r: (r[0], (r[1] or "").lower()))
+
     pos_rows = (
         db.query(employee_scope.c.organization_id, employee_scope.c.department, employee_scope.c.position)
         .filter(employee_scope.c.position.isnot(None))
         .filter(func.trim(employee_scope.c.position) != "")
         .distinct()
-        .order_by(
-            employee_scope.c.organization_id.asc(),
-            func.lower(employee_scope.c.department).asc(),
-            func.lower(employee_scope.c.position).asc(),
-        )
+        .order_by(employee_scope.c.organization_id.asc())
         .all()
     )
+    pos_rows = sorted(pos_rows, key=lambda r: (r[0], (r[1] or "").lower(), (r[2] or "").lower()))
+
     return {
         "organizations": [{"id": int(row[0]), "name": str(row[1] or "")} for row in org_rows],
         "departments": [
@@ -716,7 +772,7 @@ def _employee_filter_options_payload(
 def get_employees(
     request: Request,
     db: Session = Depends(get_db),
-    organization_id: Optional[int] = Query(None),
+    organization_id: Optional[str] = Query(None),
     department_id: Optional[int] = Query(None),
     has_access: Optional[bool] = Query(None),
     employee_type: Optional[str] = Query(None, description="hodim | oqituvchi | oquvchi | talaba"),
@@ -738,8 +794,23 @@ def get_employees(
 
     query = db.query(Employee).filter(Employee.organization_id.in_(allowed_org_ids))
 
-    if organization_id is not None and int(organization_id) in allowed_org_ids:
-        query = query.filter(Employee.organization_id == int(organization_id))
+    if organization_id is not None:
+        org_obj = db.query(Organization).filter(Organization.uuid == str(organization_id)).first()
+        if org_obj is None and str(organization_id).isdigit():
+            org_obj = db.query(Organization).filter(Organization.id == int(organization_id)).first()
+        
+        if org_obj is not None:
+            resolved_org_id = int(org_obj.id)
+            if resolved_org_id in allowed_org_ids:
+                query = query.filter(Employee.organization_id == resolved_org_id)
+            else:
+                if paginate:
+                    return {"items": [], "total": 0, "page": 1, "page_size": page_size, "total_pages": 0}
+                return []
+        else:
+            if paginate:
+                return {"items": [], "total": 0, "page": 1, "page_size": page_size, "total_pages": 0}
+            return []
 
     if department_id is not None:
         query = query.filter(Employee.department_id == int(department_id))
@@ -987,7 +1058,13 @@ def create_catalog_position(
         department_id=int(department.id),
         name=name,
     )
-    position = Position(name=name, organization_id=int(org.id), department_id=int(department.id))
+    salary_options = clean_salary_options((payload or {}).get("salary_options"))
+    position = Position(
+        name=name,
+        organization_id=int(org.id),
+        department_id=int(department.id),
+        salary_options=salary_options
+    )
     db.add(position)
     db.commit()
     db.refresh(position)
@@ -1022,6 +1099,8 @@ def update_catalog_position(
         name=name,
         exclude_id=int(position.id),
     )
+    if "salary_options" in payload:
+        position.salary_options = clean_salary_options(payload.get("salary_options"))
     old_name = str(position.name or "")
     old_department = position.department
     position.name = name
@@ -1222,7 +1301,7 @@ def get_employee(emp_id: int, request: Request, db: Session = Depends(get_db)):
 def get_employee_camera_status(
     emp_id: int,
     request: Request,
-    organization_id: Optional[int] = Query(None),
+    organization_id: Optional[str] = Query(None),
     personal_id: Optional[str] = Query(None),
     camera_ids: Optional[str] = Query(None),
     scan_scope: str = Query("linked"),
@@ -1239,8 +1318,8 @@ def get_employee_camera_status(
 
     cams_q = db.query(Device)
     if organization_id is not None:
-        get_accessible_organization_or_raise(request, db, int(organization_id))
-        cams_q = cams_q.filter(Device.organization_id == int(organization_id))
+        org_obj = get_accessible_organization_or_raise(request, db, organization_id)
+        cams_q = cams_q.filter(Device.organization_id == int(org_obj.id))
     elif emp.organization_id is not None:
         cams_q = cams_q.filter(Device.organization_id == int(emp.organization_id))
 
@@ -1424,7 +1503,7 @@ def get_employee_camera_status(
 
 @router.get("/api/organizations/{organization_id}/employee-catalogs")
 def get_employee_catalogs(
-    organization_id: int,
+    organization_id: str,
     request: Request,
     db: Session = Depends(get_db),
 ):
@@ -1439,7 +1518,7 @@ def get_employee_catalogs(
 
 @router.post("/api/organizations/{organization_id}/departments")
 def create_department(
-    organization_id: int,
+    organization_id: str,
     request: Request,
     payload: dict = Body(...),
     db: Session = Depends(get_db),
@@ -1456,7 +1535,7 @@ def create_department(
 
 @router.post("/api/organizations/{organization_id}/positions")
 def create_position(
-    organization_id: int,
+    organization_id: str,
     request: Request,
     payload: dict = Body(...),
     db: Session = Depends(get_db),
@@ -1481,14 +1560,84 @@ def create_position(
         department_id=int(department.id),
         name=name,
     )
+    if "salary_options" in payload:
+        item.salary_options = clean_salary_options(payload.get("salary_options"))
     db.commit()
     db.refresh(item)
     return {"ok": True, "item": serialize_position_item(item)}
 
 
+def sync_employee_to_cameras_bg(
+    employee_id: int,
+    camera_ids: list[int],
+    base_url: str,
+):
+    """Background task to sync employee and face to multiple cameras."""
+    from core.database import SessionLocal
+    db = SessionLocal()
+    try:
+        emp = db.query(Employee).filter(Employee.id == employee_id).first()
+        if not emp:
+            print(f"[BG SYNC] Employee {employee_id} not found in DB")
+            return
+
+        personal_id = str(emp.personal_id or "").strip()
+        if not personal_id:
+            print(f"[BG SYNC] Employee {employee_id} has no personal_id, cannot sync")
+            return
+
+        face_url = None
+        if emp.image_url:
+            face_url = urljoin(base_url, str(emp.image_url).lstrip("/"))
+
+        for cam_id in camera_ids:
+            cam = db.query(Device).filter(Device.id == cam_id).first()
+            if not cam:
+                print(f"[BG SYNC] Camera {cam_id} not found in DB")
+                continue
+
+            try:
+                target_id, _, _ = _resolve_online_command_target(cam)
+                print(f"[BG SYNC] Pushing user {personal_id} to camera {cam.name or cam.id}")
+                
+                # 1. Add user
+                _send_isup_command_or_raise(
+                    target_id,
+                    "add_user",
+                    {
+                        "first_name": str(emp.first_name or ""),
+                        "last_name": str(emp.last_name or ""),
+                        "personal_id": personal_id,
+                    },
+                    timeout=12.0,
+                )
+
+                # 2. Set face (only if face_url exists)
+                if face_url:
+                    print(f"[BG SYNC] Pushing face to camera {cam.name or cam.id}")
+                    _send_isup_command_or_raise(
+                        target_id,
+                        "set_face",
+                        {
+                            "personal_id": personal_id,
+                            "face_url": face_url,
+                            "allow_http_fallback": True,
+                        },
+                        timeout=10.0,
+                    )
+                print(f"[BG SYNC] Sync successful for employee {personal_id} on camera {cam.name or cam.id}")
+            except Exception as cam_exc:
+                print(f"[BG SYNC ERROR] Failed syncing employee {personal_id} to camera {cam.name or cam.id}: {cam_exc}")
+    except Exception as exc:
+        print(f"[BG SYNC GLOBAL ERROR] Failed syncing employee {employee_id} to cameras: {exc}")
+    finally:
+        db.close()
+
+
 @router.post("/api/employees")
 def create_employee(
     request: Request,
+    background_tasks: BackgroundTasks,
     first_name: str = Form(...),
     last_name: str = Form(...),
     middle_name: Optional[str] = Form(None),
@@ -1503,6 +1652,7 @@ def create_employee(
     start_time: Optional[str] = Form(None),
     end_time: Optional[str] = Form(None),
     organization_id: Optional[int] = Form(None),
+    branch_id: Optional[int] = Form(None),
     camera_ids: Optional[str] = Form(None),
     image: Optional[UploadFile] = File(None),
     phone: Optional[str] = Form(None),
@@ -1512,11 +1662,36 @@ def create_employee(
     address: Optional[str] = Form(None),
     birth_date: Optional[str] = Form(None),
     gender: Optional[str] = Form(None),
+    salary: Optional[int] = Form(None),
     db: Session = Depends(get_db),
 ):
     parsed_camera_ids = parse_camera_ids(camera_ids)
     normalized_employee_type = normalize_employee_type(employee_type)
     resolved_org_id = resolve_effective_org_id(request, db, organization_id)
+    if resolved_org_id is None:
+        raise HTTPException(status_code=422, detail="Xodim/talaba qo'shish uchun tashkilot tanlanishi shart")
+
+    # Auto-assign default branch if none selected
+    if resolved_org_id is not None:
+        if branch_id is None:
+            branches = db.query(Branch).filter(Branch.organization_id == resolved_org_id).order_by(Branch.id).all()
+            if not branches:
+                org_obj = db.query(Organization).filter(Organization.id == resolved_org_id).first()
+                if org_obj:
+                    default_branch = Branch(
+                        organization_id=resolved_org_id,
+                        name="Asosiy filial",
+                        address=org_obj.address,
+                        latitude=org_obj.latitude,
+                        longitude=org_obj.longitude,
+                        radius=org_obj.radius or 100,
+                    )
+                    db.add(default_branch)
+                    db.commit()
+                    db.refresh(default_branch)
+                    branch_id = default_branch.id
+            else:
+                branch_id = branches[0].id
 
     # Schedule Type validation & clean
     st = str(schedule_type or "").strip().lower()
@@ -1595,10 +1770,34 @@ def create_employee(
         birth_date=(birth_date.strip() if birth_date else None),
         gender=(gender.strip() if gender else None),
         organization_id=resolved_org_id,
+        branch_id=branch_id,
+        salary=salary,
     )
     db.add(new_emp)
     db.commit()
     db.refresh(new_emp)
+
+    # Auto-create user account: username = personal_id, password = 'bioface'
+    if new_emp.personal_id:
+        try:
+            import bcrypt
+            existing_user = db.query(User).filter(User.name == str(new_emp.personal_id)).first()
+            if not existing_user:
+                hashed_pw = bcrypt.hashpw(b'bioface', bcrypt.gensalt()).decode('utf-8')
+                auto_user = User(
+                    name=str(new_emp.personal_id),
+                    email=f"{new_emp.personal_id}@bioface.local",
+                    hashed_password=hashed_pw,
+                    role=UserRole.tashkilot_admin,
+                    status="active",
+                    is_staff=False,
+                    organization_id=resolved_org_id,
+                    branch_id=branch_id,
+                )
+                db.add(auto_user)
+                db.commit()
+        except Exception as _ue:
+            print(f"[AUTO USER] Failed to create user for employee {new_emp.personal_id}: {_ue}")
 
     linked_camera_ids = save_employee_camera_links(
         db,
@@ -1607,6 +1806,16 @@ def create_employee(
         organization_id=resolved_org_id,
     )
     db.commit()
+
+    if linked_camera_ids:
+        background_tasks.add_task(
+            sync_employee_to_cameras_bg,
+            employee_id=int(new_emp.id),
+            camera_ids=linked_camera_ids,
+            base_url=str(request.base_url),
+        )
+    if new_emp.image_url:
+        trigger_embedding_generation_bg(employee_id=int(new_emp.id))
 
     return {
         "ok": True,
@@ -1622,6 +1831,7 @@ def create_employee(
 def update_employee(
     emp_id: int,
     request: Request,
+    background_tasks: BackgroundTasks,
     first_name: Optional[str] = Form(None),
     last_name: Optional[str] = Form(None),
     middle_name: Optional[str] = Form(None),
@@ -1636,6 +1846,7 @@ def update_employee(
     start_time: Optional[str] = Form(None),
     end_time: Optional[str] = Form(None),
     organization_id: Optional[int] = Form(None),
+    branch_id: Optional[int] = Form(None),
     camera_ids: Optional[str] = Form(None),
     image: Optional[UploadFile] = File(None),
     phone: Optional[str] = Form(None),
@@ -1645,6 +1856,7 @@ def update_employee(
     address: Optional[str] = Form(None),
     birth_date: Optional[str] = Form(None),
     gender: Optional[str] = Form(None),
+    salary: Optional[int] = Form(None),
     db: Session = Depends(get_db),
 ):
     emp = db.query(Employee).filter(Employee.id == emp_id).first()
@@ -1698,13 +1910,17 @@ def update_employee(
     if middle_name is not None:
         emp.middle_name = middle_name.strip() or None
     if personal_id is not None:
-        normalized_personal_id = normalize_personal_id(personal_id)
-        if normalized_personal_id is None:
-            emp.personal_id = None
+        # Shaxsiy ID bir marta yaratilgandan song o'zgartirib bo'lmaydi
+        if emp.personal_id:
+            pass  # already set — immutable, skip update
         else:
-            if is_personal_id_taken(db, normalized_personal_id, exclude_employee_id=emp_id):
-                raise HTTPException(status_code=409, detail="Bu Shaxsiy ID bazada allaqachon mavjud")
-            emp.personal_id = normalized_personal_id
+            normalized_personal_id = normalize_personal_id(personal_id)
+            if normalized_personal_id is None:
+                emp.personal_id = None
+            else:
+                if is_personal_id_taken(db, normalized_personal_id, exclude_employee_id=emp_id):
+                    raise HTTPException(status_code=409, detail="Bu Shaxsiy ID bazada allaqachon mavjud")
+                emp.personal_id = normalized_personal_id
     if employee_type is not None:
         emp.employee_type = normalize_employee_type(employee_type)
     if start_time is not None:
@@ -1725,6 +1941,8 @@ def update_employee(
         emp.birth_date = birth_date.strip() or None
     if gender is not None:
         emp.gender = gender.strip() or None
+    if salary is not None:
+        emp.salary = salary if salary != 0 else None
 
     original_org_id = int(emp.organization_id) if emp.organization_id is not None else None
     original_department_id = int(emp.department_id) if emp.department_id is not None else None
@@ -1732,7 +1950,32 @@ def update_employee(
     if organization_id is not None:
         resolved_org_id = resolve_effective_org_id(request, db, organization_id)
         emp.organization_id = resolved_org_id
+    if resolved_org_id is None:
+        raise HTTPException(status_code=422, detail="Xodim/talaba uchun tashkilot tanlanishi shart")
     org_changed = resolved_org_id != original_org_id
+
+    if branch_id is not None:
+        emp.branch_id = branch_id
+    elif org_changed:
+        # Organization changed, auto-assign first branch of the new organization
+        branches = db.query(Branch).filter(Branch.organization_id == resolved_org_id).order_by(Branch.id).all()
+        if not branches:
+            org_obj = db.query(Organization).filter(Organization.id == resolved_org_id).first()
+            if org_obj:
+                default_branch = Branch(
+                    organization_id=resolved_org_id,
+                    name="Asosiy filial",
+                    address=org_obj.address,
+                    latitude=org_obj.latitude,
+                    longitude=org_obj.longitude,
+                    radius=org_obj.radius or 100,
+                )
+                db.add(default_branch)
+                db.commit()
+                db.refresh(default_branch)
+                emp.branch_id = default_branch.id
+        else:
+            emp.branch_id = branches[0].id
 
     schedule_item = _resolve_schedule_selection(
         db,
@@ -1794,100 +2037,57 @@ def update_employee(
             camera_ids=parsed_camera_ids,
             organization_id=resolved_org_id,
         )
+    # Auto-create user account if missing: username = personal_id, password = 'bioface'
+    if emp.personal_id:
+        try:
+            import bcrypt
+            existing_user = db.query(User).filter(User.name == str(emp.personal_id)).first()
+            if not existing_user:
+                hashed_pw = bcrypt.hashpw(b'bioface', bcrypt.gensalt()).decode('utf-8')
+                auto_user = User(
+                    name=str(emp.personal_id),
+                    email=f"{emp.personal_id}@bioface.local",
+                    hashed_password=hashed_pw,
+                    role=UserRole.tashkilot_admin,
+                    status="active",
+                    is_staff=False,
+                    organization_id=resolved_org_id,
+                    branch_id=emp.branch_id,
+                )
+                db.add(auto_user)
+        except Exception as _ue:
+            print(f"[AUTO USER] Failed to create user for employee {emp.personal_id} in update: {_ue}")
 
     db.commit()
 
-    camera_sync: Optional[dict] = None
+    if emp.image_url:
+        trigger_embedding_generation_bg(employee_id=int(emp.id))
+
     if linked_camera_ids is not None:
-        camera_sync = {
-            "requested": len(linked_camera_ids),
-            "synced": 0,
-            "failed": 0,
-            "details": [],
-        }
         personal_id = str(emp.personal_id or "").strip()
         if linked_camera_ids and not personal_id:
             raise HTTPException(status_code=422, detail="Kameraga saqlash uchun Shaxsiy ID majburiy")
 
-        face_url = None
-        if emp.image_url:
-            base_url = str(request.base_url)
-            face_url = urljoin(base_url, str(emp.image_url).lstrip("/"))
-
-        for cam_id in linked_camera_ids:
-            cam = db.query(Device).filter(Device.id == int(cam_id)).first()
-            if cam is None:
-                camera_sync["failed"] += 1
-                camera_sync["details"].append(
-                    {
-                        "camera_id": int(cam_id),
-                        "status": "failed",
-                        "error": "Kamera topilmadi",
-                    }
-                )
-                continue
-
-            try:
-                target_id, _, _ = _resolve_online_command_target(cam)
-                _send_isup_command_or_raise(
-                    target_id,
-                    "add_user",
-                    {
-                        "first_name": str(emp.first_name or ""),
-                        "last_name": str(emp.last_name or ""),
-                        "personal_id": personal_id,
-                    },
-                    timeout=12.0,
-                )
-
-                if face_url:
-                    _send_isup_command_or_raise(
-                        target_id,
-                        "set_face",
-                        {
-                            "personal_id": personal_id,
-                            "face_url": face_url,
-                            "allow_http_fallback": True,
-                        },
-                        timeout=10.0,
-                    )
-
-                camera_sync["synced"] += 1
-                camera_sync["details"].append(
-                    {
-                        "camera_id": int(cam.id),
-                        "camera_name": str(cam.name or ""),
-                        "status": "synced",
-                    }
-                )
-            except HTTPException as exc:
-                camera_sync["failed"] += 1
-                camera_sync["details"].append(
-                    {
-                        "camera_id": int(cam.id),
-                        "camera_name": str(cam.name or ""),
-                        "status": "failed",
-                        "error": str(exc.detail),
-                    }
-                )
-
-        if camera_sync["failed"] > 0:
-            failed_names = ", ".join(
-                str(row.get("camera_name") or f"#{row.get('camera_id')}")
-                for row in camera_sync["details"]
-                if row.get("status") == "failed"
-            )
-            raise HTTPException(
-                status_code=502,
-                detail=f"Kameraga saqlashda xatolik: {failed_names}",
-            )
+    if linked_camera_ids:
+        background_tasks.add_task(
+            sync_employee_to_cameras_bg,
+            employee_id=int(emp.id),
+            camera_ids=linked_camera_ids,
+            base_url=str(request.base_url),
+        )
 
     payload = {"ok": True, "message": "Xodim yangilandi"}
     if linked_camera_ids is not None:
         payload["camera_ids"] = linked_camera_ids
+        payload["camera_sync"] = {
+            "requested": len(linked_camera_ids),
+            "synced": 0,
+            "failed": 0,
+            "details": [],
+            "queued": True,
+            "message": "Kamera sinxronizatsiyasi fon rejimida boshlandi",
+        }
     payload["schedule_id"] = emp.schedule_id
-    if camera_sync is not None:
-        payload["camera_sync"] = camera_sync
     return payload
 
 
@@ -2019,3 +2219,159 @@ def delete_employee(
         camera_sync["details_truncated"] = len(details) - 10
 
     return {"ok": True, "message": message, "camera_sync": camera_sync}
+
+
+# ─── Mobile Geo + Face Attendance Check-in ──────────────────────────
+
+_face_analysis_app = None
+
+def get_face_analysis_app():
+    global _face_analysis_app
+    if _face_analysis_app is None:
+        import onnxruntime
+        from insightface.app import FaceAnalysis
+
+        # Locate site-packages of the virtual environment to find NVIDIA library paths
+        import os
+        import sys
+        venv_path = "/home/smartgate/BioFace/backend/.venv"
+        site_packages = os.path.join(venv_path, "lib", "python3.12", "site-packages")
+        nvidia_dir = os.path.join(site_packages, "nvidia")
+
+        nvidia_libs = []
+        if os.path.exists(nvidia_dir):
+            for folder in os.listdir(nvidia_dir):
+                lib_path = os.path.join(nvidia_dir, folder, "lib")
+                if os.path.exists(lib_path):
+                    nvidia_libs.append(lib_path)
+
+        if nvidia_libs:
+            additional = ":".join(nvidia_libs)
+            current_ld = os.environ.get("LD_LIBRARY_PATH", "")
+            if current_ld:
+                os.environ["LD_LIBRARY_PATH"] = additional + ":" + current_ld
+            else:
+                os.environ["LD_LIBRARY_PATH"] = additional
+
+        available = onnxruntime.get_available_providers()
+        if "CUDAExecutionProvider" in available:
+            try:
+                app = FaceAnalysis(name="buffalo_l", providers=["CUDAExecutionProvider"])
+                app.prepare(ctx_id=0, det_size=(640, 640))
+                _face_analysis_app = app
+            except Exception:
+                app = FaceAnalysis(name="buffalo_l", providers=["CPUExecutionProvider"])
+                app.prepare(ctx_id=-1, det_size=(640, 640))
+                _face_analysis_app = app
+        else:
+            app = FaceAnalysis(name="buffalo_l", providers=["CPUExecutionProvider"])
+            app.prepare(ctx_id=-1, det_size=(640, 640))
+            _face_analysis_app = app
+
+    return _face_analysis_app
+
+
+def calculate_haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    import math
+    R = 6371000.0  # Earth's radius in meters
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    delta_phi = math.radians(lat2 - lat1)
+    delta_lambda = math.radians(lon2 - lon1)
+    a = math.sin(delta_phi / 2.0) ** 2 + \
+        math.cos(phi1) * math.cos(phi2) * \
+        math.sin(delta_lambda / 2.0) ** 2
+    c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0 - a))
+    return R * c
+
+
+@router.post("/api/employees/mobile-checkin")
+async def mobile_checkin(
+    employee_id: int = Form(...),
+    latitude: float = Form(...),
+    longitude: float = Form(...),
+    image: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    import cv2
+    import numpy as np
+    from models import FaceEmbedding, AttendanceLog
+    from utils.time_utils import now_tashkent
+
+    # 1. Fetch Employee
+    emp = db.query(Employee).filter(Employee.id == employee_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Xodim topilmadi")
+
+    # 2. Verify Geofence (Branch Location)
+    if not emp.branch_id:
+        raise HTTPException(status_code=422, detail="Xodimga filial biriktirilmagan")
+
+    branch = db.query(Branch).filter(Branch.id == emp.branch_id).first()
+    if not branch or branch.latitude is None or branch.longitude is None:
+        raise HTTPException(status_code=422, detail="Filial koordinatalari topilmadi")
+
+    distance = calculate_haversine_distance(latitude, longitude, float(branch.latitude), float(branch.longitude))
+    radius = float(branch.radius or 100.0)
+
+    if distance > radius:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Siz belgilangan geo-hududda emassiz. Filialgacha masofa: {distance:.1f} metr. Ruxsat etilgan radius: {radius:.0f} metr."
+        )
+
+    # 3. Verify Face Embedding
+    existing_emb = db.query(FaceEmbedding).filter(FaceEmbedding.employee_id == employee_id).first()
+    if not existing_emb:
+        raise HTTPException(status_code=400, detail="Xodimning yuz embedding ma'lumotlari ro'yxatdan o'tmagan")
+
+    # Read uploaded image bytes
+    contents = await image.read()
+    nparr = np.frombuffer(contents, np.uint8)
+    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    if img is None:
+        raise HTTPException(status_code=400, detail="Yuklangan rasmni o'qib bo'lmadi")
+
+    # Extract embedding
+    app = get_face_analysis_app()
+    faces = app.get(img)
+    if not faces:
+        raise HTTPException(status_code=400, detail="Rasmda yuz aniqlanmadi")
+
+    best_face = max(faces, key=lambda x: float(x.det_score or 0.0))
+    uploaded_emb = best_face.normed_embedding
+    if uploaded_emb is None:
+        raise HTTPException(status_code=400, detail="Yuz embedding ma'lumotlarini hisoblab bo'lmadi")
+
+    # Calculate similarity (Cosine Similarity)
+    reg_emb = np.array(existing_emb.embedding_data)
+    dot_product = np.dot(reg_emb, uploaded_emb)
+    norm_reg = np.linalg.norm(reg_emb)
+    norm_up = np.linalg.norm(uploaded_emb)
+    similarity = float(dot_product / (norm_reg * norm_up))
+
+    # Threshold for buffalo_l similarity is typically around 0.40
+    THRESHOLD = 0.40
+    if similarity < THRESHOLD:
+        raise HTTPException(status_code=401, detail=f"Yuz mos kelmadi (o'xshashlik: {similarity:.2f})")
+
+    # 4. Save Attendance Log
+    log = AttendanceLog(
+        employee_id=employee_id,
+        timestamp=now_tashkent(),
+        status="aniqlandi",
+        organization_id=emp.organization_id,
+        branch_id=emp.branch_id,
+        direction="kirish",  # Default direction
+    )
+    db.add(log)
+    db.commit()
+
+    return {
+        "ok": True,
+        "message": "Davomat muvaffaqiyatli qayd etildi",
+        "distance": round(distance, 1),
+        "similarity": round(similarity, 2),
+        "timestamp": log.timestamp.isoformat()
+    }
+

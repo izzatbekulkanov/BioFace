@@ -116,6 +116,12 @@ MENU_PERMISSION_METADATA = [
         "titles": {"uz": "Tizim haqida", "ru": "О системе"},
         "descriptions": {"uz": "Platforma haqida ma'lumot", "ru": "Информация о платформе"},
     },
+    {
+        "key": "chat",
+        "group": "general",
+        "titles": {"uz": "Xabarlar", "ru": "Сообщения"},
+        "descriptions": {"uz": "Foydalanuvchilar o'rtasidagi chat tizimi", "ru": "Система чатов между пользователями"},
+    },
 ]
 
 PERMISSION_GROUP_TITLES = {
@@ -144,6 +150,7 @@ LIMITED_ADMIN_DEFAULTS = (
     "user_approvals",
     "settings",
     "about",
+    "chat",
 )
 
 ROLE_DEFAULT_MENU_KEYS = {
@@ -196,6 +203,7 @@ _PATH_RULES: list[tuple[re.Pattern[str], str | tuple[str, ...]]] = [
     (re.compile(r"^/api/middleware-logs(?:/|$)"), "middleware_logs"),
     (re.compile(r"^/api-helper(?:/|$)"), "api_helper"),
     (re.compile(r"^/about(?:/|$)"), "about"),
+    (re.compile(r"^/api/chat(?:/|$)"), "chat"),
 ]
 
 

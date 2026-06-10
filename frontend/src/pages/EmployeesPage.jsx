@@ -294,11 +294,11 @@ export default function EmployeesPage({ mode = 'staff' }) {
         }
       />
 
-      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '24px 32px 80px' }}>
+      <div className="employees-container">
         {error && <div style={errBannerStyle}>{error}</div>}
 
-        <div style={cardStyle}>
-          <div style={toolbarStyle}>
+        <div className="employees-card" style={cardStyle}>
+          <div className="employees-toolbar" style={toolbarStyle}>
             <div>
               <h3 style={cardTitleStyle}>
                 <HeroIcon style={{ color: isStudents ? '#06b6d4' : '#22c55e' }} />
@@ -309,7 +309,7 @@ export default function EmployeesPage({ mode = 'staff' }) {
                 {totalPages > 1 && <> · {isRu ? 'стр.' : 'sahifa'} {page}/{totalPages}</>}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div className="employees-filters" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <input
                 type="text"
                 value={search}
@@ -401,6 +401,7 @@ export default function EmployeesPage({ mode = 'staff' }) {
                       }
                       <th style={thStyle}>{isRu ? 'Организация' : 'Tashkilot'}</th>
                       <th style={thStyle}>{isRu ? 'График' : 'Smena'}</th>
+                      <th style={thStyle}>{isRu ? 'Шаблон yuz' : 'Yuz shabloni'}</th>
                       <th style={thStyle}>{isRu ? 'Статус' : 'Holat'}</th>
                       <th style={thStyle}></th>
                     </tr>
@@ -478,6 +479,33 @@ export default function EmployeesPage({ mode = 'staff' }) {
                           )}
                         </td>
 
+                        {/* Biometriya (Yuz shabloni) */}
+                        <td style={tdStyle}>
+                          {emp.has_embedding ? (
+                            <span style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 4,
+                              padding: '3px 8px', borderRadius: 999,
+                              background: 'var(--green-bg)', color: 'var(--green)',
+                              fontSize: 11, fontWeight: 600,
+                              border: '1px solid var(--green-bd)',
+                              whiteSpace: 'nowrap',
+                            }}>
+                              ✅ {isRu ? 'Есть' : 'Mavjud'}
+                            </span>
+                          ) : (
+                            <span style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 4,
+                              padding: '3px 8px', borderRadius: 999,
+                              background: 'var(--red-bg)', color: 'var(--red)',
+                              fontSize: 11, fontWeight: 600,
+                              border: '1px solid var(--red-bd)',
+                              whiteSpace: 'nowrap',
+                            }}>
+                              ❌ {isRu ? 'Нет' : "Yo'q"}
+                            </span>
+                          )}
+                        </td>
+
                         {/* Holat */}
                         <td style={tdStyle}>
                           <AccessPill status={emp.status} isRu={isRu} />
@@ -531,6 +559,39 @@ export default function EmployeesPage({ mode = 'staff' }) {
           isRu={isRu}
         />
       )}
+      <style>{`
+        .employees-container {
+          max-width: 1280px;
+          margin: 0 auto;
+          padding: 24px 32px 80px;
+        }
+        @media (max-width: 768px) {
+          .employees-container {
+            padding: 16px 16px 60px !important;
+          }
+          .employees-card {
+            padding: 16px !important;
+          }
+          .employees-toolbar {
+            flex-direction: column !important;
+            align-items: stretch !important;
+          }
+          .employees-filters {
+            width: 100% !important;
+            flex-direction: column !important;
+            align-items: stretch !important;
+          }
+          .employees-filters > * {
+            width: 100% !important;
+            min-width: 100% !important;
+          }
+          .pagination-container {
+            flex-direction: column !important;
+            align-items: center !important;
+            gap: 10px !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }
@@ -726,7 +787,7 @@ function Pagination({ page, totalPages, total, pageSize, onChange, isRu }) {
   const pages = useMemo(() => buildPageList(page, totalPages), [page, totalPages])
 
   return (
-    <div style={{
+    <div className="pagination-container" style={{
       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       marginTop: 16, flexWrap: 'wrap', gap: 12,
     }}>

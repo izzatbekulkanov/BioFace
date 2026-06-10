@@ -12,15 +12,49 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, 'data')
 if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR)
-SQLALCHEMY_DATABASE_URL = f"sqlite:///{os.path.join(DATA_DIR, 'bioface.db')}"  # PostgreSQL: "postgresql://user:password@postgresserver/db"
 
-# Engine setup — WAL mode + pool = parallel read uchun 3-5x tezroq
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={
+# Load env variables from .env file manually
+env_path = os.path.join(BASE_DIR, ".env")
+if os.path.exists(env_path):
+    try:
+        with open(env_path, "r", encoding="utf-8") as f:
+            for raw_line in f:
+                line = raw_line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                key = key.strip()
+                if not key or key in os.environ:
+                    continue
+                value = value.strip()
+                if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
+                    value = value[1:-1]
+                os.environ.setdefault(key, value)
+    except Exception:
+        pass
+
+is_debug = os.getenv("BIOFACE_DEBUG", "true").strip().lower() in {"1", "true", "yes", "on"}
+
+if is_debug:
+    SQLALCHEMY_DATABASE_URL = f"sqlite:///{os.path.join(DATA_DIR, 'bioface.db')}"
+else:
+    # Use PostgreSQL in production
+    SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://biofaceuser:bioface1231@127.0.0.1:5432/biofacedb")
+
+# Engine setup
+is_sqlite = SQLALCHEMY_DATABASE_URL.startswith("sqlite")
+connect_args = {}
+if is_sqlite:
+    connect_args = {
         "check_same_thread": False,
         "timeout": 30,          # lock kutish vaqti
-    },
+    }
+
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL,
+    connect_args=connect_args,
     poolclass=QueuePool,
     pool_size=10,               # doimiy ulanishlar soni
     max_overflow=20,            # qo'shimcha ulanishlar (yuklanish paytida)
@@ -32,6 +66,8 @@ engine = create_engine(
 @event.listens_for(engine, "connect")
 def _set_sqlite_pragma(dbapi_conn, _connection_record):
     """SQLite'ni yuqori unumdorlik rejimida sozlash."""
+    if not is_sqlite:
+        return
     cursor = dbapi_conn.cursor()
     cursor.execute("PRAGMA journal_mode=WAL")       # parallel o'qish imkoni
     cursor.execute("PRAGMA synchronous=NORMAL")     # xavfsiz, lekin tezroq
@@ -149,6 +185,18 @@ def ensure_schema() -> bool:
                     conn.execute(text("ALTER TABLE organizations ADD COLUMN district VARCHAR"))
                 if "village" not in org_cols:
                     conn.execute(text("ALTER TABLE organizations ADD COLUMN village VARCHAR"))
+                if "latitude" not in org_cols:
+                    conn.execute(text("ALTER TABLE organizations ADD COLUMN latitude FLOAT"))
+                if "longitude" not in org_cols:
+                    conn.execute(text("ALTER TABLE organizations ADD COLUMN longitude FLOAT"))
+                if "radius" not in org_cols:
+                    conn.execute(text("ALTER TABLE organizations ADD COLUMN radius FLOAT DEFAULT 100.0"))
+                if "uuid" not in org_cols:
+                    conn.execute(text("ALTER TABLE organizations ADD COLUMN uuid VARCHAR(36)"))
+                    try:
+                        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS idx_organizations_uuid ON organizations(uuid)"))
+                    except Exception:
+                        pass
                 conn.execute(
                     text(
                         "UPDATE organizations "
@@ -197,6 +245,15 @@ def ensure_schema() -> bool:
                         },
                     )
 
+            if "branches" in inspector.get_table_names():
+                br_cols = {c["name"] for c in inspector.get_columns("branches")}
+                if "uuid" not in br_cols:
+                    conn.execute(text("ALTER TABLE branches ADD COLUMN uuid VARCHAR(36)"))
+                    try:
+                        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS idx_branches_uuid ON branches(uuid)"))
+                    except Exception:
+                        pass
+
             if "users" in inspector.get_table_names():
                 user_cols = {c["name"] for c in inspector.get_columns("users")}
                 user_alters = {
@@ -210,10 +267,12 @@ def ensure_schema() -> bool:
                     "google_oauth_enabled": "ALTER TABLE users ADD COLUMN google_oauth_enabled BOOLEAN DEFAULT 0",
                     "google_sub": "ALTER TABLE users ADD COLUMN google_sub VARCHAR",
                     "last_login_provider": "ALTER TABLE users ADD COLUMN last_login_provider VARCHAR",
+                    "branch_id": "ALTER TABLE users ADD COLUMN branch_id INTEGER",
                 }
                 for col_name, sql in user_alters.items():
                     if col_name not in user_cols:
                         conn.execute(text(sql))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_users_branch_id ON users (branch_id)"))
                 conn.execute(
                     text(
                         "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_google_sub "
@@ -296,6 +355,8 @@ def ensure_schema() -> bool:
                     conn.execute(text("ALTER TABLE employees ADD COLUMN employee_type VARCHAR"))
                 if "middle_name" not in emp_cols:
                     conn.execute(text("ALTER TABLE employees ADD COLUMN middle_name VARCHAR"))
+                if "salary" not in emp_cols:
+                    conn.execute(text("ALTER TABLE employees ADD COLUMN salary INTEGER"))
                 if "department_id" not in emp_cols:
                     conn.execute(text("ALTER TABLE employees ADD COLUMN department_id INTEGER"))
                 if "position_id" not in emp_cols:
@@ -380,6 +441,8 @@ def ensure_schema() -> bool:
                 position_cols = {c["name"] for c in inspector.get_columns("positions")}
                 if "department_id" not in position_cols:
                     conn.execute(text("ALTER TABLE positions ADD COLUMN department_id INTEGER"))
+                if "salary_options" not in position_cols:
+                    conn.execute(text("ALTER TABLE positions ADD COLUMN salary_options VARCHAR"))
             conn.execute(
                 text(
                     "CREATE INDEX IF NOT EXISTS ix_positions_organization_id "

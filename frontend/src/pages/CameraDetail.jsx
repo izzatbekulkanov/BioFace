@@ -10,6 +10,7 @@ import {
 import PageHero from '../components/PageHero'
 import { useConfirm } from '../components/ConfirmDialog'
 import CustomSelect from '../components/CustomSelect'
+import { useToast } from '../components/Toaster'
 
 const MODELS = ['DS-K1T343MFWX','DS-K1T341CMF','DS-K1T342MFWX','DS-K1T671TM-3XF','DS-K1T320MFWX','DS-K1T607MF','DS-K1T321MFWX','DS-K1T680DFW']
 
@@ -75,6 +76,7 @@ export default function CameraDetail() {
   const isRu = i18n.language === 'ru'
   const abortRef = useRef(null)
   const confirm  = useConfirm()
+  const toast    = useToast()
 
   const [cam, setCam]         = useState(null)
   const [orgs, setOrgs]       = useState([])
@@ -82,14 +84,98 @@ export default function CameraDetail() {
   const [saving, setSaving]   = useState(false)
   const [spin, setSpin]       = useState(false)
   const [error, setError]     = useState('')
-  const [success, setSuccess] = useState('')
   const [cmdLoading, setCmdLoading] = useState({})
+
+  const [alarmSummary, setAlarmSummary] = useState(null)
+  const [alarmForm, setAlarmForm] = useState({
+    ip_or_domain: '',
+    port: '8080',
+    url: '/api/v1/httppost/',
+    protocol: 'HTTP'
+  })
+  const [loadingAlarm, setLoadingAlarm] = useState(false)
+  const [savingAlarm, setSavingAlarm] = useState(false)
+
+  const fetchAlarmSettings = async () => {
+    setLoadingAlarm(true)
+    setError('')
+    try {
+      const res = await fetch(`/api/cameras/${id}/command`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command: 'get_alarm_server', params: {} }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.detail || (isRu ? 'Ошибка при получении настроек' : 'Sozlamalarni olishda xatolik'))
+      if (data.response && data.response.ok && data.response.summary) {
+        const sum = data.response.summary
+        setAlarmSummary(sum)
+        setAlarmForm({
+          ip_or_domain: sum.webhook_ip_or_domain || '',
+          port: sum.webhook_port || '443',
+          url: sum.webhook_path || '/api/v1/httppost/',
+          protocol: sum.webhook_protocol || 'HTTP'
+        })
+        // Backend DB ga sinxronlangan ma'lumotlarni metadata bo'limiga ham aks ettirish
+        if (data.camera_sync) {
+          setF(prev => ({
+            ...prev,
+            webhook_target_url: data.camera_sync.webhook_target_url || prev.webhook_target_url,
+            webhook_enabled: !!data.camera_sync.webhook_enabled,
+            webhook_picture_sending: !!data.camera_sync.webhook_picture_sending,
+          }))
+        }
+      } else {
+        throw new Error(isRu ? 'Не удалось прочитать настройки из ответа' : 'Javobdan sozlamalarni o\'qib bo\'lmadi')
+      }
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setLoadingAlarm(false)
+    }
+  }
+
+
+  const saveAlarmSettings = async () => {
+    if (!alarmForm.ip_or_domain.trim()) {
+      toast.error(isRu ? "IP или домен обязателен" : "IP yoki domen kiritilishi shart")
+      return
+    }
+    setSavingAlarm(true)
+    try {
+      const res = await fetch(`/api/cameras/${id}/command`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          command: 'set_alarm_server',
+          params: {
+            ip_or_domain: alarmForm.ip_or_domain.trim(),
+            port: parseInt(alarmForm.port) || 80,
+            url: alarmForm.url.trim() || '/api/v1/httppost/',
+            protocol: alarmForm.protocol
+          }
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.detail || (isRu ? 'Ошибка при записи настроек' : 'Sozlamalarni yozishda xatolik'))
+      toast.success(isRu ? 'Настройки успешно записаны на камеру' : 'Sozlamalar kameraga muvaffaqiyatli yozildi')
+      setTimeout(() => {
+        fetchAlarmSettings()
+      }, 1000)
+    } catch (e) {
+      toast.error(e.message)
+    } finally {
+      setSavingAlarm(false)
+    }
+  }
 
   const [f, setF] = useState({
     name: '', location: '', model: '', mac_address: '', serial_number: '',
     isup_device_id: '', username: 'admin', isup_password: '', password: '',
     max_memory: '', organization_id: '', direction: '',
   })
+
+  const backPath = cam?.organization_id ? `/devices?org=${cam.organization_id}` : '/devices'
 
   const load = useCallback(async (animate = false) => {
     if (animate) setSpin(true)
@@ -128,6 +214,9 @@ export default function CameraDetail() {
         max_memory:     data.max_memory || '',
         organization_id: data.organization_id || '',
         direction:      data.direction || '',
+        webhook_target_url: data.webhook_target_url || '',
+        webhook_enabled: !!data.webhook_enabled,
+        webhook_picture_sending: !!data.webhook_picture_sending,
       })
       setLoading(false)
       if (animate) setTimeout(() => setSpin(false), 500)
@@ -144,11 +233,17 @@ export default function CameraDetail() {
     return () => { if (abortRef.current) abortRef.current.abort() }
   }, [load])
 
+  useEffect(() => {
+    if (cam && cam.isup_device_id) {
+      fetchAlarmSettings()
+    }
+  }, [cam?.isup_device_id])
+
   const update = (k) => (e) => setF(prev => ({ ...prev, [k]: e.target.value }))
 
   const save = async () => {
-    if (!f.name.trim()) { setError(isRu ? "Имя камеры обязательно" : "Kamera nomi majburiy"); return }
-    setSaving(true); setError(''); setSuccess('')
+    if (!f.name.trim()) { toast.error(isRu ? "Имя камеры обязательно" : "Kamera nomi majburiy"); return }
+    setSaving(true)
     const body = {
       name: f.name.trim(), location: f.location.trim() || null,
       model: f.model.trim() || null, mac_address: f.mac_address.trim() || null,
@@ -159,6 +254,9 @@ export default function CameraDetail() {
       max_memory: parseInt(f.max_memory) || null,
       organization_id: f.organization_id ? parseInt(f.organization_id) : null,
       direction: f.direction || '',
+      webhook_target_url: f.webhook_target_url.trim() || null,
+      webhook_enabled: !!f.webhook_enabled,
+      webhook_picture_sending: !!f.webhook_picture_sending,
     }
     if (f.password.trim()) body.password = f.password.trim()
     try {
@@ -168,9 +266,9 @@ export default function CameraDetail() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.detail || (isRu ? 'Ошибка' : 'Xatolik'))
-      setSuccess(data.message || (isRu ? 'Успешно сохранено' : 'Muvaffaqiyatli saqlandi'))
+      toast.success(data.message || (isRu ? 'Успешно сохранено' : 'Muvaffaqiyatli saqlandi'))
       load(true)
-    } catch (e) { setError(e.message) }
+    } catch (e) { toast.error(e.message) }
     finally { setSaving(false) }
   }
 
@@ -197,8 +295,8 @@ export default function CameraDetail() {
         cmdMsg = isRu ? `Команда ${cmd} выполнена` : `${cmd} bajarildi`
       }
       
-      setSuccess(data.message || cmdMsg)
-    } catch (e) { setError(e.message) }
+      toast.success(data.message || cmdMsg)
+    } catch (e) { toast.error(e.message) }
     finally { setCmdLoading(p => ({ ...p, [cmd]: false })) }
   }
 
@@ -215,7 +313,7 @@ export default function CameraDetail() {
     try {
       await fetch(`/api/cameras/${id}`, { method: 'DELETE' })
       navigate('/devices')
-    } catch { setError(isRu ? "Ошибка при удалении" : "O'chirishda xatolik") }
+    } catch { toast.error(isRu ? "Ошибка при удалении" : "O'chirishda xatolik") }
   }
 
   if (loading) return (
@@ -259,7 +357,7 @@ export default function CameraDetail() {
         badge={<div style={{ width: 120, height: 20, background: 'rgba(255,255,255,0.1)', borderRadius: 4, animation: 'pulse 1.5s infinite' }} />}
         title={<div style={{ width: 250, height: 32, background: 'rgba(255,255,255,0.1)', borderRadius: 6, animation: 'pulse 1.5s infinite' }} />}
         sub={<div style={{ width: 300, height: 16, background: 'rgba(255,255,255,0.06)', borderRadius: 4, animation: 'pulse 1.5s infinite' }} />}
-        backPath="/devices"
+        backPath={backPath}
       />
 
       <div className="cam-main-layout" style={{ maxWidth: 1280, margin: '0 auto', padding: '28px 32px 80px' }}>
@@ -367,7 +465,7 @@ export default function CameraDetail() {
           </span>
         }
         sub={`MAC: ${cam?.mac_address || '—'} · Model: ${cam?.model || '—'} · ID: ${id}`}
-        backPath="/devices"
+        backPath={backPath}
         right={
           <button onClick={() => load(true)} style={{
             display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px',
@@ -390,12 +488,6 @@ export default function CameraDetail() {
               ⚠ {error}
             </div>
           )}
-          {success && (
-            <div style={{ background: 'var(--green-bg)', border: '1px solid var(--green-bd)', borderRadius: 10, padding: '10px 16px', color: 'var(--green)', fontSize: 13, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-              ✓ {success}
-            </div>
-          )}
-
           {/* Asosiy ma'lumotlar */}
           <div style={card}>
             <div style={{ marginBottom: 18 }}>
@@ -507,20 +599,180 @@ export default function CameraDetail() {
                 <input style={inpRO} readOnly value={cam?.protocol_version || ''} />
               </Field>
               <Field label="Webhook URL" span={3}>
-                <input style={inpRO} readOnly value={cam?.webhook_target_url || ''} />
+                <input style={inp} value={f.webhook_target_url || ''} onChange={update('webhook_target_url')} placeholder="http://94.141.85.147:8000/api/v1/httppost/" />
               </Field>
               <Field label={isRu ? "Статус Webhook" : "Webhook Holati"} span={2}>
-                <input style={inpRO} readOnly value={cam?.webhook_enabled ? (isRu ? 'Включено' : 'Yoqilgan') : (isRu ? 'Отключено' : "O'chiq")} />
+                <CustomSelect
+                  value={f.webhook_enabled ? 'true' : 'false'}
+                  onChange={val => setF(prev => ({ ...prev, webhook_enabled: val === 'true' }))}
+                  options={[
+                    { value: 'true', label: isRu ? 'Включено (Yoqilgan)' : 'Yoqilgan (Включено)' },
+                    { value: 'false', label: isRu ? 'Отключено (O\'chirilgan)' : 'O\'chirilgan (Отключено)' }
+                  ]}
+                  placeholder={isRu ? "Выберите статус..." : "Statusni tanlang..."}
+                />
               </Field>
               <Field label={isRu ? "Отправка изображений" : "Rasm Yuborish"}>
-                <input style={inpRO} readOnly value={cam?.webhook_picture_sending ? (isRu ? 'Разрешено' : 'Ruxsat berilgan') : (isRu ? 'Отключено' : "O'chirilgan")} />
+                <CustomSelect
+                  value={f.webhook_picture_sending ? 'true' : 'false'}
+                  onChange={val => setF(prev => ({ ...prev, webhook_picture_sending: val === 'true' }))}
+                  options={[
+                    { value: 'true', label: isRu ? 'Разрешено (Ruxsat berilgan)' : 'Ruxsat berilgan (Разрешено)' },
+                    { value: 'false', label: isRu ? 'Отключено (O\'chirilgan)' : 'O\'chirilgan (Отключено)' }
+                  ]}
+                  placeholder={isRu ? "Выберите..." : "Tanlang..."}
+                />
               </Field>
             </div>
           </div>
 
+          {/* ISAPI / Alarm Server settings via ISUP */}
+          {f.isup_device_id && (
+            <div style={card}>
+              <div style={{ marginBottom: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 700, marginBottom: 4 }}>
+                    {isRu ? 'Настройки ISAPI / Alarm Server (через ISUP)' : 'ISAPI / Alarm Server Sozlamalari (ISUP orqali)'}
+                  </div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--white)' }}>
+                    {isRu ? 'Параметры Alarm вебхука камеры' : 'Kamera alarm webhook parametrlari'}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={fetchAlarmSettings}
+                  disabled={loadingAlarm}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '6px 12px',
+                    borderRadius: 6,
+                    background: 'var(--surface-2)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-1)',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: loadingAlarm ? 'wait' : 'pointer'
+                  }}
+                >
+                  {loadingAlarm ? <ArrowSyncRegular style={{ animation: 'spin 1s linear infinite' }} fontSize={14} /> : <ArrowSyncRegular fontSize={14} />}
+                  {isRu ? 'Считать с камеры' : "Kameradan yuklash"}
+                </button>
+              </div>
+
+              {/* Joriy holat (Current state on camera) */}
+              <div style={{ background: 'var(--bg)', border: '1px solid var(--border-2)', borderRadius: 9, padding: 14, marginBottom: 18 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-2)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: alarmSummary ? 'var(--green)' : 'var(--text-4)' }} />
+                  {isRu ? 'Текущее состояние на камере:' : "Kameradagi joriy holat:"}
+                </div>
+                {alarmSummary ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: 12 }}>
+                    <div>
+                      <span style={{ color: 'var(--text-4)' }}>{isRu ? 'Протокол: ' : 'Protokol: '}</span>
+                      <strong style={{ color: 'var(--white)' }}>{alarmSummary.webhook_protocol || '-'}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-4)' }}>{isRu ? 'IP / Домен: ' : 'IP / Domen: '}</span>
+                      <strong style={{ color: 'var(--white)' }}>{alarmSummary.webhook_ip_or_domain || '-'}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-4)' }}>{isRu ? 'Порт: ' : 'Port: '}</span>
+                      <strong style={{ color: 'var(--white)' }}>{alarmSummary.webhook_port || '-'}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-4)' }}>{isRu ? 'Состояние: ' : 'Holati: '}</span>
+                      <strong style={{ color: alarmSummary.webhook_enabled ? 'var(--green)' : 'var(--red)' }}>
+                        {alarmSummary.webhook_enabled ? (isRu ? 'Включено' : 'Yoqilgan') : (isRu ? 'Отключено' : 'O\'chirilgan')}
+                      </strong>
+                    </div>
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <span style={{ color: 'var(--text-4)' }}>URL Path: </span>
+                      <code style={{ background: 'var(--surface-3)', padding: '2px 4px', borderRadius: 4, color: 'var(--accent)', fontFamily: 'monospace' }}>
+                        {alarmSummary.webhook_path || '-'}
+                      </code>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 12, color: 'var(--text-4)', fontStyle: 'italic' }}>
+                    {isRu ? 'Данные не загружены. Нажмите "Считать с камеры" для опроса устройства.' : "Ma'lumotlar yuklanmagan. Qurilmani so'rash uchun 'Kameradan yuklash' tugmasini bosing."}
+                  </div>
+                )}
+              </div>
+
+              {/* Tahrirlash formasi (Edit form) */}
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--white)', marginBottom: 12 }}>
+                {isRu ? 'Изменить настройки' : 'Sozlamalarni o\'zgartirish'}
+              </div>
+              <div className="cam-grid-2" style={{ marginBottom: 14 }}>
+                <Field label={isRu ? "Протокол" : "Protokol"}>
+                  <CustomSelect
+                    value={alarmForm.protocol}
+                    onChange={val => setAlarmForm(prev => ({ ...prev, protocol: val }))}
+                    options={[
+                      { value: 'HTTP', label: 'HTTP' },
+                      { value: 'HTTPS', label: 'HTTPS' }
+                    ]}
+                  />
+                </Field>
+                <Field label={isRu ? "IP или Домен" : "IP yoki Domen"}>
+                  <input
+                    style={inp}
+                    value={alarmForm.ip_or_domain}
+                    onChange={e => setAlarmForm(prev => ({ ...prev, ip_or_domain: e.target.value }))}
+                    placeholder="192.168.1.100 yoki bioface.uz"
+                  />
+                </Field>
+                <Field label={isRu ? "Порт" : "Port"}>
+                  <input
+                    style={inp}
+                    type="number"
+                    value={alarmForm.port}
+                    onChange={e => setAlarmForm(prev => ({ ...prev, port: e.target.value }))}
+                    placeholder="8080"
+                  />
+                </Field>
+                <Field label="URL Path">
+                  <input
+                    style={inp}
+                    value={alarmForm.url}
+                    onChange={e => setAlarmForm(prev => ({ ...prev, url: e.target.value }))}
+                    placeholder="/api/v1/httppost/"
+                  />
+                </Field>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={saveAlarmSettings}
+                  disabled={savingAlarm || loadingAlarm}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '8px 18px',
+                    borderRadius: 8,
+                    background: 'var(--accent)',
+                    border: 'none',
+                    color: '#fff',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: (savingAlarm || loadingAlarm) ? 'wait' : 'pointer',
+                    opacity: (savingAlarm || loadingAlarm) ? 0.7 : 1
+                  }}
+                >
+                  {savingAlarm ? <Spinner size="tiny" /> : <SaveRegular fontSize={14} />}
+                  {isRu ? 'Записать на камеру' : 'Kameraga yozish'}
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Save / Cancel buttons */}
           <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={() => navigate('/devices')} style={{ padding: '10px 20px', borderRadius: 9, background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-2)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+            <button onClick={() => navigate(backPath)} style={{ padding: '10px 20px', borderRadius: 9, background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-2)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
               {isRu ? 'Отмена' : 'Bekor qilish'}
             </button>
             <button onClick={save} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 24px', borderRadius: 9, background: 'var(--accent)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1 }}>

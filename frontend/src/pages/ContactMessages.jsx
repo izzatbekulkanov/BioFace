@@ -85,6 +85,25 @@ export default function ContactMessages() {
     return text.includes(q)
   })
 
+  const handleSelectMessage = async (msg) => {
+    setSelectedMsg(msg)
+    if (!msg.is_read) {
+      try {
+        const res = await fetch(`/api/settings/contact-messages/${msg.id}/read`, {
+          method: 'POST',
+          credentials: 'include',
+        })
+        if (res.ok) {
+          setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, is_read: true } : m))
+          setSelectedMsg(prev => prev && prev.id === msg.id ? { ...prev, is_read: true } : prev)
+          window.dispatchEvent(new CustomEvent('navbar-refresh'))
+        }
+      } catch (err) {
+        console.error('Error marking message as read:', err)
+      }
+    }
+  }
+
   const handleDelete = async (msg, e) => {
     if (e) e.stopPropagation()
     const ok = await confirm({
@@ -311,10 +330,15 @@ export default function ContactMessages() {
                 <div
                   key={msg.id}
                   className={`msg-item ${selectedMsg?.id === msg.id ? 'active' : ''}`}
-                  onClick={() => setSelectedMsg(msg)}
+                  onClick={() => handleSelectMessage(msg)}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <span style={{ fontWeight: 600, color: 'var(--white)', fontSize: 14 }}>{msg.name}</span>
+                    <span style={{ fontWeight: 600, color: 'var(--white)', fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {!msg.is_read && (
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)', display: 'inline-block', flexShrink: 0 }} />
+                      )}
+                      {msg.name}
+                    </span>
                     <span style={{ fontSize: 11, color: 'var(--text-4)' }}>
                       {msg.created_at ? new Date(msg.created_at).toLocaleDateString(isRu ? 'ru' : 'uz') : ''}
                     </span>

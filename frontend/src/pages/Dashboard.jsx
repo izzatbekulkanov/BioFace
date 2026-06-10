@@ -452,7 +452,7 @@ export default function Dashboard() {
         title={t('dashboard.subtitle')}
         sub={dateStr}
         right={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="dash-hero-actions" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             {/* Tab Toggle */}
             <div style={{ display: 'flex', background: 'rgba(255,255,255,0.08)', borderRadius: 10, padding: 3, gap: 2, border: '1px solid rgba(255,255,255,0.12)' }}>
               <button
@@ -530,6 +530,22 @@ export default function Dashboard() {
         }
         .db-grid-row6.single {
           grid-template-columns: 1fr;
+        }
+        @media (max-width: 600px) {
+          .dash-hero-actions {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            width: 100% !important;
+            gap: 8px !important;
+          }
+          .dash-hero-actions > div {
+            width: 100% !important;
+            justify-content: center !important;
+          }
+          .dash-hero-actions button {
+            flex: 1 1 auto !important;
+            justify-content: center !important;
+          }
         }
         @media (max-width: 1024px) {
           .db-grid-row5 {

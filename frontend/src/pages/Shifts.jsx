@@ -53,6 +53,7 @@ export default function Shifts() {
   const [isSchModalOpen, setIsSchModalOpen] = useState(false)
   const [schEditing, setSchEditing] = useState(null)
   const [schName, setSchName] = useState('')
+  const [schOrg, setSchOrg] = useState('') // Tashkilot (modal-level)
   const [schStart, setSchStart] = useState('09:00')
   const [schEnd, setSchEnd] = useState('18:00')
   const [schFlexible, setSchFlexible] = useState(false)
@@ -187,6 +188,7 @@ export default function Shifts() {
   const handleOpenSchModal = (sch = null) => {
     setSchEditing(sch)
     setSchName(sch ? sch.name : '')
+    setSchOrg(sch ? (sch.organization_id ? sch.organization_id.toString() : scheduleOrg) : scheduleOrg)
     setSchStart(sch ? sch.start_time : '09:00')
     setSchEnd(sch ? sch.end_time : '18:00')
     setSchFlexible(sch ? sch.is_flexible : false)
@@ -228,8 +230,9 @@ export default function Shifts() {
       setSchError(isRu ? 'Название смены обязательно' : 'Smena nomi majburiy')
       return
     }
-    if (!scheduleOrg) {
-      setSchError(isRu ? 'Выберите организацию' : 'Tashkilot tanlanmagan')
+    const targetOrg = schOrg || scheduleOrg
+    if (!targetOrg) {
+      setSchError(isRu ? 'Выберите организацию' : 'Tashkilotni tanlang')
       return
     }
     setSchSubmitting(true)
@@ -237,7 +240,7 @@ export default function Shifts() {
     try {
       const url = schEditing 
         ? `/api/schedules/${schEditing.id}` 
-        : `/api/organizations/${scheduleOrg}/schedules`
+        : `/api/organizations/${targetOrg}/schedules`
       const method = schEditing ? 'PUT' : 'POST'
       const res = await fetch(url, {
         method,
@@ -1211,6 +1214,22 @@ export default function Shifts() {
                 placeholder={isRu ? 'Напр: Дневная смена' : 'Masalan: Kunduzgi smena'}
               />
             </Field>
+
+            {/* Tashkilot tanlash — faqat yangi smena qo'shganda ko'rinadi */}
+            {!schEditing && (
+              <Field label={isRu ? 'Организация' : 'Tashkilot'} required>
+                <select
+                  value={schOrg}
+                  onChange={e => setSchOrg(e.target.value)}
+                  style={{ ...selectStyle, border: schOrg ? '1.5px solid var(--accent)' : '1px solid var(--border-2)' }}
+                >
+                  <option value="">{isRu ? '— Выберите организацию —' : '— Tashkilotni tanlang —'}</option>
+                  {filterOptions.organizations.map(o => (
+                    <option key={o.id} value={o.id.toString()}>{o.name}</option>
+                  ))}
+                </select>
+              </Field>
+            )}
 
             <div className="sh-form-grid-2">
               <Field label={isRu ? 'Время начала' : 'Boshlanish vaqti'} required>

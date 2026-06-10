@@ -229,7 +229,7 @@ export default function About() {
         >
           <video
             ref={introVideoRef}
-            src="/video_intro.mp4"
+            src="/static/video_intro.mp4"
             autoPlay
             muted
             playsInline
@@ -341,7 +341,7 @@ export default function About() {
           >
             <video
               ref={mainVideoRef}
-              src="/video_robot.mp4"
+              src="/static/video_robot.mp4"
               onClick={togglePlay}
               onTimeUpdate={handleTimeUpdate}
               onLoadedMetadata={handleLoadedMetadata}

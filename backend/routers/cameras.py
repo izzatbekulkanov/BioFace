@@ -19,7 +19,7 @@ from urllib.parse import urlsplit
 from xml.sax.saxutils import escape as xml_escape
 from fastapi import APIRouter, Request, Depends, HTTPException, File, UploadFile, Form, BackgroundTasks
 from fastapi.responses import Response, StreamingResponse
-from sqlalchemy import or_, case, cast, func, String, literal
+from sqlalchemy import or_, case, cast, func, String, literal, Integer
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Any, Callable, Optional
@@ -31,7 +31,7 @@ from utils.attendance_utils import ATTENDANCE_FLOOD_GUARD_SECONDS, build_attenda
 from database import SessionLocal, get_db
 from services.hikvision_sdk import get_sdk_status
 from services.isup_manager import get_process_status
-from models import Device, AttendanceLog, Employee, EmployeeWellbeingNote, Organization, EmployeeCameraLink, UserOrganizationLink, Schedule
+from models import Device, AttendanceLog, Employee, EmployeeWellbeingNote, Organization, EmployeeCameraLink, UserOrganizationLink, Schedule, Branch
 from utils.schedule_utils import get_late_minutes, is_holiday_for_org, resolve_employee_schedule
 from utils.time_utils import now_tashkent, normalize_timestamp_tashkent, today_tashkent_range
 from config.system_config import (
@@ -73,12 +73,14 @@ from models import UserRole
 
 def _append_runtime_log(filename: str, text: str) -> None:
     try:
-        log_dir = BASE_DIR / ".runtime"
+        from pathlib import Path
+        log_dir = Path(__file__).resolve().parent.parent / ".runtime"
         log_dir.mkdir(parents=True, exist_ok=True)
         with (log_dir / filename).open("a", encoding="utf-8", errors="replace") as log_file:
             log_file.write(text)
     except Exception:
         pass
+
 
 # Redis bridge import (graceful fallback if Redis not available)
 try:
@@ -836,11 +838,24 @@ def _resolve_camera_webhook_target_url(request: Request, raw_url: Optional[str])
     value = str(raw_url or "").strip()
     if not value:
         return None
+
+    from config.system_config import normalize_camera_event_push_base_url
+    
     if value.startswith("http://") or value.startswith("https://"):
+        base = normalize_camera_event_push_base_url(value)
+        if base:
+            return f"{base}{CAMERA_EVENT_PUSH_PATH}"
         return value
+        
     base_url = str(_build_camera_event_push_target(request).get("webhook_base_url") or "").rstrip("/")
     if not base_url:
+        if "api/v1/httppost" in value:
+            return CAMERA_EVENT_PUSH_PATH
         return value
+        
+    base = normalize_camera_event_push_base_url(base_url)
+    if base:
+        return f"{base}{CAMERA_EVENT_PUSH_PATH}"
     return f"{base_url}/{value.lstrip('/')}"
 
 
@@ -1114,6 +1129,7 @@ def list_cameras(request: Request, db: Session = Depends(get_db)):
             "max_memory": c.max_memory,
             "used_faces": c.used_faces,
             "organization_id": c.organization_id,
+            "branch_id": c.branch_id,
             "direction": c.direction,
             "username": c.username,
             "isup_password": c.isup_password or ISUP_KEY,
@@ -1295,7 +1311,7 @@ def add_camera(request: Request, data: CameraCreate, db: Session = Depends(get_d
     external_ip_val = _strip_or_none(data.external_ip)
     protocol_version_val = _strip_or_none(data.protocol_version)
     webhook_enabled_val = bool(data.webhook_enabled) if data.webhook_enabled is not None else False
-    webhook_target_url_val = _strip_or_none(data.webhook_target_url)
+    webhook_target_url_val = _resolve_camera_webhook_target_url(request, _strip_or_none(data.webhook_target_url))
     webhook_picture_sending_val = bool(data.webhook_picture_sending) if data.webhook_picture_sending is not None else False
     max_memory_val = data.max_memory or 1500
 
@@ -1376,6 +1392,7 @@ def add_camera(request: Request, data: CameraCreate, db: Session = Depends(get_d
         webhook_picture_sending=webhook_picture_sending_val,
         max_memory=max_memory_val,
         organization_id=data.organization_id,
+        branch_id=data.branch_id,
         username=username,
         password=password,
         isup_password=isup_password,
@@ -1477,13 +1494,17 @@ def update_camera(request: Request, cam_id: int, data: CameraUpdate, db: Session
     if data.webhook_enabled is not None:
         cam.webhook_enabled = bool(data.webhook_enabled)
     if data.webhook_target_url is not None:
-        cam.webhook_target_url = _strip_or_none(data.webhook_target_url)
+        cam.webhook_target_url = _resolve_camera_webhook_target_url(request, _strip_or_none(data.webhook_target_url))
     if data.webhook_picture_sending is not None:
         cam.webhook_picture_sending = bool(data.webhook_picture_sending)
     if data.max_memory is not None:
         cam.max_memory = data.max_memory
     if data.organization_id is not None:
         cam.organization_id = data.organization_id
+    if data.branch_id is not None:
+        cam.branch_id = data.branch_id
+    elif hasattr(data, 'branch_id') and data.branch_id == 0:
+        cam.branch_id = None
     if data.username is not None:
         cam.username = data.username
     if data.password is not None:
@@ -1492,9 +1513,35 @@ def update_camera(request: Request, cam_id: int, data: CameraUpdate, db: Session
         cam.isup_password = data.isup_password
     if data.direction is not None:
         cam.direction = data.direction
+
+    webhook_changed = (
+        data.webhook_enabled is not None or
+        data.webhook_target_url is not None or
+        data.webhook_picture_sending is not None
+    )
         
     db.commit()
-    return {"ok": True, "message": "Kamera yangilandi"}
+
+    msg = "Kamera yangilandi"
+    if webhook_changed and cam.isup_device_id:
+        try:
+            target_id, _, source = _resolve_online_command_target(cam)
+            if target_id:
+                _send_isup_command_or_raise(
+                    target_id,
+                    "set_alarm_server",
+                    {
+                        "camera_event_push_base_url": cam.webhook_target_url,
+                    },
+                    timeout=5.0
+                )
+                msg = "Kamera yangilandi va yangi Webhook sozlamalari kameraga yuborildi"
+            else:
+                msg = "Kamera yangilandi (kamera offline bo'lgani uchun Webhook sozlamalari unga yozilmadi)"
+        except Exception as e:
+            msg = f"Kamera yangilandi, lekin Webhook sozlamalarini kameraga yozishda xatolik yuz berdi: {e}"
+
+    return {"ok": True, "message": msg}
 
 
 # ── POST /api/webhook — kameradan kelgan hodisa ────────
@@ -1751,6 +1798,54 @@ def send_command(request: Request, cam_id: int, payload: CommandPayload, db: Ses
         timeout=10.0,
     )
 
+    # ── get_alarm_server: kameradagi haqiqiy sozlamalarni DB ga sinxronlash ──
+    if payload.command == "get_alarm_server" and response.get("ok"):
+        try:
+            live_summary = response.get("summary") or {}
+            ip_or_domain = live_summary.get("webhook_ip_or_domain", "")
+            port = live_summary.get("webhook_port", "")
+            path = live_summary.get("webhook_path", "/api/v1/httppost/")
+            proto = live_summary.get("webhook_protocol", "http").lower()
+            enabled = live_summary.get("webhook_enabled", False)
+            pic_sending = live_summary.get("webhook_picture_sending", False)
+
+            # To'liq URL qayta tuzish
+            if ip_or_domain and ip_or_domain not in ("", "0.0.0.0", "::"):
+                port_part = f":{port}" if port and port not in ("80", "443", "") else ""
+                if proto == "http" and port == "80":
+                    port_part = ""
+                if proto == "https" and port == "443":
+                    port_part = ""
+                live_url = f"{proto}://{ip_or_domain}{port_part}{path}"
+            else:
+                live_url = live_summary.get("webhook_url") or cam.webhook_target_url or ""
+
+            if live_url:
+                resolved_url = _resolve_camera_webhook_target_url(request, live_url)
+                if resolved_url:
+                    cam.webhook_target_url = resolved_url
+            cam.webhook_enabled = bool(enabled)
+            cam.webhook_picture_sending = bool(pic_sending)
+            db.commit()
+            db.refresh(cam)
+        except Exception:
+            pass  # DB sinxronlash xatosi asosiy javobni bloklamasin
+
+    # ── get_face_count: kameradagi yuzlar sonini DB ga sinxronlash ──
+    if payload.command == "get_face_count" and response.get("ok"):
+        try:
+            face_count = int(
+                response.get("face_count")
+                or response.get("bind_face_user_count")
+                or response.get("fd_record_total")
+                or 0
+            )
+            cam.used_faces = face_count
+            db.commit()
+            db.refresh(cam)
+        except Exception:
+            pass
+
     today_attendance = _get_today_attendance_summary(db, cam)
 
     return {
@@ -1763,12 +1858,19 @@ def send_command(request: Request, cam_id: int, payload: CommandPayload, db: Ses
         "target_device_id": target_id,
         "response": response,
         "today_attendance": today_attendance,
+        # Yangilangan kamera ma'lumotlarini ham qaytaramiz
+        "camera_sync": {
+            "webhook_target_url": cam.webhook_target_url,
+            "webhook_enabled": cam.webhook_enabled,
+            "webhook_picture_sending": cam.webhook_picture_sending,
+        } if payload.command == "get_alarm_server" else None,
         "message": (
             str(response.get("message") or "Kamera vaqti Asia/Tashkent ga sinxronlandi.")
             if payload.command == "set_tashkent_timezone"
             else f"'{ALLOWED_COMMANDS[payload.command]}' buyrug'i ISUP orqali yuborildi. Bugungi attendance: {today_attendance['count']} ta."
         ),
     }
+
 
 
 # ── POST /api/cameras/{id}/users ────────────────────
@@ -1958,6 +2060,7 @@ def get_camera_snapshot(request: Request, cam_id: int, db: Session = Depends(get
         "live": live_info,
         "isup_source": source,
         "snapshot": snapshot_payload,
+        "alarm_summary": alarm_summary,
         "warnings": snapshot_response.get("warnings", []),
     }
 
@@ -2071,6 +2174,25 @@ def sync_camera_metadata(request: Request, cam_id: int, db: Session = Depends(ge
         if isinstance(incoming_picture_sending, bool) and cam.webhook_picture_sending != incoming_picture_sending:
             cam.webhook_picture_sending = incoming_picture_sending
             updated["webhook_picture_sending"] = incoming_picture_sending
+
+    try:
+        count_resp = _send_isup_command_or_raise(
+            target_id,
+            "get_face_count",
+            {},
+            timeout=8.0,
+        )
+        face_count = int(
+            count_resp.get("face_count")
+            or count_resp.get("bind_face_user_count")
+            or count_resp.get("fd_record_total")
+            or 0
+        )
+        if cam.used_faces != face_count:
+            cam.used_faces = face_count
+            updated["used_faces"] = face_count
+    except Exception as exc:
+        skipped.append(f"Yuzlar soni o'qilmadi: {getattr(exc, 'detail', str(exc))}")
 
     if updated:
         db.commit()
@@ -2979,18 +3101,25 @@ async def add_user_to_camera_with_image(
 
 
 @router.get("/api/cameras/by-org/{org_id}")
-def cameras_by_org(request: Request, org_id: int, db: Session = Depends(get_db)):
+def cameras_by_org(request: Request, org_id: str, db: Session = Depends(get_db)):
     """Return cameras belonging to a specific organization."""
+    org = db.query(Organization).filter(Organization.uuid == org_id).first()
+    if not org and org_id.isdigit():
+        org = db.query(Organization).filter(Organization.id == int(org_id)).first()
+    if not org:
+        return []
+
+    org_id_val = org.id
     scope = _resolve_camera_org_scope(request, db)
     if not bool(scope.get("is_super_admin")):
         allowed_org_ids = list(scope.get("allowed_org_ids") or [])
-        if org_id not in allowed_org_ids:
+        if org_id_val not in allowed_org_ids:
             return []
 
     now = now_tashkent()
     isup_map, source = _get_live_isup_map()
     isup_available = source != "unavailable"
-    cams = db.query(Device).filter(Device.organization_id == org_id).order_by(Device.name).all()
+    cams = db.query(Device).filter(Device.organization_id == org_id_val).order_by(Device.name).all()
     result = []
     for c in cams:
         isup_online = None
@@ -3098,11 +3227,95 @@ def get_events(
     return items
 
 
+def _get_today_employee_stats(
+    db: Session,
+    allowed_org_ids: list[int],
+    organization_id: Optional[int],
+    employee_type: Optional[str],
+    schedule_id: Optional[int],
+) -> dict:
+    from utils.time_utils import today_tashkent_range, now_tashkent
+    from utils.schedule_utils import get_late_minutes
+    from sqlalchemy.orm import selectinload
+    
+    today_start, today_end = today_tashkent_range()
+    
+    target_org_ids = allowed_org_ids
+    if organization_id is not None:
+        if organization_id in allowed_org_ids:
+            target_org_ids = [organization_id]
+        else:
+            target_org_ids = []
+            
+    if not target_org_ids:
+        return {"total_employees": 0, "present_today": 0, "absent_today": 0, "late_today": 0}
+        
+    emp_query = db.query(Employee).options(
+        selectinload(Employee.organization), 
+        selectinload(Employee.schedule)
+    ).filter(
+        Employee.organization_id.in_(target_org_ids),
+        Employee.has_access == True
+    )
+    
+    if employee_type is not None and employee_type != 'all':
+        emp_query = emp_query.filter(Employee.employee_type == employee_type)
+    if schedule_id is not None:
+        emp_query = emp_query.filter(Employee.schedule_id == schedule_id)
+        
+    employees = emp_query.all()
+    if not employees:
+        return {"total_employees": 0, "present_today": 0, "absent_today": 0, "late_today": 0}
+        
+    employee_ids = [emp.id for emp in employees]
+    
+    logs = (
+        db.query(AttendanceLog)
+        .filter(
+            AttendanceLog.status == "aniqlandi",
+            AttendanceLog.employee_id.in_(employee_ids),
+            AttendanceLog.timestamp >= today_start,
+            AttendanceLog.timestamp < today_end,
+        )
+        .order_by(AttendanceLog.timestamp.asc(), AttendanceLog.id.asc())
+        .all()
+    )
+    
+    first_logs_by_employee = {}
+    for log in logs:
+        if log.employee_id is not None:
+            emp_id = int(log.employee_id)
+            if emp_id not in first_logs_by_employee:
+                first_logs_by_employee[emp_id] = log
+            
+    total_employees = len(employees)
+    present_today = 0
+    absent_today = 0
+    late_today = 0
+    
+    for emp in employees:
+        first_log = first_logs_by_employee.get(emp.id)
+        if first_log and first_log.timestamp:
+            present_today += 1
+            if get_late_minutes(emp, today_start, first_log.timestamp) > 0:
+                late_today += 1
+        else:
+            absent_today += 1
+            
+    return {
+        "total_employees": total_employees,
+        "present_today": present_today,
+        "absent_today": absent_today,
+        "late_today": late_today
+    }
+
+
 @router.get("/api/attendance")
 def get_attendance(
     request: Request,
     limit: int = 300,
     organization_id: Optional[int] = None,
+    branch_id: Optional[int] = None,
     camera_id: Optional[int] = None,
     after_id: Optional[int] = None,
     before_id: Optional[int] = None,
@@ -3128,7 +3341,7 @@ def get_attendance(
     if not is_super and allowed_org_ids:
         query = query.filter(
             or_(
-                Device.organization_id.in_(allowed_org_ids),
+                and_(AttendanceLog.employee_id.is_(None), Device.organization_id.in_(allowed_org_ids)),
                 Employee.organization_id.in_(allowed_org_ids),
             )
         )
@@ -3142,6 +3355,13 @@ def get_attendance(
             or_(
                 Device.organization_id == organization_id,
                 Employee.organization_id == organization_id,
+            )
+        )
+    if branch_id is not None:
+        query = query.filter(
+            or_(
+                Device.branch_id == branch_id,
+                Employee.branch_id == branch_id,
             )
         )
     if camera_id is not None:
@@ -3217,6 +3437,13 @@ def get_attendance(
                 "direction": l.direction or (l.device.direction if l.device else None),
             }
         )
+    today_stats = _get_today_employee_stats(
+        db=db,
+        allowed_org_ids=allowed_org_ids,
+        organization_id=organization_id,
+        employee_type=employee_type,
+        schedule_id=schedule_id,
+    )
     return {
         "ok": True,
         "count": len(items),
@@ -3224,7 +3451,8 @@ def get_attendance(
         "known": known,
         "unknown": unknown,
         "items": items,
-        "last_id": last_id
+        "last_id": last_id,
+        "today_stats": today_stats
     }
 
 
@@ -3245,6 +3473,7 @@ def _apply_attendance_filters(
     query,
     *,
     organization_id: Optional[int],
+    branch_id: Optional[int] = None,
     camera_id: Optional[int],
     personal_id: Optional[str],
     year: Optional[int],
@@ -3258,6 +3487,13 @@ def _apply_attendance_filters(
                 AttendanceLog.employee.has(Employee.organization_id == organization_id),
             )
         )
+    if branch_id is not None:
+        query = query.filter(
+            or_(
+                AttendanceLog.device.has(Device.branch_id == branch_id),
+                AttendanceLog.employee.has(Employee.branch_id == branch_id),
+            )
+        )
     if camera_id is not None:
         query = query.filter(AttendanceLog.device_id == camera_id)
     personal_id_val = _normalize_personal_id(personal_id)
@@ -3269,15 +3505,32 @@ def _apply_attendance_filters(
             )
         )
     if year is not None:
-        query = query.filter(func.strftime("%Y", AttendanceLog.timestamp) == f"{int(year):04d}")
+        query = query.filter(func.extract("year", AttendanceLog.timestamp) == int(year))
     if month is not None:
-        query = query.filter(func.strftime("%m", AttendanceLog.timestamp) == f"{int(month):02d}")
+        query = query.filter(func.extract("month", AttendanceLog.timestamp) == int(month))
     if day is not None:
-        query = query.filter(func.strftime("%d", AttendanceLog.timestamp) == f"{int(day):02d}")
+        query = query.filter(func.extract("day", AttendanceLog.timestamp) == int(day))
     return query
 
 
 def _resolve_attendance_org_scope(request: Request, db: Session) -> dict[str, Any]:
+    if _request_is_super_admin(request):
+        # Super admin has access to all non-expired organizations
+        org_rows = db.query(Organization.id, Organization.name, Organization.subscription_status).all()
+        allowed_org_ids = []
+        pending_org_names = []
+        for org_id, org_name, sub_status in org_rows:
+            status = str(sub_status.value if hasattr(sub_status, "value") else sub_status or "").strip().lower()
+            if status == "expired":
+                continue
+            allowed_org_ids.append(int(org_id))
+            if status == "pending":
+                pending_org_names.append(str(org_name or ""))
+        return {
+            "allowed_org_ids": allowed_org_ids,
+            "pending_org_names": pending_org_names,
+        }
+
     auth_user = request.session.get("auth_user") or {}
     org_query = db.query(Organization.id, Organization.name, Organization.subscription_status)
     org_ids: set[int] = set()
@@ -3295,6 +3548,14 @@ def _resolve_attendance_org_scope(request: Request, db: Session) -> dict[str, An
     fallback_org_id = auth_user.get("organization_id")
     if not has_linked_orgs and fallback_org_id is not None:
         org_ids.add(int(fallback_org_id))
+
+    # Add fallback based on matching employee phone if still empty
+    if not org_ids:
+        user_phone = auth_user.get("phone")
+        if user_phone:
+            emp = db.query(Employee).filter(Employee.phone == user_phone).first()
+            if emp and emp.organization_id is not None:
+                org_ids.add(int(emp.organization_id))
 
     if not org_ids:
         return {
@@ -3379,7 +3640,7 @@ def get_attendance_filter_data(request: Request, db: Session = Depends(get_db)):
     scope = _resolve_attendance_org_scope(request, db)
     allowed_org_ids = list(scope.get("allowed_org_ids") or [])
     if not allowed_org_ids:
-        return {"ok": True, "organizations": [], "cameras": []}
+        return {"ok": True, "organizations": [], "cameras": [], "branches": [], "schedules": []}
 
     org_rows = (
         db.query(Organization.id, Organization.name)
@@ -3387,8 +3648,14 @@ def get_attendance_filter_data(request: Request, db: Session = Depends(get_db)):
         .order_by(Organization.name.asc())
         .all()
     )
+    branch_rows = (
+        db.query(Branch.id, Branch.name, Branch.organization_id)
+        .filter(Branch.organization_id.in_(allowed_org_ids))
+        .order_by(Branch.name.asc())
+        .all()
+    )
     cam_rows = (
-        db.query(Device.id, Device.name, Device.organization_id)
+        db.query(Device.id, Device.name, Device.organization_id, Device.branch_id)
         .filter(Device.organization_id.in_(allowed_org_ids))
         .order_by(Device.name.asc())
         .all()
@@ -3406,11 +3673,20 @@ def get_attendance_filter_data(request: Request, db: Session = Depends(get_db)):
             {"id": int(row.id), "name": str(row.name or "")}
             for row in org_rows
         ],
+        "branches": [
+            {
+                "id": int(row.id),
+                "name": str(row.name or ""),
+                "organization_id": int(row.organization_id) if row.organization_id is not None else None,
+            }
+            for row in branch_rows
+        ],
         "cameras": [
             {
                 "id": int(row.id),
                 "name": str(row.name or ""),
                 "organization_id": int(row.organization_id) if row.organization_id is not None else None,
+                "branch_id": int(row.branch_id) if row.branch_id is not None else None,
             }
             for row in cam_rows
         ],
@@ -3547,15 +3823,22 @@ def _find_recent_attendance_duplicate(
         return None
 
     event_epoch = int(event_time.timestamp())
-    order_distance = func.abs(func.strftime("%s", AttendanceLog.timestamp) - event_epoch)
+    if db.bind.dialect.name == "sqlite":
+        epoch_expr = func.cast(func.strftime("%s", AttendanceLog.timestamp), Integer)
+    else:
+        epoch_expr = func.extract("epoch", AttendanceLog.timestamp)
+    order_distance = func.abs(epoch_expr - event_epoch)
 
     if exact_device_id is not None:
+        min_ts = event_time - timedelta(seconds=max(1, int(exact_window_seconds)))
+        max_ts = event_time + timedelta(seconds=max(1, int(exact_window_seconds)))
         exact_match = (
             db.query(AttendanceLog.id)
             .filter(
                 AttendanceLog.device_id == int(exact_device_id),
                 or_(*identity_filters),
-                func.abs(func.strftime("%s", AttendanceLog.timestamp) - event_epoch) <= max(1, int(exact_window_seconds)),
+                AttendanceLog.timestamp >= min_ts,
+                AttendanceLog.timestamp <= max_ts,
             )
             .order_by(order_distance.asc(), AttendanceLog.id.desc())
             .first()
@@ -3563,9 +3846,12 @@ def _find_recent_attendance_duplicate(
         if exact_match is not None:
             return int(exact_match[0])
 
+    min_ts_flood = event_time - timedelta(seconds=max(1, int(flood_window_seconds)))
+    max_ts_flood = event_time + timedelta(seconds=max(1, int(flood_window_seconds)))
     flood_query = db.query(AttendanceLog.id).filter(
         or_(*identity_filters),
-        func.abs(func.strftime("%s", AttendanceLog.timestamp) - event_epoch) <= max(1, int(flood_window_seconds)),
+        AttendanceLog.timestamp >= min_ts_flood,
+        AttendanceLog.timestamp <= max_ts_flood,
     )
     if organization_id is not None:
         flood_query = flood_query.outerjoin(Device, Device.id == AttendanceLog.device_id).filter(
@@ -3586,6 +3872,7 @@ def _build_today_status_items(
     target_day_start: datetime,
     target_day_end: datetime,
     organization_id: Optional[int],
+    branch_id: Optional[int] = None,
     camera_id: Optional[int],
     personal_id: Optional[str],
 ) -> list[dict[str, Any]]:
@@ -3596,6 +3883,8 @@ def _build_today_status_items(
     employees_query = employees_query.filter(Employee.organization_id.in_(allowed_org_ids))
     if organization_id is not None:
         employees_query = employees_query.filter(Employee.organization_id == organization_id)
+    if branch_id is not None:
+        employees_query = employees_query.filter(Employee.branch_id == branch_id)
     if personal_id:
         employees_query = employees_query.filter(Employee.personal_id == personal_id)
     if camera_id is not None:
@@ -3633,13 +3922,9 @@ def _build_today_status_items(
         first_seen = emp_logs[0].timestamp if emp_logs else None
         last_seen = emp_logs[-1].timestamp if emp_logs else None
 
-        schedule_payload = resolve_employee_schedule(emp)
-        expected_start = target_day_start.replace(
-            hour=_parse_hhmm_or_default(schedule_payload.get("start_time"), 9, 0)[0],
-            minute=_parse_hhmm_or_default(schedule_payload.get("start_time"), 9, 0)[1],
-            second=0,
-            microsecond=0,
-        )
+        schedule_payload = resolve_employee_schedule(emp) or {}
+        expected_start_time = schedule_payload.get("start_time") or "09:00"
+        expected_end_time = schedule_payload.get("end_time") or "18:00"
         late_minutes = get_late_minutes(emp, target_day_start.date(), first_seen)
         is_late = late_minutes > 0
 
@@ -3673,6 +3958,8 @@ def _build_today_status_items(
                 "personal_id": emp.personal_id,
                 "organization_id": emp.organization_id,
                 "organization_name": emp.organization.name if emp.organization else None,
+                "branch_id": emp.branch_id,
+                "branch_name": emp.branch.name if emp.branch else None,
                 "first_timestamp": first_seen.isoformat() if first_seen else None,
                 "latest_timestamp": last_seen.isoformat() if last_seen else None,
                 "visit_count": int(session_summary.get("session_count") or 0),
@@ -3682,7 +3969,8 @@ def _build_today_status_items(
                 "events": events,
                 "is_late": is_late,
                 "late_minutes": max(0, late_minutes),
-                "expected_start_time": expected_start.isoformat(),
+                "expected_start_time": expected_start_time,
+                "expected_end_time": expected_end_time,
             }
         )
 
@@ -3703,6 +3991,7 @@ def _compute_employee_daily_summary(
     target_day_start: datetime,
     target_day_end: datetime,
     organization_id: Optional[int],
+    branch_id: Optional[int] = None,
     camera_id: Optional[int],
     personal_id: Optional[str],
 ) -> dict[str, int]:
@@ -3721,6 +4010,8 @@ def _compute_employee_daily_summary(
     )
     if organization_id is not None:
         employees_query = employees_query.filter(Employee.organization_id == organization_id)
+    if branch_id is not None:
+        employees_query = employees_query.filter(Employee.branch_id == branch_id)
     if personal_id:
         employees_query = employees_query.filter(Employee.personal_id == personal_id)
     if camera_id is not None:
@@ -3788,6 +4079,7 @@ def get_attendance_groups(
     page: int = 1,
     page_size: int = 15,
     organization_id: Optional[int] = None,
+    branch_id: Optional[int] = None,
     camera_id: Optional[int] = None,
     today_status: Optional[str] = None,
     personal_id: Optional[str] = None,
@@ -3833,6 +4125,7 @@ def get_attendance_groups(
         target_day_start=target_day_start,
         target_day_end=target_day_end,
         organization_id=organization_id,
+        branch_id=branch_id,
         camera_id=camera_id,
         personal_id=personal_id,
     )
@@ -3857,16 +4150,22 @@ def get_attendance_groups(
                 "pending_org_names": pending_org_names,
             },
         }
-    day_expr = func.strftime("%d", AttendanceLog.timestamp)
+    if db.bind.dialect.name == "sqlite":
+        day_expr = func.strftime("%d", AttendanceLog.timestamp)
+    else:
+        day_expr = func.extract("day", AttendanceLog.timestamp)
 
     available_days_query = _apply_attendance_filters(
         db.query(AttendanceLog),
         organization_id=organization_id,
+        branch_id=branch_id,
         camera_id=camera_id,
         personal_id=personal_id,
         year=year,
         month=month,
         day=None,
+    ).filter(
+        AttendanceLog.employee_id.isnot(None)
     ).filter(
         or_(
             AttendanceLog.device.has(Device.organization_id.in_(allowed_org_ids)),
@@ -3874,12 +4173,12 @@ def get_attendance_groups(
         )
     )
     available_days = [
-        str(row[0])
+        f"{int(row[0]):02d}"
         for row in available_days_query.with_entities(day_expr)
         .group_by(day_expr)
         .order_by(day_expr)
         .all()
-        if row[0]
+        if row[0] is not None
     ]
 
     if today_status in {"came", "did_not_come", "came_late"} and target_day_start is not None and target_day_end is not None:
@@ -3890,6 +4189,7 @@ def get_attendance_groups(
             target_day_start=target_day_start,
             target_day_end=target_day_end,
             organization_id=organization_id,
+            branch_id=branch_id,
             camera_id=camera_id,
             personal_id=personal_id,
         )
@@ -3923,11 +4223,14 @@ def get_attendance_groups(
     base_query = _apply_attendance_filters(
         db.query(AttendanceLog),
         organization_id=organization_id,
+        branch_id=branch_id,
         camera_id=camera_id,
         personal_id=personal_id,
         year=year,
         month=month,
         day=day,
+    ).filter(
+        AttendanceLog.employee_id.isnot(None)
     ).filter(
         or_(
             AttendanceLog.device.has(Device.organization_id.in_(allowed_org_ids)),
@@ -3980,6 +4283,8 @@ def get_attendance_groups(
         employee_image_url = None
         employee_name = None
         late_minutes = 0
+        expected_start_time = None
+        expected_end_time = None
         employee_id = int(row.employee_id) if row.employee_id is not None else None
         if employee_id is not None:
             employee = db.query(Employee).filter(Employee.id == employee_id).first()
@@ -3993,11 +4298,15 @@ def get_attendance_groups(
                     first_dt = _parse_camera_timestamp(row.first_timestamp)
                     if first_dt:
                         late_minutes = get_late_minutes(employee, first_dt.date(), first_dt)
+                schedule_payload = resolve_employee_schedule(employee) or {}
+                expected_start_time = schedule_payload.get("start_time") or "09:00"
+                expected_end_time = schedule_payload.get("end_time") or "18:00"
                         
         group_identity = str(row.group_identity or "")
         detail_query = _apply_attendance_filters(
             db.query(AttendanceLog),
             organization_id=organization_id,
+            branch_id=branch_id,
             camera_id=camera_id,
             personal_id=personal_id,
             year=year,
@@ -4032,11 +4341,19 @@ def get_attendance_groups(
         # Tashkilot nomini olamiz
         org_name = None
         org_id = organization_id
-        if employee is not None and employee.organization_id is not None:
-            org_id = employee.organization_id
-            org = db.query(Organization).filter(Organization.id == org_id).first()
-            if org:
-                org_name = org.name
+        branch_id_val = None
+        branch_name = None
+        if employee is not None:
+            if employee.organization_id is not None:
+                org_id = employee.organization_id
+                org = db.query(Organization).filter(Organization.id == org_id).first()
+                if org:
+                    org_name = org.name
+            if employee.branch_id is not None:
+                branch_id_val = employee.branch_id
+                branch = db.query(Branch).filter(Branch.id == branch_id_val).first()
+                if branch:
+                    branch_name = branch.name
         
         items.append(
             {
@@ -4048,6 +4365,8 @@ def get_attendance_groups(
                 "personal_id": row.person_id,
                 "organization_id": org_id,
                 "organization_name": org_name,
+                "branch_id": branch_id_val,
+                "branch_name": branch_name,
                 "first_timestamp": row.first_timestamp.isoformat() if row.first_timestamp else None,
                 "latest_timestamp": row.latest_timestamp.isoformat() if row.latest_timestamp else None,
                 "visit_count": int(session_summary.get("session_count") or 0),
@@ -4056,6 +4375,8 @@ def get_attendance_groups(
                 "status": "kech" if (employee is not None and late_minutes > 0) else row.status,
                 "late_minutes": max(0, late_minutes),
                 "events": events,
+                "expected_start_time": expected_start_time,
+                "expected_end_time": expected_end_time,
             }
         )
 
@@ -4181,6 +4502,7 @@ def _collect_attendance_groups_for_export(
     db: Session,
     *,
     organization_id: Optional[int],
+    branch_id: Optional[int] = None,
     camera_id: Optional[int],
     today_status: Optional[str],
     personal_id: Optional[str],
@@ -4193,6 +4515,7 @@ def _collect_attendance_groups_for_export(
         page=1,
         page_size=100,
         organization_id=organization_id,
+        branch_id=branch_id,
         camera_id=camera_id,
         today_status=today_status,
         personal_id=personal_id,
@@ -4211,6 +4534,7 @@ def _collect_attendance_groups_for_export(
                 page=page_no,
                 page_size=100,
                 organization_id=organization_id,
+                branch_id=branch_id,
                 camera_id=camera_id,
                 today_status=today_status,
                 personal_id=personal_id,
@@ -4343,6 +4667,7 @@ def _build_simple_xlsx(
 def export_attendance_groups_excel(
     request: Request,
     organization_id: Optional[int] = None,
+    branch_id: Optional[int] = None,
     camera_id: Optional[int] = None,
     today_status: Optional[str] = None,
     personal_id: Optional[str] = None,
@@ -4355,6 +4680,7 @@ def export_attendance_groups_excel(
         request,
         db,
         organization_id=organization_id,
+        branch_id=branch_id,
         camera_id=camera_id,
         today_status=today_status,
         personal_id=personal_id,
@@ -4376,13 +4702,16 @@ def export_attendance_groups_excel(
     ]
     export_rows = []
     for idx, row in enumerate(items, start=1):
+        org_disp = row.get("organization_name") or ""
+        if row.get("branch_name"):
+            org_disp = f"{org_disp} | {row['branch_name']}"
         export_rows.append([
             idx,
             row.get("employee_name") or "",
             row.get("personal_id") or "",
             _format_export_time(row.get("latest_timestamp")),
             _format_export_time(row.get("first_timestamp")),
-            row.get("organization_name") or "",
+            org_disp,
             row.get("camera_count") or 0,
             row.get("visit_count") or 0,
             row.get("status") or "",
@@ -4400,6 +4729,7 @@ def export_attendance_groups_excel(
 def export_attendance_groups_pdf(
     request: Request,
     organization_id: Optional[int] = None,
+    branch_id: Optional[int] = None,
     camera_id: Optional[int] = None,
     today_status: Optional[str] = None,
     personal_id: Optional[str] = None,
@@ -4417,6 +4747,7 @@ def export_attendance_groups_pdf(
         request,
         db,
         organization_id=organization_id,
+        branch_id=branch_id,
         camera_id=camera_id,
         today_status=today_status,
         personal_id=personal_id,
@@ -4462,13 +4793,16 @@ def export_attendance_groups_pdf(
     pdf.ln()
 
     for idx, row in enumerate(items, start=1):
+        org_disp = row.get("organization_name") or ""
+        if row.get("branch_name"):
+            org_disp = f"{org_disp} | {row['branch_name']}"
         cells = [
             str(idx),
             str(row.get("event_date") or ""),
             _format_export_dt(row.get("latest_timestamp")),
             str(row.get("employee_name") or ""),
             str(row.get("personal_id") or ""),
-            str(row.get("organization_name") or ""),
+            org_disp,
             str(row.get("camera_count") or 0),
             str(row.get("visit_count") or 0),
             str(row.get("status") or ""),
@@ -4984,95 +5318,154 @@ def _hik_try_fetch_snapshot_from_camera(camera_ip: str, username: str, password:
     return None
 
 
-def _hik_update_log_snapshot_and_state(log_id: int, snapshot_url: str) -> bool:
-    safe_snapshot_url = str(snapshot_url or "").strip()
-    if log_id <= 0 or not safe_snapshot_url:
-        return False
-
-    db = SessionLocal()
-    try:
-        log = db.query(AttendanceLog).filter(AttendanceLog.id == int(log_id)).first()
-        if log is None:
-            return False
-
-        current_snapshot = str(log.snapshot_url or "").strip()
-        if current_snapshot.startswith("/static/"):
-            return True
-
-        log.snapshot_url = safe_snapshot_url
-        photo_path = resolve_snapshot_path(safe_snapshot_url)
-        psychological_profile = detect_psychological_profile(photo_path)
-        psychological_state_key = str(psychological_profile.get("state_key") or "")
-        psychological_state_confidence = psychological_profile.get("confidence")
-        emotion_scores = dict(psychological_profile.get("emotion_scores") or {})
-        log.psychological_state_key = psychological_state_key or None
-        log.psychological_state_confidence = psychological_state_confidence
-        log.emotion_scores_json = psychological_profile.get("emotion_scores_json") or None
-
-        if log.employee_id:
-            upsert_daily_psychological_state(
-                db,
-                employee_id=int(log.employee_id),
-                state_key=psychological_state_key,
-                confidence=psychological_state_confidence,
-                emotion_scores=emotion_scores,
-                timestamp=normalize_timestamp_tashkent(log.timestamp),
-                note=f"hik_event_snapshot_backfill:{log.camera_mac or '-'}",
-                source="external_system",
-            )
-
-        db.commit()
-        return True
-    except Exception as exc:
-        db.rollback()
-        print(f"[HIK-EVENT] snapshot backfill DB xato: {exc}")
-        return False
-    finally:
-        db.close()
-
-
-def _hik_backfill_snapshot_task(
+def _hik_process_log_ml_and_notify(
     *,
     log_id: int,
+    needs_backfill: bool,
     isup_device_id: Optional[str],
     camera_ip: Optional[str],
     username: Optional[str],
     password: Optional[str],
 ) -> None:
+    db = SessionLocal()
     try:
-        time.sleep(1.5)
-        snapshot_url: Optional[str] = None
+        log = db.query(AttendanceLog).filter(AttendanceLog.id == int(log_id)).first()
+        if log is None:
+            return
 
-        target_device_id = str(isup_device_id or "").strip()
-        if target_device_id and redis_ok():
-            try:
-                response = send_command_and_wait(
-                    target_device_id,
-                    "capture_snapshot",
-                    {
-                        "camera_ip": str(camera_ip or "").strip() or None,
-                        "allow_http_fallback": True,
-                        "username": str(username or "").strip() or None,
-                        "password": str(password or "").strip() or None,
-                    },
-                    timeout=15.0,
+        device = db.query(Device).filter(Device.id == log.device_id).first() if log.device_id else None
+        emp = db.query(Employee).filter(Employee.id == log.employee_id).first() if log.employee_id else None
+
+        # 1. Backfill snapshot if needed
+        snapshot_url = str(log.snapshot_url or "").strip()
+        if needs_backfill and not snapshot_url.startswith("/static/"):
+            time.sleep(1.5)
+            target_device_id = str(isup_device_id or "").strip()
+            if target_device_id and redis_ok():
+                try:
+                    response = send_command_and_wait(
+                        target_device_id,
+                        "capture_snapshot",
+                        {
+                            "camera_ip": str(camera_ip or "").strip() or None,
+                            "allow_http_fallback": True,
+                            "username": str(username or "").strip() or None,
+                            "password": str(password or "").strip() or None,
+                        },
+                        timeout=15.0,
+                    )
+                    if isinstance(response, dict) and response.get("ok") and response.get("snapshot_url"):
+                        snapshot_url = str(response.get("snapshot_url") or "").strip() or None
+                except Exception as exc:
+                    print(f"[HIK-EVENT-BG] ISUP snapshot backfill error: {exc}")
+
+            if not snapshot_url:
+                snapshot_url = _hik_try_fetch_snapshot_from_camera(
+                    str(camera_ip or "").strip(),
+                    str(username or "").strip(),
+                    str(password or "").strip(),
                 )
-                if isinstance(response, dict) and response.get("ok") and response.get("snapshot_url"):
-                    snapshot_url = str(response.get("snapshot_url") or "").strip() or None
-            except Exception as exc:
-                print(f"[HIK-EVENT] ISUP snapshot backfill xato: {exc}")
+            
+            if snapshot_url:
+                log.snapshot_url = snapshot_url
 
-        if not snapshot_url:
-            snapshot_url = _hik_try_fetch_snapshot_from_camera(
-                str(camera_ip or "").strip(),
-                str(username or "").strip(),
-                str(password or "").strip(),
+        # 2. Run ML models (emotion, liveness) if snapshot exists
+        snapshot_url = str(log.snapshot_url or "").strip()
+        psychological_state_key = None
+        psychological_state_uz = ""
+        psychological_state_ru = ""
+        psychological_profile_uz = ""
+        psychological_profile_ru = ""
+        psychological_state_confidence = None
+        emotion_scores = {}
+        stress_score = 0.0
+        stress_status_uz = "Normal"
+        stress_status_ru = "Нормальный"
+        liveness_score = None
+        liveness_status = None
+
+        if snapshot_url.startswith("/static/"):
+            try:
+                photo_path = resolve_snapshot_path(snapshot_url)
+                
+                # Emotion recognition
+                psychological_profile = detect_psychological_profile(photo_path)
+                psychological_state_key = str(psychological_profile.get("state_key") or "")
+                psychological_state_uz = str(psychological_profile.get("state_uz") or "")
+                psychological_state_ru = str(psychological_profile.get("state_ru") or "")
+                psychological_state_confidence = psychological_profile.get("confidence")
+                emotion_scores = dict(psychological_profile.get("emotion_scores") or {})
+                psychological_profile_uz = str(psychological_profile.get("profile_text_uz") or "")
+                psychological_profile_ru = str(psychological_profile.get("profile_text_ru") or "")
+                
+                stress_score = psychological_profile.get("stress_score", 0.0)
+                stress_status_uz = psychological_profile.get("stress_status_uz", "Normal")
+                stress_status_ru = psychological_profile.get("stress_status_ru", "Нормальный")
+
+                # Liveness check
+                liveness_score, liveness_status = check_liveness(photo_path)
+
+                # Update DB record
+                log.psychological_state_key = psychological_state_key or None
+                log.psychological_state_confidence = psychological_state_confidence
+                log.emotion_scores_json = psychological_profile.get("emotion_scores_json") or None
+                log.liveness_score = liveness_score
+                log.liveness_status = liveness_status
+
+                # Daily psychological state update
+                if emp is not None:
+                    upsert_daily_psychological_state(
+                        db,
+                        employee_id=int(emp.id),
+                        state_key=psychological_state_key,
+                        confidence=psychological_state_confidence,
+                        emotion_scores=emotion_scores,
+                        timestamp=normalize_timestamp_tashkent(log.timestamp),
+                        note=f"hik_event_bg:{device.mac_address if device else '-'}",
+                        source="external_system",
+                    )
+            except Exception as ml_exc:
+                print(f"[HIK-EVENT-BG] ML processing error: {ml_exc}")
+
+        db.commit()
+
+        # 3. Publish final updated event to frontend via Redis WebSockets!
+        try:
+            _publish_attendance_event_redis(
+                source="hik_event",
+                log_id=int(log_id),
+                timestamp=log.timestamp,
+                device=device,
+                employee_id=int(emp.id) if emp else None,
+                person_id=log.person_id,
+                person_name=log.person_name,
+                status=log.status,
+                snapshot_url=snapshot_url or None,
+                psychological_state_key=psychological_state_key,
+                psychological_state_confidence=psychological_state_confidence,
+                emotion_scores=emotion_scores,
+                psychological_state_uz=psychological_state_uz,
+                psychological_state_ru=psychological_state_ru,
+                psychological_profile_uz=psychological_profile_uz,
+                psychological_profile_ru=psychological_profile_ru,
+                psychological_state_source="external_system" if emp else "",
+                wellbeing_note_uz=log.wellbeing_note_uz,
+                wellbeing_note_ru=log.wellbeing_note_ru,
+                wellbeing_note_source=log.wellbeing_note_source,
+                liveness_score=liveness_score,
+                liveness_status=liveness_status,
+                stress_score=stress_score,
+                stress_status_uz=stress_status_uz,
+                stress_status_ru=stress_status_ru,
             )
+        except Exception as pub_exc:
+            print(f"[HIK-EVENT-BG] Redis publish error: {pub_exc}")
 
-        if snapshot_url:
-            _hik_update_log_snapshot_and_state(int(log_id), snapshot_url)
-    except Exception as exc:
-        print(f"[HIK-EVENT] snapshot backfill task xato: {exc}")
+    except Exception as task_exc:
+        db.rollback()
+        print(f"[HIK-EVENT-BG] Unified task error: {task_exc}")
+    finally:
+        db.close()
 
 @router.post("/api/v1/httppost/")
 @router.post("/api/v1/httppost")
@@ -5231,7 +5624,7 @@ async def hik_event_webhook(
     person_id_val = (
         _hik_find_first_value(
             json_payload,
-            {"employeeNoString", "employeeNo", "personID", "personId", "employeeID", "employeeId", "cardNo", "cardReaderNo"},
+            {"employeeNoString", "employeeNo", "personID", "personId", "employeeID", "employeeId", "cardNo"},
         )
         or xml_tags.get("employeeNoString")
         or xml_tags.get("employeeNo")
@@ -5240,7 +5633,6 @@ async def hik_event_webhook(
         or xml_tags.get("employeeID")
         or xml_tags.get("employeeId")
         or xml_tags.get("cardNo")
-        or xml_tags.get("cardReaderNo")
         or ""
     ).strip() or None
     person_name_val = (
@@ -5386,10 +5778,9 @@ async def hik_event_webhook(
         and not snapshot_url
     )
     ignore_noise_event = (
-        str(event_type_val or "").strip().lower() == "heartbeat"
+        str(event_type_val or "").strip().lower() != "accesscontrollerevent"
         or (
             str(event_type_val or "").strip() == "AccessControllerEvent"
-            and str(sub_event_type_val or "").strip() in {"21", "22", "1036"}
             and not person_id_val
             and not person_name_val
             and image_bytes is None
@@ -5426,15 +5817,34 @@ async def hik_event_webhook(
 
     is_dup = False
     existing_log_id: Optional[int] = None
-    if device and (person_id_val or (emp is not None and emp.id is not None)):
-        existing_log_id = _find_recent_attendance_duplicate(
-            db,
-            event_time=ts_event,
-            person_id=person_id_val,
-            employee_id=int(emp.id) if emp is not None and emp.id is not None else None,
-            organization_id=int(device.organization_id) if device.organization_id is not None else None,
-            exact_device_id=int(device.id) if device.id is not None else None,
-        )
+    if device:
+        if person_id_val or (emp is not None and emp.id is not None):
+            existing_log_id = _find_recent_attendance_duplicate(
+                db,
+                event_time=ts_event,
+                person_id=person_id_val,
+                employee_id=int(emp.id) if emp is not None and emp.id is not None else None,
+                organization_id=int(device.organization_id) if device.organization_id is not None else None,
+                exact_device_id=int(device.id) if device.id is not None else None,
+            )
+        else:
+            # duplicate check for "Noma'lum" (unknown) events within a 15-second window
+            min_ts = ts_event - timedelta(seconds=15)
+            max_ts = ts_event + timedelta(seconds=15)
+            existing_log = (
+                db.query(AttendanceLog.id)
+                .filter(
+                    AttendanceLog.device_id == int(device.id),
+                    AttendanceLog.person_id.is_(None),
+                    AttendanceLog.employee_id.is_(None),
+                    AttendanceLog.status == "noma'lum",
+                    AttendanceLog.timestamp >= min_ts,
+                    AttendanceLog.timestamp <= max_ts,
+                )
+                .first()
+            )
+            if existing_log is not None:
+                existing_log_id = int(existing_log[0])
         is_dup = existing_log_id is not None
 
     log_id: Optional[int] = None
@@ -5450,38 +5860,17 @@ async def hik_event_webhook(
             f"[HIK-EVENT] Ignored non-attendance event: device={device.id if device else None}, "
             f"serial={camera_serial}, eventType={event_type_val}, subEventType={sub_event_type_val}, ts={ts_event.isoformat()}"
         )
-        return {
-            "ok": True,
-            "ignored": True,
-            "reason": "non_attendance_event",
-            "device_id": device.id if device else None,
-            "payload_format": payload_format,
-            "has_image": image_bytes is not None,
-            "snapshot_url": snap_url,
-            "person_id": person_id_val,
-            "person_name": person_name_val,
-            "timestamp": ts_event.isoformat(),
-            "sub_event_type": sub_event_type_val,
-            "verify_mode": verify_mode_val,
-        }
+        xml_content = """<?xml version="1.0" encoding="UTF-8"?>
+<ResponseStatus version="1.0" xmlns="urn:psialliance-org">
+<requestURL>/api/v1/httppost</requestURL>
+<statusCode>1</statusCode>
+<statusString>OK</statusString>
+<subStatusCode>ok</subStatusCode>
+</ResponseStatus>"""
+        from fastapi.responses import Response
+        return Response(content=xml_content, media_type="application/xml")
 
     if not is_dup:
-        photo_path = resolve_snapshot_path(snap_url)
-        psychological_profile = detect_psychological_profile(photo_path)
-        psychological_state_key = str(psychological_profile.get("state_key") or "")
-        psychological_state_uz = str(psychological_profile.get("state_uz") or "")
-        psychological_state_ru = str(psychological_profile.get("state_ru") or "")
-        psychological_state_confidence = psychological_profile.get("confidence")
-        emotion_scores = dict(psychological_profile.get("emotion_scores") or {})
-        psychological_profile_uz = str(psychological_profile.get("profile_text_uz") or "")
-        psychological_profile_ru = str(psychological_profile.get("profile_text_ru") or "")
-        
-        stress_score = psychological_profile.get("stress_score", 0.0)
-        stress_status_uz = psychological_profile.get("stress_status_uz", "Normal")
-        stress_status_ru = psychological_profile.get("stress_status_ru", "Нормальный")
-
-        liveness_score, liveness_status = check_liveness(photo_path)
-
         new_log = AttendanceLog(
             employee_id=emp.id if emp else None,
             device_id=device.id if device else None,
@@ -5489,33 +5878,24 @@ async def hik_event_webhook(
             person_id=person_id_val,
             person_name=person_name_val,
             snapshot_url=snap_url,
-            psychological_state_key=psychological_state_key or None,
-            psychological_state_confidence=psychological_state_confidence,
-            emotion_scores_json=psychological_profile.get("emotion_scores_json") or None,
+            psychological_state_key=None,
+            psychological_state_confidence=None,
+            emotion_scores_json=None,
             wellbeing_note_uz=note_uz or None,
             wellbeing_note_ru=note_ru or None,
             wellbeing_note_source=note_source or None,
-            liveness_score=liveness_score,
-            liveness_status=liveness_status,
+            liveness_score=None,
+            liveness_status=None,
             direction=device.direction if device else None,
             timestamp=ts_event,
             status="aniqlandi" if emp else "noma'lum",
         )
         db.add(new_log)
-        if emp is not None:
-            upsert_daily_psychological_state(
-                db,
-                employee_id=int(emp.id),
-                state_key=psychological_state_key,
-                confidence=psychological_state_confidence,
-                emotion_scores=emotion_scores,
-                timestamp=ts_event,
-                note=f"hik_event:{device.mac_address if device else (camera_mac or camera_serial)}",
-                source="external_system",
-            )
         db.flush()
         db.commit()
         log_id = new_log.id
+        
+        # Publish initial event to frontend so they see it instantly!
         _publish_attendance_event_redis(
             source="hik_event",
             log_id=log_id,
@@ -5526,24 +5906,24 @@ async def hik_event_webhook(
             person_name=person_name_val,
             status=new_log.status,
             snapshot_url=snap_url,
-            psychological_state_key=psychological_state_key,
-            psychological_state_confidence=psychological_state_confidence,
-            emotion_scores=emotion_scores,
-            psychological_state_uz=psychological_state_uz,
-            psychological_state_ru=psychological_state_ru,
-            psychological_profile_uz=psychological_profile_uz,
-            psychological_profile_ru=psychological_profile_ru,
+            psychological_state_key=None,
+            psychological_state_confidence=None,
+            emotion_scores={},
+            psychological_state_uz="Tahlil qilinmoqda...",
+            psychological_state_ru="Анализируется...",
+            psychological_profile_uz="",
+            psychological_profile_ru="",
             psychological_state_source="external_system" if emp else "",
             wellbeing_note_uz=note_uz,
             wellbeing_note_ru=note_ru,
             wellbeing_note_source=note_source,
-            liveness_score=liveness_score,
-            liveness_status=liveness_status,
-            stress_score=stress_score,
-            stress_status_uz=stress_status_uz,
-            stress_status_ru=stress_status_ru,
+            liveness_score=None,
+            liveness_status="Tahlil qilinmoqda...",
+            stress_score=0.0,
+            stress_status_uz="Normal",
+            stress_status_ru="Нормальный",
         )
-        _camera_event_debug(f"[HIK-EVENT] Saqlandi: log_id={log_id}, person={person_id_val}/{person_name_val}, snap={snap_url}")
+        _camera_event_debug(f"[HIK-EVENT] Saved and queued for ML: log_id={log_id}, person={person_id_val}/{person_name_val}")
     else:
         log_id = existing_log_id
         if existing_log_id and snap_url:
@@ -5553,25 +5933,25 @@ async def hik_event_webhook(
                 {"snap": snap_url, "log_id": existing_log_id},
             )
         db.commit()
-        _camera_event_debug(f"[HIK-EVENT] Duplicate event: log_id={existing_log_id}, person={person_id_val}/{person_name_val}, snap={snap_url}")
+        _camera_event_debug(f"[HIK-EVENT] Duplicate event: log_id={existing_log_id}, person={person_id_val}/{person_name_val}")
 
-    if log_id and needs_snapshot_backfill:
+    if log_id:
         background_tasks.add_task(
-            _hik_backfill_snapshot_task,
+            _hik_process_log_ml_and_notify,
             log_id=int(log_id),
+            needs_backfill=bool(needs_snapshot_backfill),
             isup_device_id=(device.isup_device_id if device else camera_serial),
             camera_ip=camera_ip_val,
             username=(device.username if device else None),
             password=(device.password if device else None),
         )
 
-    return {
-        "ok": True,
-        "log_id": log_id,
-        "duplicate": is_dup,
-        "device_id": device.id if device else None,
-        "payload_format": payload_format,
-        "has_image": image_bytes is not None,
-        "snapshot_url": snap_url,
-        "snapshot_pending": bool(log_id and needs_snapshot_backfill),
-    }
+    xml_content = """<?xml version="1.0" encoding="UTF-8"?>
+<ResponseStatus version="1.0" xmlns="urn:psialliance-org">
+<requestURL>/api/v1/httppost</requestURL>
+<statusCode>1</statusCode>
+<statusString>OK</statusString>
+<subStatusCode>ok</subStatusCode>
+</ResponseStatus>"""
+    from fastapi.responses import Response
+    return Response(content=xml_content, media_type="application/xml")

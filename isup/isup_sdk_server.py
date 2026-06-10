@@ -18,7 +18,7 @@ import sys
 import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from threading import Event, Lock, Thread
+from threading import Event, Lock, Thread, RLock
 from typing import Any, Callable, Optional
 from urllib.parse import urlsplit
 
@@ -27,7 +27,10 @@ PROJECT_ROOT = SERVICES_DIR.parent
 RUNTIME_DIR = PROJECT_ROOT / ".runtime"
 STATIC_DIR = PROJECT_ROOT / "static"
 DEFAULT_PICTURE_DIR = STATIC_DIR / "uploads" / "isup"
-DB_PATH = PROJECT_ROOT / "bioface.db"
+_db_default = PROJECT_ROOT / "backend" / "data" / "bioface.db"
+if not _db_default.exists():
+    _db_default = PROJECT_ROOT / "bioface.db"
+DB_PATH = Path(os.getenv("DB_PATH", str(_db_default)))
 TRACE_FACE_LOG = RUNTIME_DIR / "tracer_face.log"
 FACE_DEBUG_LOG = RUNTIME_DIR / "face_debug.log"
 
@@ -533,7 +536,7 @@ class DeviceState:
 
 class DeviceRegistry:
     def __init__(self) -> None:
-        self._lock = Lock()
+        self._lock = RLock()
         self._devices: dict[str, DeviceState] = {}
         self._login_map: dict[int, str] = {}
         self._alarm_events = 0
@@ -571,6 +574,13 @@ class DeviceRegistry:
             )
             self._devices[device_id] = state
             self._login_map[login_id] = device_id
+
+            # Record register trace
+            self.add_trace("device_register", {
+                "device_id": device_id,
+                "serial": serial or "",
+                "ip": ip or "",
+            })
             return state
 
     def mark_offline_by_login(self, login_id: int) -> Optional[str]:
@@ -582,6 +592,10 @@ class DeviceRegistry:
             if state:
                 state.online = False
                 state.last_seen = utc_now()
+                self.add_trace("device_offline", {
+                    "device_id": device_id,
+                    "reason": "register_connection_closed"
+                })
             return device_id
 
     def mark_offline(self, device_id: str) -> bool:
@@ -592,6 +606,10 @@ class DeviceRegistry:
             state.online = False
             state.last_seen = utc_now()
             self._login_map.pop(state.login_id, None)
+            self.add_trace("device_offline", {
+                "device_id": device_id,
+                "reason": "manual_or_timeout"
+            })
             return True
 
     def get(self, device_id: str) -> Optional[DeviceState]:
@@ -1340,13 +1358,34 @@ class RedisCommandBridge:
         files: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
         allow_http_fallback = self._parse_bool(params.get("allow_http_fallback"), False)
+
+        # Log command send
+        self.runtime.registry.add_trace("command_send", {
+            "device_id": target_device_id,
+            "method": method,
+            "path": path[:120],
+        })
         
         # 1. SDK orqali urunib ko'ramiz
         sdk_response = self._request_via_sdk(state, method, path, json_body=json_body, raw_body=raw_body, files=files)
         if sdk_response.get("ok"):
+            self.runtime.registry.add_trace("command_response", {
+                "device_id": target_device_id,
+                "method": method,
+                "path": path[:120],
+                "status": "success",
+                "transport": sdk_response.get("transport", "sdk"),
+            })
             return sdk_response
             
         if not allow_http_fallback:
+            self.runtime.registry.add_trace("command_response", {
+                "device_id": target_device_id,
+                "method": method,
+                "path": path[:120],
+                "status": "fail",
+                "error": sdk_response.get("error", "SDK fail"),
+            })
             return sdk_response
             
         # 2. HTTP orqali fallback
@@ -1369,7 +1408,23 @@ class RedisCommandBridge:
             
             if sdk_response.get("error"):
                 http_result["sdk_error"] = sdk_response.get("error")
-                
+
+            self.runtime.registry.add_trace("command_response", {
+                "device_id": target_device_id,
+                "method": method,
+                "path": path[:120],
+                "status": "fail",
+                "error": http_result["error"]
+            })
+        else:
+            self.runtime.registry.add_trace("command_response", {
+                "device_id": target_device_id,
+                "method": method,
+                "path": path[:120],
+                "status": "success",
+                "transport": "http_fallback"
+            })
+            
         return http_result
 
     @staticmethod
@@ -3338,11 +3393,41 @@ class RedisCommandBridge:
                         summary["ehome_server"] = f"{ip}:{port}"
                 
                 elif proto in ('HTTP', 'HTTPS') or id_val == '2':
-                    url = str(parsed.get('url') or '').strip()
-                    if url:
+                    # Hikvision uses 'hostName' for domain targets, 'ipAddress' for IP targets
+                    host_name = str(parsed.get('hostName') or parsed.get('hostname') or '').strip()
+                    ip_addr = str(parsed.get('ipAddress') or parsed.get('ip') or '').strip()
+                    # Prefer hostName (domain) over ipAddress
+                    effective_host = host_name if host_name and host_name not in ('0.0.0.0', '::', 'Kiritilmagan', '') else ip_addr
+                    port_no = str(parsed.get('portNo') or parsed.get('port') or '').strip()
+                    url_path = str(parsed.get('url') or '').strip()
+                    proto_type = proto if proto in ('HTTP', 'HTTPS') else str(parsed.get('protocolType') or 'HTTP').upper()
+
+                    # Build full URL from parts if available
+                    if effective_host and effective_host not in ('0.0.0.0', '::', 'Kiritilmagan', ''):
+                        ip_addr = effective_host  # alias for rest of logic below
                         summary["webhook_enabled"] = True
-                        summary["webhook_url"] = url
-                    
+                        summary["webhook_ip_or_domain"] = ip_addr
+                        summary["webhook_port"] = port_no or ('443' if proto_type == 'HTTPS' else '80')
+                        summary["webhook_path"] = url_path or '/api/v1/httppost/'
+                        summary["webhook_protocol"] = proto_type
+                        # Reconstruct full URL
+                        scheme = proto_type.lower()
+                        port_part = f":{port_no}" if port_no and port_no not in ('80', '443', '') else ''
+                        if proto_type == 'HTTP' and port_no == '80':
+                            port_part = ''
+                        if proto_type == 'HTTPS' and port_no == '443':
+                            port_part = ''
+                        full_url = f"{scheme}://{ip_addr}{port_part}{url_path}"
+                        summary["webhook_url"] = full_url
+                    elif url_path and url_path not in ('Kiritilmagan', ''):
+                        # Fallback: only url available
+                        summary["webhook_enabled"] = True
+                        summary["webhook_url"] = url_path
+                        summary["webhook_ip_or_domain"] = ''
+                        summary["webhook_port"] = port_no or '80'
+                        summary["webhook_path"] = url_path
+                        summary["webhook_protocol"] = proto_type
+
                     sub = parsed.get('SubscribeEvent')
                     if isinstance(sub, dict):
                         if sub.get('heartbeat'):
@@ -3355,6 +3440,7 @@ class RedisCommandBridge:
                                 pic_type = str(evt.get('pictureURLType') or '').lower()
                                 summary["webhook_picture_sending"] = pic_type in ('binary', 'base64', 'url', 'true', '1')
                                 summary["webhook_event_type"] = str(evt.get('type') or 'Noma\'lum')
+
 
         except Exception as exc:
             parsed_hosts = {"error": f"XML parsing xatoligi: {str(exc)}", "raw_xml": xml_text}
@@ -3753,7 +3839,7 @@ class HikvisionSdkRuntime:
                 "skipped": True,
                 "device_id": state.device_id,
                 "local_time": tashkent_localtime_text(),
-                "time_zone": TASHKENT_POSIX_TZ,
+                "time_zone": "GMT+05:00",
                 "message": "Kamera vaqti yaqinda sinxronlangan, hozircha qayta yuborilmadi.",
             }
 
@@ -3813,7 +3899,7 @@ class HikvisionSdkRuntime:
                     "plan": str(plan["name"]),
                     "steps": attempts,
                     "local_time": local_time,
-                    "time_zone": TASHKENT_POSIX_TZ,
+                    "time_zone": "GMT+05:00",
                     "transport": "isup_sdk_ptxml",
                     "message": f"Kamera vaqti Asia/Tashkent ga sinxronlandi ({reason}).",
                 }
@@ -3829,7 +3915,7 @@ class HikvisionSdkRuntime:
             "device_id": state.device_id,
             "camera_ip": state.ip,
             "local_time": local_time,
-            "time_zone": TASHKENT_POSIX_TZ,
+            "time_zone": "GMT+05:00",
             "steps": attempts,
             "transport": "isup_sdk_ptxml",
             "error": last_error or "Kamera vaqtini sinxronlab bo'lmadi",
@@ -4048,6 +4134,14 @@ class HikvisionSdkRuntime:
         public_base = str(self.camera_event_push_base_url or "").strip().rstrip("/")
         if not public_base:
             return None, None, None
+
+        if "://" in public_base:
+            parts = public_base.split("://", 1)
+            scheme = parts[0]
+            domain_part = parts[1].split("/", 1)[0]
+            public_base = f"{scheme}://{domain_part}"
+        else:
+            public_base = public_base.split("/", 1)[0]
 
         parsed = urlsplit(public_base)
         host = (parsed.hostname or "").strip()
@@ -5228,7 +5322,6 @@ class HikvisionSdkRuntime:
                             "employeeID",
                             "employeeId",
                             "cardNo",
-                            "cardReaderNo",
                         },
                     )
                 )
@@ -5239,7 +5332,6 @@ class HikvisionSdkRuntime:
                 or xml_fields.get("employeeID")
                 or xml_fields.get("employeeId")
                 or xml_fields.get("cardNo")
-                or xml_fields.get("cardReaderNo")
                 or ""
             ).strip()
             person_name = (

@@ -26,7 +26,6 @@ export default function PageHero({ badge, title, sub, right, backPath, children 
       <div className="hero-container" style={{
         background: HERO_BG,
         // Navbar pastida gap bo'lmasligi uchun margin yo'q
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
         padding: `${HERO_HEIGHT / 2 - 8}px 32px ${HERO_HEIGHT / 2 - 8}px`,
         minHeight: HERO_HEIGHT,
       }}>
@@ -81,7 +80,7 @@ export default function PageHero({ badge, title, sub, right, backPath, children 
             </div>
 
             {/* Right slot */}
-            {right && <div style={{ flexShrink: 0 }}>{right}</div>}
+            {right && <div className="hero-right" style={{ flexShrink: 0 }}>{right}</div>}
           </div>
 
           {/* Optional extra content inside hero */}
@@ -93,6 +92,24 @@ export default function PageHero({ badge, title, sub, right, backPath, children 
         @media (max-width: 600px) {
           .hero-container {
             padding: 12px 16px !important;
+          }
+          .hero-container > div > div {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 12px !important;
+          }
+          .hero-right {
+            width: 100% !important;
+          }
+          .hero-right > div {
+            width: 100% !important;
+            display: flex !important;
+            flex-wrap: wrap !important;
+            gap: 8px !important;
+          }
+          .hero-right button {
+            flex: 1 1 auto !important;
+            justify-content: center !important;
           }
           .hero-title {
             font-size: 17px !important;

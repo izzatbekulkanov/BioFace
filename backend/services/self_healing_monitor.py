@@ -70,7 +70,7 @@ class SelfHealingMonitor:
         try:
             # Query all devices that are offline
             devices = db.query(Device).filter(
-                (Device.is_online == False) | (Device.is_online == 0)
+                Device.is_online == False
             ).all()
             
             for device in devices:

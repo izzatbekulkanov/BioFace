@@ -226,6 +226,7 @@ def _build_dashboard_metrics(request: Request, db: Session) -> dict:
     fallback_users = (
         db.query(User.id, User.organization_id)
         .filter(User.organization_id.in_(org_ids))
+        .filter(User.is_staff == True)
         .all()
     )
     for user_id, org_id in fallback_users:

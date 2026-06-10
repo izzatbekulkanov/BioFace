@@ -18,7 +18,12 @@
     "logout": "Выйти",
     "themeLight": "Светлая тема",
     "themeDark": "Тёмная тема",
-    "organizations": "Организации"
+    "organizations": "Организации",
+    "finance": "Финансы",
+    "financeSalary": "Заработная плата",
+    "financeKpi": "KPI (бонусы)",
+    "financeCashflow": "Доходы и расходы",
+    "financeAccounts": "БАЛАНС"
   },
   "login": {
     "subtitle": "Войдите в панель управления",

@@ -22,16 +22,26 @@ import EmployeesPage  from './pages/EmployeesPage'
 import EmployeeForm   from './pages/EmployeeForm'
 import EmployeeDetail from './pages/EmployeeDetail'
 import Attendance     from './pages/Attendance'
+import AttendanceGroups from './pages/AttendanceGroups'
 import PsychologicalPortrait from './pages/PsychologicalPortrait'
 import MiddlewareLogs from './pages/MiddlewareLogs'
 import Shifts         from './pages/Shifts'
 import Organizations  from './pages/Organizations'
 import OrganizationDetail from './pages/OrganizationDetail'
 import OrganizationForm from './pages/OrganizationForm'
+import BranchDetail from './pages/BranchDetail'
 import Profile          from './pages/Profile'
 import ContactMessages  from './pages/ContactMessages'
+import Salary           from './pages/Salary'
+import Kpi              from './pages/Kpi'
+import Cashflow         from './pages/Cashflow'
+import Accounts         from './pages/Accounts'
+import Versions         from './pages/Versions'
+import VersionForm      from './pages/VersionForm'
+import VersionDetail    from './pages/VersionDetail'
 import { ConfirmProvider } from './components/ConfirmDialog'
 import { ToastProvider } from './components/Toaster'
+import Footer from './components/Footer'
 
 function getIsLoggedIn() {
   return localStorage.getItem('bf_logged_in') === 'true'
@@ -112,16 +122,27 @@ export default function App() {
               <Route path="/employees/:id/edit" element={isLoggedIn ? <EmployeeForm />               : <Navigate to="/login" replace />} />
               <Route path="/employees/:id"      element={isLoggedIn ? <EmployeeDetail />             : <Navigate to="/login" replace />} />
               <Route path="/attendance"      element={isLoggedIn ? <Attendance /> : <Navigate to="/login" replace />} />
+              <Route path="/attendance/employees" element={isLoggedIn ? <AttendanceGroups /> : <Navigate to="/login" replace />} />
               <Route path="/psychology"      element={isLoggedIn ? <PsychologicalPortrait /> : <Navigate to="/login" replace />} />
               <Route path="/shifts"          element={isLoggedIn ? <Shifts />    : <Navigate to="/login" replace />} />
               <Route path="/organizations"        element={isLoggedIn ? <Organizations /> : <Navigate to="/login" replace />} />
               <Route path="/organizations/new"    element={isLoggedIn ? <OrganizationForm /> : <Navigate to="/login" replace />} />
               <Route path="/organizations/:id"    element={isLoggedIn ? <OrganizationDetail /> : <Navigate to="/login" replace />} />
+              <Route path="/organizations/:id/branches/:branchId" element={isLoggedIn ? <BranchDetail /> : <Navigate to="/login" replace />} />
               <Route path="/organizations/:id/edit" element={isLoggedIn ? <OrganizationForm /> : <Navigate to="/login" replace />} />
               <Route path="/middleware-logs" element={isLoggedIn ? <MiddlewareLogs /> : <Navigate to="/login" replace />} />
+              <Route path="/finance/salary"   element={isLoggedIn ? <Salary />   : <Navigate to="/login" replace />} />
+              <Route path="/finance/kpi"      element={isLoggedIn ? <Kpi />      : <Navigate to="/login" replace />} />
+              <Route path="/finance/cashflow" element={isLoggedIn ? <Cashflow /> : <Navigate to="/login" replace />} />
+              <Route path="/finance/accounts" element={isLoggedIn ? <Accounts /> : <Navigate to="/login" replace />} />
               <Route path="/profile"         element={isLoggedIn ? <Profile />        : <Navigate to="/login" replace />} />
+              <Route path="/settings/versions"          element={isLoggedIn ? <Versions />      : <Navigate to="/login" replace />} />
+              <Route path="/settings/versions/new"      element={isLoggedIn ? <VersionForm />   : <Navigate to="/login" replace />} />
+              <Route path="/settings/versions/:id"      element={isLoggedIn ? <VersionDetail /> : <Navigate to="/login" replace />} />
+              <Route path="/settings/versions/:id/edit" element={isLoggedIn ? <VersionForm />   : <Navigate to="/login" replace />} />
             </Routes>
           </main>
+          <Footer isLoggedIn={isLoggedIn} />
         </div>
         </ToastProvider>
       </ConfirmProvider>

@@ -75,8 +75,12 @@ def resolve_allowed_org_ids(request: Request, db: Session) -> list[int]:
     return sorted(org_ids)
 
 
-def get_accessible_organization_or_raise(request: Request, db: Session, organization_id: int) -> Organization:
-    org = db.query(Organization).filter(Organization.id == int(organization_id)).first()
+def get_accessible_organization_or_raise(request: Request, db: Session, organization_id: Any) -> Organization:
+    org = None
+    org_id_str = str(organization_id)
+    org = db.query(Organization).filter(Organization.uuid == org_id_str).first()
+    if org is None and org_id_str.isdigit():
+        org = db.query(Organization).filter(Organization.id == int(org_id_str)).first()
     if org is None:
         raise HTTPException(status_code=404, detail="Tashkilot topilmadi")
 

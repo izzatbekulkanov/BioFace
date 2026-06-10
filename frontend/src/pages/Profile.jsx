@@ -30,6 +30,61 @@ import PageHero from '../components/PageHero'
 import Skeleton from '../components/Skeleton'
 import { useToast } from '../components/Toaster'
 
+// ─── Face detection helpers (same as EmployeeForm) ───────────────────────────
+function buildValidateFace(trackerReady) {
+  return (file) => new Promise((resolve) => {
+    let resolved = false
+    const safeResolve = (val) => { if (!resolved) { resolved = true; resolve(val) } }
+    const timeoutId = setTimeout(() => safeResolve({ ok: true, error: 'timeout' }), 4000)
+    if (!trackerReady || !window.tracking || !window.tracking.ObjectTracker) {
+      clearTimeout(timeoutId); safeResolve({ ok: true }); return
+    }
+    try {
+      const img = new Image()
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas')
+          const ctx = canvas.getContext('2d')
+          const maxDim = 600; let w = img.width; let h = img.height
+          if (w > maxDim || h > maxDim) { if (w > h) { h = Math.round(h * maxDim / w); w = maxDim } else { w = Math.round(w * maxDim / h); h = maxDim } }
+          canvas.width = w; canvas.height = h; ctx.drawImage(img, 0, 0, w, h)
+          if (!window.tracking.ViolaJones?.classifiers?.face) { clearTimeout(timeoutId); safeResolve({ ok: true }); return }
+          const tracker = new window.tracking.ObjectTracker('face')
+          tracker.setInitialScale(4); tracker.setStepSize(2); tracker.setEdgesDensity(0.1)
+          let trackerTask
+          const onTrack = (event) => {
+            try { tracker.removeListener('track', onTrack); if (trackerTask) trackerTask.stop() } catch(e) {}
+            clearTimeout(timeoutId)
+            if (event.data?.length > 0) {
+              const face = event.data[0]
+              const scaleX = img.width / w; const scaleY = img.height / h
+              const fx = face.x * scaleX; const fy = face.y * scaleY
+              const fw = face.width * scaleX; const fh = face.height * scaleY
+              let cropW = fw * 2.2; let cropH = cropW * 1.333
+              let cropX = fx - (cropW - fw) / 2; let cropY = fy - fh * 0.5
+              if (cropX < 0) cropX = 0; if (cropY < 0) cropY = 0
+              if (cropX + cropW > img.width) { cropW = img.width - cropX; cropH = cropW * 1.333 }
+              if (cropY + cropH > img.height) { cropH = img.height - cropY; cropW = cropH / 1.333; cropX = fx - (cropW - fw) / 2; if (cropX < 0) cropX = 0 }
+              const cc = document.createElement('canvas'); cc.width = 450; cc.height = 600
+              const cctx = cc.getContext('2d'); cctx.fillStyle = '#fff'; cctx.fillRect(0, 0, 450, 600)
+              cctx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, 450, 600)
+              cc.toBlob((blob) => {
+                URL.revokeObjectURL(img.src)
+                if (blob) { const cf = new File([blob], file.name || 'avatar.jpg', { type: 'image/jpeg', lastModified: Date.now() }); safeResolve({ ok: true, croppedFile: cf, previewUrl: URL.createObjectURL(cf) }) }
+                else safeResolve({ ok: true })
+              }, 'image/jpeg', 0.92)
+            } else { URL.revokeObjectURL(img.src); safeResolve({ ok: false, error: 'no_face_detected' }) }
+          }
+          tracker.on('track', onTrack)
+          trackerTask = window.tracking.track(canvas, tracker)
+        } catch(e) { clearTimeout(timeoutId); safeResolve({ ok: true }) }
+      }
+      img.onerror = () => { clearTimeout(timeoutId); safeResolve({ ok: false, error: 'invalid_image' }) }
+      img.src = URL.createObjectURL(file)
+    } catch(e) { clearTimeout(timeoutId); safeResolve({ ok: true }) }
+  })
+}
+
 const TABS = ['profile', 'organizations', 'logs', 'sessions']
 
 export default function Profile() {
@@ -47,7 +102,7 @@ export default function Profile() {
 
   const [form, setForm] = useState({
     first_name: '', last_name: '', middle_name: '',
-    email: '', phone: '', password: '', password_confirm: '', image_url: '',
+    email: '', phone: '', password: '', password_confirm: '',
   })
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState('')
@@ -56,7 +111,30 @@ export default function Profile() {
   const [showPwd2, setShowPwd2] = useState(false)
   const [expandedOrg, setExpandedOrg] = useState({})
 
+  // Face-detection avatar states
+  const [checkingFace, setCheckingFace] = useState(false)
+  const [faceSuccess, setFaceSuccess] = useState(false)
+  const [faceError, setFaceError] = useState(false)
+  const [avatarHovered, setAvatarHovered] = useState(false)
+  const [trackerReady, setTrackerReady] = useState(false)
+  const fileRef = useRef(null)
+
   const currentUser = dashboard?.user
+
+  // Load face tracking library
+  useEffect(() => {
+    const script1 = document.createElement('script')
+    script1.src = 'https://cdnjs.cloudflare.com/ajax/libs/tracking.js/1.1.3/tracking-min.js'
+    script1.onload = () => {
+      const script2 = document.createElement('script')
+      script2.src = 'https://cdnjs.cloudflare.com/ajax/libs/tracking.js/1.1.3/data/face-min.js'
+      script2.onload = () => setTrackerReady(true)
+      script2.onerror = () => setTrackerReady(true)
+      document.body.appendChild(script2)
+    }
+    script1.onerror = () => setTrackerReady(true)
+    document.body.appendChild(script1)
+  }, [])
 
   useEffect(() => {
     fetch('/api/profile/dashboard', { credentials: 'include' })
@@ -71,7 +149,6 @@ export default function Profile() {
           email: u.email || '',
           phone: u.phone || '',
           password: '', password_confirm: '',
-          image_url: u.image_url || '',
         })
         if (u.image_url) setImagePreview(u.image_url)
         setLoading(false)
@@ -87,18 +164,40 @@ export default function Profile() {
     setForm(p => ({ ...p, [k]: v }))
   }
 
-  const onPickImage = e => {
-    if (e.target.files?.[0]) {
-      const f = e.target.files[0]
-      setImageFile(f)
-      setImagePreview(URL.createObjectURL(f))
+  const onPickImage = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setCheckingFace(true)
+    setFaceSuccess(false)
+    setFaceError(false)
+    const validateFace = buildValidateFace(trackerReady)
+    const result = await validateFace(file)
+    setCheckingFace(false)
+    if (result.ok) {
+      const finalFile = result.croppedFile || file
+      const finalPreview = result.previewUrl || URL.createObjectURL(file)
+      setImageFile(finalFile)
+      setImagePreview(finalPreview)
       setClearImage(false)
+      setFaceSuccess(true)
+      toast.success(isRu ? 'Фотография успешно загружена!' : 'Rasm muvaffaqiyatli yuklandi!')
+      setTimeout(() => setFaceSuccess(false), 2000)
+    } else {
+      setFaceError(true)
+      if (result.error === 'no_face_detected') {
+        toast.error(isRu ? 'Лицо не обнаружено. Загрузите портретное фото.' : 'Yuklangan rasmda yuz aniqlanmadi. Portret rasm yuklang.')
+      } else {
+        toast.error(isRu ? 'Не удалось загрузить изображение.' : 'Tasvirni yuklab bo\'lmadi.')
+      }
+      if (fileRef.current) fileRef.current.value = ''
+      setTimeout(() => setFaceError(false), 2000)
     }
   }
 
   const onClearImage = () => {
     setImageFile(null); setImagePreview(''); setClearImage(true)
-    setForm(p => ({ ...p, image_url: '' }))
+    setFaceSuccess(false); setFaceError(false)
+    if (fileRef.current) fileRef.current.value = ''
   }
 
   const validate = () => {
@@ -126,7 +225,6 @@ export default function Profile() {
       fd.set('phone', form.phone.trim())
       if (form.password.trim()) fd.set('password', form.password.trim())
       if (imageFile) fd.set('image', imageFile)
-      else if (form.image_url.trim()) fd.set('image_url', form.image_url.trim())
       if (clearImage && !imageFile) fd.set('clear_image', '1')
 
       const res = await fetch(`/api/users/${currentUser.id}`, {
@@ -303,7 +401,7 @@ export default function Profile() {
         sub={isRu ? 'Полная информация о вашем аккаунте' : 'Hisobingiz haqida to\'liq ma\'lumot'}
       />
 
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px 80px' }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '28px 24px 80px' }}>
 
         {/* ── Stats bar ── */}
         <div className="prof-stats-grid">
@@ -431,29 +529,129 @@ export default function Profile() {
 
               {/* Right sidebar */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                {/* Avatar */}
+                {/* Avatar — face-detection (EmployeeForm style) */}
                 <div style={card}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 14 }}>Avatar</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 120, height: 120, borderRadius: '50%', background: 'var(--surface-2)', border: '2px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}>
-                      {imagePreview
-                        ? <img src={imagePreview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={() => setImagePreview('')} />
-                        : <PersonRegular fontSize={44} style={{ color: 'var(--text-4)' }} />}
-                    </div>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, background: 'var(--accent-bg)', color: 'var(--accent-tx)', border: '1px solid var(--accent-bd)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                      <ImageRegular fontSize={13} />{isRu ? 'Выбрать фото' : 'Rasm tanlash'}
-                      <input type="file" accept="image/*" onChange={onPickImage} style={{ display: 'none' }} />
-                    </label>
-                    {imagePreview && (
-                      <button type="button" onClick={onClearImage} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 7, background: 'transparent', color: 'var(--red)', border: '1px solid var(--red-bd)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-                        <DismissRegular fontSize={12} />{isRu ? 'Удалить' : 'O\'chirish'}
-                      </button>
+                  <style>{`
+                    @keyframes profAvatarScan {
+                      0% { transform: translateY(-60px); opacity: 0.3; }
+                      50% { transform: translateY(60px); opacity: 1; }
+                      100% { transform: translateY(-60px); opacity: 0.3; }
+                    }
+                    @keyframes profAvatarShake {
+                      0%, 100% { transform: translateX(0); }
+                      20%, 60% { transform: translateX(-8px); }
+                      40%, 80% { transform: translateX(8px); }
+                    }
+                    @keyframes profBorderRotate { 100% { transform: rotate(360deg); } }
+                    @keyframes profPulseGreen {
+                      0% { box-shadow: 0 0 0 0 rgba(16,185,129,0.4); }
+                      70% { box-shadow: 0 0 0 10px rgba(16,185,129,0); }
+                      100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+                    }
+                    @keyframes profPulseRed {
+                      0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
+                      70% { box-shadow: 0 0 0 10px rgba(239,68,68,0); }
+                      100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+                    }
+                    .prof-dashed-ring {
+                      position: absolute; inset: -8px;
+                      border: 1.5px dashed var(--border-3); border-radius: 50%;
+                      animation: profBorderRotate 24s linear infinite; opacity: 0.7;
+                      pointer-events: none; transition: all 0.3s;
+                    }
+                    .prof-dashed-ring.checking { animation: profBorderRotate 4s linear infinite; border-color: var(--accent); opacity: 1; }
+                    .prof-dashed-ring.success { border-color: #10b981; animation: profBorderRotate 30s linear infinite; opacity: 0.9; }
+                    .prof-dashed-ring.error { border-color: #ef4444; animation: none; opacity: 0.9; }
+                  `}</style>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+
+                    {/* Username display */}
+                    {currentUser?.username && (
+                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)', background: 'var(--accent-bg)', border: '1px solid var(--accent-bd)', borderRadius: 8, padding: '4px 12px', letterSpacing: 0.3 }}>
+                        @{currentUser.username}
+                      </div>
                     )}
-                  </div>
-                  <div style={{ marginTop: 14 }}>
-                    <Field label={isRu ? 'URL изображения' : 'Rasm URL'}>
-                      <input value={form.image_url} onChange={e => { const v = e.target.value; setForm(p => ({ ...p, image_url: v })); if (!imageFile) setImagePreview(v) }} style={inp} placeholder="https://..." />
-                    </Field>
+
+                    {/* Avatar circle */}
+                    <div
+                      onClick={() => !checkingFace && fileRef.current?.click()}
+                      onMouseEnter={() => setAvatarHovered(true)}
+                      onMouseLeave={() => setAvatarHovered(false)}
+                      style={{
+                        width: 150, height: 150, borderRadius: '50%',
+                        background: 'var(--surface-2)',
+                        border: `2px solid ${faceSuccess ? '#10b981' : (faceError ? '#ef4444' : (checkingFace ? 'var(--accent)' : 'var(--border-3)'))}`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        overflow: 'visible', flexShrink: 0, position: 'relative',
+                        cursor: checkingFace ? 'wait' : 'pointer',
+                        boxShadow: faceSuccess ? '0 0 18px rgba(16,185,129,0.5)' : (faceError ? '0 0 18px rgba(239,68,68,0.5)' : 'none'),
+                        animation: faceSuccess ? 'profPulseGreen 2s infinite' : (faceError ? 'profAvatarShake 0.4s ease, profPulseRed 2s infinite' : 'none'),
+                        transition: 'all 0.3s cubic-bezier(0.4,0,0.2,1)',
+                      }}
+                    >
+                      <div className={`prof-dashed-ring ${checkingFace ? 'checking' : (faceSuccess ? 'success' : (faceError ? 'error' : ''))}`} />
+                      <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-1)' }}>
+                        {imagePreview
+                          ? <img src={imagePreview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={() => setImagePreview('')} />
+                          : <PersonRegular fontSize={52} style={{ color: 'var(--text-4)', opacity: 0.35 }} />}
+
+                        {/* Scanning overlay */}
+                        {checkingFace && (
+                          <div style={{ position: 'absolute', inset: 0, background: 'rgba(10,15,28,0.82)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 11, fontWeight: 600, gap: 8, zIndex: 10, backdropFilter: 'blur(3px)' }}>
+                            <div style={{ position: 'absolute', left: 0, right: 0, height: '4px', background: 'linear-gradient(90deg, transparent, var(--accent), transparent)', boxShadow: '0 0 10px var(--accent)', animation: 'profAvatarScan 2s infinite linear' }} />
+                            <ArrowSyncRegular fontSize={22} style={{ animation: 'spin 1.2s linear infinite', color: 'var(--accent)' }} />
+                            <span style={{ fontSize: 10, letterSpacing: '0.5px', textTransform: 'uppercase', color: 'var(--accent)' }}>
+                              {isRu ? 'Анализ...' : 'Tekshirilmoqda...'}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Hover overlay */}
+                        {!checkingFace && avatarHovered && (
+                          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 11, fontWeight: 600, gap: 6, zIndex: 5, backdropFilter: 'blur(1px)' }}>
+                            <CameraRegular fontSize={24} style={{ color: '#fff' }} />
+                            <span style={{ fontSize: 10, letterSpacing: '0.5px' }}>
+                              {imagePreview ? (isRu ? 'Изменить' : "O'zgartirish") : (isRu ? 'Загрузить' : 'Yuklash')}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <input type="file" ref={fileRef} accept="image/*" onChange={onPickImage} style={{ display: 'none' }} />
+
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button type="button" onClick={() => !checkingFace && fileRef.current?.click()}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 8, background: 'var(--accent-bg)', color: 'var(--accent-tx)', border: '1px solid var(--accent-bd)', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}
+                        onMouseEnter={e => e.currentTarget.style.opacity = '0.88'}
+                        onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                      >
+                        <ImageRegular fontSize={13} />{isRu ? 'Выбрать фото' : 'Rasm tanlash'}
+                      </button>
+                      {imagePreview && (
+                        <button type="button" onClick={onClearImage}
+                          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', borderRadius: 8, background: 'transparent', color: 'var(--red)', border: '1px solid var(--red-bd)', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'var(--red-bg)'; e.currentTarget.style.opacity = '0.9' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.opacity = '1' }}
+                        >
+                          <DismissRegular fontSize={13} />{isRu ? 'Удалить' : "O'chirish"}
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Photo guidelines */}
+                    <div style={{ padding: '10px 12px', borderRadius: 8, background: 'var(--surface-2)', border: '1px solid var(--border-2)', width: '100%', fontSize: 11, lineHeight: '1.6', color: 'var(--text-2)' }}>
+                      <div style={{ fontWeight: 600, color: 'var(--text-1)', marginBottom: 5, display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <CheckmarkCircleRegular fontSize={13} style={{ color: '#10b981' }} />
+                        {isRu ? 'Требования к фото:' : 'Rasm talablari:'}
+                      </div>
+                      <ul style={{ margin: 0, paddingLeft: 14, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        <li>{isRu ? 'Лицо по центру, хорошее освещение' : 'Yuz markazda, yaxshi yoritilgan'}</li>
+                        <li>{isRu ? 'Без размытия, чёткое изображение' : 'Tiniq va sifatli rasm'}</li>
+                        <li>{isRu ? 'Светлый однотонный фон' : 'Tekis yorug\' fon afzal'}</li>
+                      </ul>
+                    </div>
                   </div>
                 </div>
 

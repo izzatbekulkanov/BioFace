@@ -17,9 +17,22 @@ from utils.access_control import (
     normalize_menu_permissions,
     resolve_user_menu_permissions,
     serialize_menu_permissions,
+    MENU_PERMISSION_METADATA,
+    PERMISSION_GROUP_TITLES,
+    LIMITED_ADMIN_DEFAULTS,
 )
 
 router = APIRouter()
+from utils.face_embeddings import trigger_embedding_generation_bg
+
+
+@router.get("/api/users/permissions-schema")
+def get_permissions_schema():
+    return {
+        "metadata": MENU_PERMISSION_METADATA,
+        "group_titles": PERMISSION_GROUP_TITLES,
+        "limited_admin_defaults": LIMITED_ADMIN_DEFAULTS,
+    }
 
 USER_UPLOAD_DIR = os.path.join("static", "uploads", "users")
 os.makedirs(USER_UPLOAD_DIR, exist_ok=True)
@@ -37,12 +50,15 @@ class UserResponse(BaseModel):
     role: str
     status: str = "active"
     google_oauth_enabled: bool = False
+    is_staff: bool = False
     last_login_provider: Optional[str] = None
     google_sub: Optional[str] = None
     organization_id: Optional[int] = None
     organization_name: Optional[str] = None
     organization_ids: List[int] = Field(default_factory=list)
     organization_names: List[str] = Field(default_factory=list)
+    branch_id: Optional[int] = None
+    branch_name: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -66,13 +82,15 @@ def _normalize_email(value: Any) -> str:
 
 
 def _normalize_username(value: Any) -> str:
+    """Normalize a username to lowercase alphanumeric only (a-z, 0-9).
+    Any character outside this set is stripped (not replaced).
+    """
     raw = _as_clean_str(value).lower()
     if not raw:
         return ""
     raw = unicodedata.normalize("NFKD", raw).encode("ascii", "ignore").decode("ascii")
-    raw = raw.replace("'", "").replace("`", "")
-    raw = re.sub(r"[^a-z0-9]+", "_", raw)
-    raw = re.sub(r"_+", "_", raw).strip("_")
+    # Keep only a-z and 0-9, strip everything else
+    raw = re.sub(r"[^a-z0-9]+", "", raw)
     return raw
 
 
@@ -196,17 +214,20 @@ def _serialize_user(user: User) -> Dict[str, Any]:
         "middle_name": user.middle_name or "",
         "email": user.email,
         "phone": user.phone or "",
-        "image_url": user.image_url or "",
+        "image_url": (user.image_url or "") if (user.image_url or "").startswith(("/static/", "http://", "https://")) else "",
         "role": user.role.value if user.role else "",
         "status": user.status or "active",
         "menu_permissions": user.menu_permissions or "",
         "google_oauth_enabled": bool(user.google_oauth_enabled),
+        "is_staff": bool(user.is_staff),
         "last_login_provider": user.last_login_provider or "",
         "google_sub": user.google_sub or "",
         "organization_id": user.organization_id,
         "organization_name": user.organization.name if user.organization else None,
         "organization_ids": link_ids,
         "organization_names": org_names,
+        "branch_id": user.branch_id,
+        "branch_name": user.branch.name if user.branch else None,
     }
 
 
@@ -348,6 +369,7 @@ async def _extract_payload(
     google_oauth_enabled: Optional[str],
     organization_id: Optional[str],
     organization_ids: Optional[str],
+    branch_id: Optional[str],
     image_url: Optional[str],
     clear_image: Optional[str],
 ) -> Dict[str, Any]:
@@ -375,6 +397,7 @@ async def _extract_payload(
         "google_oauth_enabled": google_oauth_enabled,
         "organization_id": organization_id,
         "organization_ids": organization_ids,
+        "branch_id": branch_id,
         "image_url": image_url,
         "clear_image": clear_image,
     }
@@ -382,9 +405,23 @@ async def _extract_payload(
 
 @router.get("/api/users", response_model=List[UserResponse])
 def get_users(db: Session = Depends(get_db)):
+    """
+    Barcha tizim foydalanuvchilarini qaytaradi.
+    Faqat Google OAuth orqali kelgan va hali tasdiqlanmagan (pending) foydalanuvchilar
+    ro'yxatdan chiqariladi — ular /api/users/pending orqali ko'rsatiladi.
+    Admin tomonidan qo'lda qo'shilgan foydalanuvchilar har qanday statusda ham ko'rsatiladi.
+    """
     users = (
         db.query(User)
-        .filter(or_(User.status.is_(None), User.status != "pending"))
+        .filter(
+            or_(
+                User.google_sub.is_(None),           # qo'lda qo'shilgan — har doim ko'rsatiladi
+                User.status != "pending",             # Google orqali, lekin tasdiqlangan
+            )
+        )
+        .filter(
+            User.is_staff == True
+        )
         .order_by(User.id.desc())
         .all()
     )
@@ -459,6 +496,7 @@ def approve_user(
     user.status = "active"
     user.google_oauth_enabled = True
     user.role = role_val
+    user.is_staff = True
     user.menu_permissions = serialize_menu_permissions(menu_permissions_val)
     user.organization_id = int(org_ids_val[0])
     user.last_login_provider = "google"
@@ -482,8 +520,8 @@ def check_username_available(
         return {"available": False, "message": "Username kamida 3 belgi bo'lishi kerak"}
     if len(normalized) > 32:
         return {"available": False, "message": "Username 32 belgidan uzun bo'lmasin"}
-    if not re.match(r"^[a-z0-9][a-z0-9._-]*[a-z0-9]$", normalized):
-        return {"available": False, "message": "Username formati noto'g'ri"}
+    if not re.match(r"^[a-z0-9]+$", normalized):
+        return {"available": False, "message": "Faqat lotin harflari (a-z) va raqamlar (0-9) bo'lishi kerak"}
     available = not _username_exists(db, normalized, exclude_user_id=exclude_user_id)
     return {
         "available": available,
@@ -509,6 +547,7 @@ async def create_user(
     google_oauth_enabled: Optional[str] = Form(None),
     organization_id: Optional[str] = Form(None),
     organization_ids: Optional[str] = Form(None),
+    branch_id: Optional[str] = Form(None),
     image_url: Optional[str] = Form(None),
     clear_image: Optional[str] = Form(None),
     image: Optional[UploadFile] = File(None),
@@ -530,6 +569,7 @@ async def create_user(
         google_oauth_enabled=google_oauth_enabled,
         organization_id=organization_id,
         organization_ids=organization_ids,
+        branch_id=branch_id,
         image_url=image_url,
         clear_image=clear_image,
     )
@@ -560,6 +600,7 @@ async def create_user(
         org_id_val = int(org_ids_val[0])
     elif org_id_val is not None:
         org_ids_val = [int(org_id_val)]
+    branch_id_val = _parse_optional_int(payload.get("branch_id"))
     image_url_val = _as_clean_str(payload.get("image_url"))
 
     if not first_name_val or not email_val or not password_val:
@@ -597,7 +638,9 @@ async def create_user(
         status=status_val,
         menu_permissions=menu_permissions_val,
         google_oauth_enabled=google_oauth_enabled_val,
+        is_staff=True,
         organization_id=org_id_val,
+        branch_id=branch_id_val,
     )
 
     db.add(new_user)
@@ -607,6 +650,10 @@ async def create_user(
     _sync_user_organization_links(db, new_user, org_ids_val)
     db.commit()
     db.refresh(new_user)
+
+    if new_user.image_url:
+        trigger_embedding_generation_bg(user_id=int(new_user.id))
+
     return _serialize_user(new_user)
 
 
@@ -628,6 +675,7 @@ async def update_user(
     google_oauth_enabled: Optional[str] = Form(None),
     organization_id: Optional[str] = Form(None),
     organization_ids: Optional[str] = Form(None),
+    branch_id: Optional[str] = Form(None),
     image_url: Optional[str] = Form(None),
     clear_image: Optional[str] = Form(None),
     image: Optional[UploadFile] = File(None),
@@ -653,6 +701,7 @@ async def update_user(
         google_oauth_enabled=google_oauth_enabled,
         organization_id=organization_id,
         organization_ids=organization_ids,
+        branch_id=branch_id,
         image_url=image_url,
         clear_image=clear_image,
     )
@@ -720,6 +769,10 @@ async def update_user(
         db.flush()
         _sync_user_organization_links(db, user, fallback_ids)
 
+    has_branch = (is_json and "branch_id" in payload) or (not is_json and branch_id is not None)
+    if has_branch:
+        user.branch_id = _parse_optional_int(payload.get("branch_id"))
+
     password_val = _as_clean_str(payload.get("password"))
     if password_val:
         _validate_password_strength(password_val)
@@ -781,6 +834,9 @@ async def update_user(
     db.commit()
     db.refresh(user)
 
+    if user.image_url:
+        trigger_embedding_generation_bg(user_id=int(user.id))
+
     # Sync session if the updated user is the currently logged-in user
     auth_user = request.session.get("auth_user")
     if auth_user and auth_user.get("id") == user.id:
@@ -796,10 +852,20 @@ def delete_user(user_id: int, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="Foydalanuvchi topilmadi")
 
+    # Avval bog'liq chat xabarlarini o'chiramiz (FK constraint)
+    try:
+        from models import ChatMessage
+        db.query(ChatMessage).filter(
+            (ChatMessage.sender_id == user_id) | (ChatMessage.receiver_id == user_id)
+        ).delete(synchronize_session=False)
+        db.flush()
+    except Exception:
+        pass
+
     if user.image_url:
         prefix = "/static/uploads/users/"
         if user.image_url.startswith(prefix):
-            rel_name = user.image_url[len(prefix) :]
+            rel_name = user.image_url[len(prefix):]
             abs_path = os.path.join(USER_UPLOAD_DIR, rel_name)
             if os.path.exists(abs_path):
                 try:

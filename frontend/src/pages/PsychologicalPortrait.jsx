@@ -9,9 +9,11 @@ import {
   ChartMultipleRegular,
   EmojiRegular,
   InfoRegular,
+  DismissRegular,
 } from '@fluentui/react-icons'
 import PageHero from '../components/PageHero'
 import Skeleton from '../components/Skeleton'
+import CustomSelect from '../components/CustomSelect'
 
 /**
  * Psixologik Portret sahifasi.
@@ -49,6 +51,13 @@ export default function PsychologicalPortrait() {
   const [day, setDay] = useState('all')
   const [limit, setLimit] = useState(60)
   const [lightbox, setLightbox] = useState(null)
+
+  // Client-side filter states
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedOrg, setSelectedOrg] = useState('all')
+  const [selectedBranch, setSelectedBranch] = useState('all')
+  const [selectedRoleType, setSelectedRoleType] = useState('all')
+  const [selectedState, setSelectedState] = useState('all')
 
   const aliveRef = useRef(true)
 
@@ -96,32 +105,230 @@ export default function PsychologicalPortrait() {
   const filterMonths = data?.filters?.months || []
   const filterDays   = data?.filters?.days   || []
   const stats   = data?.stats   || {}
-  const average = data?.average || {}
-  const states  = data?.state_breakdown  || []
-  const sources = data?.source_breakdown || []
   const items   = data?.items   || []
 
-  const levelTone = LEVEL_TONES[stats.level] || { color: 'var(--text-4)', label_uz: '—', label_ru: '—' }
+  // Dynamic filter options derived from complete items list
+  const orgOptions = useMemo(() => {
+    const uniqueOrgs = new Map()
+    items.forEach(it => {
+      if (it.employee?.organization_id && it.employee?.organization_name) {
+        uniqueOrgs.set(String(it.employee.organization_id), it.employee.organization_name)
+      }
+    })
+    return [
+      { value: 'all', label: isRu ? 'Все организации' : 'Hamma tashkilotlar' },
+      ...Array.from(uniqueOrgs.entries()).map(([value, label]) => ({ value, label }))
+    ]
+  }, [items, isRu])
 
-  const avgStress = useMemo(() => {
-    if (!items.length) return null
-    const valid = items.filter(x => x.stress_score != null)
+  const branchOptions = useMemo(() => {
+    const uniqueBranches = new Map()
+    items.forEach(it => {
+      if (it.employee?.branch_id && it.employee?.branch_name) {
+        uniqueBranches.set(String(it.employee.branch_id), it.employee.branch_name)
+      }
+    })
+    return [
+      { value: 'all', label: isRu ? 'Все филиалы' : 'Barcha filiallar' },
+      ...Array.from(uniqueBranches.entries()).map(([value, label]) => ({ value, label }))
+    ]
+  }, [items, isRu])
+
+  const roleTypeOptions = useMemo(() => [
+    { value: 'all', label: isRu ? 'Все типы' : 'Barcha rollar' },
+    { value: 'staff', label: isRu ? 'Сотрудник' : 'Xodim' },
+    { value: 'student', label: isRu ? 'Ученик / Студент' : "O'quvchi / Talaba" },
+    { value: 'admin', label: isRu ? 'Администратор системы' : "Tizim admini" },
+  ], [isRu])
+
+  const stateOptions = useMemo(() => {
+    const uniqueStates = new Set()
+    items.forEach(it => {
+      if (it.state_key) {
+        uniqueStates.add(it.state_key)
+      }
+    })
+    return [
+      { value: 'all', label: isRu ? 'Все состояния' : 'Barcha holatlar' },
+      ...Array.from(uniqueStates).map(key => ({
+        value: key,
+        label: labelEmotion(key, isRu)
+      }))
+    ]
+  }, [items, isRu])
+
+  // CustomSelect wrappers for Year/Month/Day
+  const handleYearChange = (val) => {
+    setYear(val || 'all')
+    setMonth('all')
+    setDay('all')
+  }
+  const handleMonthChange = (val) => {
+    setMonth(val || 'all')
+    setDay('all')
+  }
+  const handleDayChange = (val) => {
+    setDay(val || 'all')
+  }
+
+  const yearOptions = useMemo(() => [
+    { value: 'all', label: isRu ? 'Все' : 'Hammasi' },
+    ...filterYears.map(y => ({ value: String(y), label: String(y) }))
+  ], [filterYears, isRu])
+
+  const monthOptions = useMemo(() => [
+    { value: 'all', label: isRu ? 'Все' : 'Hammasi' },
+    ...filterMonths.map(m => ({ value: String(m), label: String(m) }))
+  ], [filterMonths, isRu])
+
+  const dayOptions = useMemo(() => [
+    { value: 'all', label: isRu ? 'Все' : 'Hammasi' },
+    ...filterDays.map(d => ({ value: String(d), label: String(d) }))
+  ], [filterDays, isRu])
+
+  // Client-side filtering
+  const filteredItems = useMemo(() => {
+    let result = items
+
+    // Search query
+    const q = searchQuery.toLowerCase().trim()
+    if (q) {
+      result = result.filter(it => {
+        const fullName = (it.employee?.full_name || '').toLowerCase()
+        const personalId = (it.employee?.personal_id || '').toLowerCase()
+        const orgName = (it.employee?.organization_name || '').toLowerCase()
+        const branchName = (it.employee?.branch_name || '').toLowerCase()
+        return (
+          fullName.includes(q) ||
+          personalId.includes(q) ||
+          orgName.includes(q) ||
+          branchName.includes(q)
+        )
+      })
+    }
+
+    // Organization filter
+    if (selectedOrg !== 'all') {
+      result = result.filter(it => String(it.employee?.organization_id) === String(selectedOrg))
+    }
+
+    // Branch filter
+    if (selectedBranch !== 'all') {
+      result = result.filter(it => String(it.employee?.branch_id) === String(selectedBranch))
+    }
+
+    // Role type filter
+    if (selectedRoleType !== 'all') {
+      result = result.filter(it => {
+        const t = String(it.employee?.employee_type || '').toLowerCase().trim()
+        if (selectedRoleType === 'staff') {
+          return ['hodim', 'oqituvchi', 'staff', 'teacher'].includes(t)
+        }
+        if (selectedRoleType === 'student') {
+          return ['oquvchi', 'talaba', 'student', 'pupil'].includes(t)
+        }
+        if (selectedRoleType === 'admin') {
+          return ['admin', 'administrator', 'system_admin', 'tizim_admini'].includes(t)
+        }
+        return false
+      })
+    }
+
+    // State (holat) filter
+    if (selectedState !== 'all') {
+      result = result.filter(it => it.state_key === selectedState)
+    }
+
+    return result
+  }, [items, searchQuery, selectedOrg, selectedBranch, selectedRoleType, selectedState])
+
+  // Dynamic Statistics
+  const activeTotalEmployees = useMemo(() => {
+    const set = new Set(filteredItems.map(it => it.employee_id).filter(Boolean))
+    return set.size
+  }, [filteredItems])
+
+  const activePeriodRecords = filteredItems.length
+
+  const activeCoveragePercent = useMemo(() => {
+    if (!stats.total_employees) return 0
+    return Math.round((activeTotalEmployees / stats.total_employees) * 100)
+  }, [activeTotalEmployees, stats.total_employees])
+
+  const activeAvgStress = useMemo(() => {
+    if (!filteredItems.length) return null
+    const valid = filteredItems.filter(x => x.stress_score != null)
     if (!valid.length) return null
     const sum = valid.reduce((acc, x) => acc + x.stress_score, 0)
     return Math.round(sum / valid.length)
-  }, [items])
+  }, [filteredItems])
 
-  const maxStateCount = useMemo(() => Math.max(1, ...states.map(s => s.count || 0)), [states])
-  const maxSourceCount = useMemo(() => Math.max(1, ...sources.map(s => s.count || 0)), [sources])
+  const activeLevel = useMemo(() => {
+    if (activeAvgStress == null) return 'stable'
+    if (activeAvgStress <= 35) return 'stable'
+    if (activeAvgStress <= 70) return 'moderate'
+    return 'attention'
+  }, [activeAvgStress])
 
-  // average.emotion_scores — { key: 0..1 } -> top sorted
-  const avgEmotions = useMemo(() => {
-    const obj = average?.emotion_scores || {}
-    return Object.entries(obj)
-      .map(([k, v]) => ({ key: k, value: Number(v) || 0 }))
+  const activeLevelTone = LEVEL_TONES[activeLevel] || { color: 'var(--text-4)', label_uz: '—', label_ru: '—' }
+
+  // Emotion profiles & states breakdown
+  const filteredStates = useMemo(() => {
+    const counts = {}
+    filteredItems.forEach(it => {
+      if (it.state_key) {
+        counts[it.state_key] = (counts[it.state_key] || 0) + 1
+      }
+    })
+    return Object.entries(counts)
+      .map(([state_key, count]) => ({
+        state_key,
+        label_uz: EMOTION_LABELS_UZ[state_key] || state_key,
+        label_ru: EMOTION_LABELS_RU[state_key] || state_key,
+        count,
+      }))
+      .sort((a, b) => b.count - a.count)
+  }, [filteredItems])
+
+  const maxStateCount = useMemo(() => Math.max(1, ...filteredStates.map(s => s.count || 0)), [filteredStates])
+
+  const filteredSources = useMemo(() => {
+    const counts = {}
+    filteredItems.forEach(it => {
+      if (it.source) {
+        counts[it.source] = (counts[it.source] || 0) + 1
+      }
+    })
+    return Object.entries(counts)
+      .map(([source, count]) => ({ source, count }))
+      .sort((a, b) => b.count - a.count)
+  }, [filteredItems])
+
+  const filteredAvgEmotions = useMemo(() => {
+    if (!filteredItems.length) return []
+    const sumScores = {}
+    let count = 0
+    filteredItems.forEach(it => {
+      const scores = it.emotion_scores || {}
+      Object.entries(scores).forEach(([k, v]) => {
+        sumScores[k] = (sumScores[k] || 0) + (Number(v) || 0)
+      })
+      count++
+    })
+    if (count === 0) return []
+    return Object.entries(sumScores)
+      .map(([k, v]) => ({ key: k, value: v / count }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 6)
-  }, [average])
+  }, [filteredItems])
+
+  const avgProfileText = useMemo(() => {
+    if (filteredAvgEmotions.length === 0) return '—'
+    return filteredAvgEmotions
+      .slice(0, 3)
+      .map(e => `${labelEmotion(e.key, isRu)} ${Math.round(e.value * 100)}%`)
+      .join(', ')
+  }, [filteredAvgEmotions, isRu])
 
   return (
     <div style={{ minHeight: 'calc(100vh - 52px)', background: 'var(--bg)', color: 'var(--text-1)', overflowY: 'auto' }}>
@@ -168,35 +375,37 @@ export default function PsychologicalPortrait() {
       <div className="portrait-container">
         {error && <div style={errBannerStyle}>{error}</div>}
 
-        {/* Filtrlar */}
+        {/* Date Filters Card */}
         <div style={{ ...cardStyle, marginBottom: 18 }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', flexWrap: 'wrap', gap: 12 }}>
             <div style={{ flex: '1 1 160px' }}>
               <FieldLabel>{isRu ? 'Год' : 'Yil'}</FieldLabel>
-              <select value={year} onChange={e => { setYear(e.target.value); setMonth('all'); setDay('all') }} style={inpStyle}>
-                <option value="all">{isRu ? 'Все' : 'Hammasi'}</option>
-                {filterYears.map(y => <option key={y} value={y}>{y}</option>)}
-              </select>
+              <CustomSelect
+                value={year}
+                onChange={handleYearChange}
+                options={yearOptions}
+                placeholder={isRu ? 'Все' : 'Hammasi'}
+              />
             </div>
             <div style={{ flex: '1 1 140px' }}>
               <FieldLabel>{isRu ? 'Месяц' : 'Oy'}</FieldLabel>
-              <select value={month} onChange={e => { setMonth(e.target.value); setDay('all') }} style={inpStyle}>
-                <option value="all">{isRu ? 'Все' : 'Hammasi'}</option>
-                {filterMonths.map(m => <option key={m} value={m}>{m}</option>)}
-              </select>
+              <CustomSelect
+                value={month}
+                onChange={handleMonthChange}
+                options={monthOptions}
+                placeholder={isRu ? 'Все' : 'Hammasi'}
+                disabled={year === 'all'}
+              />
             </div>
             <div style={{ flex: '1 1 140px' }}>
               <FieldLabel>{isRu ? 'День' : 'Kun'}</FieldLabel>
-              <select value={day} onChange={e => setDay(e.target.value)} style={inpStyle}>
-                <option value="all">{isRu ? 'Все' : 'Hammasi'}</option>
-                {filterDays.map(d => <option key={d} value={d}>{d}</option>)}
-              </select>
-            </div>
-            <div style={{ flex: '1 1 140px' }}>
-              <FieldLabel>{isRu ? 'Лимит записей' : 'Yozuv limiti'}</FieldLabel>
-              <select value={limit} onChange={e => setLimit(Number(e.target.value))} style={inpStyle}>
-                {[20, 60, 120, 200, 300].map(n => <option key={n} value={n}>{n}</option>)}
-              </select>
+              <CustomSelect
+                value={day}
+                onChange={handleDayChange}
+                options={dayOptions}
+                placeholder={isRu ? 'Все' : 'Hammasi'}
+                disabled={month === 'all'}
+              />
             </div>
             {(year !== 'all' || month !== 'all' || day !== 'all') && (
               <button
@@ -221,7 +430,7 @@ export default function PsychologicalPortrait() {
           </div>
         </div>
 
-        {/* Stat kartalari */}
+        {/* Stats Cards */}
         {showSkeleton ? (
           <div style={{ marginBottom: 18 }}>
             <Skeleton.Stats count={5} />
@@ -231,43 +440,43 @@ export default function PsychologicalPortrait() {
             <BigStatCard
               icon={<PersonRegular fontSize={20} />}
               label={isRu ? 'Сотрудники' : 'Xodimlar'}
-              value={stats.total_employees ?? 0}
+              value={activeTotalEmployees ?? 0}
               hint={isRu ? 'В вашей зоне доступа' : "Sizning ruxsat doirangizda"}
               color="#3b82f6"
             />
             <BigStatCard
               icon={<ChartMultipleRegular fontSize={20} />}
               label={isRu ? 'Записи за период' : 'Davr yozuvlari'}
-              value={stats.period_records ?? 0}
-              hint={`${stats.selected_employees ?? 0} ${isRu ? 'сотр.' : 'xodim'}`}
+              value={activePeriodRecords ?? 0}
+              hint={`${activeTotalEmployees ?? 0} ${isRu ? 'сотр.' : 'xodim'}`}
               color="#a855f7"
             />
             <BigStatCard
-              icon={<TopProgress percent={stats.coverage_percent ?? 0} />}
+              icon={<TopProgress percent={activeCoveragePercent ?? 0} />}
               label={isRu ? 'Покрытие' : 'Qamrov'}
-              value={`${stats.coverage_percent ?? 0}%`}
+              value={`${activeCoveragePercent ?? 0}%`}
               hint={isRu ? 'Доля сотрудников с записями' : 'Yozuvlari bor xodimlar foizi'}
               color="#22c55e"
             />
             <BigStatCard
               icon={<BrainCircuitRegular fontSize={20} />}
-              label={isRu ? 'Средний стресс' : "O'rtacha stress"}
-              value={avgStress != null ? `${avgStress}%` : '—'}
+              label={isRu ? 'Средний stress' : "O'rtacha stress"}
+              value={activeAvgStress != null ? `${activeAvgStress}%` : '—'}
               hint={
-                avgStress == null
+                activeAvgStress == null
                   ? (isRu ? 'Нет данных' : "Ma'lumot yo'q")
-                  : avgStress <= 35
+                  : activeAvgStress <= 35
                   ? (isRu ? 'Низкий / Норма' : 'Past / Normal')
-                  : avgStress <= 70
+                  : activeAvgStress <= 70
                   ? (isRu ? 'Умеренный' : "O'rtacha")
                   : (isRu ? 'Высокий уровень!' : 'Yuqori daraja!')
               }
               color={
-                avgStress == null
+                activeAvgStress == null
                   ? 'var(--text-4)'
-                  : avgStress <= 35
+                  : activeAvgStress <= 35
                   ? '#10b981'
-                  : avgStress <= 70
+                  : activeAvgStress <= 70
                   ? '#f59e0b'
                   : '#f43f5e'
               }
@@ -275,14 +484,14 @@ export default function PsychologicalPortrait() {
             <BigStatCard
               icon={<HeartRegular fontSize={20} />}
               label={isRu ? 'Уровень' : 'Daraja'}
-              value={isRu ? levelTone.label_ru : levelTone.label_uz}
+              value={isRu ? activeLevelTone.label_ru : activeLevelTone.label_uz}
               hint={stats.latest_at ? formatDateTime(stats.latest_at) : (isRu ? 'Нет данных' : "Ma'lumot yo'q")}
-              color={levelTone.color}
+              color={activeLevelTone.color}
             />
           </div>
         )}
 
-        {/* O'rtacha profil + Holat breakdown */}
+        {/* Emotion Profile + State breakdown */}
         <div className="portrait-grid">
           <div style={cardStyle}>
             <h3 style={cardTitleStyle}>
@@ -303,15 +512,15 @@ export default function PsychologicalPortrait() {
                     {isRu ? 'Ключевой профиль' : 'Asosiy profil'}
                   </div>
                   <div style={{ marginTop: 4, fontSize: 15, fontWeight: 700 }}>
-                    {(isRu ? average?.profile_text_ru : average?.profile_text_uz) || '—'}
+                    {avgProfileText}
                   </div>
                 </div>
                 <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {avgEmotions.length === 0 ? (
+                  {filteredAvgEmotions.length === 0 ? (
                     <div style={{ color: 'var(--text-4)', fontSize: 13 }}>
                       {isRu ? 'Эмоции отсутствуют' : "Emotsiya ma'lumoti yo'q"}
                     </div>
-                  ) : avgEmotions.map(e => {
+                  ) : filteredAvgEmotions.map(e => {
                     const pct = Math.round((e.value || 0) * 100)
                     const tone = emotionTone(e.key)
                     return (
@@ -341,13 +550,13 @@ export default function PsychologicalPortrait() {
               <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} width="100%" height={18} />)}
               </div>
-            ) : states.length === 0 ? (
+            ) : filteredStates.length === 0 ? (
               <div style={{ marginTop: 14, padding: 16, color: 'var(--text-4)', fontSize: 13, textAlign: 'center' }}>
                 {isRu ? 'Нет данных за период' : "Tanlangan davr uchun yozuv yo'q"}
               </div>
             ) : (
               <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {states.map(s => {
+                {filteredStates.map(s => {
                   const pct = Math.round(100 * (s.count || 0) / maxStateCount)
                   const tone = emotionTone(s.state_key)
                   return (
@@ -365,13 +574,13 @@ export default function PsychologicalPortrait() {
               </div>
             )}
 
-            {!showSkeleton && sources.length > 0 && (
+            {!showSkeleton && filteredSources.length > 0 && (
               <>
                 <div style={{ marginTop: 16, fontSize: 11, fontWeight: 700, color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
                   {isRu ? 'Источники' : 'Manbalar'}
                 </div>
                 <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {sources.map(s => (
+                  {filteredSources.map(s => (
                     <span key={s.source} style={{
                       padding: '4px 10px', borderRadius: 999,
                       background: 'var(--surface-2)', border: '1px solid var(--border-2)',
@@ -386,141 +595,291 @@ export default function PsychologicalPortrait() {
           </div>
         </div>
 
-        {/* So'nggi yozuvlar jadvali */}
-        <div style={cardStyle}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 14 }}>
-            <h3 style={cardTitleStyle}>
-              <BrainCircuitRegular style={{ color: '#a855f7' }} />
-              {isRu ? "Последние записи" : "So'nggi yozuvlar"}
-            </h3>
-            <div style={{ fontSize: 12, color: 'var(--text-4)' }}>
-              {items.length} {isRu ? 'результат' : 'natija'}
+        {/* Table + Toolbar Card */}
+        <div style={{ ...cardStyle, padding: 0, overflow: 'visible' }}>
+          {/* Table Toolbar */}
+          <div style={{
+            padding: '20px 20px 16px 20px',
+            borderBottom: '1px solid var(--border)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 14,
+          }}>
+            {/* Header row in toolbar */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+              <h3 style={cardTitleStyle}>
+                <BrainCircuitRegular style={{ color: '#a855f7' }} />
+                {isRu ? "Последние записи" : "So'nggi yozuvlar"}
+              </h3>
+              <div style={{ fontSize: 13, color: 'var(--text-3)', fontWeight: 600 }}>
+                {isRu ? 'Найдено:' : 'Topildi:'} <span style={{ color: 'var(--accent)', fontWeight: 700 }}>{filteredItems.length}</span> / {items.length}
+              </div>
+            </div>
+
+            {/* Filters row in toolbar */}
+            <div style={{ display: 'flex', alignItems: 'flex-end', flexWrap: 'wrap', gap: 12 }}>
+              {/* Search Input */}
+              <div style={{ flex: '2 1 240px' }}>
+                <FieldLabel>{isRu ? 'Поиск' : 'Qidirish'}</FieldLabel>
+                <div style={{ position: 'relative', width: '100%' }}>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    placeholder={isRu ? 'Имя, ID, организация, филиал...' : 'Ism, ID, tashkilot, filial...'}
+                    style={inpStyle}
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      style={{
+                        position: 'absolute',
+                        right: 10,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text-4)',
+                        cursor: 'pointer',
+                        padding: 4,
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.color = 'var(--text-2)'}
+                      onMouseLeave={e => e.currentTarget.style.color = 'var(--text-4)'}
+                    >
+                      <DismissRegular fontSize={12} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Organization Filter */}
+              <div style={{ flex: '1 1 180px' }}>
+                <FieldLabel>{isRu ? 'Организация' : 'Tashkilot'}</FieldLabel>
+                <CustomSelect
+                  value={selectedOrg}
+                  onChange={val => { setSelectedOrg(val || 'all'); setSelectedBranch('all') }}
+                  options={orgOptions}
+                  placeholder={isRu ? 'Все организации' : 'Hamma tashkilotlar'}
+                />
+              </div>
+
+              {/* Branch Filter */}
+              <div style={{ flex: '1 1 180px' }}>
+                <FieldLabel>{isRu ? 'Филиал' : 'Filial'}</FieldLabel>
+                <CustomSelect
+                  value={selectedBranch}
+                  onChange={val => setSelectedBranch(val || 'all')}
+                  options={branchOptions}
+                  placeholder={isRu ? 'Все филиалы' : 'Barcha filiallar'}
+                />
+              </div>
+
+              {/* State Filter */}
+              <div style={{ flex: '1 1 160px' }}>
+                <FieldLabel>{isRu ? 'Состояние' : 'Holat'}</FieldLabel>
+                <CustomSelect
+                  value={selectedState}
+                  onChange={val => setSelectedState(val || 'all')}
+                  options={stateOptions}
+                  placeholder={isRu ? 'Все состояния' : 'Barcha holatlar'}
+                />
+              </div>
+
+              {/* Role Filter */}
+              <div style={{ flex: '1 1 160px' }}>
+                <FieldLabel>{isRu ? 'Тип / Роль' : 'Turi / Roli'}</FieldLabel>
+                <CustomSelect
+                  value={selectedRoleType}
+                  onChange={val => setSelectedRoleType(val || 'all')}
+                  options={roleTypeOptions}
+                  placeholder={isRu ? 'Все типы' : 'Barcha tiplar'}
+                />
+              </div>
+
+              {/* Record Limit */}
+              <div style={{ flex: '0 0 110px' }}>
+                <FieldLabel>{isRu ? 'Лимит' : 'Limit'}</FieldLabel>
+                <CustomSelect
+                  value={limit}
+                  onChange={val => setLimit(Number(val || 60))}
+                  options={[
+                    { value: 20, label: '20' },
+                    { value: 60, label: '60' },
+                    { value: 120, label: '120' },
+                    { value: 200, label: '200' },
+                    { value: 300, label: '300' },
+                  ]}
+                  placeholder="Limit"
+                />
+              </div>
+
+              {/* Reset Filters button */}
+              {(searchQuery || selectedOrg !== 'all' || selectedBranch !== 'all' || selectedRoleType !== 'all' || selectedState !== 'all') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('')
+                    setSelectedOrg('all')
+                    setSelectedBranch('all')
+                    setSelectedRoleType('all')
+                    setSelectedState('all')
+                  }}
+                  style={{
+                    height: 36, padding: '0 14px', borderRadius: 8,
+                    background: 'var(--surface-2)', color: 'var(--text-2)',
+                    border: '1px solid var(--border-2)', fontSize: 13, fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {isRu ? 'Сбросить фильтры' : 'Filtrlarni tozalash'}
+                </button>
+              )}
             </div>
           </div>
 
-          {showSkeleton ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {Array.from({ length: 6 }).map((_, i) => <Skeleton.Row key={i} />)}
-            </div>
-          ) : items.length === 0 ? (
-            <div style={emptyStyle}>
-              {isRu ? 'Записей за выбранный период нет.' : "Tanlangan davr uchun yozuv yo'q."}
-            </div>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={tableStyle}>
-                <thead>
-                  <tr>
-                    {[
-                      isRu ? 'Сотрудник' : 'Xodim',
-                      isRu ? 'Профиль' : 'Profil',
-                      isRu ? 'Топ эмоции' : 'Top emotsiyalar',
-                      isRu ? 'Уверенность' : 'Ishonchlilik',
-                      isRu ? 'Стресс' : 'Stress',
-                      isRu ? 'Дата' : 'Sana',
-                      isRu ? 'Снимок' : 'Snapshot',
-                    ].map((h, i) => <th key={i} style={thStyle}>{h}</th>)}
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map(it => (
-                    <tr key={it.id}>
-                      <td style={tdStyle}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          {it.employee?.avatar
-                            ? <img src={it.employee.avatar} alt="" style={avatarImg} onError={e => { e.target.style.display = 'none' }} />
-                            : <div style={avatarFallback}><PersonRegular fontSize={16} /></div>}
-                          <div>
-                            <div style={{ fontWeight: 600 }}>{it.employee?.full_name || '—'}</div>
-                            <div style={{ fontSize: 11, color: 'var(--text-4)' }}>
-                              {it.employee?.personal_id || `#${it.employee?.id || it.id}`}
-                              {it.employee?.organization_name && <> · {it.employee.organization_name}</>}
+          {/* Table Container */}
+          <div style={{ padding: '0 20px 20px 20px' }}>
+            {showSkeleton ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 14 }}>
+                {Array.from({ length: 6 }).map((_, i) => <Skeleton.Row key={i} />)}
+              </div>
+            ) : filteredItems.length === 0 ? (
+              <div style={{ ...emptyStyle, marginTop: 14 }}>
+                {isRu ? 'Записей за выбранный период нет.' : "Tanlangan davr uchun yozuv yo'q."}
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={tableStyle}>
+                  <thead>
+                    <tr>
+                      {[
+                        isRu ? 'Сотрудник' : 'Xodim',
+                        isRu ? 'Профиль' : 'Profil',
+                        isRu ? 'Топ эмоции' : 'Top emotsiyalar',
+                        isRu ? 'Уверенность' : 'Ishonchlilik',
+                        isRu ? 'Стресс' : 'Stress',
+                        isRu ? 'Дата' : 'Sana',
+                        isRu ? 'Снимок' : 'Snapshot',
+                      ].map((h, i) => <th key={i} style={thStyle}>{h}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredItems.map(it => (
+                      <tr key={it.id}>
+                        <td style={tdStyle}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            {it.employee?.avatar
+                              ? <img src={it.employee.avatar} alt="" style={avatarImg} onError={e => { e.target.style.display = 'none' }} />
+                              : <div style={avatarFallback}><PersonRegular fontSize={16} /></div>}
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+                                <span style={{ fontWeight: 600, fontSize: 13.5 }}>{it.employee?.full_name || '—'}</span>
+                                <EmployeeTypeBadge type={it.employee?.employee_type} isRu={isRu} />
+                              </div>
+                              <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2, display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+                                <span style={{ color: 'var(--text-4)' }}>ID:</span> {it.employee?.personal_id || `#${it.employee?.id || it.id}`}
+                                {it.employee?.organization_name && (
+                                  <>
+                                    <span style={{ color: 'var(--text-4)' }}>·</span>
+                                    <span style={{ color: 'var(--text-2)' }}>{it.employee.organization_name}</span>
+                                  </>
+                                )}
+                                {it.employee?.branch_name && (
+                                  <>
+                                    <span style={{ color: 'var(--text-4)' }}>·</span>
+                                    <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{it.employee.branch_name}</span>
+                                  </>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </td>
-                      <td style={tdStyle}>
-                        <StatePill stateKey={it.state_key} text={isRu ? it.state_ru || it.profile_text_ru : it.state_uz || it.profile_text_uz} />
-                      </td>
-                      <td style={tdStyle}>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                          {((isRu ? it.top_emotions_ru : it.top_emotions_uz) || []).slice(0, 3).map((e, i) => {
-                            const text = (e && typeof e === 'object')
-                              ? (e.label || (isRu ? e.label_ru : e.label_uz) || labelEmotion(e.key, isRu))
-                              : String(e ?? '')
-                            const pct = e && typeof e === 'object' && e.percent != null
-                              ? ` ${Number(e.percent).toFixed(0)}%`
-                              : ''
+                        </td>
+                        <td style={tdStyle}>
+                          <StatePill stateKey={it.state_key} text={isRu ? it.state_ru || it.profile_text_ru : it.state_uz || it.profile_text_uz} />
+                        </td>
+                        <td style={tdStyle}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                            {((isRu ? it.top_emotions_ru : it.top_emotions_uz) || []).slice(0, 3).map((e, i) => {
+                              const text = (e && typeof e === 'object')
+                                ? (e.label || (isRu ? e.label_ru : e.label_uz) || labelEmotion(e.key, isRu))
+                                : String(e ?? '')
+                              const pct = e && typeof e === 'object' && e.percent != null
+                                ? ` ${Number(e.percent).toFixed(0)}%`
+                                : ''
+                              return (
+                                <span key={i} style={{
+                                  fontSize: 11, padding: '2px 7px', borderRadius: 999,
+                                  background: 'var(--surface-2)', border: '1px solid var(--border-2)',
+                                  color: 'var(--text-2)',
+                                }}>{text}{pct}</span>
+                              )
+                            })}
+                          </div>
+                        </td>
+                        <td style={tdStyle}>
+                          <ConfidenceBar value={it.confidence} />
+                        </td>
+                        <td style={tdStyle}>
+                          {it.stress_score != null ? (() => {
+                            const stressScore = Math.round(it.stress_score)
+                            const stressColor = stressScore <= 35 ? '#10b981' : stressScore <= 70 ? '#f59e0b' : '#f43f5e'
+                            const stressStatusText = isRu ? it.stress_status_ru : it.stress_status_uz
                             return (
-                              <span key={i} style={{
-                                fontSize: 11, padding: '2px 7px', borderRadius: 999,
-                                background: 'var(--surface-2)', border: '1px solid var(--border-2)',
-                                color: 'var(--text-2)',
-                              }}>{text}{pct}</span>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 95 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
+                                  <span style={{ fontWeight: 600, color: stressColor }}>{stressStatusText}</span>
+                                  <span style={{ fontWeight: 700, color: 'var(--text-2)' }}>{stressScore}%</span>
+                                </div>
+                                <div style={{ height: 5, background: 'var(--bg)', borderRadius: 999, border: '1px solid var(--border)', overflow: 'hidden' }}>
+                                  <div style={{ width: `${stressScore}%`, height: '100%', background: stressColor, borderRadius: 999 }} />
+                                </div>
+                              </div>
                             )
-                          })}
-                        </div>
-                      </td>
-                      <td style={tdStyle}>
-                        <ConfidenceBar value={it.confidence} />
-                      </td>
-                      <td style={tdStyle}>
-                        {it.stress_score != null ? (() => {
-                          const stressScore = Math.round(it.stress_score)
-                          const stressColor = stressScore <= 35 ? '#10b981' : stressScore <= 70 ? '#f59e0b' : '#f43f5e'
-                          const stressStatusText = isRu ? it.stress_status_ru : it.stress_status_uz
-                          return (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 95 }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
-                                <span style={{ fontWeight: 600, color: stressColor }}>{stressStatusText}</span>
-                                <span style={{ fontWeight: 700, color: 'var(--text-2)' }}>{stressScore}%</span>
-                              </div>
-                              <div style={{ height: 5, background: 'var(--bg)', borderRadius: 999, border: '1px solid var(--border)', overflow: 'hidden' }}>
-                                <div style={{ width: `${stressScore}%`, height: '100%', background: stressColor, borderRadius: 999 }} />
-                              </div>
-                            </div>
-                          )
-                        })() : (
-                          <span style={{ color: 'var(--text-4)' }}>—</span>
-                        )}
-                      </td>
-                      <td style={tdStyle}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-                          <CalendarRegular fontSize={13} style={{ color: 'var(--text-4)' }} />
-                          {it.state_date}
-                        </div>
-                        {it.assessed_at && (
-                          <div style={{ fontSize: 11, color: 'var(--text-4)', marginTop: 2 }}>{formatDateTime(it.assessed_at)}</div>
-                        )}
-                      </td>
-                      <td style={tdStyle}>
-                        {it.snapshot_url ? (
-                          <button
-                            onClick={() => setLightbox(it)}
-                            title={isRu ? 'Открыть снимок' : 'Snapshot ochish'}
-                            style={{
-                              width: 44, height: 44, borderRadius: 6,
-                              padding: 0, border: '1px solid var(--border-2)',
-                              background: 'var(--bg)', cursor: 'pointer', overflow: 'hidden',
-                            }}
-                          >
-                            <img
-                              src={it.snapshot_url}
-                              alt=""
-                              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                              onError={e => { e.currentTarget.style.display = 'none' }}
-                            />
-                          </button>
-                        ) : (
-                          <span style={{ color: 'var(--text-4)' }}>—</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                          })() : (
+                            <span style={{ color: 'var(--text-4)' }}>—</span>
+                          )}
+                        </td>
+                        <td style={tdStyle}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                            <CalendarRegular fontSize={13} style={{ color: 'var(--text-4)' }} />
+                            {it.state_date}
+                          </div>
+                          {it.assessed_at && (
+                            <div style={{ fontSize: 11, color: 'var(--text-4)', marginTop: 2 }}>{formatDateTime(it.assessed_at)}</div>
+                          )}
+                        </td>
+                        <td style={tdStyle}>
+                          {it.snapshot_url ? (
+                            <button
+                              onClick={() => setLightbox(it)}
+                              title={isRu ? 'Открыть снимок' : 'Snapshot ochish'}
+                              style={{
+                                width: 44, height: 44, borderRadius: 6,
+                                padding: 0, border: '1px solid var(--border-2)',
+                                background: 'var(--bg)', cursor: 'pointer', overflow: 'hidden',
+                              }}
+                            >
+                              <img
+                                src={it.snapshot_url}
+                                alt=""
+                                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                                onError={e => { e.currentTarget.style.display = 'none' }}
+                              />
+                            </button>
+                          ) : (
+                            <span style={{ color: 'var(--text-4)' }}>—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -665,6 +1024,53 @@ function FieldLabel({ children }) {
     <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 5 }}>
       {children}
     </div>
+  )
+}
+
+function EmployeeTypeBadge({ type, isRu }) {
+  const t = String(type || '').toLowerCase().trim()
+  let bg = 'var(--surface-2)'
+  let color = 'var(--text-3)'
+  let border = 'var(--border-2)'
+  let text = isRu ? 'Сотрудник' : 'Xodim'
+
+  if (['hodim', 'oqituvchi', 'staff', 'teacher'].includes(t)) {
+    bg = 'rgba(59, 130, 246, 0.12)' // Blue tint
+    color = '#3b82f6'
+    border = 'rgba(59, 130, 246, 0.3)'
+    text = isRu ? 'Сотрудник' : 'Xodim'
+  } else if (['oquvchi', 'talaba', 'student', 'pupil'].includes(t)) {
+    bg = 'rgba(168, 85, 247, 0.12)' // Purple tint
+    color = '#a855f7'
+    border = 'rgba(168, 85, 247, 0.3)'
+    text = isRu ? 'Ученик / Студент' : "O'quvchi / Talaba"
+  } else if (['admin', 'administrator', 'system_admin', 'tizim_admini'].includes(t)) {
+    bg = 'rgba(236, 72, 153, 0.12)' // Pink tint
+    color = '#ec4899'
+    border = 'rgba(236, 72, 153, 0.3)'
+    text = isRu ? 'Администратор' : 'Tizim admini'
+  } else {
+    return null
+  }
+
+  return (
+    <span style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      padding: '2px 8px',
+      borderRadius: 6,
+      background: bg,
+      color: color,
+      border: `1px solid ${border}`,
+      fontSize: 10,
+      fontWeight: 700,
+      textTransform: 'uppercase',
+      letterSpacing: 0.3,
+      marginLeft: 8,
+      verticalAlign: 'middle',
+    }}>
+      {text}
+    </span>
   )
 }
 

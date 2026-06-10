@@ -14,6 +14,7 @@ import PageHero from '../components/PageHero'
 import Skeleton from '../components/Skeleton'
 import { useConfirm } from '../components/ConfirmDialog'
 import { useToast } from '../components/Toaster'
+import CustomSelect from '../components/CustomSelect'
 
 /**
  * ISUP Server — alohida sahifa.
@@ -55,6 +56,14 @@ export default function IsupServer() {
 
   // Modal
   const [addTarget, setAddTarget] = useState(null)        // device dict bosilgan
+
+  // Traces terminal state
+  const [traces, setTraces] = useState([])
+  const [tracesLoading, setTracesLoading] = useState(true)
+  const [tracesError, setTracesError] = useState('')
+  const [tracesFilter, setTracesFilter] = useState('all')
+  const [autoscroll, setAutoscroll] = useState(true)
+  const terminalContainerRef = useRef(null)
 
   const loadStatus = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setRefreshing(true)
@@ -99,20 +108,94 @@ export default function IsupServer() {
     }
   }, [])
 
+  const loadTraces = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setTracesLoading(true)
+    try {
+      const res = await fetch(`/api/isup-traces?limit=150&filter=${tracesFilter}`, { credentials: 'include' })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      if (aliveRef.current) {
+        setTraces(data?.items || [])
+        setTracesError('')
+      }
+    } catch (e) {
+      if (aliveRef.current) setTracesError(e.message)
+    } finally {
+      if (aliveRef.current) setTracesLoading(false)
+    }
+  }, [tracesFilter])
+
   useEffect(() => {
     aliveRef.current = true
     loadStatus({ silent: true })
     loadDevices({ silent: true })
+    loadTraces({ silent: true })
     const id1 = setInterval(() => loadStatus({ silent: true }), 5000)
     const id2 = setInterval(() => loadDevices({ silent: true }), 7000)
+    const id3 = setInterval(() => loadTraces({ silent: true }), 3000)
     return () => {
       aliveRef.current = false
       clearInterval(id1)
       clearInterval(id2)
+      clearInterval(id3)
     }
-  }, [loadStatus, loadDevices])
+  }, [loadStatus, loadDevices, loadTraces])
+
+  useEffect(() => {
+    if (autoscroll && terminalContainerRef.current) {
+      terminalContainerRef.current.scrollTop = terminalContainerRef.current.scrollHeight
+    }
+  }, [traces, autoscroll])
+
+  const handleClearTraces = async () => {
+    const ok = await confirm({
+      title: isRu ? 'Очистить терминал?' : 'Terminalni tozalash?',
+      message: isRu 
+        ? 'Все записи логов iSUP будут навсегда удалены с сервера.' 
+        : 'Barcha iSUP loglari serverdan butunlay o\'chib ketadi.',
+      confirmText: isRu ? 'Очистить' : 'Tozalash',
+      cancelText: isRu ? 'Отмена' : 'Bekor qilish',
+      danger: true,
+    })
+    if (!ok) return
+    try {
+      const res = await fetch('/api/isup-traces', {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      toast.success(isRu ? 'Логи очищены' : 'Loglar tozalandi')
+      await loadTraces({ silent: true })
+    } catch (e) {
+      toast.error(e.message)
+    }
+  }
 
   const handleAction = async (action) => {
+    if (action === 'stop') {
+      const ok = await confirm({
+        title: isRu ? 'Остановить ISUP сервер?' : "iSUP serverni to'xtatish?",
+        message: isRu
+          ? 'Все подключения и прием событий с камер будут временно приостановлены.'
+          : 'Barcha kameralar bilan ulanish va voqealarni qabul qilish vaqtincha to\'xtatiladi.',
+        confirmText: isRu ? 'Остановить' : "To'xtatish",
+        cancelText: isRu ? 'Отмена' : 'Bekor qilish',
+        danger: true,
+      })
+      if (!ok) return
+    } else if (action === 'restart') {
+      const ok = await confirm({
+        title: isRu ? 'Перезапустить ISUP сервер?' : 'iSUP serverni qayta ishga tushirish?',
+        message: isRu
+          ? 'Это вызовет кратковременный разрыв подключения всех камер.'
+          : 'Bu barcha kameralar ulanishida qisqa muddatli uzilishga olib keladi.',
+        confirmText: isRu ? 'Перезапустить' : 'Restart qilish',
+        cancelText: isRu ? 'Отмена' : 'Bekor qilish',
+        danger: false,
+      })
+      if (!ok) return
+    }
+
     setActionLoading(true)
     try {
       const res = await fetch(`/api/isup/process/${action}`, {
@@ -326,20 +409,18 @@ export default function IsupServer() {
                     color: 'var(--text-1)', fontSize: 13, outline: 'none',
                   }}
                 />
-                <select
-                  value={stateFilter}
-                  onChange={e => setStateFilter(e.target.value)}
-                  style={{
-                    padding: '8px 12px', borderRadius: 8,
-                    border: '1px solid var(--border-2)', background: 'var(--bg)',
-                    color: 'var(--text-1)', fontSize: 13, outline: 'none',
-                  }}
-                >
-                  <option value="all">{isRu ? 'Все' : 'Hammasi'}</option>
-                  <option value="online">{isRu ? 'Онлайн' : 'Online'}</option>
-                  <option value="offline">{isRu ? 'Оффлайн' : 'Offline'}</option>
-                  <option value="unsaved">{isRu ? 'Не сохранено' : 'DB da yo\'q'}</option>
-                </select>
+                <div style={{ width: 160 }}>
+                  <CustomSelect
+                    value={stateFilter}
+                    onChange={val => setStateFilter(val)}
+                    options={[
+                      { value: 'all', label: isRu ? 'Все' : 'Hammasi' },
+                      { value: 'online', label: isRu ? 'Онлайн' : 'Online' },
+                      { value: 'offline', label: isRu ? 'Оффлайн' : 'Offline' },
+                      { value: 'unsaved', label: isRu ? 'Не сохранено' : 'DB da yo\'q' }
+                    ]}
+                  />
+                </div>
               </div>
             </div>
 
@@ -502,6 +583,124 @@ export default function IsupServer() {
               </>
             )}
           </div>
+
+          {/* iSUP Traces Terminal card */}
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 14 }}>
+              <div>
+                <h3 style={{ fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+                  <span style={{ display: 'inline-flex', gap: 4 }}>
+                    <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#ef4444' }} />
+                    <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#eab308' }} />
+                    <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#22c55e' }} />
+                  </span>
+                  &nbsp; {isRu ? 'iSUP Логи в реальном времени' : 'iSUP Real-Time Loglar'}
+                </h3>
+              </div>
+
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <select
+                  value={tracesFilter}
+                  onChange={e => setTracesFilter(e.target.value)}
+                  style={{
+                    padding: '6px 10px', borderRadius: 8,
+                    border: '1px solid var(--border-2)', background: 'var(--bg)',
+                    color: 'var(--text-1)', fontSize: 12, outline: 'none',
+                  }}
+                >
+                  <option value="all">{isRu ? 'Все события' : 'Barcha hodisalar'}</option>
+                  <option value="error">{isRu ? 'Ошибки' : 'Xatoliklar'}</option>
+                  <option value="alarm">{isRu ? 'Давомат (7661)' : 'Davomat (7661)'}</option>
+                  <option value="picture">{isRu ? 'Suratlar (7662)' : 'Suratlar (7662)'}</option>
+                </select>
+
+                <button
+                  onClick={handleClearTraces}
+                  style={smallBtn('danger')}
+                >
+                  {isRu ? 'Очистить лог' : 'Tozalash'}
+                </button>
+
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-3)', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={autoscroll}
+                    onChange={e => setAutoscroll(e.target.checked)}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  Auto-scroll
+                </label>
+              </div>
+            </div>
+
+            {tracesError && (
+              <div style={{ marginBottom: 12, padding: 10, background: 'var(--red-bg)', color: 'var(--red)', borderRadius: 8, border: '1px solid var(--red-bd)', fontSize: 12 }}>
+                {tracesError}
+              </div>
+            )}
+
+            <div
+              ref={terminalContainerRef}
+              style={{
+                background: '#090d16',
+                border: '1px solid #1f2937',
+                borderRadius: 8,
+                padding: '16px',
+                height: '350px',
+                overflowY: 'auto',
+                fontFamily: '"Fira Code", "Courier New", Courier, monospace',
+                fontSize: '12px',
+                lineHeight: '1.6',
+                color: '#e2e8f0',
+              }}
+            >
+              {tracesLoading && traces.length === 0 ? (
+                <div style={{ color: 'var(--text-4)' }}>
+                  {isRu ? 'Подключение к логам...' : 'Loglarga ulanmoqda...'}
+                </div>
+              ) : traces.length === 0 ? (
+                <div style={{ color: '#6e7681', fontStyle: 'italic' }}>
+                  {isRu ? '[СИСТЕМА] Ожидание событий iSUP...' : '[TIZIM] iSUP hodisalari kutilmoqda...'}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {traces.map((t, idx) => {
+                    const event = t.event || 'system';
+                    let eventLabel = '⚙️ SYSTEM';
+                    let eventColor = '#a855f7';
+                    if (event.includes('alarm_7661')) {
+                      eventLabel = '🔔 ALARM';
+                      eventColor = '#eab308';
+                    } else if (event.includes('picture_7662')) {
+                      eventLabel = '🖼️ PICTURE';
+                      eventColor = '#3b82f6';
+                    } else if (event.includes('register') || event.includes('keepalive')) {
+                      eventLabel = '🟢 REGISTER';
+                      eventColor = '#22c55e';
+                    } else if (event.includes('error') || event.includes('fail')) {
+                      eventLabel = '❌ ERROR';
+                      eventColor = '#ef4444';
+                    }
+
+                    const timeStr = t.at ? t.at.split('T')[1]?.substring(0, 8) || t.at : '—';
+                    const detailStr = Object.entries(t.details || {})
+                      .map(([k, v]) => `${k}: ${v}`)
+                      .join(' | ');
+
+                    return (
+                      <div key={idx} style={{ wordBreak: 'break-all', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                        <span style={{ color: '#6e7681', flexShrink: 0 }}>[{timeStr}]</span>
+                        <span style={{ color: eventColor, fontWeight: 'bold', flexShrink: 0, minWidth: '90px' }}>{eventLabel}</span>
+                        <span style={{ color: '#ffffff', fontWeight: '500', flexShrink: 0 }}>{event}</span>
+                        {detailStr && <span style={{ color: '#94a3b8' }}>— {detailStr}</span>}
+                      </div>
+                    );
+                  })}
+                  {/* scroll endpoint */}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -530,6 +729,24 @@ function AddDeviceModal({ target, onClose, onSaved, isRu }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [warnings, setWarnings] = useState([])
+  const [suggestedNames, setSuggestedNames] = useState([])
+  const orgOptions = useMemo(() => [
+    { value: '', label: isRu ? '— Без организации —' : '— Tashkilotsiz —' },
+    ...orgs.map(o => ({ value: String(o.id), label: o.name }))
+  ], [orgs, isRu])
+
+  const pwdSuggestBtnStyle = {
+    background: 'var(--surface-2)',
+    border: '1px solid var(--border)',
+    borderRadius: 6,
+    padding: '4px 8px',
+    fontSize: 11,
+    fontWeight: 600,
+    color: 'var(--text-2)',
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+    outline: 'none',
+  }
 
   const [form, setForm] = useState({
     name: target?.display_name || target?.device_id || '',
@@ -545,7 +762,18 @@ function AddDeviceModal({ target, onClose, onSaved, isRu }) {
     password: '',
     isup_password: 'facex2024',
     max_memory: 1500,
+    direction: 'in',
   })
+
+  // Load name suggestions history
+  useEffect(() => {
+    try {
+      const list = JSON.parse(localStorage.getItem('isup_camera_names') || '[]')
+      setSuggestedNames(Array.isArray(list) ? list : [])
+    } catch {
+      // silent
+    }
+  }, [])
 
   // Metadata + organizations
   useEffect(() => {
@@ -607,6 +835,7 @@ function AddDeviceModal({ target, onClose, onSaved, isRu }) {
         username: form.username.trim() || null,
         isup_password: form.isup_password.trim() || null,
         max_memory: Number(form.max_memory) || 1500,
+        direction: form.direction || 'in',
       }
       if (form.password.trim()) body.password = form.password.trim()
 
@@ -621,6 +850,19 @@ function AddDeviceModal({ target, onClose, onSaved, isRu }) {
         const detail = data?.detail || data?.message || `HTTP ${res.status}`
         throw new Error(typeof detail === 'string' ? detail : JSON.stringify(detail))
       }
+
+      // Save name to localStorage history
+      try {
+        const prevNames = JSON.parse(localStorage.getItem('isup_camera_names') || '[]')
+        const newName = form.name.trim()
+        if (newName && !prevNames.includes(newName)) {
+          const nextNames = [newName, ...prevNames].slice(0, 10)
+          localStorage.setItem('isup_camera_names', JSON.stringify(nextNames))
+        }
+      } catch {
+        // silent
+      }
+
       onSaved?.()
     } catch (e) {
       setError(e.message)
@@ -633,7 +875,6 @@ function AddDeviceModal({ target, onClose, onSaved, isRu }) {
 
   return (
     <div
-      onClick={onClose}
       style={{
         position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -677,51 +918,117 @@ function AddDeviceModal({ target, onClose, onSaved, isRu }) {
             <div className="modal-grid">
               <Field label={isRu ? 'Имя' : 'Nomi'} required>
                 <input value={form.name} onChange={setField('name')} style={inp} />
+                {suggestedNames.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6 }}>
+                    {suggestedNames.map(nm => (
+                      <button
+                        key={nm}
+                        type="button"
+                        onClick={() => setForm(prev => ({ ...prev, name: nm }))}
+                        style={pwdSuggestBtnStyle}
+                      >
+                        {nm}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </Field>
-              <Field label="ISUP Device ID" hint={isRu ? 'Изменять не рекомендуется' : 'O\'zgartirish tavsiya etilmaydi'}>
-                <input value={form.isup_device_id} onChange={setField('isup_device_id')} style={inp} />
+              <Field label="ISUP Device ID">
+                <input value={form.isup_device_id} disabled style={{ ...inp, opacity: 0.6, cursor: 'not-allowed' }} readOnly />
               </Field>
 
               <Field label="MAC">
-                <input value={form.mac_address} onChange={setField('mac_address')} style={inp} placeholder="AA:BB:CC:11:22:33" />
+                <input value={form.mac_address} disabled style={{ ...inp, opacity: 0.6, cursor: 'not-allowed' }} placeholder="AA:BB:CC:11:22:33" readOnly />
               </Field>
               <Field label="Serial">
-                <input value={form.serial_number} onChange={setField('serial_number')} style={inp} />
+                <input value={form.serial_number} disabled style={{ ...inp, opacity: 0.6, cursor: 'not-allowed' }} readOnly />
               </Field>
 
               <Field label={isRu ? 'Модель' : 'Model'}>
-                <input value={form.model} onChange={setField('model')} style={inp} placeholder="DS-K1T343" />
+                <input value={form.model} disabled style={{ ...inp, opacity: 0.6, cursor: 'not-allowed' }} placeholder="DS-K1T343" readOnly />
               </Field>
               <Field label="Firmware">
-                <input value={form.firmware_version} onChange={setField('firmware_version')} style={inp} />
+                <input value={form.firmware_version} disabled style={{ ...inp, opacity: 0.6, cursor: 'not-allowed' }} readOnly />
               </Field>
 
               <Field label={isRu ? 'IP' : 'IP'}>
-                <input value={form.external_ip} onChange={setField('external_ip')} style={inp} placeholder="192.168.1.100" />
+                <input value={form.external_ip} disabled style={{ ...inp, opacity: 0.6, cursor: 'not-allowed' }} placeholder="192.168.1.100" readOnly />
               </Field>
               <Field label={isRu ? 'Расположение' : 'Joylashuvi'}>
                 <input value={form.location} onChange={setField('location')} style={inp} placeholder={isRu ? '1-вход' : '1-kirish'} />
               </Field>
 
               <Field label={isRu ? 'Организация' : 'Tashkilot'}>
-                <select value={form.organization_id} onChange={setField('organization_id')} style={inp}>
-                  <option value="">{isRu ? '— Без организации —' : '— Tashkilotsiz —'}</option>
-                  {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-                </select>
+                <CustomSelect
+                  value={form.organization_id}
+                  onChange={val => setForm(prev => ({ ...prev, organization_id: val }))}
+                  options={orgOptions}
+                  placeholder={isRu ? '— Без организации —' : '— Tashkilotsiz —'}
+                />
               </Field>
               <Field label={isRu ? 'Лимит лиц' : 'Yuzlar limiti'}>
                 <input type="number" value={form.max_memory} onChange={setField('max_memory')} style={inp} />
               </Field>
 
+              <Field label={isRu ? 'Направление' : 'Yo\'nalish'}>
+                <div style={{ display: 'flex', background: 'var(--surface-2)', border: '1px solid var(--border-2)', borderRadius: 7, padding: 3, height: 36, boxSizing: 'border-box' }}>
+                  <button
+                    type="button"
+                    onClick={() => setForm(prev => ({ ...prev, direction: 'in' }))}
+                    style={{
+                      flex: 1,
+                      border: 'none',
+                      borderRadius: 5,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      background: form.direction === 'in' ? 'var(--accent)' : 'transparent',
+                      color: form.direction === 'in' ? '#fff' : 'var(--text-2)',
+                    }}
+                  >
+                    {isRu ? 'Вход' : 'Kirish (Keldi)'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm(prev => ({ ...prev, direction: 'out' }))}
+                    style={{
+                      flex: 1,
+                      border: 'none',
+                      borderRadius: 5,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      background: form.direction === 'out' ? 'var(--accent)' : 'transparent',
+                      color: form.direction === 'out' ? '#fff' : 'var(--text-2)',
+                    }}
+                  >
+                    {isRu ? 'Выход' : 'Chiqish (Ketdi)'}
+                  </button>
+                </div>
+              </Field>
               <Field label="ISAPI username">
                 <input value={form.username} onChange={setField('username')} style={inp} placeholder="admin" />
               </Field>
-              <Field label="ISAPI password">
-                <input type="password" value={form.password} onChange={setField('password')} style={inp} />
-              </Field>
 
-              <Field label="ISUP key" hint={isRu ? 'Камеры регистрируются с этим ключом' : 'Kameralar shu kalit bilan ulanadi'}>
-                <input value={form.isup_password} onChange={setField('isup_password')} style={inp} placeholder="facex2024" />
+              <Field label="ISAPI password">
+                <input type="text" value={form.password} onChange={setField('password')} style={inp} placeholder="Qwerty@123456." />
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6 }}>
+                  {['Qwerty@123456.', 'Qwerty@12', 'Namdu@309', 'HIK@2024'].map(pwd => (
+                    <button
+                      key={pwd}
+                      type="button"
+                      onClick={() => setForm(prev => ({ ...prev, password: pwd }))}
+                      style={pwdSuggestBtnStyle}
+                    >
+                      {pwd}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+              <Field label="ISUP key">
+                <input value={form.isup_password} disabled style={{ ...inp, opacity: 0.6, cursor: 'not-allowed' }} placeholder="facex2024" readOnly />
               </Field>
             </div>
 

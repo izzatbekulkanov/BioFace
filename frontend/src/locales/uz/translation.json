@@ -18,7 +18,12 @@
     "logout": "Chiqish",
     "themeLight": "Yorug' rejim",
     "themeDark": "Qorong'u rejim",
-    "organizations": "Tashkilotlar"
+    "organizations": "Tashkilotlar",
+    "finance": "Moliya",
+    "financeSalary": "Ish haqi",
+    "financeKpi": "KPI (bonus)",
+    "financeCashflow": "Kirim-chiqimlar",
+    "financeAccounts": "HISOB"
   },
   "login": {
     "subtitle": "Boshqaruv paneliga kiring",

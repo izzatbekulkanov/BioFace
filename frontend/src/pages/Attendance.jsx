@@ -13,10 +13,13 @@ import {
   EyeRegular,
   ClockRegular,
   DismissCircleRegular,
+  ArrowDownRegular,
+  ArrowUpRegular,
 } from '@fluentui/react-icons'
 import PageHero from '../components/PageHero'
 import Skeleton from '../components/Skeleton'
 import { useToast } from '../components/Toaster'
+import CustomSelect from '../components/CustomSelect'
 
 /**
  * Davomat sahifasi.
@@ -40,14 +43,22 @@ export default function Attendance() {
 
   const [items, setItems] = useState([])
   const [orgs, setOrgs] = useState([])
+  const [branches, setBranches] = useState([])
   const [cameras, setCameras] = useState([])
   const [schedules, setSchedules] = useState([])
 
   const [totalCount, setTotalCount] = useState(0)
   const [knownCount, setKnownCount] = useState(0)
   const [unknownCount, setUnknownCount] = useState(0)
+  const [todayStats, setTodayStats] = useState({
+    total_employees: 0,
+    present_today: 0,
+    absent_today: 0,
+    late_today: 0,
+  })
 
   const [orgFilter, setOrgFilter] = useState('all')
+  const [branchFilter, setBranchFilter] = useState('all')
   const [camFilter, setCamFilter] = useState('all')
   const [employeeTypeFilter, setEmployeeTypeFilter] = useState('all')
   const [shiftFilter, setShiftFilter] = useState('all')
@@ -81,11 +92,13 @@ export default function Attendance() {
       setIsSuperAdmin(superAdmin)
 
       const orgList = Array.isArray(data?.organizations) ? data.organizations : []
+      const branchList = Array.isArray(data?.branches) ? data.branches : []
       const camList = Array.isArray(data?.cameras) ? data.cameras : []
       const schedList = Array.isArray(data?.schedules) ? data.schedules : []
 
       if (aliveRef.current) {
         setOrgs(orgList)
+        setBranches(branchList)
         setCameras(camList)
         setSchedules(schedList)
         // Agar faqat 1 ta tashkilot bo'lsa, avtomatik tanlash
@@ -105,6 +118,7 @@ export default function Attendance() {
     try {
       const params = new URLSearchParams({ limit: '100' })
       if (orgFilter !== 'all') params.set('organization_id', orgFilter)
+      if (branchFilter !== 'all') params.set('branch_id', branchFilter)
       if (camFilter !== 'all') params.set('camera_id', camFilter)
       if (employeeTypeFilter !== 'all') params.set('employee_type', employeeTypeFilter)
       if (shiftFilter !== 'all') params.set('schedule_id', shiftFilter)
@@ -122,6 +136,9 @@ export default function Attendance() {
         setTotalCount(data?.total || list.length)
         setKnownCount(data?.known || list.filter(x => x.employee_id != null).length)
         setUnknownCount(data?.unknown || list.filter(x => x.employee_id == null).length)
+        if (data?.today_stats) {
+          setTodayStats(data.today_stats)
+        }
         lastIdRef.current = Number(data?.last_id || (list[0]?.id || 0))
         oldestIdRef.current = list.length ? Number(list[list.length - 1].id) : null
         reachedEndRef.current = list.length < 100
@@ -134,7 +151,7 @@ export default function Attendance() {
         setRefreshing(false)
       }
     }
-  }, [orgFilter, camFilter, employeeTypeFilter, shiftFilter, todayOnly, isRu])
+  }, [orgFilter, branchFilter, camFilter, employeeTypeFilter, shiftFilter, todayOnly, isRu])
 
   // Polling — yangi yozuvlar
   const pollNew = useCallback(async () => {
@@ -142,6 +159,7 @@ export default function Attendance() {
     try {
       const params = new URLSearchParams({ limit: '50', after_id: String(lastIdRef.current) })
       if (orgFilter !== 'all') params.set('organization_id', orgFilter)
+      if (branchFilter !== 'all') params.set('branch_id', branchFilter)
       if (camFilter !== 'all') params.set('camera_id', camFilter)
       if (employeeTypeFilter !== 'all') params.set('employee_type', employeeTypeFilter)
       if (shiftFilter !== 'all') params.set('schedule_id', shiftFilter)
@@ -165,13 +183,16 @@ export default function Attendance() {
           setKnownCount(data.known)
           setUnknownCount(data.unknown)
         }
+        if (data?.today_stats) {
+          setTodayStats(data.today_stats)
+        }
         const maxId = Number(data?.last_id || fresh[fresh.length - 1].id)
         if (maxId > lastIdRef.current) lastIdRef.current = maxId
       }
     } catch {
       // silent
     }
-  }, [orgFilter, camFilter, employeeTypeFilter, shiftFilter, todayOnly])
+  }, [orgFilter, branchFilter, camFilter, employeeTypeFilter, shiftFilter, todayOnly])
 
   // Eski yozuvlarni yuklash (pagination)
   const loadMore = useCallback(async () => {
@@ -181,6 +202,7 @@ export default function Attendance() {
       const before = oldestIdRef.current
       const params = new URLSearchParams({ limit: '100', before_id: String(before) })
       if (orgFilter !== 'all') params.set('organization_id', orgFilter)
+      if (branchFilter !== 'all') params.set('branch_id', branchFilter)
       if (camFilter !== 'all') params.set('camera_id', camFilter)
       if (employeeTypeFilter !== 'all') params.set('employee_type', employeeTypeFilter)
       if (shiftFilter !== 'all') params.set('schedule_id', shiftFilter)
@@ -204,7 +226,7 @@ export default function Attendance() {
     } finally {
       if (aliveRef.current) setLoadingMore(false)
     }
-  }, [loadingMore, orgFilter, camFilter, employeeTypeFilter, shiftFilter, todayOnly, toast, isRu])
+  }, [loadingMore, orgFilter, branchFilter, camFilter, employeeTypeFilter, shiftFilter, todayOnly, toast, isRu])
 
   // Mount
   useEffect(() => {
@@ -230,15 +252,54 @@ export default function Attendance() {
   }, [pollNew])
 
   // Filtrlash
-  const camerasByOrg = useMemo(() => {
-    if (orgFilter === 'all') return cameras
-    return cameras.filter(c => String(c.organization_id) === String(orgFilter))
-  }, [cameras, orgFilter])
+  const branchesByOrg = useMemo(() => {
+    if (orgFilter === 'all') return branches
+    return branches.filter(b => String(b.organization_id) === String(orgFilter))
+  }, [branches, orgFilter])
+
+  const camerasByOrgAndBranch = useMemo(() => {
+    let list = cameras
+    if (orgFilter !== 'all') {
+      list = list.filter(c => String(c.organization_id) === String(orgFilter))
+    }
+    if (branchFilter !== 'all') {
+      list = list.filter(c => String(c.branch_id) === String(branchFilter))
+    }
+    return list
+  }, [cameras, orgFilter, branchFilter])
 
   const schedulesByOrg = useMemo(() => {
     if (orgFilter === 'all') return schedules
     return schedules.filter(s => String(s.organization_id) === String(orgFilter))
   }, [schedules, orgFilter])
+
+  const orgOptions = useMemo(() => [
+    { value: 'all', label: isRu ? 'Все организации' : 'Hamma tashkilotlar' },
+    ...orgs.map(o => ({ value: String(o.id), label: o.name }))
+  ], [orgs, isRu])
+
+  const branchOptions = useMemo(() => [
+    { value: 'all', label: isRu ? 'Все филиалы' : 'Hamma filiallar' },
+    ...branchesByOrg.map(b => ({ value: String(b.id), label: b.name }))
+  ], [branchesByOrg, isRu])
+
+  const camOptions = useMemo(() => [
+    { value: 'all', label: isRu ? 'Все камеры' : 'Hamma kameralar' },
+    ...camerasByOrgAndBranch.map(c => ({ value: String(c.id), label: c.name }))
+  ], [camerasByOrgAndBranch, isRu])
+
+  const employeeTypeOptions = useMemo(() => [
+    { value: 'all', label: isRu ? 'Все типы' : 'Barcha turlar' },
+    { value: 'hodim', label: isRu ? 'Сотрудник' : 'Hodim' },
+    { value: 'oqituvchi', label: isRu ? 'Учитель' : "O'qituvchi" },
+    { value: 'oquvchi', label: isRu ? 'Ученик' : "O'quvchi" },
+    { value: 'talaba', label: isRu ? 'Студент' : 'Talaba' },
+  ], [isRu])
+
+  const shiftOptions = useMemo(() => [
+    { value: 'all', label: isRu ? 'Все смены' : 'Barcha smenalar' },
+    ...schedulesByOrg.map(s => ({ value: String(s.id), label: s.name }))
+  ], [schedulesByOrg, isRu])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -288,6 +349,22 @@ export default function Attendance() {
 
       <style>{`
         @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+        @keyframes pulse-opacity {
+          0%, 100% { opacity: 0.5; }
+          50% { opacity: 1; }
+        }
+        .shimmer-bar {
+          background: linear-gradient(90deg, var(--bg) 25%, var(--border-2) 50%, var(--bg) 75%);
+          background-size: 200% 100%;
+          animation: shimmer 1.5s infinite linear;
+        }
+        .pulse-text {
+          animation: pulse-opacity 1.5s infinite ease-in-out;
+        }
         .attendance-container {
           max-width: 1280px;
           margin: 0 auto;
@@ -302,6 +379,9 @@ export default function Attendance() {
         @media (max-width: 768px) {
           .attendance-container {
             padding: 16px 16px 60px !important;
+          }
+          .attendance-card {
+            padding: 16px !important;
           }
           .attendance-toolbar {
             flex-direction: column;
@@ -322,13 +402,14 @@ export default function Attendance() {
 
         {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 18 }}>
-          <StatCard icon={<ClipboardTaskListLtrRegular />} label={isRu ? 'Всего' : 'Jami'} value={totalCount} color="var(--accent)" bg="var(--accent-bg)" border="var(--accent-bd)" />
-          <StatCard icon={<CheckmarkCircleRegular />} label={isRu ? 'Распознано' : 'Aniqlandi'} value={knownCount} color="var(--green)" bg="var(--green-bg)" border="var(--green-bd)" />
-          <StatCard icon={<QuestionCircleRegular />} label={isRu ? 'Неизвестные' : "Noma'lum"} value={unknownCount} color="var(--yellow)" bg="var(--yellow-bg)" border="var(--yellow-bd)" />
+          <StatCard icon={<PersonRegular />} label={isRu ? 'Всего сотрудников' : 'Jami xodimlar'} value={todayStats.total_employees} color="var(--accent)" bg="var(--accent-bg)" border="var(--accent-bd)" />
+          <StatCard icon={<CheckmarkCircleRegular />} label={isRu ? 'Пришли' : 'Kelganlar'} value={todayStats.present_today} color="var(--green)" bg="var(--green-bg)" border="var(--green-bd)" />
+          <StatCard icon={<DismissCircleRegular />} label={isRu ? 'Не пришли' : 'Kelmaganlar'} value={todayStats.absent_today} color="var(--red)" bg="var(--red-bg)" border="var(--red-bd)" />
+          <StatCard icon={<ClockRegular />} label={isRu ? 'Опоздали' : 'Kechikkanlar'} value={todayStats.late_today} color="var(--yellow)" bg="var(--yellow-bg)" border="var(--yellow-bd)" />
         </div>
 
         {/* Toolbar */}
-        <div style={{ ...cardStyle, marginBottom: 20 }}>
+        <div className="attendance-card" style={{ ...cardStyle, marginBottom: 20 }}>
           <div className="attendance-toolbar">
             <div style={{ flex: '1 1 240px', minWidth: 200 }}>
               <FieldLabel>{isRu ? 'Поиск' : 'Qidiruv'}</FieldLabel>
@@ -345,10 +426,12 @@ export default function Attendance() {
             {(isSuperAdmin || orgs.length > 1) && (
               <div style={{ flex: '1 1 200px' }}>
                 <FieldLabel>{isRu ? 'Организация' : 'Tashkilot'}</FieldLabel>
-                <select value={orgFilter} onChange={e => { setOrgFilter(e.target.value); setCamFilter('all') }} style={inpStyle}>
-                  <option value="all">{isRu ? 'Все организации' : 'Hamma tashkilotlar'}</option>
-                  {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-                </select>
+                <CustomSelect
+                  value={orgFilter}
+                  onChange={val => { setOrgFilter(val); setBranchFilter('all'); setCamFilter('all') }}
+                  options={orgOptions}
+                  placeholder={isRu ? 'Все организации' : 'Hamma tashkilotlar'}
+                />
               </div>
             )}
             {/* Yagona tashkilot nomi ko'rinishi */}
@@ -362,31 +445,45 @@ export default function Attendance() {
               </div>
             )}
 
+            {/* Filial filtri */}
+            <div style={{ flex: '1 1 180px' }}>
+              <FieldLabel>{isRu ? 'Филиал' : 'Filial'}</FieldLabel>
+              <CustomSelect
+                value={branchFilter}
+                onChange={val => { setBranchFilter(val); setCamFilter('all') }}
+                options={branchOptions}
+                placeholder={isRu ? 'Все филиалы' : 'Hamma filiallar'}
+              />
+            </div>
+
             <div style={{ flex: '1 1 180px' }}>
               <FieldLabel>{isRu ? 'Камера' : 'Kamera'}</FieldLabel>
-              <select value={camFilter} onChange={e => setCamFilter(e.target.value)} style={inpStyle}>
-                <option value="all">{isRu ? 'Все камеры' : 'Hamma kameralar'}</option>
-                {camerasByOrg.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+              <CustomSelect
+                value={camFilter}
+                onChange={setCamFilter}
+                options={camOptions}
+                placeholder={isRu ? 'Все камеры' : 'Hamma kameralar'}
+              />
             </div>
 
             <div style={{ flex: '1 1 180px' }}>
               <FieldLabel>{isRu ? 'Тип' : 'Turi'}</FieldLabel>
-              <select value={employeeTypeFilter} onChange={e => setEmployeeTypeFilter(e.target.value)} style={inpStyle}>
-                <option value="all">{isRu ? 'Все типы' : 'Barcha turlar'}</option>
-                <option value="hodim">{isRu ? 'Сотрудник' : 'Hodim'}</option>
-                <option value="oqituvchi">{isRu ? 'Учитель' : 'O\'qituvchi'}</option>
-                <option value="oquvchi">{isRu ? 'Ученик' : 'O\'quvchi'}</option>
-                <option value="talaba">{isRu ? 'Студент' : 'Talaba'}</option>
-              </select>
+              <CustomSelect
+                value={employeeTypeFilter}
+                onChange={setEmployeeTypeFilter}
+                options={employeeTypeOptions}
+                placeholder={isRu ? 'Все типы' : 'Barcha turlar'}
+              />
             </div>
 
             <div style={{ flex: '1 1 180px' }}>
               <FieldLabel>{isRu ? 'Смена' : 'Smena'}</FieldLabel>
-              <select value={shiftFilter} onChange={e => setShiftFilter(e.target.value)} style={inpStyle}>
-                <option value="all">{isRu ? 'Все смены' : 'Barcha smenalar'}</option>
-                {schedulesByOrg.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
+              <CustomSelect
+                value={shiftFilter}
+                onChange={setShiftFilter}
+                options={shiftOptions}
+                placeholder={isRu ? 'Все смены' : 'Barcha smenalar'}
+              />
             </div>
 
             <label style={{
@@ -421,7 +518,7 @@ export default function Attendance() {
         </div>
 
         {/* Table */}
-        <div style={cardStyle}>
+        <div className="attendance-card" style={cardStyle}>
           {showSkeleton ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {Array.from({ length: 8 }).map((_, i) => <Skeleton.Row key={i} />)}
@@ -447,7 +544,6 @@ export default function Attendance() {
                         isRu ? 'Камера' : 'Kamera',
                         isRu ? 'Организация' : 'Tashkilot',
                         isRu ? 'Статус' : 'Holat',
-                        isRu ? 'Подлинность' : 'Liveness',
                         isRu ? 'Стресс' : 'Stress',
                         isRu ? 'Снимок' : 'Snapshot',
                       ].map((h, i) => <th key={i} style={thStyle}>{h}</th>)}
@@ -460,8 +556,8 @@ export default function Attendance() {
                           <span style={{ fontWeight: 600, color: 'var(--text-4)' }}>{idx + 1}</span>
                         </td>
                         <td style={tdStyle}>
-                          <div style={{ fontWeight: 600, fontSize: 13 }}>{formatTime(it.timestamp)}</div>
-                          <div style={{ fontSize: 11, color: 'var(--text-4)' }}>{formatDate(it.timestamp)}</div>
+                          <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--accent, #4f46e5)', letterSpacing: '0.5px' }}>{formatTime(it.timestamp)}</div>
+                          <div style={{ fontSize: '11px', color: 'var(--text-4)', marginTop: '2px' }}>{formatDate(it.timestamp)}</div>
                         </td>
                         <td style={tdStyle}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -476,8 +572,21 @@ export default function Attendance() {
                                   {it.employee_name || it.person_name || (isRu ? 'Сотрудник' : 'Xodim')}
                                 </Link>
                               ) : (
-                                <div style={{ fontWeight: 600 }}>
-                                  {it.employee_name || it.person_name || (isRu ? 'Неизвестный' : "Noma'lum")}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <span style={{ fontWeight: 600 }}>
+                                    {it.employee_name || it.person_name || (isRu ? 'Неизвестный' : "Noma'lum")}
+                                  </span>
+                                  {it.person_name && it.person_name !== "Noma'lum" && (
+                                    <Link
+                                      to={`/users/staff/new?snapshot_url=${encodeURIComponent(it.snapshot_url || '')}&name=${encodeURIComponent(it.person_name)}`}
+                                      style={saveBtnStyle}
+                                      title={isRu ? 'Добавить в базу' : "Bazaga qo'shish"}
+                                      onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-h)'}
+                                      onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}
+                                    >
+                                      {isRu ? 'Сохранить' : 'Saqlash'}
+                                    </Link>
+                                  )}
                                 </div>
                               )}
                               {it.person_name && it.person_name !== it.employee_name && (
@@ -512,32 +621,9 @@ export default function Attendance() {
                         <td style={tdStyle}>
                           <StatusPill status={it.status} hasEmployee={it.employee_id != null} isRu={isRu} />
                         </td>
+
                         <td style={tdStyle}>
-                          {it.liveness_score != null ? (() => {
-                            const scorePct = Math.round(it.liveness_score * 100)
-                            const isReal = it.liveness_status === 'real' || it.liveness_score >= 0.60
-                            return (
-                              <span style={{
-                                display: 'inline-flex', alignItems: 'center', gap: 4,
-                                padding: '3px 9px', borderRadius: 999,
-                                background: isReal ? 'var(--green-bg)' : 'var(--red-bg)',
-                                color: isReal ? 'var(--green)' : 'var(--red)',
-                                fontSize: 11, fontWeight: 600,
-                                border: `1px solid ${isReal ? 'var(--green-bd)' : 'var(--red-bd)'}`,
-                                whiteSpace: 'nowrap',
-                              }}>
-                                {isReal ? '🟢 ' : '🔴 '}
-                                {isReal 
-                                  ? (isRu ? `Настоящий (${scorePct}%)` : `Haqiqiy (${scorePct}%)`)
-                                  : (isRu ? `Подделка (${scorePct}%)` : `Soxta (${scorePct}%)`)}
-                              </span>
-                            )
-                          })() : (
-                            <span style={{ color: 'var(--text-4)' }}>—</span>
-                          )}
-                        </td>
-                        <td style={tdStyle}>
-                          {it.stress_score != null ? (() => {
+                          {it.stress_score != null && Math.round(it.stress_score) > 0 ? (() => {
                             const stressScore = Math.round(it.stress_score)
                             const stressColor = stressScore <= 35 ? '#10b981' : stressScore <= 70 ? '#f59e0b' : '#f43f5e'
                             const stressStatusText = isRu ? it.stress_status_ru : it.stress_status_uz
@@ -553,7 +639,16 @@ export default function Attendance() {
                               </div>
                             )
                           })() : (
-                            <span style={{ color: 'var(--text-4)' }}>—</span>
+                            <div className="pulse-text" style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 95 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
+                                <span style={{ fontWeight: 600, color: 'var(--text-4)' }}>
+                                  {isRu ? 'Определяется...' : 'Aniqlanmoqda...'}
+                                </span>
+                              </div>
+                              <div style={{ height: 5, background: 'var(--bg)', borderRadius: 999, border: '1px solid var(--border)', overflow: 'hidden' }}>
+                                <div className="shimmer-bar" style={{ width: '100%', height: '100%', borderRadius: 999 }} />
+                              </div>
+                            </div>
                           )}
                         </td>
                         <td style={tdStyle}>
@@ -725,20 +820,20 @@ function DirectionPill({ direction, isRu }) {
   let color = 'var(--text-3)'
   let border = 'var(--border-2)'
   let text = isRu ? 'Неизвестно' : "Noma'lum"
-  let icon = '🔄'
+  let icon = <ArrowSyncRegular fontSize={12} />
 
   if (dir === 'in') {
     bg = 'var(--green-bg)'
     color = 'var(--green)'
     border = 'var(--green-bd)'
     text = isRu ? 'Вход (Keldi)' : 'Kirish (Keldi)'
-    icon = '📥'
+    icon = <ArrowDownRegular fontSize={12} />
   } else if (dir === 'out') {
     bg = 'var(--red-bg)'
     color = 'var(--red)'
     border = 'var(--red-bd)'
     text = isRu ? 'Выход (Ketdi)' : 'Chiqish (Ketdi)'
-    icon = '📤'
+    icon = <ArrowUpRegular fontSize={12} />
   }
 
   return (
@@ -751,7 +846,7 @@ function DirectionPill({ direction, isRu }) {
       whiteSpace: 'nowrap',
       transition: 'all 0.2s ease',
     }}>
-      <span style={{ fontSize: 12 }}>{icon}</span>
+      {icon}
       <span>{text}</span>
     </span>
   )
@@ -786,3 +881,19 @@ const thStyle = {
 const tdStyle = { padding: '10px 12px', borderBottom: '1px solid var(--border)', verticalAlign: 'middle' }
 const emptyStyle = { padding: 32, textAlign: 'center', color: 'var(--text-4)', fontSize: 13, background: 'var(--bg)', borderRadius: 8, border: '1px dashed var(--border-2)' }
 const avatarFallback = { width: 30, height: 30, borderRadius: '50%', background: 'var(--surface-2)', color: 'var(--text-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }
+
+const saveBtnStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  padding: '4px 8px',
+  borderRadius: 4,
+  background: 'var(--accent)',
+  border: 'none',
+  color: '#fff',
+  fontSize: 11,
+  fontWeight: 600,
+  textDecoration: 'none',
+  cursor: 'pointer',
+  transition: 'background-color 0.15s ease',
+  marginLeft: 12,
+}

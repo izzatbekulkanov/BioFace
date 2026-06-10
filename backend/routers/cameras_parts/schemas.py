@@ -20,6 +20,7 @@ class CameraCreate(BaseModel):
     webhook_picture_sending: Optional[bool] = None
     max_memory: Optional[int] = 1500
     organization_id: Optional[int] = None
+    branch_id: Optional[int] = None
     username: Optional[str] = None
     password: Optional[str] = None
     isup_password: Optional[str] = ISUP_KEY
@@ -41,6 +42,7 @@ class CameraUpdate(BaseModel):
     webhook_picture_sending: Optional[bool] = None
     max_memory: Optional[int] = None
     organization_id: Optional[int] = None
+    branch_id: Optional[int] = None
     username: Optional[str] = None
     password: Optional[str] = None
     isup_password: Optional[str] = None

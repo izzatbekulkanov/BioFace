@@ -19,6 +19,7 @@ from models import (
     Organization,
     Schedule,
     TelegramContact,
+    Branch,
 )
 from routers.cameras_parts.psychology_utils import (
     PROFILELESS_STATES,
@@ -116,11 +117,11 @@ def _serialize_shift_row(employee: Employee) -> dict:
 
 @router.get("/api/organizations/{organization_id}/schedules")
 def list_schedules_for_organization(
-    organization_id: int,
+    organization_id: str,
     request: Request,
     db: Session = Depends(get_db),
 ):
-    org = get_accessible_organization_or_raise(request, db, int(organization_id))
+    org = get_accessible_organization_or_raise(request, db, organization_id)
     schedules = (
         db.query(
             Schedule,
@@ -146,12 +147,12 @@ def list_schedules_for_organization(
 
 @router.post("/api/organizations/{organization_id}/schedules")
 def create_schedule_for_organization(
-    organization_id: int,
+    organization_id: str,
     request: Request,
     payload: SchedulePayload,
     db: Session = Depends(get_db),
 ):
-    org = get_accessible_organization_or_raise(request, db, int(organization_id))
+    org = get_accessible_organization_or_raise(request, db, organization_id)
     name = str(payload.name or "").strip()
     if not name:
         raise HTTPException(status_code=422, detail="Smena nomi bo'sh bo'lmasligi kerak")
@@ -299,20 +300,27 @@ def bulk_assign_schedule(
 @router.get("/api/holidays")
 def list_holidays(
     request: Request,
-    organization_id: Optional[int] = Query(None),
+    organization_id: Optional[str] = Query(None),
     year: Optional[int] = Query(None, ge=2000, le=2100),
     month: Optional[int] = Query(None, ge=1, le=12),
     db: Session = Depends(get_db),
 ):
     allowed_org_ids = resolve_allowed_org_ids(request, db)
     is_super_admin = _is_super_admin(request)
+
+    resolved_org_int_id: Optional[int] = None
     if organization_id is not None:
-        if organization_id not in allowed_org_ids and not is_super_admin:
-            raise HTTPException(status_code=403, detail="Bu tashkilotga ruxsat yo'q")
+        org_obj = db.query(Organization).filter(Organization.uuid == str(organization_id)).first()
+        if org_obj is None and str(organization_id).isdigit():
+            org_obj = db.query(Organization).filter(Organization.id == int(organization_id)).first()
+        if org_obj is not None:
+            resolved_org_int_id = int(org_obj.id)
+            if resolved_org_int_id not in allowed_org_ids and not is_super_admin:
+                raise HTTPException(status_code=403, detail="Bu tashkilotga ruxsat yo'q")
 
     query = db.query(Holiday)
-    if organization_id is not None:
-        query = query.filter(or_(Holiday.organization_id.is_(None), Holiday.organization_id == int(organization_id)))
+    if resolved_org_int_id is not None:
+        query = query.filter(or_(Holiday.organization_id.is_(None), Holiday.organization_id == resolved_org_int_id))
     elif not is_super_admin:
         if allowed_org_ids:
             query = query.filter(or_(Holiday.organization_id.is_(None), Holiday.organization_id.in_(allowed_org_ids)))
@@ -320,11 +328,9 @@ def list_holidays(
             query = query.filter(Holiday.organization_id.is_(None))
 
     if year is not None:
-        year_prefix = f"{int(year):04d}"
-        query = query.filter(func.strftime("%Y", Holiday.date) == year_prefix)
+        query = query.filter(func.extract("year", Holiday.date) == int(year))
     if month is not None:
-        month_prefix = f"{int(month):02d}"
-        query = query.filter(func.strftime("%m", Holiday.date) == month_prefix)
+        query = query.filter(func.extract("month", Holiday.date) == int(month))
 
     rows = query.order_by(Holiday.date.asc(), Holiday.organization_id.asc(), Holiday.id.asc()).all()
     return {"ok": True, "items": [serialize_holiday_row(row) for row in rows]}
@@ -630,7 +636,7 @@ def attendance_monitor_run():
 @router.get("/api/psychological-portrait")
 def psychological_portrait_summary(
     request: Request,
-    organization_id: Optional[int] = Query(None),
+    organization_id: Optional[str] = Query(None),
     year: Optional[str] = Query(None),
     month: Optional[str] = Query(None),
     day: Optional[str] = Query(None),
@@ -650,12 +656,21 @@ def psychological_portrait_summary(
     allowed_org_ids = resolve_allowed_org_ids(request, db) or []
     invalid_state_keys = tuple(sorted(PROFILELESS_STATES))
 
+    # Resolve organization_id (str/uuid → int)
+    resolved_org_int_id: Optional[int] = None
+    if organization_id is not None:
+        org_obj = db.query(Organization).filter(Organization.uuid == str(organization_id)).first()
+        if org_obj is None and str(organization_id).isdigit():
+            org_obj = db.query(Organization).filter(Organization.id == int(organization_id)).first()
+        if org_obj is not None:
+            resolved_org_int_id = int(org_obj.id)
+
     # Xodim doirasini aniqlash
     employees_q = db.query(Employee.id, Employee.organization_id).filter(Employee.organization_id.isnot(None))
     if allowed_org_ids:
         employees_q = employees_q.filter(Employee.organization_id.in_(allowed_org_ids))
-    if organization_id is not None:
-        employees_q = employees_q.filter(Employee.organization_id == int(organization_id))
+    if resolved_org_int_id is not None:
+        employees_q = employees_q.filter(Employee.organization_id == resolved_org_int_id)
     scoped_employees = employees_q.all()
     scoped_employee_ids = [int(row.id) for row in scoped_employees]
 
@@ -773,6 +788,14 @@ def psychological_portrait_summary(
         ):
             org_name_map[int(oid)] = str(oname or "")
 
+    branch_ids_needed = list({int(e.branch_id) for e in emp_map.values() if e.branch_id is not None})
+    branch_name_map: dict[int, str] = {}
+    if branch_ids_needed:
+        for bid, bname in (
+            db.query(Branch.id, Branch.name).filter(Branch.id.in_(branch_ids_needed)).all()
+        ):
+            branch_name_map[int(bid)] = str(bname or "")
+
     items = []
     for r in rows:
         emp = emp_map.get(int(r.employee_id)) if r.employee_id is not None else None
@@ -788,10 +811,23 @@ def psychological_portrait_summary(
                     "personal_id": emp.personal_id,
                     "organization_id": emp.organization_id,
                     "organization_name": org_name_map.get(int(emp.organization_id)) if emp.organization_id is not None else None,
+                    "branch_id": emp.branch_id,
+                    "branch_name": branch_name_map.get(int(emp.branch_id)) if emp.branch_id is not None else None,
+                    "employee_type": emp.employee_type,
                     "avatar": emp.image_url or None,
                 }
                 if emp is not None
-                else {"id": None, "full_name": "—", "personal_id": None, "organization_id": None, "organization_name": None, "avatar": None}
+                else {
+                    "id": None,
+                    "full_name": "—",
+                    "personal_id": None,
+                    "organization_id": None,
+                    "organization_name": None,
+                    "branch_id": None,
+                    "branch_name": None,
+                    "employee_type": None,
+                    "avatar": None,
+                }
             ),
         })
 

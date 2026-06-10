@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   BuildingRegular,
@@ -14,14 +14,20 @@ import {
   BuildingMultipleRegular,
   ChevronLeftRegular,
   QuestionCircleRegular,
+  EyeRegular,
+  PhoneRegular,
+  LocationRegular,
+  ClockRegular,
 } from '@fluentui/react-icons'
 import PageHero from '../components/PageHero'
 import Skeleton from '../components/Skeleton'
 import { useConfirm } from '../components/ConfirmDialog'
 import { useToast } from '../components/Toaster'
+import CustomSelect from '../components/CustomSelect'
 
 export default function OrganizationDetail() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const { t, i18n } = useTranslation()
   const isRu = i18n.language === 'ru'
   const confirm = useConfirm()
@@ -51,6 +57,9 @@ export default function OrganizationDetail() {
   const [showPosModal, setShowPosModal] = useState(false)
   const [editingPos, setEditingPos] = useState(null)
   const [posName, setPosName] = useState('')
+  const [posSalaryOptions, setPosSalaryOptions] = useState('')
+  const [showViewPosModal, setShowViewPosModal] = useState(false)
+  const [viewingPos, setViewingPos] = useState(null)
 
   const aliveRef = useRef(true)
 
@@ -72,6 +81,10 @@ export default function OrganizationDetail() {
       }
 
       const orgData = await orgRes.json()
+      if (orgData.uuid && id !== orgData.uuid) {
+        navigate(`/organizations/${orgData.uuid}`, { replace: true })
+        return
+      }
       const catalogData = catalogRes.ok ? await catalogRes.json() : { departments: [], positions: [] }
       const employeesData = employeesRes.ok ? await employeesRes.json() : []
 
@@ -95,7 +108,7 @@ export default function OrganizationDetail() {
         setRefreshing(false)
       }
     }
-  }, [id, isRu, i18n.language, selectedDeptId])
+  }, [id, isRu, i18n.language, selectedDeptId, navigate])
 
   useEffect(() => {
     aliveRef.current = true
@@ -266,14 +279,42 @@ export default function OrganizationDetail() {
     }
     setEditingPos(null)
     setPosName('')
+    setPosSalaryOptions('')
     setShowPosModal(true)
+  }
+
+  const handleOpenViewPos = (pos, e) => {
+    e.stopPropagation()
+    setViewingPos(pos)
+    setShowViewPosModal(true)
   }
 
   const handleOpenEditPos = (pos, e) => {
     e.stopPropagation()
     setEditingPos(pos)
     setPosName(pos.name || '')
+    const formattedSalaryOptions = pos.salary_options
+      ? pos.salary_options.split(',').map(s => {
+          const num = parseInt(s.trim().replace(/\s/g, ''), 10)
+          return isNaN(num) ? s.trim() : num.toLocaleString('uz-UZ').replace(/,/g, ' ')
+        }).join(', ')
+      : ''
+    setPosSalaryOptions(formattedSalaryOptions)
     setShowPosModal(true)
+  }
+
+  const handleSalaryOptionsChange = (e) => {
+    const raw = e.target.value
+    if (raw.endsWith(',')) {
+      setPosSalaryOptions(raw)
+      return
+    }
+    const formatted = raw.split(',').map(segment => {
+      const clean = segment.replace(/\D/g, '')
+      if (!clean) return ''
+      return parseInt(clean, 10).toLocaleString('uz-UZ').replace(/,/g, ' ')
+    }).join(', ')
+    setPosSalaryOptions(formatted)
   }
 
   const handleSubmitPos = async (e) => {
@@ -290,9 +331,15 @@ export default function OrganizationDetail() {
         : `/api/organizations/${id}/positions`
       
       const method = editingPos ? 'PUT' : 'POST'
+      const cleanedSalaryOptions = posSalaryOptions.split(',')
+        .map(s => s.replace(/\s/g, '').trim())
+        .filter(Boolean)
+        .join(',')
+
       const body = {
         name: trimmedName,
         department_id: selectedDeptId,
+        salary_options: cleanedSalaryOptions,
       }
       if (!editingPos) {
         body.organization_id = id
@@ -366,31 +413,7 @@ export default function OrganizationDetail() {
     return employees.filter(e => e.position_id === posId).length
   }
 
-  if (loading) {
-    return (
-      <div style={{ minHeight: 'calc(100vh - 52px)', background: 'var(--bg)', color: 'var(--text-1)', padding: '24px 16px' }}>
-        <Skeleton width="100%" height={120} style={{ marginBottom: 24 }} />
-        <div className="org-catalog-grid" style={{ marginTop: 24 }}>
-          <Skeleton.Card />
-          <Skeleton.Card />
-        </div>
-        <style>{`
-          .org-catalog-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 24px;
-            margin-bottom: 24px;
-          }
-          @media (max-width: 768px) {
-            .org-catalog-grid {
-              grid-template-columns: 1fr;
-              gap: 16px;
-            }
-          }
-        `}</style>
-      </div>
-    )
-  }
+  // No full-page early loading skeleton return block. Skeletons are rendered contextually in widgets.
 
   if (error) {
     return (
@@ -430,8 +453,28 @@ export default function OrganizationDetail() {
       `}</style>
 
       <PageHero
-        badge={org?.organization_type_label || org?.organization_type}
-        title={org?.name}
+        badge={
+          loading ? (
+            <Skeleton
+              width={100}
+              height={12}
+              style={{ background: 'linear-gradient(90deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.06) 100%)' }}
+            />
+          ) : (
+            org?.organization_type_label || org?.organization_type
+          )
+        }
+        title={
+          loading ? (
+            <Skeleton
+              width={250}
+              height={22}
+              style={{ background: 'linear-gradient(90deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.06) 100%)' }}
+            />
+          ) : (
+            org?.name
+          )
+        }
         sub={t('organizationDetail.subtitle')}
         right={
           <div style={{ display: 'flex', gap: 8 }}>
@@ -440,10 +483,10 @@ export default function OrganizationDetail() {
             </Link>
             <button
               onClick={() => load({ silent: true })}
-              disabled={refreshing}
-              style={refreshBtnStyle(refreshing)}
+              disabled={refreshing || loading}
+              style={refreshBtnStyle(refreshing || loading)}
             >
-              <ArrowSyncRegular fontSize={16} style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
+              <ArrowSyncRegular fontSize={16} style={{ animation: (refreshing || loading) ? 'spin 1s linear infinite' : 'none' }} />
               {isRu ? 'Обновить' : 'Yangilash'}
             </button>
           </div>
@@ -451,30 +494,259 @@ export default function OrganizationDetail() {
       />
 
       <div className="org-container">
-        {/* Info row */}
-        <div style={{ ...cardStyle, marginBottom: 24, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20 }}>
-          <div>
-            <div style={infoTitleStyle}>{isRu ? 'Режим работы' : 'Ish tartibi'}</div>
-            <div style={infoValueStyle}>{org?.default_start_time || '09:00'} - {org?.default_end_time || '18:00'}</div>
+        {/* ══════════ Tashkilot ma'lumotlari ══════════ */}
+        <div style={{ ...cardStyle, marginBottom: 24, padding: '24px 28px' }}>
+          <div style={{ ...toolbarStyle, marginBottom: 20 }}>
+            <h3 style={cardTitleStyle}>
+              <BuildingRegular style={{ color: 'var(--accent)', fontSize: 20 }} />
+              {isRu ? 'Информация об организации' : "Tashkilot ma'lumotlari"}
+            </h3>
           </div>
-          <div>
-            <div style={infoTitleStyle}>{isRu ? 'Общее число членов' : 'Jami a\'zolar soni'}</div>
-            <div style={infoValueStyle}>{employees.length}</div>
-          </div>
-          <div>
-            <div style={infoTitleStyle}>{isRu ? 'Всего подразделений' : 'Jami bo\'limlar'}</div>
-            <div style={infoValueStyle}>{departments.length}</div>
-          </div>
-          <div>
-            <div style={infoTitleStyle}>{isRu ? 'Статус подписки' : 'Obuna holati'}</div>
-            <div style={{ marginTop: 4 }}>
-               <StatusPill status={org?.subscription_status} isRu={isRu} />
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+            gap: 24,
+          }}>
+            {/* Column 1: Main Identification */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <span style={infoTitleStyle}>{isRu ? 'Название организации' : 'Tashkilot nomi'}</span>
+                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)', marginTop: 6 }}>
+                  {loading ? <Skeleton width={180} height={20} /> : (org?.name || '—')}
+                </div>
+              </div>
+              <div>
+                <span style={infoTitleStyle}>{isRu ? 'Тип организации' : 'Tashkilot turi'}</span>
+                <div style={{ marginTop: 6 }}>
+                  {loading ? (
+                    <Skeleton width={100} height={20} />
+                  ) : (
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      padding: '4px 10px',
+                      borderRadius: 6,
+                      background: 'var(--accent-bg)',
+                      color: 'var(--accent-tx)',
+                      fontSize: 12,
+                      fontWeight: 600,
+                    }}>
+                      {org?.organization_type_label || org?.organization_type || '—'}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Column 2: Contact & Address */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <span style={infoTitleStyle}>{isRu ? 'Телефон' : 'Telefon'}</span>
+                <div style={{ fontSize: 14, color: 'var(--text-1)', marginTop: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <PhoneRegular fontSize={16} style={{ color: 'var(--accent)' }} />
+                  {loading ? (
+                    <Skeleton width={120} height={16} />
+                  ) : org?.phone ? (
+                    <a href={`tel:${org.phone}`} style={{ color: 'var(--text-1)', textDecoration: 'none', fontWeight: 600 }}>
+                      {org.phone}
+                    </a>
+                  ) : '—'}
+                </div>
+              </div>
+              <div>
+                <span style={infoTitleStyle}>{isRu ? 'Адрес' : 'Manzil'}</span>
+                <div style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {loading ? (
+                    <Skeleton width="90%" height={32} />
+                  ) : (
+                    <>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                        <LocationRegular fontSize={16} style={{ color: 'var(--accent)', marginTop: 2, flexShrink: 0 }} />
+                        <span style={{ fontWeight: 500 }}>{org?.address || '—'}</span>
+                      </div>
+                      {(org?.region || org?.district) && (
+                        <span style={{ fontSize: 11, color: 'var(--text-4)', marginLeft: 22 }}>
+                          {[org.region, org.district, org.village].filter(Boolean).join(', ')}
+                        </span>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Column 3: Work Mode & Subscription */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <span style={infoTitleStyle}>{isRu ? 'Режим работы' : 'Ish tartibi'}</span>
+                <div style={{ fontSize: 14, color: 'var(--text-1)', marginTop: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <ClockRegular fontSize={16} style={{ color: 'var(--accent)' }} />
+                  {loading ? (
+                    <Skeleton width={100} height={16} />
+                  ) : (
+                    <span style={{ fontWeight: 600 }}>
+                      {org?.default_start_time || '09:00'} - {org?.default_end_time || '18:00'}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div>
+                <span style={infoTitleStyle}>{isRu ? 'Статус подписки' : 'Obuna holati'}</span>
+                <div style={{ marginTop: 6 }}>
+                  {loading ? (
+                    <Skeleton width={80} height={20} />
+                  ) : (
+                    <StatusPill status={org?.subscription_status} isRu={isRu} />
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Column 4: Quick Metrics */}
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'space-between' }}>
+              <div style={{
+                flex: 1,
+                padding: '12px 16px',
+                borderRadius: 10,
+                background: 'var(--surface-2)',
+                border: '1px solid var(--border-2)',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                textAlign: 'center',
+              }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-4)', textTransform: 'uppercase' }}>
+                  {isRu ? 'Члены' : 'A\'zolar'}
+                </span>
+                <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--accent)', marginTop: 4 }}>
+                  {loading ? <Skeleton width={30} height={24} /> : employees.length}
+                </div>
+              </div>
+
+              <div style={{
+                flex: 1,
+                padding: '12px 16px',
+                borderRadius: 10,
+                background: 'var(--surface-2)',
+                border: '1px solid var(--border-2)',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                textAlign: 'center',
+              }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-4)', textTransform: 'uppercase' }}>
+                  {isRu ? 'Отделы' : 'Bo\'limlar'}
+                </span>
+                <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--accent)', marginTop: 4 }}>
+                  {loading ? <Skeleton width={30} height={24} /> : departments.length}
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Catalog grid */}
-        <div className="org-catalog-grid">
+        {/* ══════════ Filiallar (Joylashuvlar) ══════════ */}
+        <div style={{ ...cardStyle, marginBottom: 24 }}>
+          <div style={{ ...toolbarStyle, marginBottom: 18 }}>
+            <h3 style={cardTitleStyle}>
+              <BuildingMultipleRegular style={{ color: 'var(--accent)' }} />
+              {isRu ? 'Филиалы (Локации)' : 'Filiallar (Joylashuvlar)'}
+              {!loading && org?.branches && org.branches.length > 0 && (
+                <span style={{
+                  marginLeft: 8, padding: '2px 10px', borderRadius: 20,
+                  background: 'var(--accent-bg)', color: 'var(--accent-tx)',
+                  fontSize: 12, fontWeight: 700,
+                }}>
+                  {org.branches.length}
+                </span>
+              )}
+            </h3>
+          </div>
+
+          {loading ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
+              <Skeleton width="100%" height={72} />
+              <Skeleton width="100%" height={72} />
+              <Skeleton width="100%" height={72} />
+            </div>
+          ) : !org?.branches || org.branches.length === 0 ? (
+            <div style={{ ...emptyStyle, padding: '32px 10px' }}>
+              {isRu ? 'Филиалы не добавлены' : "Filiallar qo'shilmagan"}
+            </div>
+          ) : (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gap: 12,
+            }}>
+              {org.branches.map(branch => (
+                <Link
+                  key={branch.id}
+                  to={`/organizations/${org.uuid || org.id}/branches/${branch.uuid || branch.id}`}
+                  style={{
+                    padding: '14px 18px',
+                    borderRadius: 12,
+                    background: 'var(--surface-2)',
+                    border: '1.5px solid var(--border-2)',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 14,
+                    transition: 'all 0.15s ease',
+                    textDecoration: 'none',
+                    cursor: 'pointer',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.borderColor = 'var(--accent)'
+                    e.currentTarget.style.background = 'var(--surface-3)'
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.borderColor = 'var(--border-2)'
+                    e.currentTarget.style.background = 'var(--surface-2)'
+                  }}
+                >
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                    background: 'rgba(0,120,212,0.1)', border: '1.5px solid rgba(0,120,212,0.2)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: 'var(--accent)', marginTop: 1,
+                  }}>
+                    <LocationRegular fontSize={18} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {branch.name}
+                      </span>
+                      {branch.radius && (
+                        <span style={{ fontSize: 11, background: 'var(--accent-bg)', color: 'var(--accent-tx)', padding: '2px 8px', borderRadius: 12, fontWeight: 600, flexShrink: 0 }}>
+                          R: {branch.radius}m
+                        </span>
+                      )}
+                    </div>
+                    {branch.address && (
+                      <div style={{ fontSize: 12, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <LocationRegular fontSize={12} style={{ color: 'var(--text-4)', flexShrink: 0 }} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{branch.address}</span>
+                      </div>
+                    )}
+                    {branch.latitude && branch.longitude && (
+                      <div style={{ fontSize: 11, color: 'var(--text-4)', fontFamily: 'monospace', marginTop: 2 }}>
+                        {branch.latitude.toFixed(4)}, {branch.longitude.toFixed(4)}
+                      </div>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ══════════ Catalog grid (Bo'limlar + Lavozimlar) ══════════ */}
+        <div className="org-catalog-grid" style={{ marginBottom: 24 }}>
+
           {/* Departments column */}
           <div style={cardStyle}>
             <div style={toolbarStyle}>
@@ -487,7 +759,13 @@ export default function OrganizationDetail() {
               </button>
             </div>
 
-            {departments.length === 0 ? (
+            {loading ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <Skeleton width="100%" height={38} />
+                <Skeleton width="100%" height={38} />
+                <Skeleton width="100%" height={38} />
+              </div>
+            ) : departments.length === 0 ? (
               <div style={emptyStyle}>{t('organizationDetail.noDepartments')}</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 400, overflowY: 'auto', paddingRight: 4 }}>
@@ -534,7 +812,13 @@ export default function OrganizationDetail() {
               )}
             </div>
 
-            {!selectedDeptId ? (
+            {loading ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <Skeleton width="100%" height={38} />
+                <Skeleton width="100%" height={38} />
+                <Skeleton width="100%" height={38} />
+              </div>
+            ) : !selectedDeptId ? (
               <div style={emptyStyle}>
                 <QuestionCircleRegular fontSize={24} style={{ marginBottom: 8, opacity: 0.6 }} />
                 <div>{isRu ? 'Выберите структурный элемент для просмотра должностей' : 'Lavozimlarni ko\'rish uchun bo\'lim/sinfni tanlang'}</div>
@@ -547,11 +831,25 @@ export default function OrganizationDetail() {
                   const count = getPosEmployeesCount(pos.id)
                   return (
                     <div key={pos.id} style={posItemStyle}>
-                      <span style={{ fontWeight: 500, fontSize: 13 }}>{pos.name}</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <span style={{ fontWeight: 500, fontSize: 13 }}>{pos.name}</span>
+                        {pos.salary_options && (
+                          <span style={{ fontSize: 11, color: 'var(--text-4)' }}>
+                            {isRu ? 'Оклады: ' : 'Ish haqlari: '}
+                            {pos.salary_options.split(',').map(s => {
+                              const num = parseInt(s.trim(), 10);
+                              return isNaN(num) ? s : num.toLocaleString('uz-UZ') + ' UZS';
+                            }).join(' / ')}
+                          </span>
+                        )}
+                      </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={badgeCountStyle(false)} title={t('organizationDetail.associatedEmployees')}>
                           <PersonRegular fontSize={12} /> {count}
                         </span>
+                        <button onClick={(e) => handleOpenViewPos(pos, e)} style={actionBtnStyle(false)} title={isRu ? 'Просмотреть' : 'Ko\'rish'}>
+                          <EyeRegular fontSize={12} />
+                        </button>
                         <button onClick={(e) => handleOpenEditPos(pos, e)} style={actionBtnStyle(false)} title={isRu ? 'Редактировать' : 'Tahrirlash'}>
                           <EditRegular fontSize={12} />
                         </button>
@@ -590,15 +888,29 @@ export default function OrganizationDetail() {
                 placeholder={isRu ? 'Поиск абитуриента...' : 'A\'zolarni qidirish...'}
                 style={{ minWidth: 200, ...inpStyle }}
               />
-              <select value={memberTypeFilter} onChange={e => setMemberTypeFilter(e.target.value)} style={inpStyle}>
-                <option value="all">{isRu ? 'Все роли' : 'Barcha rollar'}</option>
-                <option value="staff">{isRu ? 'Сотрудники / Учителя' : 'Xodimlar / O\'qituvchilar'}</option>
-                <option value="student">{isRu ? 'Ученики / Студенты' : 'O\'quvchilar / Talabalar'}</option>
-              </select>
+              <div style={{ width: 180 }}>
+                <CustomSelect
+                  value={memberTypeFilter}
+                  onChange={val => setMemberTypeFilter(val)}
+                  options={[
+                    { value: 'all', label: isRu ? 'Все роли' : 'Barcha rollar' },
+                    { value: 'staff', label: isRu ? 'Сотрудники / Учителя' : 'Xodimlar / O\'qituvchilar' },
+                    { value: 'student', label: isRu ? 'Ученики / Студенты' : 'O\'quvchilar / Talabalar' }
+                  ]}
+                />
+              </div>
             </div>
           </div>
 
-          {filteredEmployees.length === 0 ? (
+          {loading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <Skeleton width="100%" height={32} />
+              <Skeleton width="100%" height={32} />
+              <Skeleton width="100%" height={32} />
+              <Skeleton width="100%" height={32} />
+              <Skeleton width="100%" height={32} />
+            </div>
+          ) : filteredEmployees.length === 0 ? (
             <div style={emptyStyle}>{t('organizationDetail.noEmployees')}</div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
@@ -695,6 +1007,18 @@ export default function OrganizationDetail() {
                 autoFocus
               />
             </Field>
+            <Field label={isRu ? 'Варианты окладов' : 'Oylik maosh variantlari'}>
+              <input
+                type="text"
+                value={posSalaryOptions}
+                onChange={handleSalaryOptionsChange}
+                placeholder="3 000 000, 5 000 000"
+                style={inpStyle}
+              />
+              <span style={{ fontSize: 11, color: 'var(--text-4)', marginTop: 2 }}>
+                {isRu ? 'Введите значения через запятую (например: 3000000, 5000000)' : 'Qiymatlarni vergul bilan ajratib kiriting (masalan: 3000000, 5000000)'}
+              </span>
+            </Field>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 10 }}>
               <button type="button" onClick={() => setShowPosModal(false)} style={smallBtn('subtle')}>
                 {isRu ? 'Отмена' : 'Bekor qilish'}
@@ -705,6 +1029,76 @@ export default function OrganizationDetail() {
               </button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {/* View Position Modal */}
+      {showViewPosModal && viewingPos && (
+        <Modal
+          title={isRu ? 'Детали должности' : 'Lavozim tafsilotlari'}
+          onClose={() => setShowViewPosModal(false)}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div>
+              <div style={infoTitleStyle}>{isRu ? 'Название должности' : 'Lavozim nomi'}</div>
+              <div style={{ fontSize: 15, fontWeight: 700, marginTop: 4, color: 'var(--text-1)' }}>
+                {viewingPos.name}
+              </div>
+            </div>
+
+            <div>
+              <div style={infoTitleStyle}>{isRu ? 'Отдел / Класс' : 'Bo\'lim / Sinf'}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, marginTop: 4, color: 'var(--text-2)' }}>
+                {selectedDept?.name || '—'}
+              </div>
+            </div>
+
+            <div>
+              <div style={infoTitleStyle}>{isRu ? 'Варианты окладов' : 'Ish haqi variantlari'}</div>
+              {viewingPos.salary_options ? (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                  {viewingPos.salary_options.split(',').map(s => {
+                    const num = parseInt(s.trim().replace(/\s/g, ''), 10);
+                    const formatted = isNaN(num) ? s : num.toLocaleString('uz-UZ').replace(/,/g, ' ') + ' UZS';
+                    return (
+                      <span
+                        key={s}
+                        style={{
+                          display: 'inline-block',
+                          padding: '4px 10px',
+                          borderRadius: 6,
+                          background: 'var(--surface-2)',
+                          border: '1px solid var(--border-2)',
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: 'var(--text-1)'
+                        }}
+                      >
+                        {formatted}
+                      </span>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div style={{ fontSize: 13, color: 'var(--text-4)', marginTop: 4 }}>
+                  {isRu ? 'Не указаны' : 'Belgilanmagan'}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <div style={infoTitleStyle}>{isRu ? 'Связанные сотрудники' : 'Bog\'langan xodimlar'}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, marginTop: 4, color: 'var(--text-2)' }}>
+                {getPosEmployeesCount(viewingPos.id)} {isRu ? 'чел.' : 'ta xodim'}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+              <button type="button" onClick={() => setShowViewPosModal(false)} style={smallBtn('subtle')}>
+                {isRu ? 'Закрыть' : 'Yopish'}
+              </button>
+            </div>
+          </div>
         </Modal>
       )}
     </div>
@@ -911,5 +1305,6 @@ function smallBtn(kind) {
     background: t.bg, color: t.color,
     border: t.border || 'none',
     fontSize: 12, fontWeight: 600, cursor: 'pointer',
+    textDecoration: 'none',
   }
 }

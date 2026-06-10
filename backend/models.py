@@ -1,7 +1,8 @@
 import enum
+import uuid as uuid_lib
 from datetime import datetime, timezone
-from sqlalchemy import CheckConstraint, Column, Integer, String, Boolean, DateTime, ForeignKey, Float, Date, Enum as SQLEnum
-from sqlalchemy.orm import relationship
+from sqlalchemy import CheckConstraint, Column, Integer, String, Boolean, DateTime, ForeignKey, Float, Date, Enum as SQLEnum, JSON
+from sqlalchemy.orm import relationship, backref
 
 from database import Base
 from utils.time_utils import now_tashkent
@@ -28,6 +29,7 @@ class UserRole(str, enum.Enum):
 class Organization(Base):
     __tablename__ = "organizations"
     id = Column(Integer, primary_key=True, index=True)
+    uuid = Column(String(36), unique=True, index=True, default=lambda: str(uuid_lib.uuid4()))
     name = Column(String, index=True, nullable=False)
     organization_type = Column(String, nullable=True, default="boshqa")
     subscription_status = Column(SQLEnum(SubscriptionStatus), default=SubscriptionStatus.pending)
@@ -46,6 +48,9 @@ class Organization(Base):
     google_client_id = Column(String, nullable=True)
     google_client_secret = Column(String, nullable=True)
     google_redirect_uri = Column(String, nullable=True)
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
+    radius = Column(Float, nullable=True, default=100.0)
     users = relationship("User", back_populates="organization", cascade="all, delete")
     user_links = relationship("UserOrganizationLink", back_populates="organization", cascade="all, delete")
     devices = relationship("Device", back_populates="organization", cascade="all, delete")
@@ -54,6 +59,26 @@ class Organization(Base):
     positions = relationship("Position", back_populates="organization", cascade="all, delete")
     schedules = relationship("Schedule", back_populates="organization", cascade="all, delete")
     holidays = relationship("Holiday", back_populates="organization", cascade="all, delete")
+    branches = relationship("Branch", back_populates="organization", cascade="all, delete")
+
+
+class Branch(Base):
+    """Tashkilot filiallari (geo-chegara alohida)"""
+    __tablename__ = "branches"
+    id = Column(Integer, primary_key=True, index=True)
+    uuid = Column(String(36), unique=True, index=True, default=lambda: str(uuid_lib.uuid4()))
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False, index=True)
+    name = Column(String, nullable=False)                    # Filial nomi
+    address = Column(String, nullable=True)                  # Manzil
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
+    radius = Column(Float, nullable=True, default=100.0)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now)
+
+    organization = relationship("Organization", back_populates="branches")
+    devices = relationship("Device", back_populates="branch")
+    employees = relationship("Employee", back_populates="branch")
 
 
 class User(Base):
@@ -71,10 +96,13 @@ class User(Base):
     status = Column(String, default="active")
     menu_permissions = Column(String, nullable=True)
     google_oauth_enabled = Column(Boolean, default=False)
+    is_staff = Column(Boolean, default=False, server_default="false", nullable=False)
     google_sub = Column(String, unique=True, index=True, nullable=True)
     last_login_provider = Column(String, nullable=True, default="password")
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
+    branch_id = Column(Integer, ForeignKey("branches.id"), nullable=True, index=True)
     organization = relationship("Organization", back_populates="users")
+    branch = relationship("Branch")
     organization_links = relationship("UserOrganizationLink", back_populates="user", cascade="all, delete")
 
 
@@ -115,7 +143,9 @@ class Device(Base):
     direction = Column(String, nullable=True)                    # "in" yoki "out" kabi yo'nalish
     created_at = Column(DateTime, default=utc_now)
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
+    branch_id = Column(Integer, ForeignKey("branches.id"), nullable=True, index=True)
     organization = relationship("Organization", back_populates="devices")
+    branch = relationship("Branch", back_populates="devices")
     attendance_logs = relationship("AttendanceLog", back_populates="device", cascade="all, delete")
     employee_links = relationship("EmployeeCameraLink", back_populates="camera", cascade="all, delete")
 
@@ -133,6 +163,7 @@ class Employee(Base):
     position_id = Column(Integer, ForeignKey("positions.id"), nullable=True, index=True)
     schedule_id = Column(Integer, ForeignKey("schedules.id"), nullable=True, index=True)
     employee_type = Column(String, nullable=True)  # oquvchi, oqituvchi, hodim
+    salary = Column(Integer, nullable=True)
     image_url = Column(String, nullable=True)
     phone = Column(String, nullable=True)
     parent_phone = Column(String, nullable=True)
@@ -147,7 +178,9 @@ class Employee(Base):
     schedule_type = Column(String, default="organization", nullable=False)
     created_at = Column(DateTime, default=utc_now)
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
+    branch_id = Column(Integer, ForeignKey("branches.id"), nullable=True, index=True)
     organization = relationship("Organization", back_populates="employees")
+    branch = relationship("Branch", back_populates="employees")
     department_ref = relationship("Department", back_populates="employees")
     position_ref = relationship("Position", back_populates="employees")
     schedule = relationship("Schedule", back_populates="employees")
@@ -176,6 +209,7 @@ class Position(Base):
     name = Column(String, nullable=False)
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False, index=True)
     department_id = Column(Integer, ForeignKey("departments.id"), nullable=True, index=True)
+    salary_options = Column(String, nullable=True)
     created_at = Column(DateTime, default=utc_now)
 
     organization = relationship("Organization", back_populates="positions")
@@ -347,4 +381,46 @@ class ContactMessage(Base):
     message = Column(String, nullable=False)
     created_at = Column(DateTime, default=now_tashkent, index=True)
     is_read = Column(Boolean, default=False, nullable=False)
+
+
+class ChatMessage(Base):
+    __tablename__ = 'chat_messages'
+    id = Column(Integer, primary_key=True, index=True)
+    sender_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    receiver_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    message = Column(String, nullable=False)
+    created_at = Column(DateTime, default=now_tashkent, index=True)
+    is_read = Column(Boolean, default=False, nullable=False)
+
+    sender = relationship("User", foreign_keys=[sender_id], backref=backref("sent_messages", passive_deletes=True))
+    receiver = relationship("User", foreign_keys=[receiver_id], backref=backref("received_messages", passive_deletes=True))
+
+
+class SystemVersion(Base):
+    """Tizim versiyalarini boshqarish jadvali."""
+    __tablename__ = "system_versions"
+    id = Column(Integer, primary_key=True, index=True)
+    version = Column(String, nullable=False, index=True)          # e.g. "2.4.1"
+    module = Column(String, nullable=True, default="core")        # e.g. "core", "frontend", "backend"
+    title = Column(String, nullable=True)                         # Qisqa sarlavha
+    release_notes = Column(String, nullable=True)                 # Yangiliklar tavsifi (markdown)
+    author = Column(String, nullable=True)                        # Kim yoydi
+    status = Column(String, default="released")                   # released | beta | deprecated
+    released_at = Column(DateTime, nullable=True)                 # Rasmiy chiqarish sanasi
+    created_at = Column(DateTime, default=now_tashkent)
+
+
+class FaceEmbedding(Base):
+    __tablename__ = "face_embeddings"
+    id = Column(Integer, primary_key=True, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
+    embedding_data = Column(JSON, nullable=False)  # List of 512 floats
+    model_version = Column(String, default="insightface_buffalo_l", index=True)
+    confidence = Column(Float, nullable=True)
+    created_at = Column(DateTime, default=utc_now)
+
+    employee = relationship("Employee", backref=backref("embeddings", cascade="all, delete"))
+    user = relationship("User", backref=backref("embeddings", cascade="all, delete"))
+
 

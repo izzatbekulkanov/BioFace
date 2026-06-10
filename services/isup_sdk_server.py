@@ -4053,6 +4053,14 @@ class HikvisionSdkRuntime:
         if not public_base:
             return None, None, None
 
+        if "://" in public_base:
+            parts = public_base.split("://", 1)
+            scheme = parts[0]
+            domain_part = parts[1].split("/", 1)[0]
+            public_base = f"{scheme}://{domain_part}"
+        else:
+            public_base = public_base.split("/", 1)[0]
+
         parsed = urlsplit(public_base)
         host = (parsed.hostname or "").strip()
         if not host:
@@ -5232,7 +5240,6 @@ class HikvisionSdkRuntime:
                             "employeeID",
                             "employeeId",
                             "cardNo",
-                            "cardReaderNo",
                         },
                     )
                 )
@@ -5243,7 +5250,6 @@ class HikvisionSdkRuntime:
                 or xml_fields.get("employeeID")
                 or xml_fields.get("employeeId")
                 or xml_fields.get("cardNo")
-                or xml_fields.get("cardReaderNo")
                 or ""
             ).strip()
             person_name = (

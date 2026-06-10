@@ -288,6 +288,7 @@ async def google_oauth_callback(
             google_oauth_enabled=False,
             last_login_provider="google",
             status="pending",
+            is_staff=True,
             role=None  # Maxsus admin ruxsati berilgunicha role yo'q
         )
         db.add(user)
@@ -501,6 +502,7 @@ def profile_dashboard(request: Request, db: Session = Depends(get_db)):
     return {
         "user": {
             "id": user.id,
+            "username": user.name or "",
             "name": user.name,
             "first_name": user.first_name or "",
             "last_name": user.last_name or "",

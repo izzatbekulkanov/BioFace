@@ -41,6 +41,7 @@ def serialize_position_item(item: Position) -> dict[str, Any]:
         "name": str(item.name or ""),
         "organization_id": int(item.organization_id),
         "department_id": int(item.department_id) if item.department_id is not None else None,
+        "salary_options": item.salary_options,
     }
 
 

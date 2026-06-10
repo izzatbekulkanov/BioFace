@@ -364,6 +364,12 @@ export default function EmployeeDetail() {
                 label={isStudent ? (isRu ? 'Параллель' : 'Parallel') : (isRu ? 'Должность' : 'Lavozim')}
                 value={employee.position || '—'}
               />
+              {!isStudent && employee.salary != null && (
+                <InfoRow
+                  label={isRu ? 'Оклад' : 'Oylik ish haqi'}
+                  value={employee.salary.toLocaleString('uz-UZ') + ' UZS'}
+                />
+              )}
               <InfoRow
                 label={isRu ? 'График' : 'Smena'}
                 value={(employee.effective_start_time || '—') + ' – ' + (employee.effective_end_time || '—')}
