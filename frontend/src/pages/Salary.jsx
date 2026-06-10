@@ -8,6 +8,7 @@ import {
   ClockRegular,
   ArrowSyncRegular,
   SearchRegular,
+  EyeRegular,
 } from '@fluentui/react-icons'
 import PageHero from '../components/PageHero'
 import { useToast } from '../components/Toaster'
@@ -386,10 +387,11 @@ export default function Salary() {
                               style={{
                                 background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border)', color: 'var(--text-2)',
                                 padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                                transition: 'all 0.15s ease'
+                                transition: 'all 0.15s ease', display: 'flex', alignItems: 'center', gap: 6
                               }}
                             >
-                              👁️ {isRu ? 'Просмотр' : 'Ko\'rish'}
+                              <EyeRegular fontSize={14} />
+                              {isRu ? 'Просмотр' : 'Ko\'rish'}
                             </button>
                             {s.status !== 'paid' && (
                               <button
