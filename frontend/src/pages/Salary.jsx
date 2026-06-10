@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 import {
   MoneyRegular,
   CheckmarkCircleRegular,
@@ -15,6 +16,7 @@ export default function Salary() {
   const { i18n } = useTranslation()
   const isRu = i18n.language === 'ru'
   const toast = useToast()
+  const navigate = useNavigate()
 
   const [salaries, setSalaries] = useState([])
   const [search, setSearch] = useState('')
@@ -26,12 +28,6 @@ export default function Salary() {
   const [orgFilter, setOrgFilter] = useState('all')
   const [branchFilter, setBranchFilter] = useState('all')
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
-
-  // Modal States
-  const [selectedEmp, setSelectedEmp] = useState(null)
-  const [calendarData, setCalendarData] = useState(null)
-  const [loadingCalendar, setLoadingCalendar] = useState(false)
-  const [showModal, setShowModal] = useState(false)
 
   const loadSalaries = async () => {
     try {
@@ -85,21 +81,8 @@ export default function Salary() {
     return branches.filter(b => String(b.organization_id) === String(orgFilter))
   }, [branches, orgFilter])
 
-  const handleView = async (emp) => {
-    setSelectedEmp(emp)
-    setShowModal(true)
-    setLoadingCalendar(true)
-    try {
-      const res = await fetch(`/api/employees/${emp.id}/attendance-calendar`, { credentials: 'include' })
-      if (res.ok) {
-        const data = await res.json()
-        setCalendarData(data)
-      }
-    } catch (err) {
-      console.error('Failed to load attendance calendar:', err)
-    } finally {
-      setLoadingCalendar(false)
-    }
+  const handleView = (emp) => {
+    navigate(`/finance/salary/${emp.id}`)
   }
 
   // Calculate salary metrics
@@ -138,112 +121,6 @@ export default function Salary() {
   const formatMoney = (val) => {
     return new Intl.NumberFormat('uz-UZ', { style: 'currency', currency: 'UZS', maximumFractionDigits: 0 }).format(val)
   }
-
-  const formatDateDay = (dateStr) => {
-    if (!dateStr) return ''
-    const parts = dateStr.split('-')
-    if (parts.length < 3) return dateStr
-    const day = parseInt(parts[2], 10)
-    const monthIndex = parseInt(parts[1], 10) - 1
-    const monthsUz = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentyabr', 'Oktyabr', 'Noyabr', 'Dekabr']
-    const monthsRu = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
-    const monthName = isRu ? monthsRu[monthIndex] : monthsUz[monthIndex]
-    return `${day}-${monthName}`
-  }
-
-  const formatVariance = (workedSec, expectedSec) => {
-    const diff = workedSec - expectedSec
-    if (diff === 0) return '0'
-    const sign = diff > 0 ? '+' : '-'
-    const absDiff = Math.abs(diff)
-    const hours = Math.floor(absDiff / 3600)
-    const minutes = Math.floor((absDiff % 3600) / 60)
-    
-    let text = ''
-    if (hours > 0) text += `${hours}s `
-    if (minutes > 0 || hours === 0) text += `${minutes}d`
-    return `${sign}${text}`
-  }
-
-  const formatDuration = (sec) => {
-    if (!sec) return '0d'
-    const hours = Math.floor(sec / 3600)
-    const minutes = Math.floor((sec % 3600) / 60)
-    let text = ''
-    if (hours > 0) text += `${hours}s `
-    if (minutes > 0 || hours === 0) text += `${minutes}d`
-    return text
-  }
-
-  const detailedStats = useMemo(() => {
-    if (!calendarData || !calendarData.days) return null
-
-    let totalWorkedSeconds = 0
-    let totalExpectedSeconds = 0
-    let overtimeSeconds = 0
-    let undertimeSeconds = 0
-    let onTimeDays = 0
-    let lateDays = 0
-    let absentDays = 0
-    let presentDays = 0
-    let holidayDays = 0
-
-    calendarData.days.forEach(day => {
-      if (day.status === 'holiday') {
-        holidayDays++
-        return
-      }
-
-      if (!day.present) {
-        absentDays++
-        return
-      }
-
-      presentDays++
-      if (day.late_minutes > 0) {
-        lateDays++
-      } else {
-        onTimeDays++
-      }
-
-      // Calculate expected duration
-      const start = new Date(day.expected_time)
-      const end = new Date(day.expected_end_time)
-      const expectedDiff = Math.max(0, (end - start) / 1000) // in seconds
-      totalExpectedSeconds += expectedDiff
-
-      totalWorkedSeconds += day.worked_seconds
-
-      const diff = day.worked_seconds - expectedDiff
-      if (diff > 0) {
-        overtimeSeconds += diff
-      } else {
-        undertimeSeconds += Math.abs(diff)
-      }
-    })
-
-    // 1 hour of overtime earns 30,000 UZS
-    const overtimeHours = overtimeSeconds / 3600
-    const overtimeBonus = Math.round(overtimeHours * 30000)
-
-    // Late penalty is 50,000 UZS
-    const latePenalty = lateDays * 50000
-
-    return {
-      totalWorkedSeconds,
-      totalExpectedSeconds,
-      overtimeSeconds,
-      undertimeSeconds,
-      onTimeDays,
-      lateDays,
-      absentDays,
-      presentDays,
-      holidayDays,
-      overtimeHours,
-      overtimeBonus,
-      latePenalty
-    }
-  }, [calendarData])
 
   const handlePay = async (id, name) => {
     try {
@@ -536,226 +413,7 @@ export default function Salary() {
           </div>
         </div>
 
-        {/* Detail Modal */}
-        {showModal && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
-          display: 'flex', justifyContent: 'center', alignItems: 'center',
-          zIndex: 1000, padding: 20
-        }}>
-          <div style={{
-            background: 'var(--surface)', border: '1px solid var(--border)',
-            borderRadius: 16, width: '100%', maxWidth: 840, display: 'flex',
-            flexDirection: 'column', maxHeight: '90vh', overflow: 'hidden',
-            boxShadow: '0 20px 40px rgba(0,0,0,0.4)', animation: 'fadeIn 0.2s ease'
-          }}>
-            {/* Modal Header */}
-            <div style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '20px 24px', borderBottom: '1px solid var(--border)'
-            }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>
-                  {selectedEmp?.name}
-                </h3>
-                <span style={{ fontSize: 12.5, color: 'var(--text-4)', display: 'block', marginTop: 4 }}>
-                  💼 {selectedEmp?.role}
-                </span>
-              </div>
-              <button
-                onClick={() => {
-                  setShowModal(false)
-                  setCalendarData(null)
-                }}
-                style={{
-                  background: 'rgba(255,255,255,0.06)', border: 'none', color: 'var(--text-3)',
-                  width: 32, height: 32, borderRadius: '50%', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
-                  fontWeight: 700, transition: 'all 0.15s'
-                }}
-                onMouseEnter={e => e.target.style.background = 'rgba(255,255,255,0.12)'}
-                onMouseLeave={e => e.target.style.background = 'rgba(255,255,255,0.06)'}
-              >
-                ✕
-              </button>
-            </div>
 
-            {/* Modal Content */}
-            <div style={{ padding: 24, overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 20 }}>
-              {loadingCalendar ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 0', gap: 16 }}>
-                  <div style={{
-                    width: 40, height: 40, border: '3px solid var(--border)',
-                    borderTopColor: 'var(--accent)', borderRadius: '50%',
-                    animation: 'spin 1s linear infinite'
-                  }} />
-                  <span style={{ fontSize: 13, color: 'var(--text-3)' }}>
-                    {isRu ? 'Загрузка данных посещаемости...' : 'Davomat ma\'lumotlari yuklanmoqda...'}
-                  </span>
-                </div>
-              ) : calendarData && detailedStats ? (
-                <>
-                  {/* Attendance Stats Cards */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
-                    <div style={modalStatCardStyle}>
-                      <span style={{ fontSize: 11, color: 'var(--text-4)', fontWeight: 600 }}>{isRu ? 'ПРИСУТСТВИЕ' : 'KELGAN KUNLARI'}</span>
-                      <div style={{ fontSize: 20, fontWeight: 800, color: '#10b981', marginTop: 4 }}>
-                        {detailedStats.presentDays} {isRu ? 'дн.' : 'kun'}
-                      </div>
-                      <span style={{ fontSize: 11, color: 'var(--text-4)' }}>
-                        {isRu ? 'Пропущено:' : 'Kelmagan:'} {detailedStats.absentDays} {isRu ? 'дн.' : 'kun'}
-                      </span>
-                    </div>
-
-                    <div style={modalStatCardStyle}>
-                      <span style={{ fontSize: 11, color: 'var(--text-4)', fontWeight: 600 }}>{isRu ? 'ВОвремя' : 'VAQTIDA KELGAN'}</span>
-                      <div style={{ fontSize: 20, fontWeight: 800, color: '#3b82f6', marginTop: 4 }}>
-                        {detailedStats.onTimeDays} {isRu ? 'дн.' : 'kun'}
-                      </div>
-                      <span style={{ fontSize: 11, color: 'var(--text-4)' }}>
-                        {isRu ? 'Опоздания:' : 'Kechikkan:'} {detailedStats.lateDays} {isRu ? 'дн.' : 'kun'}
-                      </span>
-                    </div>
-
-                    <div style={modalStatCardStyle}>
-                      <span style={{ fontSize: 11, color: 'var(--text-4)', fontWeight: 600 }}>{isRu ? 'СВЕРХУРОЧНО' : 'QO\'SHIMCHA VAQT'}</span>
-                      <div style={{ fontSize: 20, fontWeight: 800, color: '#f59e0b', marginTop: 4 }}>
-                        {formatDuration(detailedStats.overtimeSeconds)}
-                      </div>
-                      <span style={{ fontSize: 11, color: 'var(--text-4)' }}>
-                        {isRu ? 'Недоработка:' : 'Kam ishlangan:'} {formatDuration(detailedStats.undertimeSeconds)}
-                      </span>
-                    </div>
-
-                    <div style={modalStatCardStyle}>
-                      <span style={{ fontSize: 11, color: 'var(--text-4)', fontWeight: 600 }}>{isRu ? 'ИТОГО К ВЫПЛАТЕ' : 'SOF ISH HAQI'}</span>
-                      <div style={{ fontSize: 20, fontWeight: 800, color: '#fff', marginTop: 4 }}>
-                        {formatMoney(Math.max(0, (selectedEmp?.base || 0) + detailedStats.overtimeBonus - detailedStats.latePenalty))}
-                      </div>
-                      <span style={{ fontSize: 11, color: 'var(--text-4)' }}>
-                        {isRu ? 'Базовый:' : 'Asosiy:'} {formatMoney(selectedEmp?.base || 0)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Financial Details Box */}
-                  <div style={{
-                    background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)',
-                    borderRadius: 12, padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12
-                  }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-2)', borderBottom: '1px solid var(--border-2)', paddingBottom: 8 }}>
-                      {isRu ? 'Финансовый расчет за месяц' : 'Bir oylik moliyaviy hisob-kitob'}
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                      <span style={{ color: 'var(--text-3)' }}>{isRu ? 'Оклад (базовый)' : 'Asosiy oylik (shtat):'}</span>
-                      <span style={{ fontWeight: 600 }}>{formatMoney(selectedEmp?.base || 0)}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                      <span style={{ color: 'var(--text-3)' }}>
-                        ➕ {isRu ? 'Бонус за сверхурочные' : 'Qo\'shimcha ishlangan vaqt uchun (Bonus):'}
-                        <span style={{ fontSize: 11, color: 'var(--text-4)', marginLeft: 6 }}>
-                          ({formatDuration(detailedStats.overtimeSeconds)} × 30,000 UZS/soat)
-                        </span>
-                      </span>
-                      <span style={{ color: '#10b981', fontWeight: 600 }}>+{formatMoney(detailedStats.overtimeBonus)}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                      <span style={{ color: 'var(--text-3)' }}>
-                        ➖ {isRu ? 'Штраф за опоздания' : 'Kechikkan kunlar uchun (Jarima):'}
-                        <span style={{ fontSize: 11, color: 'var(--text-4)', marginLeft: 6 }}>
-                          ({detailedStats.lateDays} marta × 50,000 UZS)
-                        </span>
-                      </span>
-                      <span style={{ color: '#ef4444', fontWeight: 600 }}>-{formatMoney(detailedStats.latePenalty)}</span>
-                    </div>
-                    <div style={{
-                      display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 800,
-                      borderTop: '1px solid var(--border-2)', paddingTop: 10, marginTop: 4
-                    }}>
-                      <span>{isRu ? 'Итоговая сумма к выплате' : 'To\'lanadigan yakuniy ish haqi:'}</span>
-                      <span style={{ color: 'var(--accent)' }}>
-                        {formatMoney(Math.max(0, (selectedEmp?.base || 0) + detailedStats.overtimeBonus - detailedStats.latePenalty))}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Daily Details Table */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-2)' }}>
-                      {isRu ? 'Подробный отчет по дням' : 'Kunlik batafsil hisobot'}
-                    </div>
-                    <div style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
-                      <div style={{ maxHeight: 300, overflowY: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 12.5 }}>
-                          <thead>
-                            <tr style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)', color: 'var(--text-4)' }}>
-                              <th style={{ padding: '10px 14px', fontWeight: 600 }}>{isRu ? 'День' : 'Kun'}</th>
-                              <th style={{ padding: '10px 14px', fontWeight: 600 }}>{isRu ? 'Статус' : 'Holat'}</th>
-                              <th style={{ padding: '10px 14px', fontWeight: 600 }}>{isRu ? 'Режим' : 'Smen vaqti'}</th>
-                              <th style={{ padding: '10px 14px', fontWeight: 600 }}>{isRu ? 'Приход/Уход' : 'Kelish/Ketish'}</th>
-                              <th style={{ padding: '10px 14px', fontWeight: 600 }}>{isRu ? 'Отработано' : 'Ishlangan vaqt'}</th>
-                              <th style={{ padding: '10px 14px', fontWeight: 600 }}>{isRu ? 'Разница' : 'Farq'}</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {calendarData.days.map((day, idx) => {
-                              const expStart = day.expected_time ? day.expected_time.split('T')[1]?.substring(0, 5) : '09:00'
-                              const expEnd = day.expected_end_time ? day.expected_end_time.split('T')[1]?.substring(0, 5) : '18:00'
-                              const actStart = day.first_seen ? day.first_seen.split('T')[1]?.substring(0, 5) : '--:--'
-                              const actEnd = day.last_seen ? day.last_seen.split('T')[1]?.substring(0, 5) : '--:--'
-
-                              const startDt = new Date(day.expected_time)
-                              const endDt = new Date(day.expected_end_time)
-                              const expSec = Math.max(0, (endDt - startDt) / 1000)
-
-                              let badge = <span style={modalBadgeGray}>{isRu ? 'Выходной' : 'Dam olish'}</span>
-                              if (day.status === 'present') {
-                                badge = <span style={modalBadgeGreen}>✅ {isRu ? 'Вовремя' : 'Vaqtida'}</span>
-                              } else if (day.status === 'late') {
-                                badge = <span style={modalBadgeYellow}>⚠️ {isRu ? 'Опоздал' : 'Kechikdi'}</span>
-                              } else if (day.status === 'absent') {
-                                badge = <span style={modalBadgeRed}>❌ {isRu ? 'Не пришел' : 'Kelmagan'}</span>
-                              }
-
-                              const diffSec = day.worked_seconds - expSec
-
-                              return (
-                                <tr key={idx} style={{ borderBottom: '1px solid var(--border-2)', background: idx % 2 === 0 ? 'rgba(255,255,255,0.01)' : 'transparent' }}>
-                                  <td style={{ padding: '12px 14px', fontWeight: 600 }}>{formatDateDay(day.date)}</td>
-                                  <td style={{ padding: '12px 14px' }}>{badge}</td>
-                                  <td style={{ padding: '12px 14px', color: 'var(--text-3)' }}>{expStart} - {expEnd}</td>
-                                  <td style={{ padding: '12px 14px', fontWeight: 500 }}>
-                                    {day.present ? `${actStart} - ${actEnd}` : '--'}
-                                  </td>
-                                  <td style={{ padding: '12px 14px', fontWeight: 600 }}>
-                                    {day.present ? formatDuration(day.worked_seconds) : '--'}
-                                  </td>
-                                  <td style={{ padding: '12px 14px', fontWeight: 700 }}>
-                                    {!day.present ? '--' : (
-                                      <span style={{ color: diffSec >= 0 ? '#10b981' : '#ef4444' }}>
-                                        {formatVariance(day.worked_seconds, expSec)}
-                                      </span>
-                                    )}
-                                  </td>
-                                </tr>
-                              )
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-4)' }}>
-                  {isRu ? 'Не удалось загрузить календарь' : 'Taqvim ma\'lumotlarini yuklab bo\'lmadi'}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
       </div>
     </div>
   )

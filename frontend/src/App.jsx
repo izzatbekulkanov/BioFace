@@ -33,6 +33,7 @@ import BranchDetail from './pages/BranchDetail'
 import Profile          from './pages/Profile'
 import ContactMessages  from './pages/ContactMessages'
 import Salary           from './pages/Salary'
+import SalaryDetail     from './pages/SalaryDetail'
 import Kpi              from './pages/Kpi'
 import Cashflow         from './pages/Cashflow'
 import Accounts         from './pages/Accounts'
@@ -132,6 +133,7 @@ export default function App() {
               <Route path="/organizations/:id/edit" element={isLoggedIn ? <OrganizationForm /> : <Navigate to="/login" replace />} />
               <Route path="/middleware-logs" element={isLoggedIn ? <MiddlewareLogs /> : <Navigate to="/login" replace />} />
               <Route path="/finance/salary"   element={isLoggedIn ? <Salary />   : <Navigate to="/login" replace />} />
+              <Route path="/finance/salary/:id" element={isLoggedIn ? <SalaryDetail /> : <Navigate to="/login" replace />} />
               <Route path="/finance/kpi"      element={isLoggedIn ? <Kpi />      : <Navigate to="/login" replace />} />
               <Route path="/finance/cashflow" element={isLoggedIn ? <Cashflow /> : <Navigate to="/login" replace />} />
               <Route path="/finance/accounts" element={isLoggedIn ? <Accounts /> : <Navigate to="/login" replace />} />
