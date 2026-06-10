@@ -164,6 +164,7 @@ class Employee(Base):
     schedule_id = Column(Integer, ForeignKey("schedules.id"), nullable=True, index=True)
     employee_type = Column(String, nullable=True)  # oquvchi, oqituvchi, hodim
     salary = Column(Integer, nullable=True)
+    salary_status = Column(String, default="unpaid", nullable=True)
     image_url = Column(String, nullable=True)
     phone = Column(String, nullable=True)
     parent_phone = Column(String, nullable=True)

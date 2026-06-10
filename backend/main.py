@@ -15,7 +15,7 @@ from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 import models
 from database import engine, ensure_schema, SessionLocal
 from models import RequestLog
-from routers import auth, dashboard, webhook, cameras, employees, settings, organizations, users, system_monitor, planning, chat, versions
+from routers import auth, dashboard, webhook, cameras, employees, settings, organizations, users, system_monitor, planning, chat, versions, finance
 from utils.time_utils import now_tashkent
 
 # Jadvallarni yaratish
@@ -255,6 +255,7 @@ app.include_router(system_monitor.router, tags=["System Monitor API"])
 app.include_router(planning.router, tags=["Planning API"])
 app.include_router(chat.router, tags=["Chat API"])
 app.include_router(versions.router, tags=["Versions API"])
+app.include_router(finance.router, tags=["Finance API"])
 
 # --- Frontend SPA Integration ---
 from fastapi.staticfiles import StaticFiles

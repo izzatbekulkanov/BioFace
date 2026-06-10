@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   MoneyRegular,
@@ -11,24 +11,73 @@ import {
 import PageHero from '../components/PageHero'
 import { useToast } from '../components/Toaster'
 
-const INITIAL_SALARIES = [
-  { id: 1, name: 'Tursunov Dilshod', role: 'Katta dasturchi', base: 12000000, lateCount: 2, status: 'paid' },
-  { id: 2, name: 'Karimova Nargiza', role: 'HR Menejer', base: 7000000, lateCount: 0, status: 'paid' },
-  { id: 3, name: 'Sodiqov Farhod', role: 'Tizim administratori', base: 9000000, lateCount: 4, status: 'unpaid' },
-  { id: 4, name: 'Usmonova Malika', role: 'Menejer', base: 6000000, lateCount: 1, status: 'unpaid' },
-  { id: 5, name: 'Rustamov Jamshid', role: 'Hisobchi', base: 8000000, lateCount: 0, status: 'paid' },
-  { id: 6, name: 'Qodirova Shahlo', role: 'Ofis koordinatori', base: 5000000, lateCount: 3, status: 'unpaid' },
-]
-
 export default function Salary() {
   const { i18n } = useTranslation()
   const isRu = i18n.language === 'ru'
   const toast = useToast()
 
-  const [salaries, setSalaries] = useState(INITIAL_SALARIES)
+  const [salaries, setSalaries] = useState([])
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [refreshing, setRefreshing] = useState(false)
+
+  const [orgs, setOrgs] = useState([])
+  const [branches, setBranches] = useState([])
+  const [orgFilter, setOrgFilter] = useState('all')
+  const [branchFilter, setBranchFilter] = useState('all')
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+
+  const loadSalaries = async () => {
+    try {
+      const params = new URLSearchParams()
+      if (orgFilter !== 'all') params.set('organization_id', orgFilter)
+      if (branchFilter !== 'all') params.set('branch_id', branchFilter)
+      
+      const res = await fetch(`/api/finance/salaries?${params.toString()}`, { credentials: 'include' })
+      if (res.ok) {
+        const data = await res.json()
+        setSalaries(data.salaries || [])
+      }
+    } catch (err) {
+      console.error('Failed to load salaries:', err)
+    }
+  }
+
+  useEffect(() => {
+    const loadFilters = async () => {
+      try {
+        const [filterRes, meRes] = await Promise.all([
+          fetch('/api/attendance/filter-data', { credentials: 'include' }),
+          fetch('/api/auth/me', { credentials: 'include' }),
+        ])
+        
+        if (filterRes.ok) {
+          const data = await filterRes.json()
+          setOrgs(data?.organizations || [])
+          setBranches(data?.branches || [])
+        }
+        
+        if (meRes.ok) {
+          const meData = await meRes.json()
+          const role = String(meData.role || '').toLowerCase()
+          const superAdmin = role === 'super_admin' || role === 'superadmin'
+          setIsSuperAdmin(superAdmin)
+        }
+      } catch (err) {
+        console.error('Failed to load filters:', err)
+      }
+    }
+    loadFilters()
+  }, [])
+
+  useEffect(() => {
+    loadSalaries()
+  }, [orgFilter, branchFilter])
+
+  const filteredBranches = useMemo(() => {
+    if (orgFilter === 'all') return branches
+    return branches.filter(b => String(b.organization_id) === String(orgFilter))
+  }, [branches, orgFilter])
 
   // Calculate salary metrics
   // Each late arrival deducts 50,000 UZS
@@ -67,22 +116,33 @@ export default function Salary() {
     return new Intl.NumberFormat('uz-UZ', { style: 'currency', currency: 'UZS', maximumFractionDigits: 0 }).format(val)
   }
 
-  const handlePay = (id, name) => {
-    setSalaries(prev => prev.map(s => {
-      if (s.id === id) {
-        return { ...s, status: 'paid' }
+  const handlePay = async (id, name) => {
+    try {
+      const res = await fetch(`/api/finance/salaries/${id}/pay`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      if (res.ok) {
+        setSalaries(prev => prev.map(s => {
+          if (s.id === id) {
+            return { ...s, status: 'paid' }
+          }
+          return s
+        }))
+        toast.success(isRu ? `Оклад для xодима "${name}" выплачен` : `"${name}" uchun oylik to'landi`)
+      } else {
+        throw new Error('Payment failed')
       }
-      return s
-    }))
-    toast.success(isRu ? `Оклад для xодима "${name}" выплачен` : `"${name}" uchun oylik to'landi`)
+    } catch (err) {
+      toast.error(isRu ? 'Ошибка при выплате' : 'To\'lov qilishda xatolik yuz berdi')
+    }
   }
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true)
-    setTimeout(() => {
-      setRefreshing(false)
-      toast.success(isRu ? 'Данные по окладам обновлены' : 'Ish haqi ma\'lumotlari yangilandi')
-    }, 600)
+    await loadSalaries()
+    setRefreshing(false)
+    toast.success(isRu ? 'Данные по окладам обновлены' : 'Ish haqi ma\'lumotlari yangilandi')
   }
 
   return (
@@ -185,6 +245,41 @@ export default function Salary() {
         {/* Filter Toolbar & Table */}
         <div style={cardStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginBottom: 20 }}>
+            {/* Organization filter */}
+            {(isSuperAdmin || orgs.length > 1) && (
+              <div style={{ minWidth: 200, flex: 1 }}>
+                <select
+                  value={orgFilter}
+                  onChange={e => {
+                    setOrgFilter(e.target.value)
+                    setBranchFilter('all')
+                  }}
+                  style={selectStyle}
+                >
+                  <option value="all">{isRu ? 'Все организации' : 'Barcha tashkilotlar'}</option>
+                  {orgs.map(org => (
+                    <option key={org.id} value={org.id}>{org.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Branch filter */}
+            {(isSuperAdmin || filteredBranches.length > 0) && (
+              <div style={{ minWidth: 200, flex: 1 }}>
+                <select
+                  value={branchFilter}
+                  onChange={e => setBranchFilter(e.target.value)}
+                  style={selectStyle}
+                >
+                  <option value="all">{isRu ? 'Все филиалы' : 'Barcha filiallar'}</option>
+                  {filteredBranches.map(b => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* Search */}
             <div style={{ position: 'relative', flex: 1, minWidth: 260 }}>
               <SearchRegular fontSize={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-4)' }} />
@@ -320,4 +415,16 @@ const statusPending = {
   fontWeight: 600,
   background: 'rgba(239,68,68,0.12)',
   color: '#ef4444',
+}
+
+const selectStyle = {
+  padding: '9px 12px',
+  borderRadius: 8,
+  border: '1px solid var(--border)',
+  background: 'var(--bg)',
+  color: 'var(--text-1)',
+  fontSize: 13,
+  outline: 'none',
+  width: '100%',
+  cursor: 'pointer',
 }

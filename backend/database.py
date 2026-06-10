@@ -357,6 +357,8 @@ def ensure_schema() -> bool:
                     conn.execute(text("ALTER TABLE employees ADD COLUMN middle_name VARCHAR"))
                 if "salary" not in emp_cols:
                     conn.execute(text("ALTER TABLE employees ADD COLUMN salary INTEGER"))
+                if "salary_status" not in emp_cols:
+                    conn.execute(text("ALTER TABLE employees ADD COLUMN salary_status VARCHAR DEFAULT 'unpaid'"))
                 if "department_id" not in emp_cols:
                     conn.execute(text("ALTER TABLE employees ADD COLUMN department_id INTEGER"))
                 if "position_id" not in emp_cols:
@@ -936,16 +938,33 @@ def ensure_schema() -> bool:
                     conn.execute(text("ALTER TABLE contact_messages ADD COLUMN is_read BOOLEAN DEFAULT 0"))
 
             # Backfill legacy users.organization_id into link table.
-            conn.execute(
-                text(
-                    """
-                    INSERT OR IGNORE INTO user_organization_links (user_id, organization_id, created_at)
-                    SELECT id, organization_id, CURRENT_TIMESTAMP
-                    FROM users
-                    WHERE organization_id IS NOT NULL
-                    """
+            if is_sqlite:
+                conn.execute(
+                    text(
+                        """
+                        INSERT OR IGNORE INTO user_organization_links (user_id, organization_id, created_at)
+                        SELECT id, organization_id, CURRENT_TIMESTAMP
+                        FROM users
+                        WHERE organization_id IS NOT NULL
+                        """
+                    )
                 )
-            )
+            else:
+                conn.execute(
+                    text(
+                        """
+                        INSERT INTO user_organization_links (user_id, organization_id, created_at)
+                        SELECT id, organization_id, CURRENT_TIMESTAMP
+                        FROM users
+                        WHERE organization_id IS NOT NULL
+                        ON CONFLICT DO NOTHING
+                        """
+                    )
+                )
+            try:
+                conn.commit()
+            except Exception:
+                pass
         return True
     except Exception:
         # Avoid blocking app start on migration errors; logs can be added later.
