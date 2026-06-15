@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 from typing import Any, Tuple
+from utils.time_utils import now_tashkent
 
 from bot.formatters import (
     format_daily_attendance_summary,
@@ -164,12 +165,41 @@ async def show_today(update: Any, context: Any) -> int:
             await update.message.reply_text(get_message(language, "unknown_state"))
         return SELECT_LANGUAGE
 
-    summary = get_employee_today_summary(binding.employee_id, date.today())
+    summary = get_employee_today_summary(binding.employee_id, now_tashkent().date())
     if summary is None:
         await update.message.reply_text(get_message(language, "not_found"))
         return AUTH_MENU
 
-    await update.message.reply_text(format_daily_attendance_summary(summary, language), reply_markup=build_main_menu_keyboard(language))
+    import os
+    photo_file = None
+    if summary.snapshot_url:
+        rel_path = summary.snapshot_url.lstrip("/")
+        if os.path.exists(rel_path):
+            try:
+                photo_file = open(rel_path, "rb")
+            except Exception:
+                pass
+
+    caption_text = format_daily_attendance_summary(summary, language)
+    if photo_file:
+        try:
+            await update.message.reply_photo(
+                photo=photo_file,
+                caption=caption_text,
+                reply_markup=build_main_menu_keyboard(language)
+            )
+        except Exception:
+            await update.message.reply_text(
+                caption_text,
+                reply_markup=build_main_menu_keyboard(language)
+            )
+        finally:
+            photo_file.close()
+    else:
+        await update.message.reply_text(
+            caption_text,
+            reply_markup=build_main_menu_keyboard(language)
+        )
     return AUTH_MENU
 
 
@@ -182,7 +212,7 @@ async def show_month(update: Any, context: Any) -> int:
             await update.message.reply_text(get_message(language, "unknown_state"))
         return SELECT_LANGUAGE
 
-    details = get_employee_attendance_details(binding.employee_id, date.today())
+    details = get_employee_attendance_details(binding.employee_id, now_tashkent().date())
     if details is None:
         await update.message.reply_text(get_message(language, "not_found"))
         return AUTH_MENU
@@ -203,7 +233,36 @@ async def show_profile(update: Any, context: Any) -> int:
             await update.message.reply_text(get_message(language, "unknown_state"))
         return SELECT_LANGUAGE
 
-    await update.message.reply_text(format_employee_profile(binding.employee, language), reply_markup=build_main_menu_keyboard(language))
+    import os
+    photo_file = None
+    if binding.employee.image_url:
+        rel_path = binding.employee.image_url.lstrip("/")
+        if os.path.exists(rel_path):
+            try:
+                photo_file = open(rel_path, "rb")
+            except Exception:
+                pass
+
+    caption_text = format_employee_profile(binding.employee, language)
+    if photo_file:
+        try:
+            await update.message.reply_photo(
+                photo=photo_file,
+                caption=caption_text,
+                reply_markup=build_main_menu_keyboard(language)
+            )
+        except Exception:
+            await update.message.reply_text(
+                caption_text,
+                reply_markup=build_main_menu_keyboard(language)
+            )
+        finally:
+            photo_file.close()
+    else:
+        await update.message.reply_text(
+            caption_text,
+            reply_markup=build_main_menu_keyboard(language)
+        )
     return AUTH_MENU
 
 
@@ -255,7 +314,7 @@ async def handle_calendar_action(update: Any, context: Any) -> int:
     if binding is None or binding.employee_id is None:
         return SELECT_LANGUAGE
 
-    details = get_employee_attendance_details(binding.employee_id, date.today())
+    details = get_employee_attendance_details(binding.employee_id, now_tashkent().date())
     if details is None:
         return AUTH_MENU
 

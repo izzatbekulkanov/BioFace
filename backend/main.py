@@ -5,6 +5,7 @@ import time
 from utils.access_control import resolve_menu_key_for_path, resolve_user_menu_permissions, user_has_menu_access
 from services.attendance_monitor import start_attendance_monitor, stop_attendance_monitor
 from services.self_healing_monitor import start_self_healing_monitor, stop_self_healing_monitor
+from services.ai_process_manager import start_ai_process, stop_ai_process
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
@@ -179,7 +180,37 @@ async def require_auth(request, call_next):
             response.headers["Pragma"] = "no-cache"
         return response
 
-    auth_user = request.session.get("auth_user")
+    auth_user = None
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.split(" ", 1)[1].strip()
+        from utils.jwt_utils import decode_access_token
+        payload = decode_access_token(token)
+        if payload:
+            username = payload.get("sub")
+            if username:
+                from database import SessionLocal
+                from models import User
+                db = SessionLocal()
+                try:
+                    user = db.query(User).filter(User.name == username).first()
+                    if user and str(user.status or "active").strip().lower() == "active":
+                        from routers.auth import _build_auth_user
+                        auth_user = _build_auth_user(user)
+                        session = request.scope.get("session")
+                        if session is None:
+                            from starlette.middleware.sessions import Session as StarletteSession
+                            session = StarletteSession()
+                            request.scope["session"] = session
+                        session["auth_user"] = auth_user
+                except Exception:
+                    pass
+                finally:
+                    db.close()
+
+    if not auth_user:
+        auth_user = request.session.get("auth_user")
+
     if auth_user:
         try:
             from routers.chat import ONLINE_USERS
@@ -235,12 +266,60 @@ app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 async def startup_background_services():
     start_attendance_monitor()
     start_self_healing_monitor()
+    start_ai_process()
 
 
 @app.on_event("shutdown")
 async def shutdown_background_services():
     stop_attendance_monitor()
     stop_self_healing_monitor()
+    stop_ai_process()
+
+# --- Real-time WebSocket Endpoint ---
+from fastapi import WebSocket
+
+@app.websocket("/ws/events")
+async def websocket_events(websocket: WebSocket):
+    session = websocket.scope.get("session") or {}
+    auth_user = session.get("auth_user")
+    
+    if not auth_user:
+        await websocket.close(code=4001)
+        return
+        
+    role = str(auth_user.get("role") or "").strip().lower()
+    is_super_admin = role in {"superadmin", "super_admin"}
+    
+    allowed_org_ids = []
+    if not is_super_admin:
+        from database import SessionLocal
+        from models import UserOrganizationLink
+        db = SessionLocal()
+        try:
+            user_id = auth_user.get("id")
+            org_ids = set()
+            if user_id is not None:
+                rows = db.query(UserOrganizationLink.organization_id).filter(UserOrganizationLink.user_id == int(user_id)).all()
+                org_ids.update(int(r.organization_id) for r in rows if r.organization_id is not None)
+            
+            fallback = auth_user.get("organization_id")
+            if fallback is not None:
+                org_ids.add(int(fallback))
+            allowed_org_ids = list(org_ids)
+        except Exception:
+            pass
+        finally:
+            db.close()
+            
+    from services.websocket_manager import manager
+    await manager.connect(websocket, allowed_org_ids=allowed_org_ids, is_super_admin=is_super_admin)
+    try:
+        while True:
+            await websocket.receive_text()
+    except Exception:
+        pass
+    finally:
+        manager.disconnect(websocket)
 
 # --- Routerlarni ulaymiz ---
 app.include_router(auth.router, tags=["Auth"])

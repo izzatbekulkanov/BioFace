@@ -5,7 +5,7 @@ import {
   SettingsRegular, PlugConnectedRegular, SaveRegular,
   ClockRegular, CameraRegular, LockClosedRegular,
   ArrowSyncRegular, ImageRegular, GlobeRegular, DeleteRegular, DismissRegular, MailRegular,
-  InfoRegular
+  InfoRegular, WarningRegular, CheckmarkRegular
 } from '@fluentui/react-icons'
 import PageHero from '../components/PageHero'
 import { useToast } from '../components/Toaster'
@@ -322,7 +322,10 @@ export default function Settings() {
   const [tgToken, setTgToken] = useState('')
   const [tgUsersCount, setTgUsersCount] = useState(0)
   const [botProcess, setBotProcess] = useState({ running: false, pid: null, uptime: null })
+  const [aiProcess, setAiProcess] = useState({ running: false, pid: null, uptime: null })
   const [botLoading, setBotLoading] = useState(false)
+  const [aiLoading, setAiLoading] = useState(false)
+  const [versionsList, setVersionsList] = useState([])
 
   // Integrations (Google)
   const [googleEnabled, setGoogleEnabled] = useState(false)
@@ -357,9 +360,11 @@ export default function Settings() {
     setLoading(true)
     setError('')
     try {
-      const [setRes, botRes] = await Promise.all([
+      const [setRes, botRes, aiRes, verRes] = await Promise.all([
         fetch('/api/settings'),
-        fetch('/api/telegram/process').catch(() => null) // May fail if not configured
+        fetch('/api/telegram/process').catch(() => null), // May fail if not configured
+        fetch('/api/ai/process').catch(() => null),
+        fetch('/api/versions').catch(() => null)
       ])
 
       if (setRes.status === 401) { navigate('/login'); return }
@@ -391,6 +396,16 @@ export default function Settings() {
       if (botRes && botRes.ok) {
         const botData = await botRes.json()
         if (botData.status) setBotProcess(botData.status)
+      }
+
+      if (aiRes && aiRes.ok) {
+        const aiData = await aiRes.json()
+        if (aiData.status) setAiProcess(aiData.status)
+      }
+
+      if (verRes && verRes.ok) {
+        const verData = await verRes.json()
+        setVersionsList(verData || [])
       }
     } catch (e) {
       setError(e.message)
@@ -491,15 +506,56 @@ export default function Settings() {
     }
   }
 
-
-
-  if (loading) {
-    return (
-      <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}>
-        <ArrowSyncRegular style={{ animation: 'spin 1s linear infinite', fontSize: 32, color: 'var(--accent)' }} />
-      </div>
-    )
+  const handleAiAction = async (action) => {
+    setAiLoading(true)
+    try {
+      const res = await fetch(`/api/ai/process/${action}`, { method: 'POST', credentials: 'include' })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      if (data.status) setAiProcess(data.status)
+      const labels = {
+        start: isRu ? 'AI-сервис запущен' : 'AI-xizmat ishga tushirildi',
+        stop: isRu ? 'AI-сервис остановлен' : "AI-xizmat to'xtatildi",
+        restart: isRu ? 'AI-сервис перезапущен' : 'AI-xizmat qayta ishga tushirildi',
+      }
+      toast.success(labels[action] || (isRu ? 'Готово' : 'Bajarildi'))
+      window.dispatchEvent(new CustomEvent('navbar-refresh'))
+    } catch (e) {
+      toast.error(e.message)
+    } finally {
+      setAiLoading(false)
+    }
   }
+
+
+
+  const displayVersion = versionsList.length > 0 ? `v${versionsList[0].version}` : 'v2.5.4-stable';
+  const displayDate = versionsList.length > 0 && (versionsList[0].released_at || versionsList[0].created_at)
+    ? (versionsList[0].released_at || versionsList[0].created_at).substring(0, 10)
+    : '2026-06-08';
+
+  const displayVersionsList = versionsList.length > 0
+    ? versionsList.map((v, idx) => {
+        const isLatest = idx === 0;
+        const verLabel = `v${v.version}${isLatest ? (isRu ? ' (Текущая)' : ' (Joriy)') : ''}`;
+        const dateLabel = v.released_at 
+          ? v.released_at.substring(0, 10) 
+          : (v.created_at ? v.created_at.substring(0, 10) : '');
+        return {
+          ver: verLabel,
+          date: dateLabel,
+          notesUz: v.release_notes || '',
+          notesRu: v.release_notes || '',
+        };
+      })
+    : [
+        { ver: isRu ? 'v2.5.4 (Текущая)' : 'v2.5.4 (Joriy)', date: '2026-06-08', notesUz: 'Moliya bo\'limi moslashuvchan dizayni yangilandi, tugmalardagi matn ko\'rinishi yorug\' rejimda yaxshilandi, murojaatlar o\'qilishi va bildirishnomalarning darhol sinxronizatsiyasi joriy qilindi.', notesRu: 'Обновлен адаптивный дизайн раздела Финансы, улучшена видимость текста на кнопках в светлом режиме, внедрено автоматическое прочтение обращений и синхронизация уведомлений.' },
+        { ver: 'v2.4.8', date: '2026-06-05', notesUz: 'Ish haqi to\'lovlari, xodimlar KPI tizimi va kirim-chiqimlar moliya monitoringi modullari muvaffaqiyatli integratsiya qilindi.', notesRu: 'Интегрированы модули расчета заработной платы, KPI сотрудников и финансового мониторинга доходов и расходов.' },
+        { ver: 'v2.3.0', date: '2026-05-20', notesUz: 'Oflayn kameralar haqida bildirishnomalar, saytdagi xabarlarni o\'chirish va tizim sozlamalaridan keshni tozalash funksiyalari qo\'shildi.', notesRu: 'Добавлены уведомления об офлайн камерах, удаление обращений с сайта и очистка кэша базы данных.' },
+        { ver: 'v2.0.0', date: '2026-04-12', notesUz: 'Tizim dizayni Fluent UI uslubiga to\'liq moslashtirildi, yorug\' va to\'q rejimlar uchun maxsus HSL o\'zgaruvchilari joriy qilindi.', notesRu: 'Дизайн системы полностью переведен на компоненты Fluent UI, добавлены HSL переменные для светлой и темной тем.' },
+      ];
+
+
 
   return (
     <div style={{ minHeight: 'calc(100vh - 52px)', background: 'var(--bg)', color: 'var(--text-1)', overflowY: 'auto' }}>
@@ -541,18 +597,154 @@ export default function Settings() {
 
       <div className="settings-container" style={{ maxWidth: 900, margin: '0 auto', padding: '24px 32px 80px' }}>
         
-        {error && (
-          <div style={{ marginBottom: 20, padding: 16, background: 'var(--red-bg)', color: 'var(--red)', borderRadius: 8, border: '1px solid var(--red-bd)' }}>
-            {error}
+        {loading ? (
+          <div>
+            {/* Tabs Skeleton */}
+            <div style={{ display: 'flex', gap: 12, borderBottom: '1px solid var(--border)', marginBottom: 24, paddingBottom: 2 }}>
+              <div style={{
+                background: 'linear-gradient(90deg, var(--surface-2) 25%, var(--border-2) 50%, var(--surface-2) 75%)',
+                backgroundSize: '200% 100%',
+                animation: 'bf-shimmer 1.5s infinite linear',
+                borderRadius: 8,
+                width: 100, height: 36
+              }} />
+              <div style={{
+                background: 'linear-gradient(90deg, var(--surface-2) 25%, var(--border-2) 50%, var(--surface-2) 75%)',
+                backgroundSize: '200% 100%',
+                animation: 'bf-shimmer 1.5s infinite linear',
+                borderRadius: 8,
+                width: 130, height: 36
+              }} />
+              <div style={{
+                background: 'linear-gradient(90deg, var(--surface-2) 25%, var(--border-2) 50%, var(--surface-2) 75%)',
+                backgroundSize: '200% 100%',
+                animation: 'bf-shimmer 1.5s infinite linear',
+                borderRadius: 8,
+                width: 180, height: 36
+              }} />
+            </div>
+
+            {/* Content Form Skeleton */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 24 }}>
+                <div style={{
+                  background: 'linear-gradient(90deg, var(--surface-2) 25%, var(--border-2) 50%, var(--surface-2) 75%)',
+                  backgroundSize: '200% 100%',
+                  animation: 'bf-shimmer 1.5s infinite linear',
+                  borderRadius: 8,
+                  width: 180, height: 20, marginBottom: 24
+                }} />
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+                  <div>
+                    <div style={{
+                      background: 'linear-gradient(90deg, var(--surface-2) 25%, var(--border-2) 50%, var(--surface-2) 75%)',
+                      backgroundSize: '200% 100%',
+                      animation: 'bf-shimmer 1.5s infinite linear',
+                      borderRadius: 8,
+                      width: 120, height: 14, marginBottom: 8
+                    }} />
+                    <div style={{
+                      background: 'linear-gradient(90deg, var(--surface-2) 25%, var(--border-2) 50%, var(--surface-2) 75%)',
+                      backgroundSize: '200% 100%',
+                      animation: 'bf-shimmer 1.5s infinite linear',
+                      borderRadius: 8,
+                      width: '100%', height: 40
+                    }} />
+                  </div>
+                  <div>
+                    <div style={{
+                      background: 'linear-gradient(90deg, var(--surface-2) 25%, var(--border-2) 50%, var(--surface-2) 75%)',
+                      backgroundSize: '200% 100%',
+                      animation: 'bf-shimmer 1.5s infinite linear',
+                      borderRadius: 8,
+                      width: 120, height: 14, marginBottom: 8
+                    }} />
+                    <div style={{
+                      background: 'linear-gradient(90deg, var(--surface-2) 25%, var(--border-2) 50%, var(--surface-2) 75%)',
+                      backgroundSize: '200% 100%',
+                      animation: 'bf-shimmer 1.5s infinite linear',
+                      borderRadius: 8,
+                      width: '100%', height: 40
+                    }} />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+                  <div>
+                    <div style={{
+                      background: 'linear-gradient(90deg, var(--surface-2) 25%, var(--border-2) 50%, var(--surface-2) 75%)',
+                      backgroundSize: '200% 100%',
+                      animation: 'bf-shimmer 1.5s infinite linear',
+                      borderRadius: 8,
+                      width: 140, height: 14, marginBottom: 8
+                    }} />
+                    <div style={{
+                      background: 'linear-gradient(90deg, var(--surface-2) 25%, var(--border-2) 50%, var(--surface-2) 75%)',
+                      backgroundSize: '200% 100%',
+                      animation: 'bf-shimmer 1.5s infinite linear',
+                      borderRadius: 8,
+                      width: '100%', height: 40
+                    }} />
+                  </div>
+                  <div>
+                    <div style={{
+                      background: 'linear-gradient(90deg, var(--surface-2) 25%, var(--border-2) 50%, var(--surface-2) 75%)',
+                      backgroundSize: '200% 100%',
+                      animation: 'bf-shimmer 1.5s infinite linear',
+                      borderRadius: 8,
+                      width: 140, height: 14, marginBottom: 8
+                    }} />
+                    <div style={{
+                      background: 'linear-gradient(90deg, var(--surface-2) 25%, var(--border-2) 50%, var(--surface-2) 75%)',
+                      backgroundSize: '200% 100%',
+                      animation: 'bf-shimmer 1.5s infinite linear',
+                      borderRadius: 8,
+                      width: '100%', height: 40
+                    }} />
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{
+                    background: 'linear-gradient(90deg, var(--surface-2) 25%, var(--border-2) 50%, var(--surface-2) 75%)',
+                    backgroundSize: '200% 100%',
+                    animation: 'bf-shimmer 1.5s infinite linear',
+                    borderRadius: 8,
+                    width: 160, height: 14, marginBottom: 8
+                  }} />
+                  <div style={{
+                    background: 'linear-gradient(90deg, var(--surface-2) 25%, var(--border-2) 50%, var(--surface-2) 75%)',
+                    backgroundSize: '200% 100%',
+                    animation: 'bf-shimmer 1.5s infinite linear',
+                    borderRadius: 8,
+                    width: '100%', height: 40
+                  }} />
+                </div>
+              </div>
+            </div>
+
+            <style>{`
+              @keyframes bf-shimmer {
+                0% { background-position: 200% 0; }
+                100% { background-position: -200% 0; }
+              }
+            `}</style>
           </div>
-        )}
+        ) : (
+          <>
+            {error && (
+              <div style={{ marginBottom: 20, padding: 16, background: 'var(--red-bg)', color: 'var(--red)', borderRadius: 8, border: '1px solid var(--red-bd)' }}>
+                {error}
+              </div>
+            )}
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 12, borderBottom: '1px solid var(--border)', marginBottom: 24, overflowX: 'auto' }}>
           {[
             { id: 'system', icon: <SettingsRegular />, label: isRu ? 'Система' : 'Tizim' },
             { id: 'integrations', icon: <PlugConnectedRegular />, label: isRu ? 'Интеграции' : 'Integratsiyalar' },
-            { id: 'version', icon: <InfoRegular />, label: isRu ? 'Версия' : 'Versiya' },
+            { id: 'version', icon: <InfoRegular />, label: isRu ? 'Версия и Диагностика' : 'Versiya va Diagnostika' },
           ].map(tab => (
             <button
               key={tab.id}
@@ -874,8 +1066,8 @@ export default function Settings() {
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
                 <div>
-                  <h3 style={{ fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <span style={{ fontSize: 20 }}>&#128190;</span>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <SaveRegular fontSize={18} style={{ color: 'var(--accent)' }} />
                     {t('archive.cardTitle')}
                   </h3>
                   <div style={{ fontSize: 12.5, color: 'var(--text-4)', maxWidth: 480 }}>{t('archive.cardSub')}</div>
@@ -889,7 +1081,7 @@ export default function Settings() {
               <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '16px 18px', marginBottom: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                   <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <span style={{ fontSize: 15, color: '#fff' }}>&#9432;</span>
+                    <InfoRegular fontSize={16} style={{ color: '#fff' }} />
                   </div>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)', marginBottom: 4 }}>{t('archive.policyTitle')}</div>
@@ -900,7 +1092,7 @@ export default function Settings() {
 
               {/* Warning box */}
               <div style={{ background: 'var(--yellow-bg)', border: '1px solid var(--yellow-bd)', borderRadius: 10, padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                <span style={{ fontSize: 16, flexShrink: 0 }}>&#9888;</span>
+                <WarningRegular fontSize={18} style={{ color: 'var(--yellow)', flexShrink: 0 }} />
                 <div>
                   <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--yellow)', marginBottom: 2 }}>{t('archive.warningTitle')}</div>
                   <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{t('archive.warningDesc')}</div>
@@ -918,7 +1110,7 @@ export default function Settings() {
               {archiveResult && (
                 <div style={{ background: 'var(--green-bg)', border: '1px solid var(--green-bd)', borderRadius: 10, padding: '18px 20px', marginBottom: 16 }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--green)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span>&#10004;</span> {t('archive.successTitle')}
+                    <CheckmarkRegular fontSize={16} style={{ color: 'var(--green)' }} /> {t('archive.successTitle')}
                   </div>
                   {archiveResult.archived_count === 0 ? (
                     <div style={{ fontSize: 13, color: 'var(--text-3)' }}>{t('archive.noRecords')}</div>
@@ -968,7 +1160,7 @@ export default function Settings() {
                   </>
                 ) : (
                   <>
-                    <span style={{ fontSize: 18 }}>&#128190;</span>
+                    <SaveRegular fontSize={18} />
                     {t('archive.btnArchive')}
                   </>
                 )}
@@ -988,8 +1180,8 @@ export default function Settings() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16, marginBottom: 24 }}>
               <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: 18 }}>
                 <div style={{ fontSize: 12, color: 'var(--text-4)', textTransform: 'uppercase', fontWeight: 600 }}>{isRu ? 'Версия ПО' : 'Dastur versiyasi'}</div>
-                <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--accent)', marginTop: 6 }}>v2.5.4-stable</div>
-                <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 4 }}>{isRu ? 'Сборка: 2026-06-08' : 'Tuzilgan sana: 2026-06-08'}</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--accent)', marginTop: 6 }}>{displayVersion}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 4 }}>{isRu ? `Сборка: ${displayDate}` : `Tuzilgan sana: ${displayDate}`}</div>
               </div>
 
               <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: 18 }}>
@@ -1008,10 +1200,11 @@ export default function Settings() {
                   { name: 'Redis Cache Memory', status: 'Active', desc: isRu ? 'Кэширование данных событий и сессий' : 'Faol hodisalar va sessiya kesh xizmati' },
                   { name: 'Telegram Notification Bot', status: botProcess.running ? 'Running' : 'Offline', desc: isRu ? 'Служба мгновенной отправки уведомлений' : 'Xodimlarni xabardor qilish telegram boti' },
                   { name: 'Hikvision ISUP Camera SDK Server', status: 'Connected', desc: isRu ? 'Шлюз прямого подключения камер Hikvision' : 'Hikvision kameralarini ulash SDK shlyuzi' },
+                  { name: 'AI Face Inference GPU Microservice', status: aiProcess.running ? 'Running' : 'Offline', desc: isRu ? 'Служба нейросетевых расчетов и эмбеддингов' : 'Neyrotarmoq yuz tanish va embedding olish xizmati' },
                 ].map((item, idx) => {
                   const isOk = item.status === 'Connected' || item.status === 'Active' || item.status === 'Running';
                   return (
-                    <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 12, borderBottom: idx < 3 ? '1px solid var(--border-2)' : 'none', flexWrap: 'wrap', gap: 10 }}>
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 12, borderBottom: idx < 4 ? '1px solid var(--border-2)' : 'none', flexWrap: 'wrap', gap: 10 }}>
                       <div>
                         <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>{item.name}</div>
                         <div style={{ fontSize: 11, color: 'var(--text-4)', marginTop: 2 }}>{item.desc}</div>
@@ -1026,6 +1219,61 @@ export default function Settings() {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+
+            {/* AI Microservice Control */}
+            <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 20, marginBottom: 24, background: 'var(--bg)' }}>
+              <h4 style={{ margin: '0 0 16px 0', fontSize: 14, fontWeight: 700 }}>{isRu ? 'Управление AI-сервисом (нейросеть)' : 'AI-xizmat boshqaruvi (neyrotarmoq)'}</h4>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => handleAiAction('start')}
+                  disabled={aiProcess.running || aiLoading}
+                  style={{
+                    padding: '8px 16px', borderRadius: 6, border: 'none', fontSize: 13, fontWeight: 600,
+                    background: aiProcess.running ? 'var(--surface-2)' : '#10b981',
+                    color: aiProcess.running ? 'var(--text-4)' : '#fff',
+                    cursor: aiProcess.running ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {isRu ? 'Включить AI' : 'Ishga tushirish'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAiAction('stop')}
+                  disabled={!aiProcess.running || aiLoading}
+                  style={{
+                    padding: '8px 16px', borderRadius: 6, border: 'none', fontSize: 13, fontWeight: 600,
+                    background: !aiProcess.running ? 'var(--surface-2)' : '#f43f5e',
+                    color: !aiProcess.running ? 'var(--text-4)' : '#fff',
+                    cursor: !aiProcess.running ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {isRu ? 'Выключить AI' : 'O\'chirish'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAiAction('restart')}
+                  disabled={aiLoading}
+                  style={{
+                    padding: '8px 16px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 13, fontWeight: 600,
+                    background: 'var(--surface)',
+                    color: 'var(--text-1)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {isRu ? 'Перезапустить' : 'Qayta ishga tushirish'}
+                </button>
+
+                <div style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-4)' }}>
+                  {isRu ? 'Статус:' : 'Holati:'} <strong style={{ color: aiProcess.running ? '#10b981' : '#f43f5e' }}>{aiProcess.running ? (isRu ? 'Работает' : 'Ishlayapti') : (isRu ? 'Остановлен' : 'To\'xtagan')}</strong>
+                  {aiProcess.running && ` | PID: ${aiProcess.pid}`}
+                  {aiProcess.running && aiProcess.memory_mb && ` | RAM: ${aiProcess.memory_mb} MB`}
+                </div>
               </div>
             </div>
 
@@ -1056,12 +1304,7 @@ export default function Settings() {
             <div>
               <h4 style={{ margin: '0 0 16px 0', fontSize: 14, fontWeight: 700 }}>{isRu ? 'История обновлений' : 'Yangilanishlar tarixi'}</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {[
-                  { ver: 'v2.5.4 (Текущая)', date: '2026-06-08', notesUz: 'Moliya bo\'limi moslashuvchan dizayni yangilandi, tugmalardagi matn ko\'rinishi yorug\' rejimda yaxshilandi, murojaatlar o\'qilishi va bildirishnomalarning darhol sinxronizatsiyasi joriy qilindi.', notesRu: 'Обновлен адаптивный дизайн раздела Финансы, улучшена видимость текста на кнопках в светлом режиме, внедрено автоматическое прочтение обращений и синхронизация уведомлений.' },
-                  { ver: 'v2.4.8', date: '2026-06-05', notesUz: 'Ish haqi to\'lovlari, xodimlar KPI tizimi va kirim-chiqimlar moliya monitoringi modullari muvaffaqiyatli integratsiya qilindi.', notesRu: 'Интегрированы модули расчета заработной платы, KPI сотрудников и финансового мониторинга доходов и расходов.' },
-                  { ver: 'v2.3.0', date: '2026-05-20', notesUz: 'Oflayn kameralar haqida bildirishnomalar, saytdagi xabarlarni o\'chirish va tizim sozlamalaridan keshni tozalash funksiyalari qo\'shildi.', notesRu: 'Добавлены уведомления об офлайн камерах, удаление обращений с сайта и очистка кэша базы данных.' },
-                  { ver: 'v2.0.0', date: '2026-04-12', notesUz: 'Tizim dizayni Fluent UI uslubiga to\'liq moslashtirildi, yorug\' va to\'q rejimlar uchun maxsus HSL o\'zgaruvchilari joriy qilindi.', notesRu: 'Дизайн системы полностью переведен на компоненты Fluent UI, добавлены HSL переменные для светлой и темной тем.' },
-                ].map((rel, idx) => (
+                {displayVersionsList.map((rel, idx) => (
                   <div key={idx} style={{ paddingLeft: 16, borderLeft: '2px solid var(--border-3)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 6 }}>
                       <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>{rel.ver}</span>
@@ -1077,6 +1320,8 @@ export default function Settings() {
 
           </div>
         )}
+      </>
+      )}
 
       </div>
     </div>

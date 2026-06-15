@@ -153,6 +153,7 @@ class Device(Base):
 class Employee(Base):
     __tablename__ = "employees"
     id = Column(Integer, primary_key=True, index=True)
+    uuid = Column(String(36), unique=True, index=True, default=lambda: str(uuid_lib.uuid4()))
     first_name = Column(String, nullable=False)
     last_name = Column(String, nullable=False)
     middle_name = Column(String, nullable=True)
@@ -263,6 +264,8 @@ class AttendanceLog(Base):
     wellbeing_note_source = Column(String, nullable=True)
     liveness_score = Column(Float, nullable=True)
     liveness_status = Column(String, nullable=True)
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
     direction = Column(String, nullable=True)
     timestamp = Column(DateTime, default=utc_now)
     status = Column(String, nullable=False, default="aniqlandi")  # "aniqlandi", "noma'lum"
@@ -423,5 +426,59 @@ class FaceEmbedding(Base):
 
     employee = relationship("Employee", backref=backref("embeddings", cascade="all, delete"))
     user = relationship("User", backref=backref("embeddings", cascade="all, delete"))
+
+
+class CashflowTransaction(Base):
+    __tablename__ = "cashflow_transactions"
+    id = Column(Integer, primary_key=True, index=True)
+    uuid = Column(String(36), unique=True, index=True, default=lambda: str(uuid_lib.uuid4()))
+    description = Column(String, nullable=False)
+    type = Column(String, nullable=False)  # 'income' or 'expense'
+    amount = Column(Float, nullable=False)
+    comment = Column(String, nullable=True)
+    date = Column(String, nullable=False)  # 'YYYY-MM-DD'
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True, index=True)
+    branch_id = Column(Integer, ForeignKey("branches.id", ondelete="SET NULL"), nullable=True, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="SET NULL"), nullable=True, index=True)
+    account_id = Column(Integer, ForeignKey("finance_accounts.id", ondelete="SET NULL"), nullable=True, index=True)
+    created_at = Column(DateTime, default=now_tashkent)
+
+    organization = relationship("Organization")
+    branch = relationship("Branch")
+    employee = relationship("Employee")
+    account = relationship("FinanceAccount")
+
+
+class FinanceAccount(Base):
+    __tablename__ = "finance_accounts"
+    id = Column(Integer, primary_key=True, index=True)
+    uuid = Column(String(36), unique=True, index=True, default=lambda: str(uuid_lib.uuid4()))
+    name_uz = Column(String, nullable=False)
+    name_ru = Column(String, nullable=False)
+    account_number = Column(String, nullable=True)
+    balance = Column(Float, nullable=False, default=0.0)
+    type = Column(String, nullable=False)  # 'cash', 'bank', 'card', 'reserve'
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True, index=True)
+    branch_id = Column(Integer, ForeignKey("branches.id", ondelete="SET NULL"), nullable=True, index=True)
+    created_at = Column(DateTime, default=now_tashkent)
+
+    organization = relationship("Organization")
+    branch = relationship("Branch")
+
+
+class AccountTransfer(Base):
+    __tablename__ = "account_transfers"
+    id = Column(Integer, primary_key=True, index=True)
+    uuid = Column(String(36), unique=True, index=True, default=lambda: str(uuid_lib.uuid4()))
+    from_account_id = Column(Integer, ForeignKey("finance_accounts.id", ondelete="CASCADE"), nullable=False, index=True)
+    to_account_id = Column(Integer, ForeignKey("finance_accounts.id", ondelete="CASCADE"), nullable=False, index=True)
+    amount = Column(Float, nullable=False)
+    description = Column(String, nullable=True)
+    date = Column(String, nullable=False)  # 'YYYY-MM-DD'
+    created_at = Column(DateTime, default=now_tashkent)
+
+    from_account = relationship("FinanceAccount", foreign_keys=[from_account_id])
+    to_account = relationship("FinanceAccount", foreign_keys=[to_account_id])
+
 
 

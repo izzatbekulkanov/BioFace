@@ -533,7 +533,7 @@ export default function BranchDetail() {
                           {activeTab === 'employees' && filteredItems.map(e => (
                             <tr key={e.id} style={tableRowStyle}>
                               <td style={{ ...tableCellStyle, fontWeight: 600 }}>
-                                <Link to={`/employees/${e.id}`} style={{ color: 'var(--text-1)', textDecoration: 'none' }}>
+                                <Link to={`/employees/${e.uuid || e.id}`} style={{ color: 'var(--text-1)', textDecoration: 'none' }}>
                                   {e.last_name} {e.first_name} {e.middle_name || ''}
                                 </Link>
                               </td>
@@ -542,7 +542,7 @@ export default function BranchDetail() {
                               <td style={tableCellStyle}>{e.position || '—'}</td>
                               <td style={tableCellStyle}>{e.phone || '—'}</td>
                               <td style={{ ...tableCellStyle, textAlign: 'right' }}>
-                                <Link to={`/employees/${e.id}`} style={{ color: 'var(--accent)', textDecoration: 'none' }}>
+                                <Link to={`/employees/${e.uuid || e.id}`} style={{ color: 'var(--accent)', textDecoration: 'none' }}>
                                   <EyeRegular fontSize={16} />
                                 </Link>
                               </td>
@@ -552,7 +552,7 @@ export default function BranchDetail() {
                           {activeTab === 'students' && filteredItems.map(e => (
                             <tr key={e.id} style={tableRowStyle}>
                               <td style={{ ...tableCellStyle, fontWeight: 600 }}>
-                                <Link to={`/employees/${e.id}`} style={{ color: 'var(--text-1)', textDecoration: 'none' }}>
+                                <Link to={`/employees/${e.uuid || e.id}`} style={{ color: 'var(--text-1)', textDecoration: 'none' }}>
                                   {e.last_name} {e.first_name} {e.middle_name || ''}
                                 </Link>
                               </td>
@@ -560,7 +560,7 @@ export default function BranchDetail() {
                               <td style={tableCellStyle}>{e.department || '—'}</td>
                               <td style={tableCellStyle}>{e.phone || '—'}</td>
                               <td style={{ ...tableCellStyle, textAlign: 'right' }}>
-                                <Link to={`/employees/${e.id}`} style={{ color: 'var(--accent)', textDecoration: 'none' }}>
+                                <Link to={`/employees/${e.uuid || e.id}`} style={{ color: 'var(--accent)', textDecoration: 'none' }}>
                                   <EyeRegular fontSize={16} />
                                 </Link>
                               </td>

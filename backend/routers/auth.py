@@ -380,8 +380,12 @@ def login(payload: LoginPayload, request: Request, db: Session = Depends(get_db)
     db.commit()
     db.refresh(user)
     _clear_login_fail_state(request)
-    request.session["auth_user"] = _build_auth_user(user)
-    return {"ok": True, "redirect": "/"}
+    auth_user = _build_auth_user(user)
+    request.session["auth_user"] = auth_user
+
+    from utils.jwt_utils import create_access_token
+    token = create_access_token(data={"sub": user.name})
+    return {"ok": True, "redirect": "/", "token": token, "user": auth_user}
 
 
 @router.get("/api/auth/me")

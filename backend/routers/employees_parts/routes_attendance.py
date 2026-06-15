@@ -14,6 +14,7 @@ from utils.schedule_utils import (
     is_holiday_for_org,
     resolve_employee_schedule,
 )
+from utils.time_utils import now_tashkent
 
 router = APIRouter()
 
@@ -57,12 +58,15 @@ def _format_duration_hms(total_seconds: int) -> str:
 
 @router.get("/api/employees/{emp_id}/attendance-calendar")
 def get_employee_attendance_calendar(
-    emp_id: int,
+    emp_id: str,
     year: Optional[int] = Query(None, ge=2000, le=2100),
     month: Optional[int] = Query(None, ge=1, le=12),
     db: Session = Depends(get_db),
 ):
-    emp = db.query(Employee).filter(Employee.id == emp_id).first()
+    if emp_id.isdigit():
+        emp = db.query(Employee).filter(Employee.id == int(emp_id)).first()
+    else:
+        emp = db.query(Employee).filter(Employee.uuid == emp_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Xodim topilmadi")
 
@@ -128,7 +132,12 @@ def get_employee_attendance_calendar(
     for day_num in range(1, days_in_month + 1):
         day_dt = datetime(target_year, target_month, day_num, 0, 0, 0)
         day_key = day_dt.strftime("%Y-%m-%d")
-        if is_holiday_for_org(db, day_dt.date(), emp.organization_id):
+        is_weekend = day_dt.weekday() == 6
+        is_holiday = is_holiday_for_org(db, day_dt.date(), emp.organization_id) or is_weekend
+
+        found = day_map.get(day_key)
+
+        if is_holiday and not found:
             days.append(
                 {
                     "day": day_num,
@@ -138,8 +147,8 @@ def get_employee_attendance_calendar(
                     "event_count": 0,
                     "first_seen": None,
                     "last_seen": None,
-                    "expected_time": get_expected_start_dt(emp, day_dt.date()).isoformat(),
-                    "expected_end_time": get_expected_end_dt(emp, day_dt.date()).isoformat(),
+                    "expected_time": None,
+                    "expected_end_time": None,
                     "late_seconds": 0,
                     "late_minutes": 0,
                     "late_human": "0 daqiqa",
@@ -151,40 +160,72 @@ def get_employee_attendance_calendar(
                 }
             )
             continue
-        found = day_map.get(day_key)
+
         if not found:
-            summary["absent_days"] += 1
-            days.append(
-                {
-                    "day": day_num,
-                    "date": day_key,
-                    "present": False,
-                    "status": "absent",
-                    "event_count": 0,
-                    "first_seen": None,
-                    "last_seen": None,
-                    "expected_time": get_expected_start_dt(emp, day_dt.date()).isoformat(),
-                    "expected_end_time": get_expected_end_dt(emp, day_dt.date()).isoformat(),
-                    "late_seconds": 0,
-                    "late_minutes": 0,
-                    "late_human": "0 daqiqa",
-                    "late_human_full": "0 daqiqa",
-                    "worked_seconds": 0,
-                    "worked_human": "0 daqiqa",
-                    "camera_names": [],
-                }
-            )
+            today_date = now_tashkent().date()
+            if day_dt.date() > today_date:
+                days.append(
+                    {
+                        "day": day_num,
+                        "date": day_key,
+                        "present": False,
+                        "status": "pending",
+                        "event_count": 0,
+                        "first_seen": None,
+                        "last_seen": None,
+                        "expected_time": get_expected_start_dt(emp, day_dt.date()).isoformat(),
+                        "expected_end_time": get_expected_end_dt(emp, day_dt.date()).isoformat(),
+                        "late_seconds": 0,
+                        "late_minutes": 0,
+                        "late_human": "0 daqiqa",
+                        "late_human_full": "0 daqiqa",
+                        "worked_seconds": 0,
+                        "worked_human": "0 daqiqa",
+                        "camera_names": [],
+                    }
+                )
+            else:
+                summary["absent_days"] += 1
+                days.append(
+                    {
+                        "day": day_num,
+                        "date": day_key,
+                        "present": False,
+                        "status": "absent",
+                        "event_count": 0,
+                        "first_seen": None,
+                        "last_seen": None,
+                        "expected_time": get_expected_start_dt(emp, day_dt.date()).isoformat(),
+                        "expected_end_time": get_expected_end_dt(emp, day_dt.date()).isoformat(),
+                        "late_seconds": 0,
+                        "late_minutes": 0,
+                        "late_human": "0 daqiqa",
+                        "late_human_full": "0 daqiqa",
+                        "worked_seconds": 0,
+                        "worked_human": "0 daqiqa",
+                        "camera_names": [],
+                    }
+                )
             continue
 
         first_seen = found["first_seen"]
         last_seen = found["last_seen"]
-        expected_dt = get_expected_start_dt(emp, day_dt.date())
-        expected_end_dt = get_expected_end_dt(emp, day_dt.date())
-        late_minutes = get_late_minutes(emp, day_dt.date(), first_seen)
-        late_seconds = late_minutes * 60
-        late_minutes = late_seconds // 60
+        
+        if is_holiday:
+            expected_time_val = None
+            expected_end_time_val = None
+            late_minutes = 0
+            late_seconds = 0
+            status = "present"
+        else:
+            expected_time_val = get_expected_start_dt(emp, day_dt.date()).isoformat()
+            expected_end_time_val = get_expected_end_dt(emp, day_dt.date()).isoformat()
+            late_minutes = get_late_minutes(emp, day_dt.date(), first_seen)
+            late_seconds = late_minutes * 60
+            late_minutes = late_seconds // 60
+            status = "late" if late_minutes > 0 else "present"
+
         worked_seconds = max(0, int((last_seen - first_seen).total_seconds()))
-        status = "late" if late_minutes > 0 else "present"
 
         summary["present_days"] += 1
         if late_minutes > 0:
@@ -201,8 +242,8 @@ def get_employee_attendance_calendar(
                 "event_count": int(found["event_count"]),
                 "first_seen": first_seen.isoformat() if first_seen else None,
                 "last_seen": last_seen.isoformat() if last_seen else None,
-                "expected_time": expected_dt.isoformat(),
-                "expected_end_time": expected_end_dt.isoformat(),
+                "expected_time": expected_time_val,
+                "expected_end_time": expected_end_time_val,
                 "late_seconds": late_seconds,
                 "late_minutes": late_minutes,
                 "late_human": _format_duration_human(late_minutes),
@@ -210,6 +251,7 @@ def get_employee_attendance_calendar(
                 "worked_seconds": worked_seconds,
                 "worked_human": _format_duration_hms(worked_seconds),
                 "camera_names": sorted(list(found["camera_names"])),
+                "is_holiday": is_holiday,
             }
         )
 
@@ -254,8 +296,14 @@ def get_employee_attendance_calendar(
             "schedule_is_flexible": bool(schedule_payload.get("is_flexible")),
             "image_url": emp.image_url or "",
             "has_access": bool(emp.has_access),
+            "salary": emp.salary,
         },
-        "month": {"year": target_year, "month": target_month, "days_in_month": days_in_month},
+        "month": {
+            "year": target_year,
+            "month": target_month,
+            "days_in_month": days_in_month,
+            "today": now_tashkent().strftime("%Y-%m-%d"),
+        },
         "summary": summary,
         "days": days,
         "linked_cameras": linked_list,
@@ -264,12 +312,15 @@ def get_employee_attendance_calendar(
 
 @router.get("/api/employees/{emp_id}/logs")
 def get_employee_logs(
-    emp_id: int,
+    emp_id: str,
     page: int = Query(1, ge=1),
     page_size: int = Query(100, ge=1, le=500),
     db: Session = Depends(get_db),
 ):
-    emp = db.query(Employee).filter(Employee.id == emp_id).first()
+    if emp_id.isdigit():
+        emp = db.query(Employee).filter(Employee.id == int(emp_id)).first()
+    else:
+        emp = db.query(Employee).filter(Employee.uuid == emp_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Xodim topilmadi")
 
@@ -285,6 +336,10 @@ def get_employee_logs(
             AttendanceLog.timestamp,
             AttendanceLog.status,
             AttendanceLog.camera_mac,
+            AttendanceLog.direction,
+            AttendanceLog.device_id,
+            AttendanceLog.latitude,
+            AttendanceLog.longitude,
             Device.name.label("device_name"),
         )
         .outerjoin(Device, Device.id == AttendanceLog.device_id)
@@ -300,7 +355,10 @@ def get_employee_logs(
             "id": int(row.id),
             "timestamp": row.timestamp.isoformat() if row.timestamp else None,
             "status": str(row.status or ""),
-            "camera_name": str(row.device_name or row.camera_mac or "-"),
+            "camera_name": str(row.device_name or (emp.branch.name if emp.branch else None) or row.camera_mac or "-"),
+            "direction": "mobile" if row.device_id is None else str(row.direction or ""),
+            "latitude": row.latitude,
+            "longitude": row.longitude,
         }
         for row in rows
     ]

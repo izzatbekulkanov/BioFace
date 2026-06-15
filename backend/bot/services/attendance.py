@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 from database import SessionLocal, ensure_schema
 from models import AttendanceLog, Employee
 from utils.schedule_utils import get_late_minutes, is_holiday_for_org, resolve_employee_schedule
+from utils.time_utils import now_tashkent
 
 
 @dataclass(frozen=True)
@@ -23,6 +24,7 @@ class DailyAttendanceSummary:
     late_seconds: int
     worked_seconds: int
     camera_names: list[str]
+    snapshot_url: str | None = None
 
 
 @dataclass(frozen=True)
@@ -89,7 +91,7 @@ def _employee_expected_times(employee: Employee) -> tuple[str, str]:
 
 def get_employee_attendance_details(employee_id: int, target_date: date | None = None) -> AttendanceDetails | None:
     ensure_schema()
-    target_date = target_date or date.today()
+    target_date = target_date or now_tashkent().date()
     month_start = datetime(target_date.year, target_date.month, 1)
     if target_date.month == 12:
         next_month = datetime(target_date.year + 1, 1, 1)
@@ -238,6 +240,7 @@ def get_employee_attendance_details(employee_id: int, target_date: date | None =
                         for log in today_logs
                     }
                 ),
+                snapshot_url=today_logs[0].snapshot_url,
             )
         else:
             status_value = "holiday" if is_holiday_for_org(db, target_date, employee.organization_id) else "absent"
@@ -250,6 +253,7 @@ def get_employee_attendance_details(employee_id: int, target_date: date | None =
                 late_seconds=0,
                 worked_seconds=0,
                 camera_names=[],
+                snapshot_url=None,
             )
 
         month_summary = MonthlyAttendanceSummary(

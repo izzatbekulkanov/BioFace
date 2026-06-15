@@ -464,7 +464,7 @@ export default function AttendanceGroups() {
                                 <div>
                                   {it.employee_id ? (
                                     <Link
-                                      to={`/employees/${it.employee_id}`}
+                                      to={`/employees/${it.employee_uuid || it.employee_id}`}
                                       onClick={e => e.stopPropagation()}
                                       style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}
                                     >

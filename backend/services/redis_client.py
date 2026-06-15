@@ -230,6 +230,20 @@ def publish_camera_event(event: dict, max_stream_len: int = 5000) -> bool:
         payload_json = json.dumps(payload, ensure_ascii=False)
         redis_conn.publish(EVENTS_CHANNEL, payload_json)
 
+        # Broadcast via WebSocket in real-time
+        try:
+            import asyncio
+            from services.websocket_manager import manager
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(manager.broadcast(payload))
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                loop.run_until_complete(manager.broadcast(payload))
+                loop.close()
+        except Exception as ws_err:
+            print(f"[WebSocket Broadcast] Error: {ws_err}")
+
         stream_fields = {
             "event": payload_json,
             "source": str(payload.get("source") or "camera"),

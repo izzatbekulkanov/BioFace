@@ -15,6 +15,8 @@ import {
   DismissCircleRegular,
   ArrowDownRegular,
   ArrowUpRegular,
+  PhoneRegular,
+  LocationRegular,
 } from '@fluentui/react-icons'
 import PageHero from '../components/PageHero'
 import Skeleton from '../components/Skeleton'
@@ -565,7 +567,7 @@ export default function Attendance() {
                             <div>
                               {it.employee_id ? (
                                 <Link
-                                  to={`/employees/${it.employee_id}`}
+                                  to={`/employees/${it.employee_uuid || it.employee_id}`}
                                   state={{ from: '/attendance' }}
                                   style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}
                                 >
@@ -603,8 +605,29 @@ export default function Attendance() {
                         </td>
                         <td style={tdStyle}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-                            <CameraRegular fontSize={13} style={{ color: 'var(--text-4)' }} />
+                            {it.direction === 'mobile' ? (
+                              <PhoneRegular fontSize={13} style={{ color: '#3b82f6' }} />
+                            ) : (
+                              <CameraRegular fontSize={13} style={{ color: 'var(--text-4)' }} />
+                            )}
                             {it.camera_name || it.camera_isup_device_id || '—'}
+                            {it.direction === 'mobile' && it.latitude && it.longitude && (
+                              <a
+                                href={`https://www.google.com/maps/search/?api=1&query=${it.latitude},${it.longitude}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  color: '#3b82f6',
+                                  marginLeft: 6,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  cursor: 'pointer',
+                                }}
+                                title={isRu ? 'Показать на карте' : "Xaritada ko'rsatish"}
+                              >
+                                <LocationRegular fontSize={13} />
+                              </a>
+                            )}
                           </div>
                           {it.camera_mac && (
                             <div style={{ fontSize: 11, color: 'var(--text-4)', marginTop: 2, fontFamily: 'monospace' }}>{it.camera_mac}</div>
@@ -834,6 +857,12 @@ function DirectionPill({ direction, isRu }) {
     border = 'var(--red-bd)'
     text = isRu ? 'Выход (Ketdi)' : 'Chiqish (Ketdi)'
     icon = <ArrowUpRegular fontSize={12} />
+  } else if (dir === 'mobile') {
+    bg = 'rgba(59, 130, 246, 0.1)'
+    color = '#3b82f6'
+    border = 'rgba(59, 130, 246, 0.2)'
+    text = 'Mobile'
+    icon = <PhoneRegular fontSize={12} />
   }
 
   return (

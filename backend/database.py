@@ -131,11 +131,12 @@ def ensure_schema() -> bool:
                         conn.execute(text(sql))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_devices_serial_number ON devices (serial_number)"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_devices_organization_id ON devices (organization_id)"))
+                default_bool = "false" if conn.dialect.name == "postgresql" else "0"
                 conn.execute(
                     text(
-                        "UPDATE devices SET "
-                        "webhook_enabled = COALESCE(webhook_enabled, 0), "
-                        "webhook_picture_sending = COALESCE(webhook_picture_sending, 0)"
+                        f"UPDATE devices SET "
+                        f"webhook_enabled = COALESCE(webhook_enabled, {default_bool}), "
+                        f"webhook_picture_sending = COALESCE(webhook_picture_sending, {default_bool})"
                     )
                 )
 
@@ -214,7 +215,7 @@ def ensure_schema() -> bool:
 
                 token_seed = str(menu_data.get("telegram_bot_token") or "").strip()
                 admin_chat_seed = str(menu_data.get("telegram_admin_chat_id") or "").strip()
-                enabled_seed = 1 if bool(menu_data.get("telegram_enabled", False)) else 0
+                enabled_seed = bool(menu_data.get("telegram_enabled", False))
 
                 if token_seed or admin_chat_seed or enabled_seed:
                     conn.execute(
@@ -280,11 +281,12 @@ def ensure_schema() -> bool:
                         "WHERE google_sub IS NOT NULL AND trim(google_sub) <> ''"
                     )
                 )
+                default_bool = "false" if conn.dialect.name == "postgresql" else "0"
                 conn.execute(
                     text(
-                        "UPDATE users "
-                        "SET google_oauth_enabled = COALESCE(google_oauth_enabled, 0), "
-                        "last_login_provider = COALESCE(NULLIF(trim(last_login_provider), ''), 'password')"
+                        f"UPDATE users "
+                        f"SET google_oauth_enabled = COALESCE(google_oauth_enabled, {default_bool}), "
+                        f"last_login_provider = COALESCE(NULLIF(trim(last_login_provider), ''), 'password')"
                     )
                 )
 
@@ -308,7 +310,7 @@ def ensure_schema() -> bool:
                 }
                 for old_role, new_role in role_map.items():
                     conn.execute(
-                        text("UPDATE users SET role = :new_role WHERE role = :old_role"),
+                        text("UPDATE users SET role = :new_role WHERE CAST(role AS VARCHAR) = :old_role"),
                         {"new_role": new_role, "old_role": old_role},
                     )
 
@@ -349,6 +351,18 @@ def ensure_schema() -> bool:
 
             if "employees" in inspector.get_table_names():
                 emp_cols = {c["name"] for c in inspector.get_columns("employees")}
+                if "uuid" not in emp_cols:
+                    conn.execute(text("ALTER TABLE employees ADD COLUMN uuid VARCHAR(36)"))
+                    res = conn.execute(text("SELECT id FROM employees WHERE uuid IS NULL"))
+                    import uuid as uuid_lib
+                    for row in res.fetchall():
+                        emp_id = row[0]
+                        new_uuid = str(uuid_lib.uuid4())
+                        conn.execute(
+                            text("UPDATE employees SET uuid = :uuid WHERE id = :id"),
+                            {"uuid": new_uuid, "id": emp_id}
+                        )
+                    conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ux_employees_uuid ON employees (uuid)"))
                 if "personal_id" not in emp_cols:
                     conn.execute(text("ALTER TABLE employees ADD COLUMN personal_id VARCHAR"))
                 if "employee_type" not in emp_cols:
@@ -461,7 +475,7 @@ def ensure_schema() -> bool:
             conn.execute(
                 text(
                     "CREATE UNIQUE INDEX IF NOT EXISTS ux_positions_org_dept_name_ci "
-                    "ON positions (organization_id, ifnull(department_id, 0), lower(trim(name)))"
+                    "ON positions (organization_id, COALESCE(department_id, 0), lower(trim(name)))"
                 )
             )
 
@@ -469,30 +483,41 @@ def ensure_schema() -> bool:
                 conn.execute(
                     text(
                         """
-                        INSERT OR IGNORE INTO departments (name, organization_id, created_at)
-                        SELECT MIN(trim(department)) AS name, organization_id, CURRENT_TIMESTAMP
-                        FROM employees
-                        WHERE organization_id IS NOT NULL
-                          AND department IS NOT NULL
-                          AND trim(department) <> ''
-                        GROUP BY organization_id, lower(trim(department))
+                        INSERT INTO departments (name, organization_id, created_at)
+                        SELECT MIN(trim(e.department)) AS name, e.organization_id, CURRENT_TIMESTAMP
+                        FROM employees e
+                        WHERE e.organization_id IS NOT NULL
+                          AND e.department IS NOT NULL
+                          AND trim(e.department) <> ''
+                          AND NOT EXISTS (
+                              SELECT 1 FROM departments d
+                              WHERE d.organization_id = e.organization_id
+                                AND lower(trim(d.name)) = lower(trim(e.department))
+                          )
+                        GROUP BY e.organization_id, lower(trim(e.department))
                         """
                     )
                 )
                 conn.execute(
                     text(
                         """
-                        INSERT OR IGNORE INTO positions (name, organization_id, department_id, created_at)
+                        INSERT INTO positions (name, organization_id, department_id, created_at)
                         SELECT
-                            MIN(trim(position)) AS name,
-                            organization_id,
-                            department_id,
+                            MIN(trim(e.position)) AS name,
+                            e.organization_id,
+                            e.department_id,
                             CURRENT_TIMESTAMP
-                        FROM employees
-                        WHERE organization_id IS NOT NULL
-                          AND position IS NOT NULL
-                          AND trim(position) <> ''
-                        GROUP BY organization_id, ifnull(department_id, 0), lower(trim(position))
+                        FROM employees e
+                        WHERE e.organization_id IS NOT NULL
+                          AND e.position IS NOT NULL
+                          AND trim(e.position) <> ''
+                          AND NOT EXISTS (
+                              SELECT 1 FROM positions p
+                              WHERE p.organization_id = e.organization_id
+                                AND COALESCE(p.department_id, 0) = COALESCE(e.department_id, 0)
+                                AND lower(trim(p.name)) = lower(trim(e.position))
+                          )
+                        GROUP BY e.organization_id, e.department_id, lower(trim(e.position))
                         """
                     )
                 )
@@ -522,7 +547,7 @@ def ensure_schema() -> bool:
                             SELECT positions.id
                             FROM positions
                             WHERE positions.organization_id = employees.organization_id
-                              AND ifnull(positions.department_id, 0) = ifnull(employees.department_id, 0)
+                              AND COALESCE(positions.department_id, 0) = COALESCE(employees.department_id, 0)
                               AND lower(trim(positions.name)) = lower(trim(employees.position))
                             LIMIT 1
                         )
@@ -589,17 +614,22 @@ def ensure_schema() -> bool:
             conn.execute(
                 text(
                     """
-                    INSERT OR IGNORE INTO schedules (name, start_time, end_time, is_flexible, organization_id, created_at, updated_at)
+                    INSERT INTO schedules (name, start_time, end_time, is_flexible, organization_id, created_at, updated_at)
                     SELECT
                         'Asosiy smena',
-                        COALESCE(NULLIF(trim(default_start_time), ''), '09:00'),
-                        COALESCE(NULLIF(trim(default_end_time), ''), '18:00'),
-                        0,
-                        id,
+                        COALESCE(NULLIF(trim(o.default_start_time), ''), '09:00'),
+                        COALESCE(NULLIF(trim(o.default_end_time), ''), '18:00'),
+                        false,
+                        o.id,
                         CURRENT_TIMESTAMP,
                         CURRENT_TIMESTAMP
-                    FROM organizations
-                    WHERE id IS NOT NULL
+                    FROM organizations o
+                    WHERE o.id IS NOT NULL
+                      AND NOT EXISTS (
+                          SELECT 1 FROM schedules s
+                          WHERE s.organization_id = o.id
+                            AND lower(trim(s.name)) = 'asosiy smena'
+                      )
                     """
                 )
             )
@@ -645,7 +675,7 @@ def ensure_schema() -> bool:
             conn.execute(
                 text(
                     "CREATE UNIQUE INDEX IF NOT EXISTS ux_holidays_scope_date_title "
-                    "ON holidays (ifnull(organization_id, 0), date, lower(trim(title)))"
+                    "ON holidays (COALESCE(organization_id, 0), date, lower(trim(title)))"
                 )
             )
 
@@ -669,6 +699,10 @@ def ensure_schema() -> bool:
                     conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN liveness_status VARCHAR"))
                 if "direction" not in attendance_cols:
                     conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN direction VARCHAR"))
+                if "latitude" not in attendance_cols:
+                    conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN latitude FLOAT"))
+                if "longitude" not in attendance_cols:
+                    conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN longitude FLOAT"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_attendance_logs_timestamp ON attendance_logs (timestamp)"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_attendance_logs_status_timestamp ON attendance_logs (status, timestamp)"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_attendance_logs_employee_timestamp ON attendance_logs (employee_id, timestamp)"))
@@ -899,13 +933,22 @@ def ensure_schema() -> bool:
                 psych_cols = {c["name"] for c in inspector.get_columns("employee_psychological_states")}
                 if "state_date" not in psych_cols:
                     conn.execute(text("ALTER TABLE employee_psychological_states ADD COLUMN state_date VARCHAR"))
-                    conn.execute(
-                        text(
-                            "UPDATE employee_psychological_states "
-                            "SET state_date = COALESCE(substr(assessed_at, 1, 10), substr(created_at, 1, 10), date('now')) "
-                            "WHERE state_date IS NULL OR trim(state_date) = ''"
+                    if conn.dialect.name == "postgresql":
+                        conn.execute(
+                            text(
+                                "UPDATE employee_psychological_states "
+                                "SET state_date = COALESCE(to_char(assessed_at, 'YYYY-MM-DD'), to_char(created_at, 'YYYY-MM-DD'), to_char(CURRENT_DATE, 'YYYY-MM-DD')) "
+                                "WHERE state_date IS NULL OR trim(state_date) = ''"
+                            )
                         )
-                    )
+                    else:
+                        conn.execute(
+                            text(
+                                "UPDATE employee_psychological_states "
+                                "SET state_date = COALESCE(substr(assessed_at, 1, 10), substr(created_at, 1, 10), date('now')) "
+                                "WHERE state_date IS NULL OR trim(state_date) = ''"
+                            )
+                        )
                 if "state_key" not in psych_cols:
                     conn.execute(text("ALTER TABLE employee_psychological_states ADD COLUMN state_key VARCHAR"))
                 if "confidence" not in psych_cols:
@@ -961,12 +1004,27 @@ def ensure_schema() -> bool:
                         """
                     )
                 )
+            # Migrate cashflow_transactions to add account_id if missing
+            if "cashflow_transactions" in inspector.get_table_names():
+                cf_cols = {c["name"] for c in inspector.get_columns("cashflow_transactions")}
+                if "account_id" not in cf_cols:
+                    conn.execute(text("ALTER TABLE cashflow_transactions ADD COLUMN account_id INTEGER"))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_cashflow_transactions_account_id ON cashflow_transactions (account_id)"))
+
+            # Migrate finance_accounts to add account_number if missing
+            if "finance_accounts" in inspector.get_table_names():
+                fa_cols = {c["name"] for c in inspector.get_columns("finance_accounts")}
+                if "account_number" not in fa_cols:
+                    conn.execute(text("ALTER TABLE finance_accounts ADD COLUMN account_number VARCHAR"))
+
             try:
                 conn.commit()
             except Exception:
                 pass
         return True
-    except Exception:
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
         # Avoid blocking app start on migration errors; logs can be added later.
         return False
 

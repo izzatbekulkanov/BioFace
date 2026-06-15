@@ -17,6 +17,8 @@ import {
   ChevronRightRegular,
   BrainCircuitRegular,
   WarningRegular,
+  PhoneRegular,
+  LocationRegular,
 } from '@fluentui/react-icons'
 import PageHero from '../components/PageHero'
 import Skeleton from '../components/Skeleton'
@@ -450,8 +452,29 @@ export default function EmployeeDetail() {
                         </td>
                         <td style={tdStyle}>
                           <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-                            <CameraRegular fontSize={12} style={{ color: 'var(--text-4)' }} />
+                            {l.direction === 'mobile' ? (
+                              <PhoneRegular fontSize={12} style={{ color: '#3b82f6' }} />
+                            ) : (
+                              <CameraRegular fontSize={12} style={{ color: 'var(--text-4)' }} />
+                            )}
                             {l.camera_name || '—'}
+                            {l.direction === 'mobile' && l.latitude && l.longitude && (
+                              <a
+                                href={`https://www.google.com/maps/search/?api=1&query=${l.latitude},${l.longitude}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  color: '#3b82f6',
+                                  marginLeft: 4,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  cursor: 'pointer',
+                                }}
+                                title={isRu ? 'Показать на карте' : "Xaritada ko'rsatish"}
+                              >
+                                <LocationRegular fontSize={12} />
+                              </a>
+                            )}
                           </span>
                         </td>
                         <td style={tdStyle}>

@@ -60,7 +60,7 @@ export default function Devices() {
   const [organizations, setOrganizations] = useState([])
   const [branches, setBranches] = useState([])          // tanlangan org filiallari
   const [branchesLoading, setBranchesLoading] = useState(false)
-  const [collapsedBranches, setCollapsedBranches] = useState({})
+  const [expandedBranches, setExpandedBranches] = useState({})
   const [loading, setLoading]   = useState(_camerasCache.length === 0)
   const [error, setError]       = useState('')
   const [spin, setSpin]         = useState(false)
@@ -152,7 +152,7 @@ export default function Devices() {
     }
   }, [orgParam, filter])
 
-  const toggleBranch = (id) => setCollapsedBranches(p => ({ ...p, [id]: !p[id] }))
+  const toggleBranch = (id) => setExpandedBranches(p => ({ ...p, [id]: !p[id] }))
 
   const handleDelete = async (cam) => {
     const ok = await confirm({
@@ -502,7 +502,7 @@ export default function Devices() {
                   )
 
                   const renderBranchSection = (br, cams) => {
-                    const isCollapsed = collapsedBranches[br.id]
+                    const isCollapsed = !expandedBranches[br.id]
                     const onlineCount = cams.filter(c=>c.is_online).length
                     const offlineCount = cams.filter(c=>!c.is_online).length
                     return (
@@ -559,7 +559,7 @@ export default function Devices() {
                       {/* Filialsiz kameralar */}
                       {!branchesLoading && (() => {
                         const nobrLabel = isRu?'Filialsiz kameralar':'Filialsiz kameralar'
-                        const isCollapsed = collapsedBranches['__unbound']
+                        const isCollapsed = !expandedBranches['__unbound']
                         const onlineCount = unboundCams.filter(c=>c.is_online).length
                         const offlineCount = unboundCams.filter(c=>!c.is_online).length
                         return (

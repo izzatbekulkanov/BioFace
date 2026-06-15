@@ -1101,7 +1101,8 @@ export default function EmployeeForm() {
     return isRu ? 'Должность успешно добавлена' : 'Lavozim muvaffaqiyatli qo\'shildi'
   }
 
-  if (loading) {
+  try {
+    if (loading) {
     return (
       <div style={{ minHeight: 'calc(100vh - 52px)', background: 'var(--bg)', color: 'var(--text-1)' }}>
         <PageHero badge="✦" title={isEdit ? (isRu ? 'Редактирование' : 'Tahrirlash') : (isRu ? 'Новый' : 'Yangi')} backPath={backPath} />
@@ -1992,7 +1993,21 @@ export default function EmployeeForm() {
         </Modal>
       )}
     </div>
-  )
+    )
+  } catch (err) {
+    console.error("Render error in EmployeeForm:", err)
+    return (
+      <div style={{ padding: 32, background: 'var(--bg)', color: 'var(--red)', minHeight: '100vh' }}>
+        <h2 style={{ color: '#f43f5e', marginBottom: 12 }}>⚠️ Render Error in EmployeeForm</h2>
+        <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, padding: 20, fontFamily: 'monospace', fontSize: 13, whiteSpace: 'pre-wrap', overflowX: 'auto' }}>
+          {err.stack || err.message}
+        </div>
+        <button type="button" onClick={() => window.location.reload()} style={{ marginTop: 16, padding: '10px 20px', borderRadius: 8, background: 'var(--accent)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+          Reload Page
+        </button>
+      </div>
+    )
+  }
 }
 
 // ────────────────────────────────────────────────────────────────────────────

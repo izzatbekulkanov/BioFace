@@ -101,6 +101,13 @@ export default function SalaryDetail() {
     let absentDays = 0
     let presentDays = 0
     let holidayDays = 0
+    let totalLateMinutes = 0
+    let latePenalty = 0
+
+    const baseSalary = calendarData?.employee?.salary || 0
+    const totalWorkingDays = calendarData.days.filter(d => d.status !== 'holiday').length
+    const absentDaysUpToToday = calendarData.days.filter(d => d.status === 'absent' && d.date <= (calendarData.month?.today || '')).length
+    const absentDeduction = totalWorkingDays > 0 ? Math.round((baseSalary / totalWorkingDays) * absentDaysUpToToday) : 0
 
     calendarData.days.forEach(day => {
       if (day.status === 'holiday') {
@@ -116,28 +123,39 @@ export default function SalaryDetail() {
       presentDays++
       if (day.late_minutes > 0) {
         lateDays++
+        totalLateMinutes += day.late_minutes
+
+        if (day.expected_time && day.expected_end_time && totalWorkingDays > 0) {
+          const start = new Date(day.expected_time)
+          const end = new Date(day.expected_end_time)
+          let expectedDiffMinutes = (end - start) / 60000
+          if (expectedDiffMinutes <= 0) expectedDiffMinutes = 540
+          const dailyRate = baseSalary / totalWorkingDays
+          const minutelyRate = dailyRate / expectedDiffMinutes
+          latePenalty += Math.round(minutelyRate * day.late_minutes)
+        }
       } else {
         onTimeDays++
       }
 
-      const start = new Date(day.expected_time)
-      const end = new Date(day.expected_end_time)
-      const expectedDiff = Math.max(0, (end - start) / 1000)
-      totalExpectedSeconds += expectedDiff
+      if (day.expected_time && day.expected_end_time) {
+        const start = new Date(day.expected_time)
+        const end = new Date(day.expected_end_time)
+        const expectedDiff = Math.max(0, (end - start) / 1000)
+        totalExpectedSeconds += expectedDiff
+        totalWorkedSeconds += day.worked_seconds
 
-      totalWorkedSeconds += day.worked_seconds
-
-      const diff = day.worked_seconds - expectedDiff
-      if (diff > 0) {
-        overtimeSeconds += diff
-      } else {
-        undertimeSeconds += Math.abs(diff)
+        const diff = day.worked_seconds - expectedDiff
+        if (diff > 0) {
+          overtimeSeconds += diff
+        } else {
+          undertimeSeconds += Math.abs(diff)
+        }
       }
     })
 
     const overtimeHours = overtimeSeconds / 3600
     const overtimeBonus = Math.round(overtimeHours * 30000)
-    const latePenalty = lateDays * 50000
 
     return {
       totalWorkedSeconds,
@@ -146,7 +164,11 @@ export default function SalaryDetail() {
       undertimeSeconds,
       onTimeDays,
       lateDays,
+      totalLateMinutes,
       absentDays,
+      absentDaysUpToToday,
+      totalWorkingDays,
+      absentDeduction,
       presentDays,
       holidayDays,
       overtimeHours,
@@ -160,7 +182,9 @@ export default function SalaryDetail() {
     : ''
 
   const baseSalary = calendarData?.employee?.salary || 0
-  const finalSalary = detailedStats ? Math.max(0, baseSalary + detailedStats.overtimeBonus - detailedStats.latePenalty) : 0
+  const finalSalary = detailedStats 
+    ? Math.max(0, baseSalary + detailedStats.overtimeBonus - detailedStats.latePenalty - detailedStats.absentDeduction) 
+    : 0
 
   return (
     <div style={{ minHeight: 'calc(100vh - 52px)', background: 'var(--bg)', color: 'var(--text-1)', overflowY: 'auto' }}>
@@ -306,12 +330,26 @@ export default function SalaryDetail() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13.5 }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-3)' }}>
                     <SubtractCircleRegular fontSize={16} style={{ color: '#ef4444' }} />
-                    {isRu ? 'Штраф за опоздания' : 'Kechikkan kunlar uchun (Jarima):'}
+                    {isRu ? 'Штраф за опоздания' : 'Kechikkan vaqt uchun (Jarima):'}
                     <span style={{ fontSize: 11, color: 'var(--text-4)' }}>
-                      ({detailedStats.lateDays} marta × 50,000 UZS)
+                      {isRu 
+                        ? `(${detailedStats.lateDays} раз, всего ${detailedStats.totalLateMinutes} мин.)`
+                        : `(${detailedStats.lateDays} marta, jami ${detailedStats.totalLateMinutes} daqiqa)`
+                      }
                     </span>
                   </span>
                   <span style={{ color: '#ef4444', fontWeight: 600 }}>-{formatMoney(detailedStats.latePenalty)}</span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13.5 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-3)' }}>
+                    <SubtractCircleRegular fontSize={16} style={{ color: '#ef4444' }} />
+                    {isRu ? 'Вычет за пропуски (до сегодня)' : 'Kelmagan kunlar uchun chegirma (bugungacha):'}
+                    <span style={{ fontSize: 11, color: 'var(--text-4)' }}>
+                      ({detailedStats.absentDaysUpToToday} kun / {detailedStats.totalWorkingDays} ish kuni)
+                    </span>
+                  </span>
+                  <span style={{ color: '#ef4444', fontWeight: 600 }}>-{formatMoney(detailedStats.absentDeduction)}</span>
                 </div>
 
                 <div style={{
@@ -348,42 +386,75 @@ export default function SalaryDetail() {
                   </thead>
                   <tbody>
                     {calendarData.days.map((day, idx) => {
-                      const expStart = day.expected_time ? day.expected_time.split('T')[1]?.substring(0, 5) : '09:00'
-                      const expEnd = day.expected_end_time ? day.expected_end_time.split('T')[1]?.substring(0, 5) : '18:00'
+                      const expStart = day.expected_time ? day.expected_time.split('T')[1]?.substring(0, 5) : ''
+                      const expEnd = day.expected_end_time ? day.expected_end_time.split('T')[1]?.substring(0, 5) : ''
                       const actStart = day.first_seen ? day.first_seen.split('T')[1]?.substring(0, 5) : '--:--'
                       const actEnd = day.last_seen ? day.last_seen.split('T')[1]?.substring(0, 5) : '--:--'
 
-                      const startDt = new Date(day.expected_time)
-                      const endDt = new Date(day.expected_end_time)
-                      const expSec = Math.max(0, (endDt - startDt) / 1000)
+                      const startDt = day.expected_time ? new Date(day.expected_time) : null
+                      const endDt = day.expected_end_time ? new Date(day.expected_end_time) : null
+                      const expSec = (startDt && endDt) ? Math.max(0, (endDt - startDt) / 1000) : 0
+
+                      const isToday = day.date === calendarData.month?.today
 
                       let badge = <span style={badgeGrayStyle}>{isRu ? 'Выходной' : 'Dam olish'}</span>
-                      if (day.status === 'present') {
+                      if (day.status === 'holiday') {
+                        badge = <span style={badgePurpleStyle}>{isRu ? 'Выходной' : 'Dam olish'}</span>
+                      } else if (day.status === 'present') {
                         badge = <span style={badgeGreenStyle}>{isRu ? 'Вовремя' : 'Vaqtida'}</span>
                       } else if (day.status === 'late') {
                         badge = <span style={badgeYellowStyle}>{isRu ? 'Опоздал' : 'Kechikdi'}</span>
                       } else if (day.status === 'absent') {
                         badge = <span style={badgeRedStyle}>{isRu ? 'Не пришел' : 'Kelmagan'}</span>
+                      } else if (day.status === 'pending') {
+                        badge = <span style={badgePendingStyle}>{isRu ? 'Ожидается' : 'Kutilmoqda'}</span>
                       }
 
                       const diffSec = day.worked_seconds - expSec
 
                       return (
-                        <tr key={idx} style={{ borderBottom: '1px solid var(--border-2)', background: idx % 2 === 0 ? 'rgba(255,255,255,0.01)' : 'transparent' }}>
-                          <td style={{ padding: '14px 16px', fontWeight: 600, color: 'var(--text-1)' }}>{formatDateDay(day.date)}</td>
+                        <tr key={idx} style={{
+                          borderBottom: '1px solid var(--border-2)',
+                          background: isToday ? 'rgba(59, 130, 246, 0.08)' : getRowBg(day.status),
+                          boxShadow: isToday ? 'inset 3px 0 0 var(--accent)' : getRowBoxShadow(day.status),
+                        }}>
+                          <td style={{ padding: '14px 16px', fontWeight: 600, color: 'var(--text-1)' }}>
+                            {formatDateDay(day.date)}
+                            {isToday && <span style={todayBadgeStyle}>{isRu ? 'Сегодня' : 'Bugun'}</span>}
+                          </td>
                           <td style={{ padding: '14px 16px' }}>{badge}</td>
-                          <td style={{ padding: '14px 16px', color: 'var(--text-3)' }}>{expStart} — {expEnd}</td>
+                          <td style={{ padding: '14px 16px', color: 'var(--text-3)' }}>
+                            {expStart && expEnd ? `${expStart} — ${expEnd}` : '—'}
+                          </td>
                           <td style={{ padding: '14px 16px', fontWeight: 500 }}>
-                            {day.present ? `${actStart} — ${actEnd}` : '—'}
+                            {day.present ? (
+                              <div style={cellBadgeStyle}>
+                                <ClockRegular fontSize={14} style={{ color: 'var(--text-3)' }} />
+                                <span>{actStart} — {actEnd}</span>
+                              </div>
+                            ) : '—'}
                           </td>
                           <td style={{ padding: '14px 16px', fontWeight: 600 }}>
-                            {day.present ? formatDuration(day.worked_seconds) : '—'}
+                            {day.present ? (
+                              <div style={cellBadgeStyle}>
+                                <BriefcaseRegular fontSize={14} style={{ color: 'var(--text-3)' }} />
+                                <span>{formatDuration(day.worked_seconds)}</span>
+                              </div>
+                            ) : '—'}
                           </td>
                           <td style={{ padding: '14px 16px', fontWeight: 700 }}>
-                            {!day.present ? '—' : (
-                              <span style={{ color: diffSec >= 0 ? '#10b981' : '#ef4444' }}>
-                                {formatVariance(day.worked_seconds, expSec)}
-                              </span>
+                            {!day.present || expSec === 0 ? '—' : (
+                              diffSec >= 0 ? (
+                                <div style={diffPositiveBadgeStyle}>
+                                  <AddCircleRegular fontSize={14} />
+                                  <span>{formatVariance(day.worked_seconds, expSec)}</span>
+                                </div>
+                              ) : (
+                                <div style={diffNegativeBadgeStyle}>
+                                  <SubtractCircleRegular fontSize={14} />
+                                  <span>{formatVariance(day.worked_seconds, expSec)}</span>
+                                </div>
+                              )
                             )}
                           </td>
                         </tr>
@@ -449,4 +520,92 @@ const badgeGrayStyle = {
   background: 'rgba(255,255,255,0.06)',
   color: 'var(--text-3)',
   whiteSpace: 'nowrap'
+}
+
+const badgePendingStyle = {
+  padding: '3px 8px',
+  borderRadius: 6,
+  fontSize: 11.5,
+  fontWeight: 600,
+  background: 'rgba(255, 255, 255, 0.03)',
+  color: 'var(--text-4)',
+  border: '1px dashed var(--border)',
+  whiteSpace: 'nowrap'
+}
+
+const todayBadgeStyle = {
+  marginLeft: 8,
+  padding: '2px 6px',
+  borderRadius: 4,
+  fontSize: 10,
+  fontWeight: 700,
+  background: 'var(--accent)',
+  color: '#fff',
+  textTransform: 'uppercase',
+  letterSpacing: '0.5px',
+}
+
+const badgePurpleStyle = {
+  padding: '3px 8px',
+  borderRadius: 6,
+  fontSize: 11.5,
+  fontWeight: 600,
+  background: 'rgba(139, 92, 246, 0.12)',
+  color: '#8b5cf6',
+  whiteSpace: 'nowrap'
+}
+
+const getRowBg = (status) => {
+  if (status === 'present') return 'rgba(16, 185, 129, 0.04)'
+  if (status === 'late') return 'rgba(245, 158, 11, 0.04)'
+  if (status === 'absent') return 'rgba(239, 68, 68, 0.05)'
+  if (status === 'holiday') return 'rgba(139, 92, 246, 0.04)'
+  return 'transparent'
+}
+
+const getRowBoxShadow = (status) => {
+  if (status === 'present') return 'inset 3px 0 0 #10b981'
+  if (status === 'late') return 'inset 3px 0 0 #f59e0b'
+  if (status === 'absent') return 'inset 3px 0 0 #ef4444'
+  if (status === 'holiday') return 'inset 3px 0 0 #8b5cf6'
+  return 'none'
+}
+
+const cellBadgeStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  padding: '5px 10px',
+  borderRadius: 6,
+  background: 'rgba(255, 255, 255, 0.03)',
+  border: '1px solid var(--border)',
+  color: 'var(--text-1)',
+  fontSize: 12.5,
+  fontWeight: 500,
+}
+
+const diffPositiveBadgeStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  padding: '5px 10px',
+  borderRadius: 6,
+  background: 'rgba(16, 185, 129, 0.08)',
+  border: '1px solid rgba(16, 185, 129, 0.15)',
+  color: '#10b981',
+  fontSize: 12.5,
+  fontWeight: 600,
+}
+
+const diffNegativeBadgeStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  padding: '5px 10px',
+  borderRadius: 6,
+  background: 'rgba(239, 68, 68, 0.08)',
+  border: '1px solid rgba(239, 68, 68, 0.15)',
+  color: '#ef4444',
+  fontSize: 12.5,
+  fontWeight: 600,
 }

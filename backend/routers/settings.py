@@ -15,6 +15,12 @@ from services.bot_process_manager import (
     start_bot_process,
     stop_bot_process,
 )
+from services.ai_process_manager import (
+    get_ai_process_status,
+    restart_ai_process,
+    start_ai_process,
+    stop_ai_process,
+)
 from services.isup_manager import restart_isup_server
 from models import Organization, TelegramUserBinding, ContactMessage
 from utils.menu_utils import get_menu_data, save_menu_data
@@ -353,6 +359,38 @@ def telegram_process_restart():
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
     return {"ok": True, "message": "Telegram bot qayta ishga tushirildi", "status": status}
+
+
+@router.get("/api/ai/process")
+def ai_process_status():
+    return {"ok": True, "status": get_ai_process_status()}
+
+
+@router.post("/api/ai/process/start")
+def ai_process_start():
+    try:
+        status = start_ai_process()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    return {"ok": True, "message": "AI Inference xizmati ishga tushirildi", "status": status}
+
+
+@router.post("/api/ai/process/stop")
+def ai_process_stop():
+    try:
+        status = stop_ai_process()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    return {"ok": True, "message": "AI Inference xizmati to'xtatildi", "status": status}
+
+
+@router.post("/api/ai/process/restart")
+def ai_process_restart():
+    try:
+        status = restart_ai_process()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    return {"ok": True, "message": "AI Inference xizmati qayta ishga tushirildi", "status": status}
 
 class MenuUpdates(BaseModel):
     menus: Dict[str, Union[str, Dict[str, str]]]

@@ -40,6 +40,7 @@ import Accounts         from './pages/Accounts'
 import Versions         from './pages/Versions'
 import VersionForm      from './pages/VersionForm'
 import VersionDetail    from './pages/VersionDetail'
+import ErrorPage        from './pages/ErrorPage'
 import { ConfirmProvider } from './components/ConfirmDialog'
 import { ToastProvider } from './components/Toaster'
 import Footer from './components/Footer'
@@ -142,6 +143,8 @@ export default function App() {
               <Route path="/settings/versions/new"      element={isLoggedIn ? <VersionForm />   : <Navigate to="/login" replace />} />
               <Route path="/settings/versions/:id"      element={isLoggedIn ? <VersionDetail /> : <Navigate to="/login" replace />} />
               <Route path="/settings/versions/:id/edit" element={isLoggedIn ? <VersionForm />   : <Navigate to="/login" replace />} />
+              {/* ── Catch-all: 404 for any unknown path ── */}
+              <Route path="*" element={<ErrorPage status={404} />} />
             </Routes>
           </main>
           <Footer isLoggedIn={isLoggedIn} />

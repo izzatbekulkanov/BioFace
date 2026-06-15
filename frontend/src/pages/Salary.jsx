@@ -9,9 +9,11 @@ import {
   ArrowSyncRegular,
   SearchRegular,
   EyeRegular,
+  DismissRegular,
 } from '@fluentui/react-icons'
 import PageHero from '../components/PageHero'
 import { useToast } from '../components/Toaster'
+import CustomSelect from '../components/CustomSelect'
 
 export default function Salary() {
   const { i18n } = useTranslation()
@@ -29,6 +31,7 @@ export default function Salary() {
   const [orgFilter, setOrgFilter] = useState('all')
   const [branchFilter, setBranchFilter] = useState('all')
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+  const [payModal, setPayModal] = useState({ open: false, id: null, name: null, finalAmount: 0, status: null })
 
   const loadSalaries = async () => {
     try {
@@ -82,12 +85,25 @@ export default function Salary() {
     return branches.filter(b => String(b.organization_id) === String(orgFilter))
   }, [branches, orgFilter])
 
+  const orgOptions = useMemo(() => {
+    return [
+      { value: 'all', label: isRu ? 'Все организации' : 'Barcha tashkilotlar' },
+      ...orgs.map(org => ({ value: String(org.id), label: org.name }))
+    ]
+  }, [orgs, isRu])
+
+  const branchOptions = useMemo(() => {
+    return [
+      { value: 'all', label: isRu ? 'Все филиалы' : 'Barcha filiallar' },
+      ...filteredBranches.map(b => ({ value: String(b.id), label: b.name }))
+    ]
+  }, [filteredBranches, isRu])
+
   const handleView = (emp) => {
-    navigate(`/finance/salary/${emp.id}`)
+    navigate(`/finance/salary/${emp.uuid || emp.id}`)
   }
 
   // Calculate salary metrics
-  // Each late arrival deducts 50,000 UZS
   const stats = useMemo(() => {
     let totalBase = 0
     let totalDeductions = 0
@@ -96,15 +112,24 @@ export default function Salary() {
     let unpaidSum = 0
 
     salaries.forEach(s => {
-      const deduction = s.lateCount * 50000
-      const finalAmount = s.base - deduction
+      const lateDeduction = s.lateDeduction !== undefined ? s.lateDeduction : (s.lateCount * 50000)
+      const absentDeduction = s.absentDeduction || 0
+      const deduction = lateDeduction + absentDeduction
+      const finalAmount = s.finalAmount !== undefined ? s.finalAmount : (s.base - deduction)
 
       totalBase += s.base
       totalDeductions += deduction
       totalFinal += finalAmount
 
-      if (s.status === 'paid') paidSum += finalAmount
-      else unpaidSum += finalAmount
+      if (s.status === 'paid') {
+        paidSum += finalAmount
+      } else if (s.status === 'advance') {
+        const advPaid = Math.floor(finalAmount / 2)
+        paidSum += advPaid
+        unpaidSum += (finalAmount - advPaid)
+      } else {
+        unpaidSum += finalAmount
+      }
     })
 
     return { totalBase, totalDeductions, totalFinal, paidSum, unpaidSum }
@@ -123,25 +148,38 @@ export default function Salary() {
     return new Intl.NumberFormat('uz-UZ', { style: 'currency', currency: 'UZS', maximumFractionDigits: 0 }).format(val)
   }
 
-  const handlePay = async (id, name) => {
+  const handlePayClick = (emp) => {
+    setPayModal({
+      open: true,
+      id: emp.uuid || emp.id,
+      name: emp.name,
+      finalAmount: emp.finalAmount,
+      status: emp.status
+    })
+  }
+
+  const handlePayConfirm = async (id, name, type) => {
     try {
-      const res = await fetch(`/api/finance/salaries/${id}/pay`, {
+      const res = await fetch(`/api/finance/salaries/${id}/pay?pay_type=${type}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       })
       if (res.ok) {
         setSalaries(prev => prev.map(s => {
-          if (s.id === id) {
-            return { ...s, status: 'paid' }
+          if (String(s.id) === String(id) || s.uuid === id) {
+            return { ...s, status: type === 'advance' ? 'advance' : 'paid' }
           }
           return s
         }))
-        toast.success(isRu ? `Оклад для xодима "${name}" выплачен` : `"${name}" uchun oylik to'landi`)
+        const typeLabel = type === 'advance' ? (isRu ? 'Аванс' : 'Avans') : (isRu ? 'Оклад' : 'To\'liq oylik')
+        toast.success(isRu ? `${typeLabel} для xодима "${name}" выплачен` : `"${name}" uchun ${typeLabel.toLowerCase()} to'landi`)
       } else {
         throw new Error('Payment failed')
       }
     } catch (err) {
       toast.error(isRu ? 'Ошибка при выплате' : 'To\'lov qilishda xatolik yuz berdi')
+    } finally {
+      setPayModal({ open: false, id: null, name: null, finalAmount: 0, status: null })
     }
   }
 
@@ -198,6 +236,14 @@ export default function Salary() {
         @keyframes spin {
           to { transform: rotate(360deg); }
         }
+        @keyframes fadeInOverlay {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes scaleInModal {
+          from { transform: scale(0.95); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
       `}</style>
 
       <div className="salary-container">
@@ -244,14 +290,14 @@ export default function Salary() {
 
           <div style={cardStyle}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <span style={{ fontSize: 13, color: 'var(--text-4)', fontWeight: 500 }}>{isRu ? 'ШТРАФЫ ЗА ОПОЗДАНИЯ' : 'KECHIKISH UCHUN JARIMA'}</span>
+              <span style={{ fontSize: 13, color: 'var(--text-4)', fontWeight: 500 }}>{isRu ? 'ШТРАФЫ И ВЫЧЕТЫ' : 'JARIMALAR VA CHEGIRMALAR'}</span>
               <div style={{ padding: 6, borderRadius: 8, background: 'rgba(245,158,11,0.1)', color: '#f59e0b' }}>
                 <ClockRegular fontSize={20} />
               </div>
             </div>
             <div style={{ fontSize: 24, fontWeight: 800, color: '#f59e0b' }}>{formatMoney(stats.totalDeductions)}</div>
             <div style={{ fontSize: 12, color: 'var(--text-4)', marginTop: 4 }}>
-              {isRu ? 'На основе логов давомата' : 'Davomat loglari asosida'}
+              {isRu ? 'На основе опозданий и пропусков' : 'Kechikishlar va kelmagan kunlar uchun'}
             </div>
           </div>
         </div>
@@ -261,36 +307,28 @@ export default function Salary() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginBottom: 20 }}>
             {/* Organization filter */}
             {(isSuperAdmin || orgs.length > 1) && (
-              <div style={{ minWidth: 200, flex: 1 }}>
-                <select
+              <div style={{ minWidth: 220, flex: 1 }}>
+                <CustomSelect
                   value={orgFilter}
-                  onChange={e => {
-                    setOrgFilter(e.target.value)
+                  onChange={val => {
+                    setOrgFilter(val || 'all')
                     setBranchFilter('all')
                   }}
-                  style={selectStyle}
-                >
-                  <option value="all">{isRu ? 'Все организации' : 'Barcha tashkilotlar'}</option>
-                  {orgs.map(org => (
-                    <option key={org.id} value={org.id}>{org.name}</option>
-                  ))}
-                </select>
+                  options={orgOptions}
+                  placeholder={isRu ? 'Все организации' : 'Barcha tashkilotlar'}
+                />
               </div>
             )}
 
             {/* Branch filter */}
             {(isSuperAdmin || filteredBranches.length > 0) && (
-              <div style={{ minWidth: 200, flex: 1 }}>
-                <select
+              <div style={{ minWidth: 220, flex: 1 }}>
+                <CustomSelect
                   value={branchFilter}
-                  onChange={e => setBranchFilter(e.target.value)}
-                  style={selectStyle}
-                >
-                  <option value="all">{isRu ? 'Все филиалы' : 'Barcha filiallar'}</option>
-                  {filteredBranches.map(b => (
-                    <option key={b.id} value={b.id}>{b.name}</option>
-                  ))}
-                </select>
+                  onChange={val => setBranchFilter(val || 'all')}
+                  options={branchOptions}
+                  placeholder={isRu ? 'Все филиалы' : 'Barcha filiallar'}
+                />
               </div>
             )}
 
@@ -337,6 +375,7 @@ export default function Salary() {
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-4)', fontSize: 12.5 }}>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, width: 40 }}>#</th>
                   <th style={{ padding: '12px 16px', fontWeight: 600 }}>{isRu ? 'Сотрудник' : 'Xodim'}</th>
                   <th style={{ padding: '12px 16px', fontWeight: 600 }}>{isRu ? 'Должность' : 'Lavozim'}</th>
                   <th style={{ padding: '12px 16px', fontWeight: 600 }}>{isRu ? 'Оклад' : 'Asosiy oylik'}</th>
@@ -349,36 +388,56 @@ export default function Salary() {
               <tbody>
                 {filteredSalaries.length === 0 ? (
                   <tr>
-                    <td colSpan={7} style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--text-4)', fontSize: 13.5 }}>
+                    <td colSpan={8} style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--text-4)', fontSize: 13.5 }}>
                       {isRu ? 'Сотрудники не найдены' : 'Xodimlar topilmadi'}
                     </td>
                   </tr>
                 ) : (
-                  filteredSalaries.map(s => {
-                    const deduction = s.lateCount * 50000
-                    const finalAmount = s.base - deduction
+                  filteredSalaries.map((s, idx) => {
+                    const lateDeduction = s.lateDeduction !== undefined ? s.lateDeduction : (s.lateCount * 50000)
+                    const absentDeduction = s.absentDeduction || 0
+                    const deduction = lateDeduction + absentDeduction
+                    const finalAmount = s.finalAmount !== undefined ? s.finalAmount : (s.base - deduction)
                     return (
                       <tr key={s.id} style={{ borderBottom: '1px solid var(--border-2)', fontSize: 13, color: 'var(--text-2)' }}>
+                        <td style={{ padding: '14px 16px', color: 'var(--text-4)' }}>{idx + 1}</td>
                         <td style={{ padding: '14px 16px', fontWeight: 600, color: 'var(--text-1)' }}>{s.name}</td>
                         <td style={{ padding: '14px 16px' }}>{s.role}</td>
                         <td style={{ padding: '14px 16px', fontWeight: 600 }}>{formatMoney(s.base)}</td>
                         <td style={{ padding: '14px 16px' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                            <span style={{ fontSize: 11, color: s.lateCount > 0 ? '#f59e0b' : 'var(--text-4)' }}>
-                              {s.lateCount} {isRu ? 'опозданий' : 'marta kechikkan'}
-                            </span>
-                            {deduction > 0 && (
-                              <span style={{ color: '#ef4444', fontWeight: 600, fontSize: 11.5 }}>
-                                -{formatMoney(deduction)}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {lateDeduction > 0 && (
+                              <span style={{ fontSize: 11.5, color: '#f59e0b', fontWeight: 600 }}>
+                                ⏰ {s.lateCount} {isRu ? 'опозд.' : 'marta kechikkan'} (-{formatMoney(lateDeduction)})
                               </span>
+                            )}
+                            {absentDeduction > 0 && (
+                              <span style={{ fontSize: 11.5, color: '#ef4444', fontWeight: 600 }}>
+                                ❌ {s.absentCount} {isRu ? 'дн. отсут.' : 'kun kelmagan'} (-{formatMoney(absentDeduction)})
+                              </span>
+                            )}
+                            {lateDeduction === 0 && absentDeduction === 0 && (
+                              <span style={{ color: 'var(--text-4)' }}>—</span>
                             )}
                           </div>
                         </td>
                         <td style={{ padding: '14px 16px', fontWeight: 700, color: 'var(--text-1)' }}>{formatMoney(finalAmount)}</td>
                         <td style={{ padding: '14px 16px' }}>
-                          <span style={s.status === 'paid' ? statusPaid : statusPending}>
-                            {s.status === 'paid' ? (isRu ? 'Выплачено' : 'To\'langan') : (isRu ? 'Ожидается' : 'To\'lanmagan')}
-                          </span>
+                          {s.status === 'paid' && (
+                            <span style={statusPaid}>
+                              {isRu ? 'Выплачено' : 'To\'langan'}
+                            </span>
+                          )}
+                          {s.status === 'advance' && (
+                            <span style={statusAdvance}>
+                              {isRu ? 'Аванс (50%)' : 'Avans (50%)'}
+                            </span>
+                          )}
+                          {s.status === 'unpaid' && (
+                            <span style={statusPending}>
+                              {isRu ? 'Ожидается' : 'To\'lanmagan'}
+                            </span>
+                          )}
                         </td>
                         <td style={{ padding: '14px 16px', textAlign: 'right' }}>
                           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
@@ -395,7 +454,7 @@ export default function Salary() {
                             </button>
                             {s.status !== 'paid' && (
                               <button
-                                onClick={() => handlePay(s.id, s.name)}
+                                onClick={() => handlePayClick(s)}
                                 style={{
                                   background: 'var(--accent)', border: 'none', color: '#fff',
                                   padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer'
@@ -415,8 +474,84 @@ export default function Salary() {
           </div>
         </div>
 
-
       </div>
+
+      {payModal.open && (
+        <div style={modalOverlayStyle}>
+          <div style={modalContentStyle}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
+                {isRu ? 'Выплата заработной платы' : 'Ish haqini to\'lash'}
+              </h3>
+              <button
+                onClick={() => setPayModal({ open: false, id: null, name: null, finalAmount: 0, status: null })}
+                style={closeBtnStyle}
+              >
+                <DismissRegular fontSize={18} />
+              </button>
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 6 }}>
+                {isRu ? 'Сотрудник:' : 'Xodim:'}
+              </div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)', marginBottom: 16 }}>
+                {payModal.name}
+              </div>
+
+              <div style={{ background: 'var(--surface-2)', borderRadius: 10, padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                  <span style={{ color: 'var(--text-3)' }}>{isRu ? 'Sof ish haqi:' : 'Sof ish haqi:'}</span>
+                  <span style={{ fontWeight: 700, color: 'var(--text-1)' }}>{formatMoney(payModal.finalAmount)}</span>
+                </div>
+                {payModal.status === 'advance' ? (
+                  <div style={{ borderTop: '1px solid var(--border-2)', paddingTop: 10, display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                    <span style={{ color: 'var(--text-3)' }}>{isRu ? 'Оплачено (Аванс 50%):' : 'To\'langan (Avans 50%):'}</span>
+                    <span style={{ fontWeight: 700, color: '#10b981' }}>{formatMoney(Math.floor(payModal.finalAmount / 2))}</span>
+                  </div>
+                ) : (
+                  <div style={{ borderTop: '1px solid var(--border-2)', paddingTop: 10, display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                    <span style={{ color: 'var(--text-3)' }}>{isRu ? 'Сумма аванса (50%):' : 'Avans miqdori (50%):'}</span>
+                    <span style={{ fontWeight: 700, color: 'var(--accent)' }}>{formatMoney(Math.floor(payModal.finalAmount / 2))}</span>
+                  </div>
+                )}
+                {payModal.status === 'advance' && (
+                  <div style={{ borderTop: '1px solid var(--border-2)', paddingTop: 10, display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                    <span style={{ color: 'var(--text-3)' }}>{isRu ? 'Остаток к выплате:' : 'Qolgan to\'lov summasi:'}</span>
+                    <span style={{ fontWeight: 700, color: 'var(--accent)' }}>{formatMoney(payModal.finalAmount - Math.floor(payModal.finalAmount / 2))}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {payModal.status !== 'advance' && (
+                <button
+                  onClick={() => handlePayConfirm(payModal.id, payModal.name, 'advance')}
+                  style={payAdvanceBtnStyle}
+                >
+                  💸 {isRu ? 'Выплатить аванс (50%)' : 'Avans to\'lash (50%)'}
+                </button>
+              )}
+              <button
+                onClick={() => handlePayConfirm(payModal.id, payModal.name, 'full')}
+                style={payFullBtnStyle}
+              >
+                💰 {payModal.status === 'advance' 
+                  ? (isRu ? 'Выплатить остаток (50%)' : 'Qolgan qismini to\'lash (50%)') 
+                  : (isRu ? 'Выплатить полностью (100%)' : 'To\'liq to\'lash (100%)')
+                }
+              </button>
+              <button
+                onClick={() => setPayModal({ open: false, id: null, name: null, finalAmount: 0, status: null })}
+                style={cancelBtnStyle}
+              >
+                {isRu ? 'Отмена' : 'Bekor qilish'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -507,4 +642,91 @@ const modalBadgeGray = {
   background: 'rgba(255,255,255,0.06)',
   color: 'var(--text-3)',
   whiteSpace: 'nowrap'
+}
+
+const statusAdvance = {
+  padding: '3px 8px',
+  borderRadius: 6,
+  fontSize: 11.5,
+  fontWeight: 600,
+  background: 'rgba(245,158,11,0.12)',
+  color: '#f59e0b',
+  whiteSpace: 'nowrap',
+}
+
+const modalOverlayStyle = {
+  position: 'fixed',
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  background: 'rgba(0, 0, 0, 0.6)',
+  backdropFilter: 'blur(6px)',
+  zIndex: 10000,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  animation: 'fadeInOverlay 0.2s ease-out',
+}
+
+const modalContentStyle = {
+  background: 'var(--surface)',
+  border: '1px solid var(--border)',
+  borderRadius: 16,
+  padding: 24,
+  width: '100%',
+  maxWidth: 420,
+  boxShadow: 'var(--shadow-lg)',
+  boxSizing: 'border-box',
+  animation: 'scaleInModal 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
+}
+
+const closeBtnStyle = {
+  background: 'transparent',
+  border: 'none',
+  color: 'var(--text-3)',
+  cursor: 'pointer',
+  padding: 4,
+  display: 'flex',
+  alignItems: 'center',
+}
+
+const payAdvanceBtnStyle = {
+  background: 'rgba(245, 158, 11, 0.1)',
+  border: '1px solid rgba(245, 158, 11, 0.2)',
+  color: '#f59e0b',
+  padding: '12px',
+  borderRadius: 10,
+  fontSize: 14,
+  fontWeight: 700,
+  cursor: 'pointer',
+  transition: 'all 0.15s ease',
+  width: '100%',
+}
+
+const payFullBtnStyle = {
+  background: 'var(--accent)',
+  border: 'none',
+  color: '#fff',
+  padding: '12px',
+  borderRadius: 10,
+  fontSize: 14,
+  fontWeight: 700,
+  cursor: 'pointer',
+  transition: 'all 0.15s ease',
+  width: '100%',
+}
+
+const cancelBtnStyle = {
+  background: 'rgba(255, 255, 255, 0.05)',
+  border: '1px solid var(--border)',
+  color: 'var(--text-3)',
+  padding: '10px',
+  borderRadius: 10,
+  fontSize: 13,
+  fontWeight: 600,
+  cursor: 'pointer',
+  transition: 'all 0.15s ease',
+  width: '100%',
+  marginTop: 4,
 }

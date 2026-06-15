@@ -269,26 +269,24 @@ export default function Finance() {
             <h3 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 20px 0', color: 'var(--text-1)' }}>
               {isRu ? 'Динамика поступлений (последние 6 месяцев)' : 'Tushumlar dinamikasi (oxirgi 6 oy)'}
             </h3>
-            <div style={{ height: 280 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorCollections" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="var(--accent)" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                  <XAxis dataKey="name" stroke="var(--text-4)" fontSize={11} />
-                  <YAxis stroke="var(--text-4)" fontSize={11} tickFormatter={(val) => `${val / 1000000}M`} />
-                  <RechartsTooltip
-                    formatter={(val) => formatMoney(val)}
-                    contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, color: 'var(--text-1)' }}
-                  />
-                  <Area type="monotone" dataKey="collections" stroke="var(--accent)" strokeWidth={2.5} fillOpacity={1} fill="url(#colorCollections)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+            <ResponsiveContainer width="100%" height={280} minWidth={0}>
+              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorCollections" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="var(--accent)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="name" stroke="var(--text-4)" fontSize={11} />
+                <YAxis stroke="var(--text-4)" fontSize={11} tickFormatter={(val) => `${val / 1000000}M`} />
+                <RechartsTooltip
+                  formatter={(val) => formatMoney(val)}
+                  contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, color: 'var(--text-1)' }}
+                />
+                <Area type="monotone" dataKey="collections" stroke="var(--accent)" strokeWidth={2.5} fillOpacity={1} fill="url(#colorCollections)" />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
 
           {/* Payment method breakdown */}
@@ -296,20 +294,18 @@ export default function Finance() {
             <h3 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 20px 0', color: 'var(--text-1)' }}>
               {isRu ? 'Распределение по типам оплаты' : 'To\'lov turlari taqsimoti'}
             </h3>
-            <div style={{ height: 180, marginBottom: 16 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={methodData} layout="vertical" margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                  <CartesianGrid stroke="var(--border)" vertical={true} horizontal={false} />
-                  <XAxis type="number" hide />
-                  <YAxis dataKey="name" type="category" stroke="var(--text-3)" fontSize={11.5} width={70} />
-                  <RechartsTooltip
-                    formatter={(val) => formatMoney(val)}
-                    contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, color: 'var(--text-1)' }}
-                  />
-                  <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={14} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <ResponsiveContainer width="100%" height={180} minWidth={0} style={{ marginBottom: 16 }}>
+              <BarChart data={methodData} layout="vertical" margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                <CartesianGrid stroke="var(--border)" vertical={true} horizontal={false} />
+                <XAxis type="number" hide />
+                <YAxis dataKey="name" type="category" stroke="var(--text-3)" fontSize={11.5} width={70} />
+                <RechartsTooltip
+                  formatter={(val) => formatMoney(val)}
+                  contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, color: 'var(--text-1)' }}
+                />
+                <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={14} />
+              </BarChart>
+            </ResponsiveContainer>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {methodData.map((m, idx) => (
                 <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12 }}>

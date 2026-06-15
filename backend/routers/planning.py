@@ -66,8 +66,11 @@ def _get_schedule_or_raise(db: Session, schedule_id: int) -> Schedule:
     return schedule
 
 
-def _get_employee_or_raise(db: Session, employee_id: int) -> Employee:
-    employee = db.query(Employee).filter(Employee.id == int(employee_id)).first()
+def _get_employee_or_raise(db: Session, employee_id: str) -> Employee:
+    if str(employee_id).isdigit():
+        employee = db.query(Employee).filter(Employee.id == int(employee_id)).first()
+    else:
+        employee = db.query(Employee).filter(Employee.uuid == employee_id).first()
     if employee is None:
         raise HTTPException(status_code=404, detail="Xodim topilmadi")
     return employee
@@ -452,7 +455,7 @@ def delete_holiday(
 
 @router.get("/api/employees/{employee_id}/telegram-contacts")
 def list_employee_telegram_contacts(
-    employee_id: int,
+    employee_id: str,
     request: Request,
     db: Session = Depends(get_db),
 ):
@@ -486,7 +489,7 @@ def list_employee_telegram_contacts(
 
 @router.post("/api/employees/{employee_id}/telegram-contacts")
 def create_employee_telegram_contact(
-    employee_id: int,
+    employee_id: str,
     request: Request,
     payload: TelegramContactPayload,
     db: Session = Depends(get_db),
@@ -536,7 +539,7 @@ def create_employee_telegram_contact(
 
 @router.put("/api/employees/{employee_id}/telegram-contacts/{contact_id}")
 def update_employee_telegram_contact(
-    employee_id: int,
+    employee_id: str,
     contact_id: int,
     request: Request,
     payload: TelegramContactPayload,
@@ -593,7 +596,7 @@ def update_employee_telegram_contact(
 
 @router.delete("/api/employees/{employee_id}/telegram-contacts/{contact_id}")
 def delete_employee_telegram_contact(
-    employee_id: int,
+    employee_id: str,
     contact_id: int,
     request: Request,
     db: Session = Depends(get_db),

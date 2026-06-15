@@ -81,3 +81,15 @@ def _strip_or_none(value: Optional[str]) -> Optional[str]:
     cleaned = value.strip()
     return cleaned if cleaned else None
 
+
+def _extract_device_list(payload: Any) -> list[dict]:
+    if isinstance(payload, list):
+        return [item for item in payload if isinstance(item, dict)]
+    if isinstance(payload, dict):
+        for key in ("devices", "data", "items", "results"):
+            value = payload.get(key)
+            if isinstance(value, list):
+                return [item for item in value if isinstance(item, dict)]
+    return []
+
+

@@ -1,44 +1,101 @@
 import os
-import subprocess
+import threading
+import httpx
 from typing import Optional
+from database import SessionLocal
+from models import Employee, User, FaceEmbedding
+
+AI_SERVICE_URL = "http://127.0.0.1:7690"
+
+def _run_embedding_generation(employee_id: Optional[int], user_id: Optional[int]):
+    db = SessionLocal()
+    try:
+        if employee_id:
+            emp = db.query(Employee).filter(Employee.id == employee_id).first()
+            if not emp or not emp.image_url:
+                return
+            rel_path = emp.image_url.lstrip("/")
+            abs_path = os.path.join('/home/smartgate/BioFace/backend', rel_path)
+            
+            # Call AI microservice
+            try:
+                res = httpx.post(
+                    f"{AI_SERVICE_URL}/generate-embedding",
+                    json={"image_path": abs_path},
+                    timeout=15.0
+                )
+                if res.status_code == 200:
+                    data = res.json()
+                    if data.get("ok"):
+                        emb = data["embedding"]
+                        conf = data["confidence"]
+                        existing = db.query(FaceEmbedding).filter(FaceEmbedding.employee_id == employee_id).first()
+                        if existing:
+                            existing.embedding_data = emb
+                            existing.confidence = conf
+                            existing.model_version = "insightface_buffalo_l_service"
+                        else:
+                            new_emb = FaceEmbedding(
+                                employee_id=employee_id,
+                                embedding_data=emb,
+                                confidence=conf,
+                                model_version="insightface_buffalo_l_service"
+                            )
+                            db.add(new_emb)
+                        db.commit()
+            except Exception as e:
+                print(f"[AI SERVICE EMBEDDING] Error for employee {employee_id}: {e}")
+                
+        elif user_id:
+            usr = db.query(User).filter(User.id == user_id).first()
+            if not usr or not usr.image_url:
+                return
+            rel_path = usr.image_url.lstrip("/")
+            abs_path = os.path.join('/home/smartgate/BioFace/backend', rel_path)
+            
+            # Call AI microservice
+            try:
+                res = httpx.post(
+                    f"{AI_SERVICE_URL}/generate-embedding",
+                    json={"image_path": abs_path},
+                    timeout=15.0
+                )
+                if res.status_code == 200:
+                    data = res.json()
+                    if data.get("ok"):
+                        emb = data["embedding"]
+                        conf = data["confidence"]
+                        existing = db.query(FaceEmbedding).filter(FaceEmbedding.user_id == user_id).first()
+                        if existing:
+                            existing.embedding_data = emb
+                            existing.confidence = conf
+                            existing.model_version = "insightface_buffalo_l_service"
+                        else:
+                            new_emb = FaceEmbedding(
+                                user_id=user_id,
+                                embedding_data=emb,
+                                confidence=conf,
+                                model_version="insightface_buffalo_l_service"
+                            )
+                            db.add(new_emb)
+                        db.commit()
+            except Exception as e:
+                print(f"[AI SERVICE EMBEDDING] Error for user {user_id}: {e}")
+                
+    finally:
+        db.close()
+
 
 def trigger_embedding_generation_bg(employee_id: Optional[int] = None, user_id: Optional[int] = None):
     """
-    Triggers the face embedding generation script asynchronously using a subprocess.
-    Uses the BioFace backend's python venv to access preconfigured insightface.
+    Triggers face embedding generation asynchronously by delegating to the AI microservice.
+    Runs in a background thread to prevent blocking main request-response cycle.
     """
-    try:
-        cmd = ["/home/smartgate/BioFace/backend/.venv/bin/python", "/home/smartgate/BioFace/backend/scripts/generate_embedding.py"]
-        if employee_id:
-            cmd.extend(["--employee-id", str(employee_id)])
-        elif user_id:
-            cmd.extend(["--user-id", str(user_id)])
-        else:
-            return
-
-        # Prepare environment variables including LD_LIBRARY_PATH for CUDA/cuDNN GPU acceleration
-        env = os.environ.copy()
-
-        # Locate site-packages of the virtual environment to find NVIDIA library paths
-        venv_path = "/home/smartgate/BioFace/backend/.venv"
-        site_packages = os.path.join(venv_path, "lib", "python3.12", "site-packages")
-        nvidia_dir = os.path.join(site_packages, "nvidia")
-
-        nvidia_libs = []
-        if os.path.exists(nvidia_dir):
-            for folder in os.listdir(nvidia_dir):
-                lib_path = os.path.join(nvidia_dir, folder, "lib")
-                if os.path.exists(lib_path):
-                    nvidia_libs.append(lib_path)
-
-        if nvidia_libs:
-            additional = ":".join(nvidia_libs)
-            current_ld = env.get("LD_LIBRARY_PATH", "")
-            if current_ld:
-                env["LD_LIBRARY_PATH"] = additional + ":" + current_ld
-            else:
-                env["LD_LIBRARY_PATH"] = additional
-
-        subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
-    except Exception as e:
-        print(f"[EMBEDDING SUBPROCESS] Failed to trigger: {e}")
+    if not employee_id and not user_id:
+        return
+    thread = threading.Thread(
+        target=_run_embedding_generation,
+        args=(employee_id, user_id),
+        daemon=True
+    )
+    thread.start()

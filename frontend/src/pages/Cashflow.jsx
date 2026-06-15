@@ -216,8 +216,7 @@ export default function Cashflow() {
         {/* Chart */}
         <div style={cardStyle}>
           <h3 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 20px 0' }}>{isRu ? 'Сравнительный график доходов и расходов' : 'Kirim va chiqimlar solishtirma grafigi'}</h3>
-          <div style={{ height: 280 }}>
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={280} minWidth={0}>
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
@@ -242,7 +241,6 @@ export default function Cashflow() {
               </AreaChart>
             </ResponsiveContainer>
           </div>
-        </div>
 
         {/* Transactions list */}
         <div style={cardStyle}>

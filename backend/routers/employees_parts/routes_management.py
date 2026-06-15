@@ -121,6 +121,7 @@ def _serialize_employee_record(
 
     return {
         "id": employee.id,
+        "uuid": employee.uuid,
         "personal_id": employee.personal_id,
         "full_name": " ".join([x for x in [employee.first_name, employee.last_name, employee.middle_name] if x]),
         "first_name": employee.first_name,
@@ -1259,10 +1260,13 @@ def generate_personal_id(db: Session = Depends(get_db)):
 
 
 @router.get("/api/employees/{emp_id}")
-def get_employee(emp_id: int, request: Request, db: Session = Depends(get_db)):
+def get_employee(emp_id: str, request: Request, db: Session = Depends(get_db)):
     """Bitta xodim ma'lumotlari (form uchun)."""
     allowed_org_ids = _resolve_employee_allowed_org_ids(request, db)
-    emp = db.query(Employee).filter(Employee.id == int(emp_id)).first()
+    if emp_id.isdigit():
+        emp = db.query(Employee).filter(Employee.id == int(emp_id)).first()
+    else:
+        emp = db.query(Employee).filter(Employee.uuid == emp_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Xodim topilmadi")
     if allowed_org_ids and emp.organization_id is not None and int(emp.organization_id) not in allowed_org_ids:
@@ -1299,7 +1303,7 @@ def get_employee(emp_id: int, request: Request, db: Session = Depends(get_db)):
 
 @router.get("/api/employees/{emp_id}/camera-status")
 def get_employee_camera_status(
-    emp_id: int,
+    emp_id: str,
     request: Request,
     organization_id: Optional[str] = Query(None),
     personal_id: Optional[str] = Query(None),
@@ -1307,7 +1311,10 @@ def get_employee_camera_status(
     scan_scope: str = Query("linked"),
     db: Session = Depends(get_db),
 ):
-    emp = db.query(Employee).filter(Employee.id == emp_id).first()
+    if emp_id.isdigit():
+        emp = db.query(Employee).filter(Employee.id == int(emp_id)).first()
+    else:
+        emp = db.query(Employee).filter(Employee.uuid == emp_id).first()
     if emp is None:
         raise HTTPException(status_code=404, detail="Xodim topilmadi")
 
@@ -1829,7 +1836,7 @@ def create_employee(
 
 @router.put("/api/employees/{emp_id}")
 def update_employee(
-    emp_id: int,
+    emp_id: str,
     request: Request,
     background_tasks: BackgroundTasks,
     first_name: Optional[str] = Form(None),
@@ -1859,7 +1866,10 @@ def update_employee(
     salary: Optional[int] = Form(None),
     db: Session = Depends(get_db),
 ):
-    emp = db.query(Employee).filter(Employee.id == emp_id).first()
+    if emp_id.isdigit():
+        emp = db.query(Employee).filter(Employee.id == int(emp_id)).first()
+    else:
+        emp = db.query(Employee).filter(Employee.uuid == emp_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Xodim topilmadi")
 
@@ -1918,7 +1928,7 @@ def update_employee(
             if normalized_personal_id is None:
                 emp.personal_id = None
             else:
-                if is_personal_id_taken(db, normalized_personal_id, exclude_employee_id=emp_id):
+                if is_personal_id_taken(db, normalized_personal_id, exclude_employee_id=emp.id):
                     raise HTTPException(status_code=409, detail="Bu Shaxsiy ID bazada allaqachon mavjud")
                 emp.personal_id = normalized_personal_id
     if employee_type is not None:
@@ -2093,12 +2103,15 @@ def update_employee(
 
 @router.delete("/api/employees/{emp_id}")
 def delete_employee(
-    emp_id: int,
+    emp_id: str,
     delete_from_cameras: bool = Query(True),
     camera_ids: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
-    emp = db.query(Employee).filter(Employee.id == emp_id).first()
+    if emp_id.isdigit():
+        emp = db.query(Employee).filter(Employee.id == int(emp_id)).first()
+    else:
+        emp = db.query(Employee).filter(Employee.uuid == emp_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Xodim topilmadi")
 
@@ -2290,7 +2303,8 @@ async def mobile_checkin(
     employee_id: int = Form(...),
     latitude: float = Form(...),
     longitude: float = Form(...),
-    image: UploadFile = File(...),
+    image: UploadFile = File(None),
+    image_base64: str = Form(None),
     db: Session = Depends(get_db),
 ):
     import cv2
@@ -2326,7 +2340,15 @@ async def mobile_checkin(
         raise HTTPException(status_code=400, detail="Xodimning yuz embedding ma'lumotlari ro'yxatdan o'tmagan")
 
     # Read uploaded image bytes
-    contents = await image.read()
+    import base64
+    if image_base64:
+        if "," in image_base64:
+            image_base64 = image_base64.split(",", 1)[1]
+        contents = base64.b64decode(image_base64)
+    elif image:
+        contents = await image.read()
+    else:
+        raise HTTPException(status_code=400, detail="Rasm yuborilmadi")
     nparr = np.frombuffer(contents, np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     if img is None:
@@ -2355,14 +2377,65 @@ async def mobile_checkin(
     if similarity < THRESHOLD:
         raise HTTPException(status_code=401, detail=f"Yuz mos kelmadi (o'xshashlik: {similarity:.2f})")
 
-    # 4. Save Attendance Log
+    # 4. Save Snapshot & Run Psychology Analysis
+    snapshot_url = None
+    psychological_state_key = None
+    psychological_state_confidence = None
+    emotion_scores_json = None
+    wellbeing_note_uz = None
+    wellbeing_note_ru = None
+    wellbeing_note_source = None
+
+    if contents:
+        import uuid
+        import json
+        file_name = f"{uuid.uuid4().hex}.webp"
+        file_path = os.path.join("static", "uploads", file_name)
+        try:
+            from utils.image_utils import compress_to_webp
+            webp_bytes = compress_to_webp(contents)
+        except Exception:
+            webp_bytes = contents
+        with open(file_path, "wb") as file_object:
+            file_object.write(webp_bytes)
+        snapshot_url = f"/static/uploads/{file_name}"
+
+        # Run psychological state / emotion analysis
+        try:
+            from pathlib import Path
+            from routers.cameras_parts.psychology_utils import detect_psychological_profile
+            psychological_profile = detect_psychological_profile(Path(file_path))
+            psychological_state_key = str(psychological_profile.get("state_key") or "") or None
+            psychological_state_confidence = psychological_profile.get("confidence")
+            emotion_scores = dict(psychological_profile.get("emotion_scores") or {})
+            emotion_scores_json = json.dumps(emotion_scores) if emotion_scores else None
+            wellbeing_note_uz = str(psychological_profile.get("profile_text_uz") or "") or None
+            wellbeing_note_ru = str(psychological_profile.get("profile_text_ru") or "") or None
+            wellbeing_note_source = "ai_vision"
+        except Exception:
+            pass
+
+    person_id = str(emp.personal_id or "").strip() or None
+    person_name = " ".join(
+        part for part in [emp.first_name, emp.last_name, emp.middle_name] if part and str(part).strip()
+    ).strip() or None
+
     log = AttendanceLog(
         employee_id=employee_id,
+        person_id=person_id,
+        person_name=person_name,
         timestamp=now_tashkent(),
         status="aniqlandi",
-        organization_id=emp.organization_id,
-        branch_id=emp.branch_id,
-        direction="kirish",  # Default direction
+        direction="mobile",
+        snapshot_url=snapshot_url,
+        psychological_state_key=psychological_state_key,
+        psychological_state_confidence=psychological_state_confidence,
+        emotion_scores_json=emotion_scores_json,
+        wellbeing_note_uz=wellbeing_note_uz,
+        wellbeing_note_ru=wellbeing_note_ru,
+        wellbeing_note_source=wellbeing_note_source,
+        latitude=latitude,
+        longitude=longitude,
     )
     db.add(log)
     db.commit()

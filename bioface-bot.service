@@ -1,0 +1,32 @@
+[Unit]
+Description=BioFace Telegram Bot
+Documentation=https://bioface.uz
+After=network-online.target redis.service bioface-backend.service
+Wants=network-online.target
+Requires=redis.service
+
+[Service]
+Type=simple
+User=smartgate
+Group=smartgate
+WorkingDirectory=/home/smartgate/BioFace/backend
+Environment="PATH=/home/smartgate/BioFace/backend/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="VIRTUAL_ENV=/home/smartgate/BioFace/backend/.venv"
+EnvironmentFile=/home/smartgate/BioFace/backend/.env
+ExecStart=/home/smartgate/BioFace/backend/.venv/bin/python -m bot.main
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=30
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=3
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=bioface-bot
+PrivateTmp=true
+ProtectSystem=full
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

@@ -411,7 +411,7 @@ export default function EmployeesPage({ mode = 'staff' }) {
                       <tr key={emp.id}>
                         {/* F.I.SH + avatar */}
                         <td style={tdStyle}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }} onClick={() => navigate(`/employees/${emp.id}`)}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }} onClick={() => navigate(`/employees/${emp.uuid || emp.id}`)}>
                             {emp.avatar
                               ? <img src={emp.avatar} alt="" style={avatarImg} onError={e => { e.target.style.display = 'none' }} />
                               : <div style={avatarFallback}><PersonRegular fontSize={18} /></div>}
@@ -514,10 +514,10 @@ export default function EmployeesPage({ mode = 'staff' }) {
                         {/* Amallar */}
                         <td style={{ ...tdStyle, textAlign: 'right' }}>
                           <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                            <button type="button" onClick={() => navigate(`/employees/${emp.id}`)} style={iconBtn('subtle')} title={isRu ? 'Просмотр' : "Ko'rish"}>
+                            <button type="button" onClick={() => navigate(`/employees/${emp.uuid || emp.id}`)} style={iconBtn('subtle')} title={isRu ? 'Просмотр' : "Ko'rish"}>
                               <EyeRegular fontSize={13} />
                             </button>
-                            <button type="button" onClick={() => navigate(`/employees/${emp.id}/edit`)} style={iconBtn('subtle')} title={isRu ? 'Редактировать' : 'Tahrirlash'}>
+                            <button type="button" onClick={() => navigate(`/employees/${emp.uuid || emp.id}/edit`)} style={iconBtn('subtle')} title={isRu ? 'Редактировать' : 'Tahrirlash'}>
                               <EditRegular fontSize={13} />
                             </button>
                             <button type="button" onClick={() => setDeleting(emp)} style={iconBtn('danger')} title={isRu ? 'Удалить' : "O'chirish"}>
@@ -611,7 +611,7 @@ function DeleteDialog({ employee, onClose, onDeleted, toast, isRu }) {
     try {
       const params = new URLSearchParams()
       params.set('delete_from_cameras', removeFromCameras ? 'true' : 'false')
-      const res = await fetch(`/api/employees/${employee.id}?${params}`, {
+      const res = await fetch(`/api/employees/${employee.uuid || employee.id}?${params}`, {
         method: 'DELETE',
         credentials: 'include',
       })

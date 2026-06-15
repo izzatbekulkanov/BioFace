@@ -933,7 +933,7 @@ export default function OrganizationDetail() {
                     return (
                       <tr key={emp.id}>
                         <td style={{ ...tdStyle, fontWeight: 600 }}>
-                          <Link to={`/employees/${emp.id}`} style={{ color: 'var(--text-1)', textDecoration: 'none' }}>
+                          <Link to={`/employees/${emp.uuid || emp.id}`} style={{ color: 'var(--text-1)', textDecoration: 'none' }}>
                             {emp.last_name} {emp.first_name} {emp.middle_name || ''}
                           </Link>
                         </td>

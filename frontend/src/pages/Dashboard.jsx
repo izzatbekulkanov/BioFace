@@ -783,29 +783,27 @@ export default function Dashboard() {
                   {isRu ? 'Посещаемость за неделю' : 'Haftalik davomat'}
                 </div>
                 {weeklyTrend.length > 0 ? (
-                  <div style={{ height: 240 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={weeklyTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="colorPresent" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="var(--green)" stopOpacity={0.3} />
-                            <stop offset="95%" stopColor="var(--green)" stopOpacity={0} />
-                          </linearGradient>
-                          <linearGradient id="colorAbsent" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="var(--red)" stopOpacity={0.2} />
-                            <stop offset="95%" stopColor="var(--red)" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                        <XAxis dataKey="date" stroke="var(--text-4)" fontSize={11} tickLine={false} axisLine={false} />
-                        <YAxis stroke="var(--text-4)" fontSize={11} tickLine={false} axisLine={false} />
-                        <RechartsTooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} />
-                        <Area type="monotone" dataKey="present" name={isRu ? 'Пришли' : 'Kelgan'} stroke="var(--green)" strokeWidth={2} fill="url(#colorPresent)" />
-                        <Area type="monotone" dataKey="absent" name={isRu ? 'Отсутствуют' : 'Kelmagan'} stroke="var(--red)" strokeWidth={2} fill="url(#colorAbsent)" />
-                        <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
+                  <ResponsiveContainer width="100%" height={240} minWidth={0}>
+                    <AreaChart data={weeklyTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorPresent" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="var(--green)" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="var(--green)" stopOpacity={0} />
+                        </linearGradient>
+                        <linearGradient id="colorAbsent" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="var(--red)" stopOpacity={0.2} />
+                          <stop offset="95%" stopColor="var(--red)" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                      <XAxis dataKey="date" stroke="var(--text-4)" fontSize={11} tickLine={false} axisLine={false} />
+                      <YAxis stroke="var(--text-4)" fontSize={11} tickLine={false} axisLine={false} />
+                      <RechartsTooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} />
+                      <Area type="monotone" dataKey="present" name={isRu ? 'Пришли' : 'Kelgan'} stroke="var(--green)" strokeWidth={2} fill="url(#colorPresent)" />
+                      <Area type="monotone" dataKey="absent" name={isRu ? 'Отсутствуют' : 'Kelmagan'} stroke="var(--red)" strokeWidth={2} fill="url(#colorAbsent)" />
+                      <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+                    </AreaChart>
+                  </ResponsiveContainer>
                 ) : (
                   <div style={{ height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-4)', fontSize: 13 }}>
                     {isRu ? 'Нет данных за неделю' : "Haftalik ma'lumot yo'q"}
@@ -852,17 +850,15 @@ export default function Dashboard() {
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '24px' }}>
                 <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>{isRu ? 'Срез посещаемости' : 'Davomat kesimi'}</div>
                 {attendanceData.length > 0 && attendanceData.some(d => d.value > 0) ? (
-                  <div style={{ height: 200 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie data={attendanceData} innerRadius={55} outerRadius={75} paddingAngle={3} dataKey="value" stroke="none">
-                          {attendanceData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
-                        </Pie>
-                        <Legend wrapperStyle={{ fontSize: 11 }} />
-                        <RechartsTooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
+                  <ResponsiveContainer width="100%" height={200} minWidth={0}>
+                    <PieChart>
+                      <Pie data={attendanceData} innerRadius={55} outerRadius={75} paddingAngle={3} dataKey="value" stroke="none">
+                        {attendanceData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                      </Pie>
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                      <RechartsTooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
                 ) : (
                   <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-4)', fontSize: 13 }}>
                     {isRu ? 'Нет данных' : "Ma'lumot yo'q"}
@@ -901,16 +897,14 @@ export default function Dashboard() {
                 <div style={{ fontSize: 11, color: 'var(--text-4)', marginBottom: 12 }}>
                   {isRu ? 'На основе дисциплины and покрытия' : 'Intizom va qamrovga asoslangan'}
                 </div>
-                <div style={{ height: 220, marginLeft: -16, marginRight: -16 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RadarChart cx="50%" cy="50%" outerRadius="68%" data={radarData}>
-                      <PolarGrid stroke="var(--border-3)" />
-                      <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-3)', fontSize: 10 }} />
-                      <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                      <Radar name="AI" dataKey="A" stroke="var(--accent)" strokeWidth={2} fill="var(--accent)" fillOpacity={0.2} />
-                    </RadarChart>
-                  </ResponsiveContainer>
-                </div>
+                <ResponsiveContainer width="100%" height={220} minWidth={0} style={{ marginLeft: -16, marginRight: -16 }}>
+                  <RadarChart cx="50%" cy="50%" outerRadius="68%" data={radarData}>
+                    <PolarGrid stroke="var(--border-3)" />
+                    <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-3)', fontSize: 10 }} />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                    <Radar name="AI" dataKey="A" stroke="var(--accent)" strokeWidth={2} fill="var(--accent)" fillOpacity={0.2} />
+                  </RadarChart>
+                </ResponsiveContainer>
               </div>
             </div>
 
@@ -920,20 +914,18 @@ export default function Dashboard() {
               {orgs.length > 1 && orgOverviewData.length > 0 && (
                 <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '24px' }}>
                   <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 20 }}>{isRu ? 'Сравнение организаций' : 'Tashkilotlar taqqoslamasi'}</div>
-                  <div style={{ height: 260 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={orgOverviewData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                        <XAxis dataKey="name" stroke="var(--text-4)" fontSize={11} tickLine={false} axisLine={false} />
-                        <YAxis stroke="var(--text-4)" fontSize={11} tickLine={false} axisLine={false} />
-                        <RechartsTooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} />
-                        <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-                        <Bar dataKey="employees" name={isRu ? 'Сотрудники' : 'Xodimlar'} fill="var(--dir-in)" radius={[4,4,0,0]} />
-                        <Bar dataKey="cameras" name={isRu ? 'Камеры' : 'Kameralar'} fill="var(--yellow)" radius={[4,4,0,0]} />
-                        <Bar dataKey="users" name={isRu ? 'Пользователи' : 'Users'} fill="var(--purple)" radius={[4,4,0,0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
+                  <ResponsiveContainer width="100%" height={260} minWidth={0}>
+                    <BarChart data={orgOverviewData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                      <XAxis dataKey="name" stroke="var(--text-4)" fontSize={11} tickLine={false} axisLine={false} />
+                      <YAxis stroke="var(--text-4)" fontSize={11} tickLine={false} axisLine={false} />
+                      <RechartsTooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} />
+                      <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+                      <Bar dataKey="employees" name={isRu ? 'Сотрудники' : 'Xodimlar'} fill="var(--dir-in)" radius={[4,4,0,0]} />
+                      <Bar dataKey="cameras" name={isRu ? 'Камеры' : 'Kameralar'} fill="var(--yellow)" radius={[4,4,0,0]} />
+                      <Bar dataKey="users" name={isRu ? 'Пользователи' : 'Users'} fill="var(--purple)" radius={[4,4,0,0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
               )}
 
@@ -944,17 +936,15 @@ export default function Dashboard() {
                     <CameraRegular fontSize={16} color="var(--purple)" />
                     {isRu ? 'Нагрузка камер' : 'Kamera yuklamasi'}
                   </div>
-                  <div style={{ height: 260 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={cameraLoadData} layout="vertical" margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--border)" />
-                        <XAxis type="number" stroke="var(--text-4)" fontSize={11} tickLine={false} axisLine={false} />
-                        <YAxis type="category" dataKey="name" width={90} stroke="var(--text-4)" fontSize={11} tickLine={false} axisLine={false} />
-                        <RechartsTooltip cursor={{ fill: 'var(--surface-2)' }} contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} />
-                        <Bar dataKey="value" name={isRu ? 'Сотрудники' : 'Xodimlar'} fill="var(--purple)" radius={[0,4,4,0]} barSize={20} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
+                  <ResponsiveContainer width="100%" height={260} minWidth={0}>
+                    <BarChart data={cameraLoadData} layout="vertical" margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--border)" />
+                      <XAxis type="number" stroke="var(--text-4)" fontSize={11} tickLine={false} axisLine={false} />
+                      <YAxis type="category" dataKey="name" width={90} stroke="var(--text-4)" fontSize={11} tickLine={false} axisLine={false} />
+                      <RechartsTooltip cursor={{ fill: 'var(--surface-2)' }} contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} />
+                      <Bar dataKey="value" name={isRu ? 'Сотрудники' : 'Xodimlar'} fill="var(--purple)" radius={[0,4,4,0]} barSize={20} />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
               )}
             </div>

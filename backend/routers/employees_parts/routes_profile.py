@@ -111,13 +111,16 @@ def _build_lateness_period(
 
 @router.post("/api/employees/{emp_id}/wellbeing-note")
 def save_employee_wellbeing_note(
-    emp_id: int,
+    emp_id: str,
     note_uz: str = Body(..., embed=True),
     note_ru: str = Body(..., embed=True),
     source: Optional[str] = Body("manual", embed=True),
     db: Session = Depends(get_db),
 ):
-    employee = db.query(Employee).filter(Employee.id == emp_id).first()
+    if emp_id.isdigit():
+        employee = db.query(Employee).filter(Employee.id == int(emp_id)).first()
+    else:
+        employee = db.query(Employee).filter(Employee.uuid == emp_id).first()
     if not employee:
         raise HTTPException(status_code=404, detail="Xodim topilmadi")
 
@@ -153,14 +156,17 @@ def save_employee_wellbeing_note(
 
 
 @router.get("/api/employees/{emp_id}/wellbeing-note/latest")
-def get_latest_employee_wellbeing_note(emp_id: int, db: Session = Depends(get_db)):
-    employee = db.query(Employee).filter(Employee.id == emp_id).first()
+def get_latest_employee_wellbeing_note(emp_id: str, db: Session = Depends(get_db)):
+    if emp_id.isdigit():
+        employee = db.query(Employee).filter(Employee.id == int(emp_id)).first()
+    else:
+        employee = db.query(Employee).filter(Employee.uuid == emp_id).first()
     if not employee:
         raise HTTPException(status_code=404, detail="Xodim topilmadi")
 
     row = (
         db.query(EmployeeWellbeingNote)
-        .filter(EmployeeWellbeingNote.employee_id == emp_id)
+        .filter(EmployeeWellbeingNote.employee_id == int(employee.id))
         .order_by(EmployeeWellbeingNote.created_at.desc(), EmployeeWellbeingNote.id.desc())
         .first()
     )
@@ -183,7 +189,7 @@ def get_latest_employee_wellbeing_note(emp_id: int, db: Session = Depends(get_db
 
 @router.post("/api/employees/{emp_id}/psychological-state")
 def save_employee_psychological_state(
-    emp_id: int,
+    emp_id: str,
     state_uz: Optional[str] = Body(None, embed=True),
     state_ru: Optional[str] = Body(None, embed=True),
     state_key: Optional[str] = Body(None, embed=True),
@@ -194,7 +200,10 @@ def save_employee_psychological_state(
     note: Optional[str] = Body(None, embed=True),
     db: Session = Depends(get_db),
 ):
-    employee = db.query(Employee).filter(Employee.id == emp_id).first()
+    if emp_id.isdigit():
+        employee = db.query(Employee).filter(Employee.id == int(emp_id)).first()
+    else:
+        employee = db.query(Employee).filter(Employee.uuid == emp_id).first()
     if not employee:
         raise HTTPException(status_code=404, detail="Xodim topilmadi")
 
@@ -274,8 +283,11 @@ def save_employee_psychological_state(
 
 
 @router.get("/api/employees/{emp_id}/psychological-state/latest")
-def get_latest_employee_psychological_state(emp_id: int, db: Session = Depends(get_db)):
-    employee = db.query(Employee).filter(Employee.id == emp_id).first()
+def get_latest_employee_psychological_state(emp_id: str, db: Session = Depends(get_db)):
+    if emp_id.isdigit():
+        employee = db.query(Employee).filter(Employee.id == int(emp_id)).first()
+    else:
+        employee = db.query(Employee).filter(Employee.uuid == emp_id).first()
     if not employee:
         raise HTTPException(status_code=404, detail="Xodim topilmadi")
 
@@ -293,11 +305,14 @@ def get_latest_employee_psychological_state(emp_id: int, db: Session = Depends(g
 
 @router.get("/api/employees/{emp_id}/psychological-state/history")
 def get_employee_psychological_state_history(
-    emp_id: int,
+    emp_id: str,
     limit: int = Query(30, ge=1, le=366),
     db: Session = Depends(get_db),
 ):
-    employee = db.query(Employee).filter(Employee.id == emp_id).first()
+    if emp_id.isdigit():
+        employee = db.query(Employee).filter(Employee.id == int(emp_id)).first()
+    else:
+        employee = db.query(Employee).filter(Employee.uuid == emp_id).first()
     if not employee:
         raise HTTPException(status_code=404, detail="Xodim topilmadi")
 
@@ -314,11 +329,14 @@ def get_employee_psychological_state_history(
 
 @router.get("/api/employees/{emp_id}/insights")
 def get_employee_insights(
-    emp_id: int,
+    emp_id: str,
     psy_days: int = Query(90, ge=7, le=366),
     db: Session = Depends(get_db),
 ):
-    employee = db.query(Employee).filter(Employee.id == int(emp_id)).first()
+    if emp_id.isdigit():
+        employee = db.query(Employee).filter(Employee.id == int(emp_id)).first()
+    else:
+        employee = db.query(Employee).filter(Employee.uuid == emp_id).first()
     if employee is None:
         raise HTTPException(status_code=404, detail="Xodim topilmadi")
 
