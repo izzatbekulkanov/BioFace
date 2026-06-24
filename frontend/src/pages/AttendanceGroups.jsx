@@ -212,9 +212,9 @@ export default function AttendanceGroups() {
 
   const statusOptions = useMemo(() => [
     { value: 'all', label: isRu ? 'Все статусы' : 'Hamma holatlar' },
-    { value: 'came', label: isRu ? 'Пришли' : 'Kelgan' },
-    { value: 'came_late', label: isRu ? 'Опоздали' : 'Kechikkan' },
-    { value: 'did_not_come', label: isRu ? 'Не пришли' : 'Kelganlar (Kelmagan)' },
+    { value: 'came', label: isRu ? 'Пришли' : 'Kelganlar' },
+    { value: 'came_late', label: isRu ? 'Опоздали' : 'Kechikkanlar' },
+    { value: 'did_not_come', label: isRu ? 'Не пришли' : 'Kelmaganlar' },
   ], [isRu])
 
   const formatTime = (isoStr) => {
@@ -311,10 +311,46 @@ export default function AttendanceGroups() {
 
         {/* Summary Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 18 }}>
-          <StatCard icon={<PersonRegular />} label={isRu ? 'Всего по штату' : 'Jami xodimlar'} value={todayStats.total_employees} color="var(--accent)" bg="var(--accent-bg)" border="var(--accent-bd)" />
-          <StatCard icon={<CheckmarkCircleRegular />} label={isRu ? 'Пришли' : 'Kelganlar'} value={todayStats.present_today} color="var(--green)" bg="var(--green-bg)" border="var(--green-bd)" />
-          <StatCard icon={<DismissCircleRegular />} label={isRu ? 'Не пришли' : 'Kelmaganlar'} value={todayStats.absent_today} color="var(--red)" bg="var(--red-bg)" border="var(--red-bd)" />
-          <StatCard icon={<ClockRegular />} label={isRu ? 'Опоздали' : 'Kechikkanlar'} value={todayStats.late_today} color="var(--yellow)" bg="var(--yellow-bg)" border="var(--yellow-bd)" />
+          <StatCard
+            icon={<PersonRegular />}
+            label={isRu ? 'Всего по штату' : 'Jami xodimlar'}
+            value={todayStats.total_employees}
+            color="var(--accent)"
+            bg="var(--accent-bg)"
+            border="var(--accent-bd)"
+            active={statusFilter === 'all'}
+            onClick={() => setStatusFilter('all')}
+          />
+          <StatCard
+            icon={<CheckmarkCircleRegular />}
+            label={isRu ? 'Пришли' : 'Kelganlar'}
+            value={todayStats.present_today}
+            color="var(--green)"
+            bg="var(--green-bg)"
+            border="var(--green-bd)"
+            active={statusFilter === 'came'}
+            onClick={() => setStatusFilter('came')}
+          />
+          <StatCard
+            icon={<DismissCircleRegular />}
+            label={isRu ? 'Не пришли' : 'Kelmaganlar'}
+            value={todayStats.absent_today}
+            color="var(--red)"
+            bg="var(--red-bg)"
+            border="var(--red-bd)"
+            active={statusFilter === 'did_not_come'}
+            onClick={() => setStatusFilter('did_not_come')}
+          />
+          <StatCard
+            icon={<ClockRegular />}
+            label={isRu ? 'Опоздали' : 'Kechikkanlar'}
+            value={todayStats.late_today}
+            color="var(--yellow)"
+            bg="var(--yellow-bg)"
+            border="var(--yellow-bd)"
+            active={statusFilter === 'came_late'}
+            onClick={() => setStatusFilter('came_late')}
+          />
         </div>
 
         {/* Filters Card */}
@@ -634,21 +670,31 @@ export default function AttendanceGroups() {
   )
 }
 
-function StatCard({ icon, label, value, color, bg, border }) {
+function StatCard({ icon, label, value, color, bg, border, active, onClick }) {
+  const [hovered, setHovered] = useState(false)
+
   return (
     <div
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
         background: 'var(--surface)',
-        border: '1px solid var(--border)',
+        border: `1.5px solid ${active ? color : (hovered ? 'var(--text-4)' : 'var(--border)')}`,
         borderRadius: 12,
-        padding: '16px 20px',
+        padding: '15.5px 19.5px', // offset 1.5px border to avoid layout shift
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
+        cursor: 'pointer',
+        boxShadow: active ? `0 4px 14px ${color}22` : (hovered ? '0 4px 12px rgba(0,0,0,0.08)' : 'none'),
+        transform: hovered ? 'translateY(-2px)' : 'none',
+        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+        userSelect: 'none',
       }}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 0.3 }}>
+        <span style={{ fontSize: 11, fontWeight: 600, color: active ? color : 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 0.3, transition: 'color 0.2s' }}>
           {label}
         </span>
         <span style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-1)', lineHeight: 1.1 }}>
@@ -667,6 +713,8 @@ function StatCard({ icon, label, value, color, bg, border }) {
           alignItems: 'center',
           justifyContent: 'center',
           fontSize: 18,
+          transform: hovered ? 'scale(1.05)' : 'none',
+          transition: 'transform 0.2s ease',
         }}
       >
         {icon}
