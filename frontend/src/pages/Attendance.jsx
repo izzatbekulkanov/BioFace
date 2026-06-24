@@ -64,7 +64,10 @@ export default function Attendance() {
   const [camFilter, setCamFilter] = useState('all')
   const [employeeTypeFilter, setEmployeeTypeFilter] = useState('all')
   const [shiftFilter, setShiftFilter] = useState('all')
-  const [todayOnly, setTodayOnly] = useState(false)
+  const getTodayTashkentStr = () => {
+    return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Tashkent' })
+  }
+  const [dateFilter, setDateFilter] = useState(getTodayTashkentStr())
   const [search, setSearch] = useState('')
   const [isSuperAdmin, setIsSuperAdmin] = useState(true) // default true, keyin aniqlanadi
 
@@ -124,7 +127,7 @@ export default function Attendance() {
       if (camFilter !== 'all') params.set('camera_id', camFilter)
       if (employeeTypeFilter !== 'all') params.set('employee_type', employeeTypeFilter)
       if (shiftFilter !== 'all') params.set('schedule_id', shiftFilter)
-      if (todayOnly) params.set('today_only', 'true')
+      if (dateFilter) params.set('date', dateFilter)
 
       const res = await fetch(`/api/attendance?${params}`, { credentials: 'include' })
       if (!res.ok) {
@@ -153,7 +156,7 @@ export default function Attendance() {
         setRefreshing(false)
       }
     }
-  }, [orgFilter, branchFilter, camFilter, employeeTypeFilter, shiftFilter, todayOnly, isRu])
+  }, [orgFilter, branchFilter, camFilter, employeeTypeFilter, shiftFilter, dateFilter, isRu])
 
   // Polling — yangi yozuvlar
   const pollNew = useCallback(async () => {
@@ -165,7 +168,7 @@ export default function Attendance() {
       if (camFilter !== 'all') params.set('camera_id', camFilter)
       if (employeeTypeFilter !== 'all') params.set('employee_type', employeeTypeFilter)
       if (shiftFilter !== 'all') params.set('schedule_id', shiftFilter)
-      if (todayOnly) params.set('today_only', 'true')
+      if (dateFilter) params.set('date', dateFilter)
 
       const res = await fetch(`/api/attendance?${params}`, { credentials: 'include' })
       if (!res.ok) return
@@ -194,7 +197,7 @@ export default function Attendance() {
     } catch {
       // silent
     }
-  }, [orgFilter, branchFilter, camFilter, employeeTypeFilter, shiftFilter, todayOnly])
+  }, [orgFilter, branchFilter, camFilter, employeeTypeFilter, shiftFilter, dateFilter])
 
   // Eski yozuvlarni yuklash (pagination)
   const loadMore = useCallback(async () => {
@@ -208,7 +211,7 @@ export default function Attendance() {
       if (camFilter !== 'all') params.set('camera_id', camFilter)
       if (employeeTypeFilter !== 'all') params.set('employee_type', employeeTypeFilter)
       if (shiftFilter !== 'all') params.set('schedule_id', shiftFilter)
-      if (todayOnly) params.set('today_only', 'true')
+      if (dateFilter) params.set('date', dateFilter)
       const res = await fetch(`/api/attendance?${params}`, { credentials: 'include' })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
@@ -228,7 +231,7 @@ export default function Attendance() {
     } finally {
       if (aliveRef.current) setLoadingMore(false)
     }
-  }, [loadingMore, orgFilter, branchFilter, camFilter, employeeTypeFilter, shiftFilter, todayOnly, toast, isRu])
+  }, [loadingMore, orgFilter, branchFilter, camFilter, employeeTypeFilter, shiftFilter, dateFilter, toast, isRu])
 
   // Mount
   useEffect(() => {
@@ -481,23 +484,15 @@ export default function Attendance() {
               />
             </div>
 
-            <label style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              padding: '9px 12px', borderRadius: 8,
-              background: todayOnly ? 'var(--accent-bg)' : 'var(--bg)',
-              border: `1px solid ${todayOnly ? 'var(--accent-bd)' : 'var(--border-2)'}`,
-              cursor: 'pointer', fontSize: 13, color: 'var(--text-1)', fontWeight: 600,
-              height: 36, boxSizing: 'border-box',
-            }}>
+            <div style={{ flex: '1 1 180px' }}>
+              <FieldLabel>{isRu ? 'Дата' : 'Sana'}</FieldLabel>
               <input
-                type="checkbox"
-                checked={todayOnly}
-                onChange={e => setTodayOnly(e.target.checked)}
-                style={{ accentColor: 'var(--accent)', width: 14, height: 14 }}
+                type="date"
+                value={dateFilter}
+                onChange={e => setDateFilter(e.target.value)}
+                style={inpStyle}
               />
-              <CalendarRegular fontSize={14} />
-              {isRu ? 'Только сегодня' : 'Faqat bugun'}
-            </label>
+            </div>
           </div>
           <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-4)' }}>
             {search.trim() ? (

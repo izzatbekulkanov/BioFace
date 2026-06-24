@@ -3230,12 +3230,22 @@ def _get_today_employee_stats(
     organization_id: Optional[int],
     employee_type: Optional[str],
     schedule_id: Optional[int],
+    target_date: Optional[str] = None,
 ) -> dict:
     from utils.time_utils import today_tashkent_range, now_tashkent
     from utils.schedule_utils import get_late_minutes
     from sqlalchemy.orm import selectinload
     
-    today_start, today_end = today_tashkent_range()
+    if target_date:
+        try:
+            from datetime import datetime, timedelta
+            parsed_date = datetime.strptime(target_date, "%Y-%m-%d")
+            today_start = datetime(parsed_date.year, parsed_date.month, parsed_date.day, 0, 0, 0)
+            today_end = today_start + timedelta(days=1)
+        except ValueError:
+            today_start, today_end = today_tashkent_range()
+    else:
+        today_start, today_end = today_tashkent_range()
     
     target_org_ids = allowed_org_ids
     if organization_id is not None:
@@ -3317,6 +3327,7 @@ def get_attendance(
     after_id: Optional[int] = None,
     before_id: Optional[int] = None,
     today_only: bool = False,
+    date: Optional[str] = None,
     employee_type: Optional[str] = None,
     schedule_id: Optional[int] = None,
     db: Session = Depends(get_db),
@@ -3330,7 +3341,16 @@ def get_attendance(
 
     query = db.query(AttendanceLog).outerjoin(Device, Device.id == AttendanceLog.device_id).outerjoin(Employee, Employee.id == AttendanceLog.employee_id)
 
-    if today_only:
+    if date:
+        try:
+            from datetime import datetime, timedelta
+            parsed_date = datetime.strptime(date, "%Y-%m-%d")
+            day_start = datetime(parsed_date.year, parsed_date.month, parsed_date.day, 0, 0, 0)
+            day_end = day_start + timedelta(days=1)
+            query = query.filter(AttendanceLog.timestamp >= day_start, AttendanceLog.timestamp < day_end)
+        except ValueError:
+            pass
+    elif today_only:
         day_start, day_end = _today_utc_range()
         query = query.filter(AttendanceLog.timestamp >= day_start, AttendanceLog.timestamp < day_end)
 
@@ -3443,6 +3463,7 @@ def get_attendance(
         organization_id=organization_id,
         employee_type=employee_type,
         schedule_id=schedule_id,
+        target_date=date,
     )
     return {
         "ok": True,
