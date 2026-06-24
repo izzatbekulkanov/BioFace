@@ -385,7 +385,7 @@ export default function Dashboard() {
   const summary = data?.summary || {}
   const orgs = data?.org_cards || []
   const charts = data?.charts || {}
-  const showCameras = data?.show_cameras !== false
+  const showCameras = data?.show_cameras === true
   const isRu = i18n.language === 'ru'
   const now = new Date()
   const locale = isRu ? 'ru-RU' : 'uz-UZ'
