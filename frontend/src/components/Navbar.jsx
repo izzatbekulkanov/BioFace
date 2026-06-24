@@ -234,10 +234,8 @@ function SettingsDropdown({ active }) {
     if (open) document.addEventListener('mousedown', handleOutside)
     return () => document.removeEventListener('mousedown', handleOutside)
   }, [open])
-
   const items = [
     { id: 'settings', label: isRu ? 'Настройки' : 'Sozlamalar', icon: <SettingsRegular fontSize={15} />, path: '/settings' },
-    { id: 'roles', label: isRu ? 'Роли' : 'Rollar', icon: <ShieldRegular fontSize={15} />, path: '/users' },
     { id: 'messages', label: isRu ? 'Обращения' : 'Murojaatlar', icon: <MailRegular fontSize={15} />, path: '/settings/messages' },
     { id: 'middlewareLogs', label: isRu ? 'Логи API' : 'API Jurnali', icon: <HistoryRegular fontSize={15} />, path: '/middleware-logs' },
     { id: 'isup', label: 'ISUP Server', icon: <ServerRegular fontSize={15} />, path: '/settings/isup' },
@@ -1578,7 +1576,6 @@ export default function Navbar({ isLoggedIn, onLogout, onLangChange }) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {[
                     { id: 'settings', label: isRu ? 'Настройки' : 'Sozlamalar', icon: <SettingsRegular fontSize={14} />, path: '/settings' },
-                    { id: 'roles', label: isRu ? 'Роли' : 'Rollar', icon: <ShieldRegular fontSize={14} />, path: '/users' },
                     { id: 'messages', label: isRu ? 'Обращения' : 'Murojaatlar', icon: <MailRegular fontSize={14} />, path: '/settings/messages' },
                     { id: 'middlewareLogs', label: isRu ? 'Логи API' : 'API Jurnali', icon: <HistoryRegular fontSize={14} />, path: '/middleware-logs' },
                     { id: 'isup', label: 'ISUP Server', icon: <ServerRegular fontSize={14} />, path: '/settings/isup' },
