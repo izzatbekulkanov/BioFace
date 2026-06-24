@@ -366,16 +366,6 @@ export default function AttendanceGroups() {
               />
             </div>
 
-            <div style={{ flex: '1 1 280px', minWidth: 200 }}>
-              <FieldLabel>{isRu ? 'Поиск' : 'Qidiruv'}</FieldLabel>
-              <input
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder={isRu ? 'Имя, ID, отчество...' : 'Ism, ID, otasining ismi...'}
-                style={inpStyle}
-              />
-            </div>
 
             {/* Tashkilot filtri */}
             {orgs.length > 1 && (
@@ -423,6 +413,17 @@ export default function AttendanceGroups() {
                 onChange={setStatusFilter}
                 options={statusOptions}
                 placeholder={isRu ? 'Все статусы' : 'Hamma holatlar'}
+              />
+            </div>
+
+            <div style={{ flex: '1 1 100%' }}>
+              <FieldLabel>{isRu ? 'Поиск' : 'Qidiruv'}</FieldLabel>
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder={isRu ? 'Имя, ID, отчество...' : 'Ism, ID, otasining ismi...'}
+                style={inpStyle}
               />
             </div>
           </div>
