@@ -39,15 +39,13 @@ def list_chat_contacts(request: Request, db: Session = Depends(get_db)):
         # SuperAdmin can chat with any active user in the system
         contacts_query = db.query(User).filter(
             User.id != current_user.id,
-            User.status == "active",
-            User.is_staff == True
+            User.status == "active"
         )
     else:
         # Regular user can chat with same-organization users + all superadmins
         contacts_query = db.query(User).filter(
             User.id != current_user.id,
             User.status == "active",
-            User.is_staff == True,
             or_(
                 User.organization_id == current_user.organization_id,
                 User.role == UserRole.super_admin.value
