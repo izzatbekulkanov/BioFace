@@ -51,6 +51,8 @@ PUBLIC_PATH_PREFIXES = (
     "/docs",
     "/redoc",
     "/openapi.json",
+    "/api/settings",      # Public branding settings (app name, logo)
+    "/api/menu_settings", # Public branding settings
 )
 
 PUBLIC_PATHS = frozenset({

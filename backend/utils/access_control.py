@@ -293,7 +293,7 @@ def resolve_user_menu_permissions(*, role: Any, stored_permissions: Any = None, 
 
     return permissions
 
-from typing import Optional
+
 def user_has_menu_access(menu_permissions: Iterable[Any], menu_key: str | tuple[str, ...] | list[str] | set[str] | None) -> bool:
     if not menu_key:
         return True
