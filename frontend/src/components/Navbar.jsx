@@ -12,7 +12,7 @@ import {
   PeopleRegular, ShieldRegular, HatGraduationRegular,
   ClipboardTaskListLtrRegular, BrainCircuitRegular, BuildingRegular, AlertRegular,
   ChatRegular, SendRegular, ArrowLeftRegular, CheckmarkRegular, DismissRegular,
-  MoneyRegular, WalletRegular, StarRegular, ArrowSwapRegular, TagRegular,
+  MoneyRegular, WalletRegular, StarRegular, ArrowSwapRegular, TagRegular, CalendarRegular,
 } from '@fluentui/react-icons'
 
 const PUBLIC_LINKS  = ['map', 'about', 'contact']
@@ -97,7 +97,7 @@ function AttendanceDropdown({ active }) {
 }
 
 // Dropdown menu for Users section
-function UsersDropdown({ active }) {
+function UsersDropdown({ currentUser, active }) {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
@@ -112,11 +112,13 @@ function UsersDropdown({ active }) {
     return () => document.removeEventListener('mousedown', handleOutside)
   }, [open])
 
+  const role = (currentUser?.role || '').toLowerCase().replace(/_/g, '')
+  const isSuper = role === 'superadmin'
   const items = [
     { id: 'usersAdmins',  label: t('nav.usersAdmins'),  icon: <ShieldRegular fontSize={15} />,         path: '/users' },
     { id: 'usersStaff',   label: t('nav.usersStaff'),   icon: <PeopleRegular fontSize={15} />,         path: '/users/staff' },
     { id: 'usersStudents',label: t('nav.usersStudents'),icon: <HatGraduationRegular fontSize={15} />,  path: '/users/students' },
-  ]
+  ].filter(item => isSuper || item.id !== 'usersAdmins')
 
   return <NavDropdown
     label={t('nav.users')}
@@ -188,6 +190,7 @@ function FinanceDropdown({ active }) {
     { id: 'financeKpi', label: t('nav.financeKpi'), icon: <StarRegular fontSize={15} />, path: '/finance/kpi' },
     { id: 'financeCashflow', label: t('nav.financeCashflow'), icon: <ArrowSwapRegular fontSize={15} />, path: '/finance/cashflow' },
     { id: 'financeAccounts', label: t('nav.financeAccounts'), icon: <WalletRegular fontSize={15} />, path: '/finance/accounts' },
+    { id: 'financeTabel', label: t('nav.financeTabel'), icon: <CalendarRegular fontSize={15} />, path: '/finance/tabel' },
   ]
 
   return <NavDropdown
@@ -901,6 +904,8 @@ export default function Navbar({ isLoggedIn, onLogout, onLangChange }) {
   }
 
   const links = isLoggedIn ? PRIVATE_LINKS : PUBLIC_LINKS
+  const role = (currentUser?.role || '').toLowerCase().replace(/_/g, '')
+  const isSuper = role === 'superadmin'
 
   return (
     <>
@@ -953,10 +958,10 @@ export default function Navbar({ isLoggedIn, onLogout, onLangChange }) {
           {isLoggedIn && (
             <>
               <AttendanceDropdown active={location.pathname.startsWith('/attendance') || location.pathname.startsWith('/psychology')} />
-              <UsersDropdown active={location.pathname.startsWith('/users')} />
+              <UsersDropdown currentUser={currentUser} active={location.pathname.startsWith('/users')} />
               <OrganizationsDropdown active={location.pathname.startsWith('/organizations') || location.pathname.startsWith('/shifts')} />
               <FinanceDropdown active={location.pathname.startsWith('/finance')} />
-              <SettingsDropdown active={location.pathname.startsWith('/settings') || location.pathname.startsWith('/middleware-logs')} />
+              {isSuper && <SettingsDropdown active={location.pathname.startsWith('/settings') || location.pathname.startsWith('/middleware-logs')} />}
             </>
           )}
         </nav>
@@ -1436,7 +1441,11 @@ export default function Navbar({ isLoggedIn, onLogout, onLangChange }) {
                     { id: 'usersAdmins', label: t('nav.usersAdmins'), icon: <ShieldRegular fontSize={14} />, path: '/users' },
                     { id: 'usersStaff', label: t('nav.usersStaff'), icon: <PeopleRegular fontSize={14} />, path: '/users/staff' },
                     { id: 'usersStudents', label: t('nav.usersStudents'), icon: <HatGraduationRegular fontSize={14} />, path: '/users/students' },
-                  ].map(item => {
+                  ].filter(item => {
+                    const r = (currentUser?.role || '').toLowerCase().replace(/_/g, '')
+                    return r === 'superadmin' || item.id !== 'usersAdmins'
+                  })
+                   .map(item => {
                     const active = location.pathname === item.path;
                     return (
                       <button key={item.id} onClick={() => { navigate(item.path); setMenuOpen(false); }}
@@ -1506,6 +1515,7 @@ export default function Navbar({ isLoggedIn, onLogout, onLangChange }) {
                     { id: 'financeKpi', label: t('nav.financeKpi'), icon: <StarRegular fontSize={14} />, path: '/finance/kpi' },
                     { id: 'financeCashflow', label: t('nav.financeCashflow'), icon: <ArrowSwapRegular fontSize={14} />, path: '/finance/cashflow' },
                     { id: 'financeAccounts', label: t('nav.financeAccounts'), icon: <WalletRegular fontSize={14} />, path: '/finance/accounts' },
+                    { id: 'financeTabel', label: t('nav.financeTabel'), icon: <CalendarRegular fontSize={14} />, path: '/finance/tabel' },
                   ].map(item => {
                     const active = location.pathname === item.path;
                     return (
@@ -1527,8 +1537,8 @@ export default function Navbar({ isLoggedIn, onLogout, onLangChange }) {
               </div>
             )}
 
-            {/* Settings group if logged in */}
-            {isLoggedIn && (
+            {/* Settings group if logged in and isSuper */}
+            {isLoggedIn && isSuper && (
               <div style={{ marginTop: 10 }}>
                 <div style={{
                   fontSize: 11, fontWeight: 700, color: 'rgba(255, 255, 255, 0.35)',

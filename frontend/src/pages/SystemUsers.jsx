@@ -35,12 +35,12 @@ import { useToast } from '../components/Toaster'
  */
 
 const ROLES = [
-  { value: 'super_admin',     label_uz: 'Asosiy Administrator', label_ru: 'Главный администратор' },
-  { value: 'mahalla_admin',   label_uz: 'Mahalla Admini',       label_ru: 'Махаллинский админ' },
-  { value: 'maktab_admin',    label_uz: 'Maktab Admini',        label_ru: 'Школьный админ' },
-  { value: 'kollej_admin',    label_uz: 'Kollej Admini',        label_ru: 'Колледжский админ' },
-  { value: 'tashkilot_admin', label_uz: 'Tashkilot Admini',     label_ru: 'Админ организации' },
-  { value: 'korxona_admin',   label_uz: 'Korxona Admini',       label_ru: 'Админ предприятия' },
+  { value: 'SuperAdmin',      label_uz: 'Asosiy Administrator', label_ru: 'Главный администратор' },
+  { value: 'MahallaAdmin',    label_uz: 'Mahalla Admini',       label_ru: 'Махаллинский админ' },
+  { value: 'MaktabAdmin',     label_uz: 'Maktab Admini',        label_ru: 'Школьный админ' },
+  { value: 'KollejAdmin',     label_uz: 'Kollej Admini',        label_ru: 'Колледжский админ' },
+  { value: 'TashkilotAdmin',  label_uz: 'Tashkilot Admini',     label_ru: 'Админ организации' },
+  { value: 'KorxonaAdmin',    label_uz: 'Korxona Admini',       label_ru: 'Админ предприятия' },
 ]
 
 export default function SystemUsers() {
@@ -407,7 +407,7 @@ export default function SystemUsers() {
 function ApproveModal({ user, orgs, onClose, onSaved, isRu }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [role, setRole] = useState('tashkilot_admin')
+  const [role, setRole] = useState('TashkilotAdmin')
   const [orgIds, setOrgIds] = useState([])
 
   const toggleOrg = (id) => {

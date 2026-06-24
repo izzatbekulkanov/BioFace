@@ -96,6 +96,7 @@ def _build_auth_user(user: User) -> dict:
         "organization_id": user.organization_id,
         "image_url": user.image_url or "",
         "google_oauth_enabled": bool(user.google_oauth_enabled),
+        "is_staff": bool(user.is_staff),
         "last_login_provider": user.last_login_provider or "password",
     }
 
@@ -375,6 +376,16 @@ def login(payload: LoginPayload, request: Request, db: Session = Depends(get_db)
         raise HTTPException(status_code=403, detail="Hisob administrator tasdig'ini kutmoqda")
     if user_status != "active":
         raise HTTPException(status_code=403, detail="Hisob nofaol holatda")
+
+    # Veb-brauzer orqali kirgan xodimlarni taqiqlash (faqat is_staff=True foydalanuvchilarga ruxsat beriladi)
+    if not user.is_staff:
+        origin = request.headers.get("origin")
+        referer = request.headers.get("referer")
+        if origin or referer:
+            raise HTTPException(
+                status_code=403,
+                detail="Veb-panelga faqat tizim foydalanuvchilari (adminlar) kira oladi. Iltimos, mobil ilovadan foydalaning."
+            )
 
     user.last_login_provider = "password"
     db.commit()

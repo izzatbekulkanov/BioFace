@@ -58,6 +58,9 @@ export default function OrganizationForm() {
   const [loading, setLoading] = useState(isEdit)
   const [saving, setSaving] = useState(false)
 
+  const [currentUser, setCurrentUser] = useState(null)
+  const isSuperAdmin = currentUser?.role?.toLowerCase() === 'superadmin'
+
   // Branches (filiallar)
   const [branches, setBranches] = useState([])
   const [branchLoading, setBranchLoading] = useState(false)
@@ -93,6 +96,20 @@ export default function OrganizationForm() {
     finally { setCameraLoading(false) }
   }, [isEdit, id])
 
+  const { branchLinkedCameras, unlinkedCameras } = useMemo(() => {
+    const linked = []
+    const unlinked = []
+    for (const cam of cameras) {
+      if (cam.branch_id !== null && cam.branch_id !== undefined) {
+        linked.push(cam)
+      } else {
+        unlinked.push(cam)
+      }
+    }
+    return { branchLinkedCameras: linked, unlinkedCameras: unlinked }
+  }, [cameras])
+
+
   const [form, setForm] = useState({
     name: '',
     organization_type: 'boshqa',
@@ -118,15 +135,22 @@ export default function OrganizationForm() {
     try {
       const typesPromise = fetch(`/api/organizations/types?lang=${i18n.language}`, { signal }).catch(err => { if (err.name === 'AbortError') return null; throw err; })
       const orgPromise = isEdit ? fetch(`/api/organizations/${id}?lang=${i18n.language}`, { signal }).catch(err => { if (err.name === 'AbortError') return null; throw err; }) : Promise.resolve(null)
+      const mePromise = fetch('/api/auth/me', { signal }).catch(err => { if (err.name === 'AbortError') return null; throw err; })
 
-      const [typesRes, orgRes] = await Promise.all([
+      const [typesRes, orgRes, meRes] = await Promise.all([
         typesPromise,
         orgPromise,
+        mePromise,
       ])
       if (signal.aborted || !typesRes || (isEdit && !orgRes)) return
 
       const typesData = typesRes.ok ? await typesRes.json() : []
       setTypes(Array.isArray(typesData) ? typesData : [])
+
+      if (meRes?.ok) {
+        const meData = await meRes.json()
+        setCurrentUser(meData)
+      }
 
       if (isEdit && orgRes?.ok) {
         const org = await orgRes.json()
@@ -349,7 +373,33 @@ export default function OrganizationForm() {
                     id="org-phone"
                     type="tel"
                     value={form.phone}
-                    onChange={e => setField('phone', e.target.value)}
+                    onChange={e => {
+                      let val = e.target.value;
+                      if (!val) {
+                        setField('phone', '');
+                        return;
+                      }
+                      const clean = val.replace(/\D/g, '');
+                      if (clean === '9' || clean === '99' || clean === '998') {
+                        setField('phone', '+' + clean);
+                        return;
+                      }
+                      let body = clean.startsWith('998') ? clean.slice(3) : clean;
+                      body = body.slice(0, 9);
+                      
+                      let formatted = '+998';
+                      if (body.length > 0) {
+                        const part1 = body.slice(0, 2);
+                        const part2 = body.slice(2, 5);
+                        const part3 = body.slice(5, 7);
+                        const part4 = body.slice(7, 9);
+                        if (part1) formatted += ' ' + part1;
+                        if (part2) formatted += ' ' + part2;
+                        if (part3) formatted += ' ' + part3;
+                        if (part4) formatted += ' ' + part4;
+                      }
+                      setField('phone', formatted);
+                    }}
                     placeholder="+998 90 123 45 67"
                     style={{ ...inp, paddingLeft: 36 }}
                     onFocus={e => (e.target.style.borderColor = 'var(--accent)')}
@@ -466,6 +516,7 @@ export default function OrganizationForm() {
                       value={form.subscription_status}
                       onChange={val => setField('subscription_status', val)}
                       isRu={isRu}
+                      disabled={!isSuperAdmin}
                     />
                   </Field>
                 </div>
@@ -487,19 +538,21 @@ export default function OrganizationForm() {
                       ? "Har bir filialning alohida geo-chegarasi bo'lishi mumkin."
                       : "Har bir filialning alohida geo-chegarasi bo'lishi mumkin."}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => setBranchModal('new')}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 6,
-                      padding: '8px 16px', borderRadius: 8,
-                      background: 'var(--accent)', border: 'none',
-                      color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
-                    }}
-                  >
-                    <AddRegular fontSize={14} />
-                    {isRu ? "Filial qo'shish" : "Filial qo'shish"}
-                  </button>
+                  {isSuperAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => setBranchModal('new')}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        padding: '8px 16px', borderRadius: 8,
+                        background: 'var(--accent)', border: 'none',
+                        color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
+                      }}
+                    >
+                      <AddRegular fontSize={14} />
+                      {isRu ? "Filial qo'shish" : "Filial qo'shish"}
+                    </button>
+                  )}
                 </div>
 
                 {branchLoading ? (
@@ -564,25 +617,29 @@ export default function OrganizationForm() {
                           >
                             <BuildingRegular fontSize={13} /> {isRu ? 'Войти' : 'Kirish'}
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => setBranchModal(br)}
-                            style={{
-                              padding: '6px 10px', borderRadius: 7,
-                              background: 'var(--surface-2)', border: '1px solid var(--border-2)',
-                              color: 'var(--text-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12,
-                            }}
-                          >
-                            <EditRegular fontSize={13} /> {isRu ? 'Tahrir' : 'Tahrir'}
-                          </button>
-                          <BranchDeleteButton
-                            orgId={id}
-                            branchId={br.uuid || br.id}
-                            branchName={br.name}
-                            onDeleted={fetchBranches}
-                            toast={toast}
-                            isRu={isRu}
-                          />
+                          {isSuperAdmin && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => setBranchModal(br)}
+                                style={{
+                                  padding: '6px 10px', borderRadius: 7,
+                                  background: 'var(--surface-2)', border: '1px solid var(--border-2)',
+                                  color: 'var(--text-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12,
+                                }}
+                              >
+                                <EditRegular fontSize={13} /> {isRu ? 'Tahrir' : 'Tahrir'}
+                              </button>
+                              <BranchDeleteButton
+                                orgId={id}
+                                branchId={br.uuid || br.id}
+                                branchName={br.name}
+                                onDeleted={fetchBranches}
+                                toast={toast}
+                                isRu={isRu}
+                              />
+                            </>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -636,62 +693,165 @@ export default function OrganizationForm() {
                       : 'Bu tashkilotga biriktirilgan kameralar mavjud emas.'}
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {cameras.map(cam => (
-                      <div
-                        key={cam.id}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 12,
-                          padding: '10px 14px', borderRadius: 10,
-                          background: 'var(--bg)', border: '1.5px solid var(--border-2)',
-                        }}
-                      >
-                        {/* Status dot */}
+                  <div className="org-form-grid-2" style={{ marginBottom: 0 }}>
+                    {/* Column 1: Filialga bog'langan kameralar */}
+                    <div>
+                      <h4 style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-2)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <CheckmarkCircleRegular fontSize={15} style={{ color: '#10b981' }} />
+                        {isRu ? `Привязанные к филиалу (${branchLinkedCameras.length})` : `Filialga bog'langan (${branchLinkedCameras.length})`}
+                      </h4>
+                      {branchLinkedCameras.length === 0 ? (
                         <div style={{
-                          width: 36, height: 36, borderRadius: 9, flexShrink: 0,
-                          background: cam.is_online ? 'rgba(16,185,129,0.12)' : 'rgba(100,100,100,0.1)',
-                          border: `1.5px solid ${cam.is_online ? 'rgba(16,185,129,0.3)' : 'var(--border-2)'}`,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          color: cam.is_online ? '#10b981' : 'var(--text-4)',
+                          padding: '20px 16px', textAlign: 'center',
+                          border: '1.5px dashed var(--border-2)', borderRadius: 10,
+                          color: 'var(--text-4)', fontSize: 12.5,
                         }}>
-                          <CameraRegular fontSize={16} />
+                          {isRu ? 'Нет привязанных камер' : 'Bog\'langan kameralar yo\'q'}
                         </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          {branchLinkedCameras.map(cam => (
+                            <div
+                              key={cam.id}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: 12,
+                                padding: '10px 14px', borderRadius: 10,
+                                background: 'var(--bg)', border: '1.5px solid var(--border-2)',
+                              }}
+                            >
+                              {/* Status dot */}
+                              <div style={{
+                                width: 36, height: 36, borderRadius: 9, flexShrink: 0,
+                                background: cam.is_online ? 'rgba(16,185,129,0.12)' : 'rgba(100,100,100,0.1)',
+                                border: `1.5px solid ${cam.is_online ? 'rgba(16,185,129,0.3)' : 'var(--border-2)'}`,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                color: cam.is_online ? '#10b981' : 'var(--text-4)',
+                              }}>
+                                <CameraRegular fontSize={16} />
+                              </div>
 
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--text-1)', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
-                            {cam.name}
-                            <span style={{
-                              padding: '1px 7px', borderRadius: 20, fontSize: 10.5, fontWeight: 700,
-                              background: cam.is_online ? 'rgba(16,185,129,0.12)' : 'rgba(100,100,100,0.1)',
-                              color: cam.is_online ? '#10b981' : 'var(--text-4)',
-                            }}>
-                              {cam.is_online ? (isRu ? 'Online' : 'Online') : (isRu ? 'Offline' : 'Offline')}
-                            </span>
-                          </div>
-                          <div style={{ fontSize: 12, color: 'var(--text-4)', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                            {cam.mac_address && <span>MAC: {cam.mac_address}</span>}
-                            {cam.isup_device_id && <span>ID: {cam.isup_device_id}</span>}
-                            {cam.model && <span>{cam.model}</span>}
-                          </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--text-1)', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                  <span>{cam.name}</span>
+                                  <span style={{
+                                    padding: '1px 7px', borderRadius: 20, fontSize: 10.5, fontWeight: 700,
+                                    background: cam.is_online ? 'rgba(16,185,129,0.12)' : 'rgba(100,100,100,0.1)',
+                                    color: cam.is_online ? '#10b981' : 'var(--text-4)',
+                                  }}>
+                                    {cam.is_online ? (isRu ? 'Online' : 'Online') : (isRu ? 'Offline' : 'Offline')}
+                                  </span>
+                                  {cam.branch_name && (
+                                    <span style={{
+                                      padding: '1px 7px', borderRadius: 6, fontSize: 10.5, fontWeight: 600,
+                                      background: 'rgba(0,120,212,0.1)', color: 'var(--accent)',
+                                      border: '1.5px solid rgba(0,120,212,0.2)'
+                                    }}>
+                                      {cam.branch_name}
+                                    </span>
+                                  )}
+                                </div>
+                                <div style={{ fontSize: 12, color: 'var(--text-4)', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                                  {cam.mac_address && <span>MAC: {cam.mac_address}</span>}
+                                  {cam.isup_device_id && <span>ID: {cam.isup_device_id}</span>}
+                                  {cam.model && <span>{cam.model}</span>}
+                                </div>
+                              </div>
+
+                              <a
+                                href={`/devices/${cam.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  padding: '6px 10px', borderRadius: 7,
+                                  background: 'var(--surface-2)', border: '1px solid var(--border-2)',
+                                  color: 'var(--text-2)', cursor: 'pointer',
+                                  display: 'flex', alignItems: 'center', gap: 4, fontSize: 12,
+                                  textDecoration: 'none', fontWeight: 600,
+                                }}
+                              >
+                                <OpenRegular fontSize={13} />
+                                {isRu ? 'Ochish' : 'Ochish'}
+                              </a>
+                            </div>
+                          ))}
                         </div>
+                      )}
+                    </div>
 
-                        <a
-                          href={`/devices/${cam.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{
-                            padding: '6px 10px', borderRadius: 7,
-                            background: 'var(--surface-2)', border: '1px solid var(--border-2)',
-                            color: 'var(--text-2)', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', gap: 4, fontSize: 12,
-                            textDecoration: 'none', fontWeight: 600,
-                          }}
-                        >
-                          <OpenRegular fontSize={13} />
-                          {isRu ? 'Ochish' : 'Ochish'}
-                        </a>
-                      </div>
-                    ))}
+                    {/* Column 2: Filialga bog'lanmagan kameralar */}
+                    <div>
+                      <h4 style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-2)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <DismissCircleRegular fontSize={15} style={{ color: 'var(--text-4)' }} />
+                        {isRu ? `Не привязанные к филиалу (${unlinkedCameras.length})` : `Filialga bog'lanmagan (${unlinkedCameras.length})`}
+                      </h4>
+                      {unlinkedCameras.length === 0 ? (
+                        <div style={{
+                          padding: '20px 16px', textAlign: 'center',
+                          border: '1.5px dashed var(--border-2)', borderRadius: 10,
+                          color: 'var(--text-4)', fontSize: 12.5,
+                        }}>
+                          {isRu ? 'Все камеры привязаны' : 'Bog\'lanmagan kameralar yo\'q'}
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          {unlinkedCameras.map(cam => (
+                            <div
+                              key={cam.id}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: 12,
+                                padding: '10px 14px', borderRadius: 10,
+                                background: 'var(--bg)', border: '1.5px solid var(--border-2)',
+                              }}
+                            >
+                              {/* Status dot */}
+                              <div style={{
+                                width: 36, height: 36, borderRadius: 9, flexShrink: 0,
+                                background: cam.is_online ? 'rgba(16,185,129,0.12)' : 'rgba(100,100,100,0.1)',
+                                border: `1.5px solid ${cam.is_online ? 'rgba(16,185,129,0.3)' : 'var(--border-2)'}`,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                color: cam.is_online ? '#10b981' : 'var(--text-4)',
+                              }}>
+                                <CameraRegular fontSize={16} />
+                              </div>
+
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--text-1)', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                  <span>{cam.name}</span>
+                                  <span style={{
+                                    padding: '1px 7px', borderRadius: 20, fontSize: 10.5, fontWeight: 700,
+                                    background: cam.is_online ? 'rgba(16,185,129,0.12)' : 'rgba(100,100,100,0.1)',
+                                    color: cam.is_online ? '#10b981' : 'var(--text-4)',
+                                  }}>
+                                    {cam.is_online ? (isRu ? 'Online' : 'Online') : (isRu ? 'Offline' : 'Offline')}
+                                  </span>
+                                </div>
+                                <div style={{ fontSize: 12, color: 'var(--text-4)', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                                  {cam.mac_address && <span>MAC: {cam.mac_address}</span>}
+                                  {cam.isup_device_id && <span>ID: {cam.isup_device_id}</span>}
+                                  {cam.model && <span>{cam.model}</span>}
+                                </div>
+                              </div>
+
+                              <a
+                                href={`/devices/${cam.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  padding: '6px 10px', borderRadius: 7,
+                                  background: 'var(--surface-2)', border: '1px solid var(--border-2)',
+                                  color: 'var(--text-2)', cursor: 'pointer',
+                                  display: 'flex', alignItems: 'center', gap: 4, fontSize: 12,
+                                  textDecoration: 'none', fontWeight: 600,
+                                }}
+                              >
+                                <OpenRegular fontSize={13} />
+                                {isRu ? 'Ochish' : 'Ochish'}
+                              </a>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </Card>
@@ -742,7 +902,7 @@ export default function OrganizationForm() {
       </div>
 
       {/* Branch modal */}
-      {branchModal && (
+      {branchModal && isSuperAdmin && (
         <BranchModal
           orgId={id}
           branch={branchModal === 'new' ? null : branchModal}
@@ -903,7 +1063,7 @@ const SUB_OPTIONS = [
   },
 ]
 
-function SubscriptionButtons({ value, onChange, isRu }) {
+function SubscriptionButtons({ value, onChange, isRu, disabled }) {
   return (
     <div style={{
       display: 'grid',
@@ -923,7 +1083,8 @@ function SubscriptionButtons({ value, onChange, isRu }) {
             key={opt.value}
             type="button"
             id={`sub-btn-${opt.value}`}
-            onClick={() => onChange(opt.value)}
+            disabled={disabled}
+            onClick={() => !disabled && onChange(opt.value)}
             style={{
               display: 'flex',
               flexDirection: 'column',
@@ -938,7 +1099,8 @@ function SubscriptionButtons({ value, onChange, isRu }) {
               color: isActive ? opt.activeColor : 'var(--text-3)',
               fontSize: 12.5,
               fontWeight: isActive ? 700 : 500,
-              cursor: 'pointer',
+              cursor: disabled ? 'not-allowed' : 'pointer',
+              opacity: disabled && !isActive ? 0.65 : 1,
               transition: 'all 0.18s ease',
               outline: 'none',
               boxShadow: isActive ? `0 0 0 3px ${opt.activeBorder}` : 'none',

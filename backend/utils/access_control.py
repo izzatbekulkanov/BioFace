@@ -148,7 +148,6 @@ LIMITED_ADMIN_DEFAULTS = (
     "psychological_portrait",
     "reports",
     "user_approvals",
-    "settings",
     "about",
     "chat",
 )
@@ -185,6 +184,8 @@ _PATH_RULES: list[tuple[re.Pattern[str], str | tuple[str, ...]]] = [
     # Keep approval APIs ahead of the generic /api/users matcher.
     (re.compile(r"^/api/users/pending(?:/|$)"), "user_approvals"),
     (re.compile(r"^/api/users/\d+/approve(?:/|$)"), "user_approvals"),
+    (re.compile(r"^/users/staff(?:/|$)"), "staff"),
+    (re.compile(r"^/users/students(?:/|$)"), "students"),
     (re.compile(r"^/users(?:/|$)"), "users"),
     (re.compile(r"^/api/users(?:/|$)"), "users"),
     (re.compile(r"^/user-approvals(?:/|$)"), "user_approvals"),
@@ -214,7 +215,12 @@ def all_menu_permissions() -> list[str]:
 def normalize_role_value(value: Any) -> str:
     if isinstance(value, UserRole):
         return value.value
-    return str(value or "").strip()
+    raw = str(value or "").strip()
+    normalized = raw.lower().replace("_", "")
+    for r in UserRole:
+        if r.value.lower().replace("_", "") == normalized or r.name.lower().replace("_", "") == normalized:
+            return r.value
+    return raw
 
 
 def get_role_default_menu_permissions(role: Any) -> list[str]:

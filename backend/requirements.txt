@@ -34,3 +34,4 @@ redis==7.3.0
 psutil==7.2.2
 fpdf2==2.8.3
 hsemotion==0.3.0
+openpyxl==3.1.5

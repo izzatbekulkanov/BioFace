@@ -37,6 +37,7 @@ import SalaryDetail     from './pages/SalaryDetail'
 import Kpi              from './pages/Kpi'
 import Cashflow         from './pages/Cashflow'
 import Accounts         from './pages/Accounts'
+import Tabel            from './pages/Tabel'
 import Versions         from './pages/Versions'
 import VersionForm      from './pages/VersionForm'
 import VersionDetail    from './pages/VersionDetail'
@@ -138,6 +139,7 @@ export default function App() {
               <Route path="/finance/kpi"      element={isLoggedIn ? <Kpi />      : <Navigate to="/login" replace />} />
               <Route path="/finance/cashflow" element={isLoggedIn ? <Cashflow /> : <Navigate to="/login" replace />} />
               <Route path="/finance/accounts" element={isLoggedIn ? <Accounts /> : <Navigate to="/login" replace />} />
+              <Route path="/finance/tabel"    element={isLoggedIn ? <Tabel />    : <Navigate to="/login" replace />} />
               <Route path="/profile"         element={isLoggedIn ? <Profile />        : <Navigate to="/login" replace />} />
               <Route path="/settings/versions"          element={isLoggedIn ? <Versions />      : <Navigate to="/login" replace />} />
               <Route path="/settings/versions/new"      element={isLoggedIn ? <VersionForm />   : <Navigate to="/login" replace />} />

@@ -81,7 +81,16 @@ export default function Login({ onLogin }) {
 
   useState(() => {
     const ge = searchParams.get('google_error')
-    if (ge && GOOGLE_ERRORS[ge]) setError(GOOGLE_ERRORS[ge][i18n.language] ?? GOOGLE_ERRORS[ge].uz)
+    if (ge && GOOGLE_ERRORS[ge]) {
+      setError(GOOGLE_ERRORS[ge][i18n.language] ?? GOOGLE_ERRORS[ge].uz)
+    } else {
+      const err = searchParams.get('error')
+      if (err === 'not_staff') {
+        setError(isRu 
+          ? 'Вход в веб-панель разрешен только для системных пользователей. Пожалуйста, используйте мобильное приложение.' 
+          : 'Veb-panelga faqat tizim foydalanuvchilari (adminlar) kira oladi. Iltimos, mobil ilovadan foydalaning.')
+      }
+    }
   }, [])
 
   const handleSubmit = async (e) => {

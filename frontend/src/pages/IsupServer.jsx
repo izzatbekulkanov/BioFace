@@ -725,6 +725,7 @@ export default function IsupServer() {
 
 function AddDeviceModal({ target, onClose, onSaved, isRu }) {
   const [orgs, setOrgs] = useState([])
+  const [branches, setBranches] = useState([])
   const [loadingMeta, setLoadingMeta] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -734,6 +735,11 @@ function AddDeviceModal({ target, onClose, onSaved, isRu }) {
     { value: '', label: isRu ? '— Без организации —' : '— Tashkilotsiz —' },
     ...orgs.map(o => ({ value: String(o.id), label: o.name }))
   ], [orgs, isRu])
+
+  const branchOptions = useMemo(() => [
+    { value: '', label: isRu ? '— Без филиала —' : '— Filialsiz —' },
+    ...branches.map(b => ({ value: String(b.id), label: b.name }))
+  ], [branches, isRu])
 
   const pwdSuggestBtnStyle = {
     background: 'var(--surface-2)',
@@ -758,6 +764,7 @@ function AddDeviceModal({ target, onClose, onSaved, isRu }) {
     external_ip: target?.ip && target.ip !== '-' ? target.ip : '',
     location: '',
     organization_id: '',
+    branch_id: '',
     username: 'admin',
     password: '',
     isup_password: 'facex2024',
@@ -813,6 +820,31 @@ function AddDeviceModal({ target, onClose, onSaved, isRu }) {
     return () => { alive = false }
   }, [target.device_id])
 
+  // Load branches when organization_id changes
+  useEffect(() => {
+    if (!form.organization_id) {
+      setBranches([])
+      setForm(prev => ({ ...prev, branch_id: '' }))
+      return
+    }
+    let alive = true
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/organizations/${form.organization_id}/branches`, { credentials: 'include' })
+        if (res.ok) {
+          const list = await res.json()
+          if (alive) {
+            setBranches(Array.isArray(list) ? list : [])
+            setForm(prev => ({ ...prev, branch_id: '' }))
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load branches:', err)
+      }
+    })()
+    return () => { alive = false }
+  }, [form.organization_id])
+
   const onSubmit = async (e) => {
     e?.preventDefault?.()
     if (!form.name.trim()) {
@@ -832,6 +864,7 @@ function AddDeviceModal({ target, onClose, onSaved, isRu }) {
         external_ip: form.external_ip.trim() || null,
         location: form.location.trim() || null,
         organization_id: form.organization_id ? Number(form.organization_id) : null,
+        branch_id: form.branch_id ? Number(form.branch_id) : null,
         username: form.username.trim() || null,
         isup_password: form.isup_password.trim() || null,
         max_memory: Number(form.max_memory) || 1500,
@@ -964,6 +997,15 @@ function AddDeviceModal({ target, onClose, onSaved, isRu }) {
                   onChange={val => setForm(prev => ({ ...prev, organization_id: val }))}
                   options={orgOptions}
                   placeholder={isRu ? '— Без организации —' : '— Tashkilotsiz —'}
+                />
+              </Field>
+              <Field label={isRu ? 'Филиал' : 'Filial'}>
+                <CustomSelect
+                  value={form.branch_id}
+                  onChange={val => setForm(prev => ({ ...prev, branch_id: val }))}
+                  options={branchOptions}
+                  disabled={!form.organization_id}
+                  placeholder={isRu ? '— Без филиала —' : '— Filialsiz —'}
                 />
               </Field>
               <Field label={isRu ? 'Лимит лиц' : 'Yuzlar limiti'}>

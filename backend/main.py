@@ -212,6 +212,13 @@ async def require_auth(request, call_next):
         auth_user = request.session.get("auth_user")
 
     if auth_user:
+        # Xodimlar (is_staff = False) veb panelga (non-api sahifalarga) kira olmaydi.
+        # Faqat API so'rovlariga (mobil ilova ishlatadigan) ruxsat beriladi.
+        if not auth_user.get("is_staff"):
+            if not path.startswith("/api/"):
+                request.session.clear()
+                return RedirectResponse(url="/login?error=not_staff", status_code=303)
+
         try:
             from routers.chat import ONLINE_USERS
             import time
@@ -360,5 +367,5 @@ async def serve_react_app(path: str):
 
     index_file = os.path.join(frontend_dist, 'index.html')
     if os.path.exists(index_file):
-        return FileResponse(index_file)
+        return FileResponse(index_file, headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"})
     return JSONResponse({"detail": "Frontend build topilmadi"}, status_code=404)

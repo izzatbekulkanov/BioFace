@@ -768,6 +768,106 @@ def _employee_filter_options_payload(
         ],
     }
 
+@router.get("/api/employees/stats")
+def get_employees_stats(
+    request: Request,
+    db: Session = Depends(get_db),
+    organization_id: Optional[str] = Query(None),
+    department_id: Optional[int] = Query(None),
+    position_id: Optional[int] = Query(None),
+    has_access: Optional[bool] = Query(None),
+    has_face: Optional[str] = Query(None, description="'yes' yoki 'no'"),
+    employee_type: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+):
+    """Xodimlar statistikasi: jami, yuz bor/yo'q, bo'limlar, lavozimlar, jins, barcha filtrlar bilan."""
+    allowed_org_ids = _resolve_employee_allowed_org_ids(request, db)
+    if not allowed_org_ids:
+        return {"ok": True, "total": 0, "with_face": 0, "without_face": 0,
+                "departments": 0, "positions": 0, "male": 0, "female": 0}
+
+    query = db.query(Employee).filter(Employee.organization_id.in_(allowed_org_ids))
+
+    if organization_id is not None:
+        org_obj = db.query(Organization).filter(Organization.uuid == str(organization_id)).first()
+        if org_obj is None and str(organization_id).isdigit():
+            org_obj = db.query(Organization).filter(Organization.id == int(organization_id)).first()
+        if org_obj is not None and int(org_obj.id) in allowed_org_ids:
+            query = query.filter(Employee.organization_id == int(org_obj.id))
+        else:
+            return {"ok": True, "total": 0, "with_face": 0, "without_face": 0,
+                    "departments": 0, "positions": 0, "male": 0, "female": 0}
+
+    if department_id is not None:
+        query = query.filter(Employee.department_id == int(department_id))
+
+    if position_id is not None:
+        query = query.filter(Employee.position_id == int(position_id))
+
+    if has_face is not None:
+        if has_face.lower() == 'yes':
+            query = query.filter(Employee.image_url.isnot(None), Employee.image_url != "")
+        elif has_face.lower() == 'no':
+            query = query.filter(
+                or_(Employee.image_url.is_(None), Employee.image_url == "")
+            )
+
+    if has_access is not None:
+        query = query.filter(Employee.has_access == has_access)
+
+    type_filter = (employee_type or "").strip().lower()
+    if type_filter == "students":
+        query = query.filter(func.lower(func.coalesce(Employee.employee_type, "")).in_(["oquvchi", "talaba", "student"]))
+    elif type_filter == "staff":
+        query = query.filter(
+            or_(
+                Employee.employee_type.is_(None),
+                func.trim(Employee.employee_type) == "",
+                func.lower(func.trim(Employee.employee_type)).in_(
+                    ["hodim", "oqituvchi", "employee", "staff", "teacher"]
+                ),
+            )
+        )
+    elif type_filter:
+        query = query.filter(func.lower(func.trim(Employee.employee_type)) == type_filter)
+
+    search_clean = (search or "").strip().lower()
+    if search_clean:
+        like = f"%{search_clean}%"
+        query = query.filter(
+            or_(
+                func.lower(Employee.first_name).like(like),
+                func.lower(Employee.last_name).like(like),
+                func.lower(Employee.middle_name).like(like),
+                func.lower(Employee.personal_id).like(like),
+                func.lower(func.coalesce(Employee.department, "")).like(like),
+                func.lower(func.coalesce(Employee.position, "")).like(like),
+            )
+        )
+
+    total = int(query.with_entities(func.count(Employee.id)).scalar() or 0)
+    with_face = int(query.filter(Employee.image_url.isnot(None), Employee.image_url != "").with_entities(func.count(Employee.id)).scalar() or 0)
+    without_face = total - with_face
+    male = int(query.filter(func.lower(func.coalesce(Employee.gender, "")) == "male").with_entities(func.count(Employee.id)).scalar() or 0)
+    female = int(query.filter(func.lower(func.coalesce(Employee.gender, "")) == "female").with_entities(func.count(Employee.id)).scalar() or 0)
+
+    # unique departments and positions
+    depts_q = query.filter(Employee.department_id.isnot(None)).with_entities(Employee.department_id).distinct()
+    departments = int(depts_q.count() or 0)
+    pos_q = query.filter(Employee.position_id.isnot(None)).with_entities(Employee.position_id).distinct()
+    positions = int(pos_q.count() or 0)
+
+    return {
+        "ok": True,
+        "total": total,
+        "with_face": with_face,
+        "without_face": without_face,
+        "departments": departments,
+        "positions": positions,
+        "male": male,
+        "female": female,
+    }
+
 
 @router.get("/api/employees")
 def get_employees(
@@ -775,7 +875,9 @@ def get_employees(
     db: Session = Depends(get_db),
     organization_id: Optional[str] = Query(None),
     department_id: Optional[int] = Query(None),
+    position_id: Optional[int] = Query(None),
     has_access: Optional[bool] = Query(None),
+    has_face: Optional[str] = Query(None, description="'yes' yoki 'no'"),
     employee_type: Optional[str] = Query(None, description="hodim | oqituvchi | oquvchi | talaba"),
     search: Optional[str] = Query(None),
     page: int = Query(1, ge=1),
@@ -815,6 +917,17 @@ def get_employees(
 
     if department_id is not None:
         query = query.filter(Employee.department_id == int(department_id))
+
+    if position_id is not None:
+        query = query.filter(Employee.position_id == int(position_id))
+
+    if has_face is not None:
+        if has_face.lower() == 'yes':
+            query = query.filter(Employee.image_url.isnot(None), Employee.image_url != "")
+        elif has_face.lower() == 'no':
+            query = query.filter(
+                or_(Employee.image_url.is_(None), Employee.image_url == "")
+            )
 
     if has_access is not None:
         query = query.filter(Employee.has_access == has_access)

@@ -187,6 +187,9 @@ export default function UserForm() {
     organization_ids: [],
     branch_id: '',
     google_oauth_enabled: false,
+    is_staff: true,
+    google_sub: '',
+    last_login_provider: '',
     image_url: '',
     menu_permissions: LIMITED_ADMIN_DEFAULTS,
   })
@@ -343,6 +346,9 @@ export default function UserForm() {
                 organization_ids: (u.organization_ids || []).map(String),
                 branch_id: u.branch_id ? String(u.branch_id) : '',
                 google_oauth_enabled: !!u.google_oauth_enabled,
+                is_staff: u.is_staff !== undefined ? !!u.is_staff : true,
+                google_sub: u.google_sub || '',
+                last_login_provider: u.last_login_provider || '',
                 image_url: u.image_url || '',
                 menu_permissions: parsedPerms,
               }))
@@ -689,6 +695,7 @@ export default function UserForm() {
       fd.set('role', form.role)
       fd.set('status', form.status)
       fd.set('google_oauth_enabled', form.google_oauth_enabled ? '1' : '0')
+      fd.set('is_staff', form.is_staff ? '1' : '0')
       fd.set('menu_permissions', JSON.stringify(form.menu_permissions))
       const orgIds = form.organization_ids.map(Number).filter(Boolean)
       if (orgIds.length) {
@@ -1390,38 +1397,101 @@ export default function UserForm() {
               </div>
             </Section>
 
-            {/* 5. Google OAuth */}
+            {/* 5. Tizim sozlamalari */}
             <Section
-              kicker="Google"
-              title="Google OAuth"
+              kicker={isRu ? 'Система' : 'Tizim'}
+              title={isRu ? 'Системные настройки' : 'Tizim sozlamalari'}
             >
-              <label style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-                padding: '12px 14px', borderRadius: 10,
-                border: '1px solid var(--border-2)', background: 'var(--bg)',
-                cursor: 'pointer',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{
-                    width: 36, height: 36, borderRadius: '50%',
-                    background: 'var(--surface-2)', color: 'var(--text-1)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontWeight: 800, fontSize: 14, flexShrink: 0,
-                  }}>G</div>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600 }}>Google OAuth</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-4)', marginTop: 2 }}>
-                      {isRu ? 'Разрешить вход через Google' : "Google orqali kirish ruxsati"}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {/* Google OAuth */}
+                <label style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                  padding: '12px 14px', borderRadius: 10,
+                  border: '1px solid var(--border-2)', background: 'var(--bg)',
+                  cursor: 'pointer',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: '50%',
+                      background: 'var(--surface-2)', color: 'var(--text-1)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontWeight: 800, fontSize: 14, flexShrink: 0,
+                    }}>G</div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>Google OAuth</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-4)', marginTop: 2 }}>
+                        {isRu ? 'Разрешить вход через Google' : "Google orqali kirish ruxsati"}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={form.google_oauth_enabled}
-                  onChange={setField('google_oauth_enabled')}
-                  style={{ accentColor: 'var(--accent)', width: 18, height: 18 }}
-                />
-              </label>
+                  <input
+                    type="checkbox"
+                    checked={form.google_oauth_enabled}
+                    onChange={setField('google_oauth_enabled')}
+                    style={{ accentColor: 'var(--accent)', width: 18, height: 18 }}
+                  />
+                </label>
+
+                {/* is_staff */}
+                <label style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                  padding: '12px 14px', borderRadius: 10,
+                  border: '1px solid var(--border-2)', background: 'var(--bg)',
+                  cursor: 'pointer',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: '50%',
+                      background: 'var(--surface-2)', color: 'var(--text-1)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontWeight: 800, fontSize: 14, flexShrink: 0,
+                    }}>S</div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>
+                        {isRu ? 'Доступ к веб-панели (Staff)' : 'Veb-panelga kirish (Staff)'}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-4)', marginTop: 2 }}>
+                        {isRu ? 'Вход разрешен на bioface.uz' : 'bioface.uz veb-interfeysiga kirish ruxsati'}
+                      </div>
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={form.is_staff}
+                    onChange={setField('is_staff')}
+                    style={{ accentColor: 'var(--accent)', width: 18, height: 18 }}
+                  />
+                </label>
+
+                {/* Extra read-only system details */}
+                {form.google_sub && (
+                  <div style={{
+                    fontSize: 12, padding: '10px 12px', borderRadius: 10,
+                    background: 'var(--bg)', border: '1px solid var(--border-2)',
+                    marginTop: 4, display: 'flex', flexDirection: 'column', gap: 4
+                  }}>
+                    <span style={{ fontWeight: 600, color: 'var(--text-2)' }}>Google Subject ID:</span>
+                    <span style={{ fontFamily: 'monospace', color: 'var(--text-4)', fontSize: 11, wordBreak: 'break-all' }}>{form.google_sub}</span>
+                  </div>
+                )}
+
+                {form.last_login_provider && (
+                  <div style={{
+                    fontSize: 12, padding: '10px 12px', borderRadius: 10,
+                    background: 'var(--bg)', border: '1px solid var(--border-2)',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                  }}>
+                    <span style={{ fontWeight: 600, color: 'var(--text-2)' }}>{isRu ? 'Вход выполнен через:' : 'Oxirgi kirish turi:'}</span>
+                    <span style={{
+                      fontWeight: 700, fontSize: 11, padding: '2px 8px', borderRadius: 6,
+                      background: form.last_login_provider === 'google' ? 'rgba(66, 133, 244, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                      color: form.last_login_provider === 'google' ? '#4285f4' : '#10b981'
+                    }}>
+                      {form.last_login_provider === 'google' ? 'Google' : (isRu ? 'Пароль' : 'Parol')}
+                    </span>
+                  </div>
+                )}
+              </div>
             </Section>
           </aside>
         </div>

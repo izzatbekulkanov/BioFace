@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { MapContainer, TileLayer, Circle, CircleMarker } from 'react-leaflet'
@@ -11,12 +11,15 @@ import {
   PeopleRegular,
   CameraRegular,
   ShieldRegular,
-  EyeRegular
+  EyeRegular,
+  CheckmarkCircleRegular,
+  DismissCircleRegular
 } from '@fluentui/react-icons'
 import PageHero from '../components/PageHero'
 import Skeleton from '../components/Skeleton'
 import { useToast } from '../components/Toaster'
 import 'leaflet/dist/leaflet.css'
+
 
 // Styling Constants aligned with OrganizationDetail design tokens
 const cardStyle = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 24 }
@@ -217,6 +220,19 @@ export default function BranchDetail() {
 
   const filteredItems = getFilteredItems()
 
+  const { branchLinkedCameras, unlinkedCameras } = useMemo(() => {
+    const linked = []
+    const unlinked = []
+    for (const d of filteredItems) {
+      if (d.branch_id === branch?.id) {
+        linked.push(d)
+      } else if (d.branch_id === null || d.branch_id === undefined || d.branch_id === 0) {
+        unlinked.push(d)
+      }
+    }
+    return { branchLinkedCameras: linked, unlinkedCameras: unlinked }
+  }, [filteredItems, branch?.id])
+
   const tabButtonStyle = (isActive) => ({
     padding: '8px 16px',
     borderRadius: 8,
@@ -270,6 +286,17 @@ export default function BranchDetail() {
           grid-template-columns: 380px 1fr;
           gap: 24px;
           margin-bottom: 24px;
+        }
+        .camera-split-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 20px;
+        }
+        @media (max-width: 1024px) {
+          .camera-split-grid {
+            grid-template-columns: 1fr;
+            gap: 16px;
+          }
         }
         @media (max-width: 900px) {
           .branch-detail-container {
@@ -484,210 +511,289 @@ export default function BranchDetail() {
                 </div>
 
                 {/* List Content Table Card */}
-                <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
-                  {filteredItems.length === 0 ? (
-                    <div style={emptyStyle}>
-                      {isRu ? 'Ничего не найдено' : 'Hech narsa topilmadi'}
+                {activeTab === 'cameras' ? (
+                  <div className="camera-split-grid">
+                    {/* Left Column: Filialga bog'langan kameralar */}
+                    <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
+                      <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-2)', background: 'var(--surface-2)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <CheckmarkCircleRegular fontSize={16} style={{ color: '#10b981' }} />
+                        <span style={{ fontWeight: 700, fontSize: 14 }}>
+                          {isRu ? `Привязанные к филиалу (${branchLinkedCameras.length})` : `Filialga bog'langan (${branchLinkedCameras.length})`}
+                        </span>
+                      </div>
+                      {branchLinkedCameras.length === 0 ? (
+                        <div style={emptyStyle}>
+                          {isRu ? 'Нет привязанных камер' : 'Bog\'langan kameralar yo\'q'}
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 20 }}>
+                          {branchLinkedCameras.map(d => (
+                            <div
+                              key={d.id}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: 12,
+                                padding: '12px 16px', borderRadius: 10,
+                                background: 'var(--bg)', border: '1.5px solid var(--border-2)',
+                              }}
+                            >
+                              {/* Status dot */}
+                              <div style={{
+                                width: 38, height: 38, borderRadius: 9, flexShrink: 0,
+                                background: d.is_online ? 'rgba(16,185,129,0.12)' : 'rgba(100,100,100,0.1)',
+                                border: `1.5px solid ${d.is_online ? 'rgba(16,185,129,0.3)' : 'var(--border-2)'}`,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                color: d.is_online ? '#10b981' : 'var(--text-4)',
+                              }}>
+                                <CameraRegular fontSize={16} />
+                              </div>
+
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--text-1)', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                  <span>{d.name}</span>
+                                  <span style={{
+                                    padding: '1px 7px', borderRadius: 20, fontSize: 10.5, fontWeight: 700,
+                                    background: d.is_online ? 'rgba(16,185,129,0.12)' : 'rgba(100,100,100,0.1)',
+                                    color: d.is_online ? '#10b981' : 'var(--text-4)',
+                                  }}>
+                                    {d.is_online ? (isRu ? 'Online' : 'Online') : (isRu ? 'Offline' : 'Offline')}
+                                  </span>
+                                </div>
+                                <div style={{ fontSize: 12, color: 'var(--text-4)', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                                  <span>MAC: {d.mac_address}</span>
+                                  {d.isup_device_id && <span>ID: {d.isup_device_id}</span>}
+                                  {d.model && <span>{d.model}</span>}
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                <button
+                                  onClick={() => handleToggleCameraBranch(d.id, d.branch_id)}
+                                  disabled={togglingCamId !== null}
+                                  style={{
+                                    ...smallBtn('danger'),
+                                    padding: '6px 12px',
+                                    fontSize: 12,
+                                    opacity: togglingCamId !== null ? 0.6 : 1,
+                                    cursor: togglingCamId !== null ? 'not-allowed' : 'pointer'
+                                  }}
+                                >
+                                  {togglingCamId === d.id ? '...' : (isRu ? 'Убрать' : 'Ajratish')}
+                                </button>
+                                <Link
+                                  to={`/devices/${d.id}`}
+                                  target="_blank"
+                                  style={{
+                                    ...smallBtn('subtle'),
+                                    padding: '6px 10px',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                  }}
+                                >
+                                  <EyeRegular fontSize={15} />
+                                </Link>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <div style={{ overflowX: 'auto' }}>
-                      <table style={tableStyle}>
-                        <thead>
-                          <tr>
-                            {activeTab === 'employees' && [
-                              isRu ? 'ФИО сотрудника' : 'Xodim F.I.Sh',
-                              'Personal ID',
-                              isRu ? 'Bo\'lim' : 'Bo\'lim',
-                              isRu ? 'Lavozim' : 'Lavozim',
-                              isRu ? 'Telefon' : 'Telefon',
-                              ''
-                            ].map((h, i) => <th key={i} style={thStyle}>{h}</th>)}
 
-                            {activeTab === 'students' && [
-                              isRu ? 'ФИО студента' : 'Talaba F.I.Sh',
-                              'Personal ID',
-                              isRu ? 'Sinf / Bo\'lim' : 'Sinf / Bo\'lim',
-                              isRu ? 'Telefon' : 'Telefon',
-                              ''
-                            ].map((h, i) => <th key={i} style={thStyle}>{h}</th>)}
+                    {/* Right Column: Filialga bog'lanmagan kameralar */}
+                    <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
+                      <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-2)', background: 'var(--surface-2)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <DismissCircleRegular fontSize={16} style={{ color: 'var(--text-4)' }} />
+                        <span style={{ fontWeight: 700, fontSize: 14 }}>
+                          {isRu ? `Не привязанные к филиалу (${unlinkedCameras.length})` : `Filialga bog'lanmagan (${unlinkedCameras.length})`}
+                        </span>
+                      </div>
+                      {unlinkedCameras.length === 0 ? (
+                        <div style={emptyStyle}>
+                          {isRu ? 'Все камеры привязаны' : 'Bog\'lanmagan kameralar yo\'q'}
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 20 }}>
+                          {unlinkedCameras.map(d => (
+                            <div
+                              key={d.id}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: 12,
+                                padding: '12px 16px', borderRadius: 10,
+                                background: 'var(--bg)', border: '1.5px solid var(--border-2)',
+                              }}
+                            >
+                              {/* Status dot */}
+                              <div style={{
+                                width: 38, height: 38, borderRadius: 9, flexShrink: 0,
+                                background: d.is_online ? 'rgba(16,185,129,0.12)' : 'rgba(100,100,100,0.1)',
+                                border: `1.5px solid ${d.is_online ? 'rgba(16,185,129,0.3)' : 'var(--border-2)'}`,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                color: d.is_online ? '#10b981' : 'var(--text-4)',
+                              }}>
+                                <CameraRegular fontSize={16} />
+                              </div>
 
-                            {activeTab === 'cameras' && [
-                              isRu ? 'Название камеры' : 'Kamera nomi',
-                              'Mac-Address',
-                              'ISUP ID',
-                              isRu ? 'Статус' : 'Holat',
-                              isRu ? 'Филиал' : 'Filial',
-                              ''
-                            ].map((h, i) => <th key={i} style={thStyle}>{h}</th>)}
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--text-1)', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                  <span>{d.name}</span>
+                                  <span style={{
+                                    padding: '1px 7px', borderRadius: 20, fontSize: 10.5, fontWeight: 700,
+                                    background: d.is_online ? 'rgba(16,185,129,0.12)' : 'rgba(100,100,100,0.1)',
+                                    color: d.is_online ? '#10b981' : 'var(--text-4)',
+                                  }}>
+                                    {d.is_online ? (isRu ? 'Online' : 'Online') : (isRu ? 'Offline' : 'Offline')}
+                                  </span>
+                                </div>
+                                <div style={{ fontSize: 12, color: 'var(--text-4)', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                                  <span>MAC: {d.mac_address}</span>
+                                  {d.isup_device_id && <span>ID: {d.isup_device_id}</span>}
+                                  {d.model && <span>{d.model}</span>}
+                                </div>
+                              </div>
 
-                            {activeTab === 'users' && [
-                              isRu ? 'Имя пользователя' : 'Foydalanuvchi nomi',
-                              'Email',
-                              isRu ? 'Роль' : 'Roli',
-                              isRu ? 'Статус' : 'Holat',
-                              ''
-                            ].map((h, i) => <th key={i} style={thStyle}>{h}</th>)}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {activeTab === 'employees' && filteredItems.map(e => (
-                            <tr key={e.id} style={tableRowStyle}>
-                              <td style={{ ...tableCellStyle, fontWeight: 600 }}>
-                                <Link to={`/employees/${e.uuid || e.id}`} style={{ color: 'var(--text-1)', textDecoration: 'none' }}>
-                                  {e.last_name} {e.first_name} {e.middle_name || ''}
+                              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                <button
+                                  onClick={() => handleToggleCameraBranch(d.id, d.branch_id)}
+                                  disabled={togglingCamId !== null}
+                                  style={{
+                                    ...smallBtn('accent'),
+                                    padding: '6px 12px',
+                                    fontSize: 12,
+                                    opacity: togglingCamId !== null ? 0.6 : 1,
+                                    cursor: togglingCamId !== null ? 'not-allowed' : 'pointer'
+                                  }}
+                                >
+                                  {togglingCamId === d.id ? '...' : (isRu ? "Добавить" : "Qo'shish")}
+                                </button>
+                                <Link
+                                  to={`/devices/${d.id}`}
+                                  target="_blank"
+                                  style={{
+                                    ...smallBtn('subtle'),
+                                    padding: '6px 10px',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                  }}
+                                >
+                                  <EyeRegular fontSize={15} />
                                 </Link>
-                              </td>
-                              <td style={tableCellStyle}>{e.personal_id || '—'}</td>
-                              <td style={tableCellStyle}>{e.department || '—'}</td>
-                              <td style={tableCellStyle}>{e.position || '—'}</td>
-                              <td style={tableCellStyle}>{e.phone || '—'}</td>
-                              <td style={{ ...tableCellStyle, textAlign: 'right' }}>
-                                <Link to={`/employees/${e.uuid || e.id}`} style={{ color: 'var(--accent)', textDecoration: 'none' }}>
-                                  <EyeRegular fontSize={16} />
-                                </Link>
-                              </td>
-                            </tr>
+                              </div>
+                            </div>
                           ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
+                    {filteredItems.length === 0 ? (
+                      <div style={emptyStyle}>
+                        {isRu ? 'Ничего не найдено' : 'Hech narsa topilmadi'}
+                      </div>
+                    ) : (
+                      <div style={{ overflowX: 'auto' }}>
+                        <table style={tableStyle}>
+                          <thead>
+                            <tr>
+                              {activeTab === 'employees' && [
+                                isRu ? 'ФИО сотрудника' : 'Xodim F.I.Sh',
+                                'Personal ID',
+                                isRu ? 'Bo\'lim' : 'Bo\'lim',
+                                isRu ? 'Lavozim' : 'Lavozim',
+                                isRu ? 'Telefon' : 'Telefon',
+                                ''
+                              ].map((h, i) => <th key={i} style={thStyle}>{h}</th>)}
 
-                          {activeTab === 'students' && filteredItems.map(e => (
-                            <tr key={e.id} style={tableRowStyle}>
-                              <td style={{ ...tableCellStyle, fontWeight: 600 }}>
-                                <Link to={`/employees/${e.uuid || e.id}`} style={{ color: 'var(--text-1)', textDecoration: 'none' }}>
-                                  {e.last_name} {e.first_name} {e.middle_name || ''}
-                                </Link>
-                              </td>
-                              <td style={tableCellStyle}>{e.personal_id || '—'}</td>
-                              <td style={tableCellStyle}>{e.department || '—'}</td>
-                              <td style={tableCellStyle}>{e.phone || '—'}</td>
-                              <td style={{ ...tableCellStyle, textAlign: 'right' }}>
-                                <Link to={`/employees/${e.uuid || e.id}`} style={{ color: 'var(--accent)', textDecoration: 'none' }}>
-                                  <EyeRegular fontSize={16} />
-                                </Link>
-                              </td>
+                              {activeTab === 'students' && [
+                                isRu ? 'ФИО студента' : 'Talaba F.I.Sh',
+                                'Personal ID',
+                                isRu ? 'Sinf / Bo\'lim' : 'Sinf / Bo\'lim',
+                                isRu ? 'Telefon' : 'Telefon',
+                                ''
+                              ].map((h, i) => <th key={i} style={thStyle}>{h}</th>)}
+
+                              {activeTab === 'users' && [
+                                isRu ? 'Имя пользователя' : 'Foydalanuvchi nomi',
+                                'Email',
+                                isRu ? 'Роль' : 'Roli',
+                                isRu ? 'Статус' : 'Holat',
+                                ''
+                              ].map((h, i) => <th key={i} style={thStyle}>{h}</th>)}
                             </tr>
-                          ))}
-
-                          {activeTab === 'cameras' && filteredItems.map(d => {
-                            const isCurrentBranch = d.branch_id === branch?.id
-                            return (
-                              <tr key={d.id} style={tableRowStyle}>
+                          </thead>
+                          <tbody>
+                            {activeTab === 'employees' && filteredItems.map(e => (
+                              <tr key={e.id} style={tableRowStyle}>
                                 <td style={{ ...tableCellStyle, fontWeight: 600 }}>
-                                  <Link to={`/devices/${d.id}`} style={{ color: 'var(--text-1)', textDecoration: 'none' }}>
-                                    {d.name}
+                                  <Link to={`/employees/${e.uuid || e.id}`} style={{ color: 'var(--text-1)', textDecoration: 'none' }}>
+                                    {e.last_name} {e.first_name} {e.middle_name || ''}
                                   </Link>
                                 </td>
-                                <td style={tableCellStyle}>{d.mac_address}</td>
-                                <td style={tableCellStyle}>{d.isup_device_id || '—'}</td>
+                                <td style={tableCellStyle}>{e.personal_id || '—'}</td>
+                                <td style={tableCellStyle}>{e.department || '—'}</td>
+                                <td style={tableCellStyle}>{e.position || '—'}</td>
+                                <td style={tableCellStyle}>{e.phone || '—'}</td>
+                                <td style={{ ...tableCellStyle, textAlign: 'right' }}>
+                                  <Link to={`/employees/${e.uuid || e.id}`} style={{ color: 'var(--accent)', textDecoration: 'none' }}>
+                                    <EyeRegular fontSize={16} />
+                                  </Link>
+                                </td>
+                              </tr>
+                            ))}
+
+                            {activeTab === 'students' && filteredItems.map(e => (
+                              <tr key={e.id} style={tableRowStyle}>
+                                <td style={{ ...tableCellStyle, fontWeight: 600 }}>
+                                  <Link to={`/employees/${e.uuid || e.id}`} style={{ color: 'var(--text-1)', textDecoration: 'none' }}>
+                                    {e.last_name} {e.first_name} {e.middle_name || ''}
+                                  </Link>
+                                </td>
+                                <td style={tableCellStyle}>{e.personal_id || '—'}</td>
+                                <td style={tableCellStyle}>{e.department || '—'}</td>
+                                <td style={tableCellStyle}>{e.phone || '—'}</td>
+                                <td style={{ ...tableCellStyle, textAlign: 'right' }}>
+                                  <Link to={`/employees/${e.uuid || e.id}`} style={{ color: 'var(--accent)', textDecoration: 'none' }}>
+                                    <EyeRegular fontSize={16} />
+                                  </Link>
+                                </td>
+                              </tr>
+                            ))}
+
+                            {activeTab === 'users' && filteredItems.map(u => (
+                              <tr key={u.id} style={tableRowStyle}>
+                                <td style={{ ...tableCellStyle, fontWeight: 600 }}>
+                                  <Link to={`/users/${u.id}/edit`} style={{ color: 'var(--text-1)', textDecoration: 'none' }}>
+                                    {u.last_name || ''} {u.first_name || ''} ({u.name})
+                                  </Link>
+                                </td>
+                                <td style={tableCellStyle}>{u.email}</td>
                                 <td style={tableCellStyle}>
                                   <span style={{
-                                    padding: '3px 8px', borderRadius: 6, fontSize: 11.5, fontWeight: 700,
-                                    background: d.is_online ? 'rgba(16,124,16,0.1)' : 'rgba(244,63,94,0.1)',
-                                    color: d.is_online ? '#107c10' : '#f43f5e'
+                                    padding: '2px 7px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                                    background: 'var(--surface-3)', color: 'var(--text-2)'
                                   }}>
-                                    {d.is_online ? (isRu ? 'Онлайн' : 'Onlayn') : (isRu ? 'Оффлайн' : 'Oflayn')}
+                                    {u.role}
                                   </span>
                                 </td>
                                 <td style={tableCellStyle}>
-                                  {isCurrentBranch ? (
-                                    <span style={{
-                                      padding: '3px 8px', borderRadius: 6, fontSize: 11.5, fontWeight: 700,
-                                      background: 'rgba(16,124,16,0.1)', color: '#107c10'
-                                    }}>
-                                      {isRu ? 'В этом филиале' : 'Shu filialda'}
-                                    </span>
-                                  ) : d.branch_id ? (
-                                    <span style={{
-                                      padding: '3px 8px', borderRadius: 6, fontSize: 11.5, fontWeight: 700,
-                                      background: 'rgba(255,193,7,0.1)', color: '#b78103'
-                                    }}>
-                                      {d.branch_name}
-                                    </span>
-                                  ) : (
-                                    <span style={{
-                                      padding: '3px 8px', borderRadius: 6, fontSize: 11.5, fontWeight: 700,
-                                      background: 'var(--surface-3)', color: 'var(--text-3)'
-                                    }}>
-                                      {isRu ? 'Не привязан' : 'Biriktirilmagan'}
-                                    </span>
-                                  )}
+                                  <span style={{
+                                    padding: '3px 8px', borderRadius: 6, fontSize: 11.5, fontWeight: 700,
+                                    background: u.status === 'active' ? 'rgba(16,124,16,0.1)' : 'rgba(244,63,94,0.1)',
+                                    color: u.status === 'active' ? '#107c10' : '#f43f5e'
+                                  }}>
+                                    {u.status === 'active' ? (isRu ? 'Актив' : 'Faol') : (isRu ? 'Блок' : 'Bloklangan')}
+                                  </span>
                                 </td>
                                 <td style={{ ...tableCellStyle, textAlign: 'right' }}>
-                                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
-                                    {isCurrentBranch ? (
-                                      <button
-                                        onClick={() => handleToggleCameraBranch(d.id, d.branch_id)}
-                                        disabled={togglingCamId !== null}
-                                        style={{
-                                          ...smallBtn('danger'),
-                                          padding: '5px 10px',
-                                          fontSize: 12,
-                                          opacity: togglingCamId !== null ? 0.6 : 1,
-                                          cursor: togglingCamId !== null ? 'not-allowed' : 'pointer'
-                                        }}
-                                      >
-                                        {togglingCamId === d.id ? '...' : (isRu ? 'Убрать' : 'Ajratish')}
-                                      </button>
-                                    ) : (
-                                      <button
-                                        onClick={() => handleToggleCameraBranch(d.id, d.branch_id)}
-                                        disabled={togglingCamId !== null}
-                                        style={{
-                                          ...smallBtn('accent'),
-                                          padding: '5px 10px',
-                                          fontSize: 12,
-                                          opacity: togglingCamId !== null ? 0.6 : 1,
-                                          cursor: togglingCamId !== null ? 'not-allowed' : 'pointer'
-                                        }}
-                                      >
-                                        {togglingCamId === d.id ? '...' : (isRu ? "Добавить" : "Qo'shish")}
-                                      </button>
-                                    )}
-                                    <Link to={`/devices/${d.id}`} style={{ color: 'var(--accent)', textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
-                                      <EyeRegular fontSize={16} />
-                                    </Link>
-                                  </div>
+                                  <Link to={`/users/${u.id}/edit`} style={{ color: 'var(--accent)', textDecoration: 'none' }}>
+                                    <EyeRegular fontSize={16} />
+                                  </Link>
                                 </td>
                               </tr>
-                            )
-                          })}
-
-                          {activeTab === 'users' && filteredItems.map(u => (
-                            <tr key={u.id} style={tableRowStyle}>
-                              <td style={{ ...tableCellStyle, fontWeight: 600 }}>
-                                <Link to={`/users/${u.id}/edit`} style={{ color: 'var(--text-1)', textDecoration: 'none' }}>
-                                  {u.last_name || ''} {u.first_name || ''} ({u.name})
-                                </Link>
-                              </td>
-                              <td style={tableCellStyle}>{u.email}</td>
-                              <td style={tableCellStyle}>
-                                <span style={{
-                                  padding: '2px 7px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                                  background: 'var(--surface-3)', color: 'var(--text-2)'
-                                }}>
-                                  {u.role}
-                                </span>
-                              </td>
-                              <td style={tableCellStyle}>
-                                <span style={{
-                                  padding: '3px 8px', borderRadius: 6, fontSize: 11.5, fontWeight: 700,
-                                  background: u.status === 'active' ? 'rgba(16,124,16,0.1)' : 'rgba(244,63,94,0.1)',
-                                  color: u.status === 'active' ? '#107c10' : '#f43f5e'
-                                }}>
-                                  {u.status === 'active' ? (isRu ? 'Актив' : 'Faol') : (isRu ? 'Блок' : 'Bloklangan')}
-                                </span>
-                              </td>
-                              <td style={{ ...tableCellStyle, textAlign: 'right' }}>
-                                <Link to={`/users/${u.id}/edit`} style={{ color: 'var(--accent)', textDecoration: 'none' }}>
-                                  <EyeRegular fontSize={16} />
-                                </Link>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </>

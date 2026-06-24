@@ -23,7 +23,8 @@
     "financeSalary": "Заработная плата",
     "financeKpi": "KPI (бонусы)",
     "financeCashflow": "Доходы и расходы",
-    "financeAccounts": "БАЛАНС"
+    "financeAccounts": "БАЛАНС",
+    "financeTabel": "Табель"
   },
   "login": {
     "subtitle": "Войдите в панель управления",

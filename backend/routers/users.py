@@ -166,6 +166,10 @@ def _parse_role(value: Any, default: UserRole = UserRole.tashkilot_admin) -> Use
     raw = _as_clean_str(value)
     if not raw:
         return default
+    normalized = raw.lower().replace("_", "")
+    for r in UserRole:
+        if r.value.lower().replace("_", "") == normalized or r.name.lower().replace("_", "") == normalized:
+            return r
     try:
         return UserRole(raw)
     except ValueError as exc:
@@ -372,6 +376,7 @@ async def _extract_payload(
     branch_id: Optional[str],
     image_url: Optional[str],
     clear_image: Optional[str],
+    is_staff: Optional[str] = None,
 ) -> Dict[str, Any]:
     content_type = (request.headers.get("content-type") or "").lower()
     if content_type.startswith("application/json"):
@@ -400,6 +405,7 @@ async def _extract_payload(
         "branch_id": branch_id,
         "image_url": image_url,
         "clear_image": clear_image,
+        "is_staff": is_staff,
     }
 
 
@@ -550,6 +556,7 @@ async def create_user(
     branch_id: Optional[str] = Form(None),
     image_url: Optional[str] = Form(None),
     clear_image: Optional[str] = Form(None),
+    is_staff: Optional[str] = Form(None),
     image: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
 ):
@@ -572,6 +579,7 @@ async def create_user(
         branch_id=branch_id,
         image_url=image_url,
         clear_image=clear_image,
+        is_staff=is_staff,
     )
 
     raw_name = _as_clean_str(payload.get("name"))
@@ -594,6 +602,12 @@ async def create_user(
         _parse_menu_permission_list(payload.get("menu_permissions"), role_val)
     )
     google_oauth_enabled_val = str(payload.get("google_oauth_enabled") or "").strip().lower() in {"1", "true", "yes", "on"}
+    is_staff_raw = payload.get("is_staff")
+    if is_staff_raw is None:
+        is_staff_val = True
+    else:
+        is_staff_val = str(is_staff_raw).strip().lower() in {"1", "true", "yes", "on"}
+
     org_id_val = _parse_optional_int(payload.get("organization_id"))
     org_ids_val = _parse_optional_int_list(payload.get("organization_ids"))
     if org_ids_val:
@@ -638,7 +652,7 @@ async def create_user(
         status=status_val,
         menu_permissions=menu_permissions_val,
         google_oauth_enabled=google_oauth_enabled_val,
-        is_staff=True,
+        is_staff=is_staff_val,
         organization_id=org_id_val,
         branch_id=branch_id_val,
     )
@@ -678,6 +692,7 @@ async def update_user(
     branch_id: Optional[str] = Form(None),
     image_url: Optional[str] = Form(None),
     clear_image: Optional[str] = Form(None),
+    is_staff: Optional[str] = Form(None),
     image: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
 ):
@@ -704,6 +719,7 @@ async def update_user(
         branch_id=branch_id,
         image_url=image_url,
         clear_image=clear_image,
+        is_staff=is_staff,
     )
 
     is_json = (request.headers.get("content-type") or "").lower().startswith("application/json")
@@ -745,6 +761,9 @@ async def update_user(
 
     if (is_json and "google_oauth_enabled" in payload) or (not is_json and google_oauth_enabled is not None):
         user.google_oauth_enabled = str(payload.get("google_oauth_enabled") or "").strip().lower() in {"1", "true", "yes", "on"}
+
+    if (is_json and "is_staff" in payload) or (not is_json and is_staff is not None):
+        user.is_staff = str(payload.get("is_staff") or "").strip().lower() in {"1", "true", "yes", "on"}
 
     has_org = (is_json and "organization_id" in payload) or (not is_json and organization_id is not None)
     has_org_ids = (is_json and "organization_ids" in payload) or (not is_json and organization_ids is not None)

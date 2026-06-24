@@ -1,17 +1,19 @@
 import threading
 import uuid
-from typing import Any, Optional
+from typing import Any, Optional, List
+from datetime import datetime, date
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, UploadFile, File, Form
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from core.database import SessionLocal, get_db
-from core.models import AttendanceLog, Device, Employee, EmployeeCameraLink, Organization
+from core.models import AttendanceLog, Device, Employee, EmployeeCameraLink, Organization, Branch, Department, Position, User, UserRole
 from routers.cameras import (
     _resolve_online_command_target,
     _send_isup_command_or_raise,
     import_camera_users_to_db_impl,
+    _save_face_bytes_to_local,
 )
 from routers.employees_parts.common import (
     normalize_employee_type_for_import,
@@ -20,7 +22,49 @@ from routers.employees_parts.common import (
     set_import_job,
     update_import_job,
     get_import_job,
+    generate_unique_personal_id,
+    normalize_personal_id,
 )
+from utils.face_embeddings import trigger_embedding_generation_bg
+
+def _save_face_bytes_to_local_for_import(raw: bytes) -> Optional[str]:
+    if not raw:
+        return None
+    import uuid
+    import os
+    from io import BytesIO
+    from PIL import Image
+    
+    target_dir = "static/uploads/employees"
+    try:
+        with Image.open(BytesIO(raw)) as src:
+            frame_count = int(getattr(src, "n_frames", 1) or 1)
+            if frame_count > 1:
+                return None
+                
+            rgb = src.convert("RGB")
+            if rgb.width < 32 or rgb.height < 32:
+                print(f"[IMPORT IMAGE] Image too small: {rgb.width}x{rgb.height}")
+                return None
+                
+            max_side = 640
+            if max(rgb.size) > max_side:
+                rgb.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
+                
+            out = BytesIO()
+            rgb.save(out, format="JPEG", quality=85, optimize=True)
+            encoded = out.getvalue()
+            
+            os.makedirs(target_dir, exist_ok=True)
+            filename = f"{uuid.uuid4().hex}.jpg"
+            filepath = os.path.join(target_dir, filename)
+            with open(filepath, "wb") as f:
+                f.write(encoded)
+                
+            return f"/{target_dir.replace(os.sep, '/')}/{filename}"
+    except Exception as e:
+        print(f"[IMPORT IMAGE] Error processing image bytes: {str(e)}")
+        return None
 
 router = APIRouter()
 
@@ -721,3 +765,760 @@ def import_employees_from_attendance(
         **result,
         "message": f"Davomatdan import yakunlandi: {result['created']} yangi, {result['updated']} yangilandi, {result['linked_to_camera']} bog'lanish yaratildi.",
     }
+
+
+@router.post("/api/employees/bulk-import")
+def bulk_import_employees(
+    request: Request,
+    payload: dict = Body(...),
+    db: Session = Depends(get_db),
+):
+    auth_user = request.session.get("auth_user") or {}
+    org_id = payload.get("organization_id")
+    if not org_id:
+        raise HTTPException(status_code=422, detail="Tashkilot tanlanishi shart")
+    
+    from routers.employees_parts.common import resolve_effective_org_id
+    resolved_org_id = resolve_effective_org_id(request, db, int(org_id))
+    if not resolved_org_id:
+        raise HTTPException(status_code=403, detail="Tashkilotga kirish ruxsati yo'q")
+
+    branch_id = payload.get("branch_id")
+    if not branch_id:
+        branches = db.query(Branch).filter(Branch.organization_id == resolved_org_id).order_by(Branch.id).all()
+        if not branches:
+            org_obj = db.query(Organization).filter(Organization.id == resolved_org_id).first()
+            default_branch = Branch(
+                organization_id=resolved_org_id,
+                name="Asosiy filial",
+                address=org_obj.address if org_obj else None,
+                latitude=org_obj.latitude if org_obj else None,
+                longitude=org_obj.longitude if org_obj else None,
+                radius=(org_obj.radius or 100) if org_obj else 100,
+            )
+            db.add(default_branch)
+            db.commit()
+            db.refresh(default_branch)
+            branch_id = default_branch.id
+        else:
+            branch_id = branches[0].id
+    else:
+        branch_id = int(branch_id)
+
+    items = payload.get("items") or []
+    if not items:
+        return {"ok": True, "imported_count": 0, "message": "Import qilinadigan xodimlar mavjud emas"}
+
+    dept_cache = {}
+    pos_cache = {}
+    
+    imported_count = 0
+    errors = []
+    
+    for idx, item in enumerate(items):
+        try:
+            first_name = str(item.get("first_name") or item.get("Ism") or "").strip()
+            last_name = str(item.get("last_name") or item.get("Familiya") or "").strip()
+            if not first_name or not last_name:
+                errors.append(f"Qator #{idx + 1}: Ism va Familiya bo'lishi shart")
+                continue
+                
+            personal_id = str(item.get("personal_id") or item.get("Shaxsiy ID (Personal ID)") or "").strip()
+            if personal_id:
+                dup = db.query(Employee).filter(
+                    Employee.organization_id == resolved_org_id,
+                    Employee.personal_id == personal_id
+                ).first()
+                if dup:
+                    errors.append(f"Qator #{idx + 1}: Personal ID '{personal_id}' allaqachon mavjud")
+                    continue
+            
+            # Department
+            dept_name = str(item.get("department") or item.get("Bo'lim") or item.get("Sinf / Guruh") or "").strip()
+            dept_id = None
+            if dept_name:
+                if dept_name not in dept_cache:
+                    dept = db.query(Department).filter(
+                        Department.organization_id == resolved_org_id,
+                        func.lower(Department.name) == dept_name.lower()
+                    ).first()
+                    if not dept:
+                        dept = Department(organization_id=resolved_org_id, name=dept_name)
+                        db.add(dept)
+                        db.commit()
+                        db.refresh(dept)
+                    dept_cache[dept_name] = dept.id
+                dept_id = dept_cache[dept_name]
+                
+            # Position
+            pos_name = str(item.get("position") or item.get("Lavozim") or "").strip()
+            pos_id = None
+            if pos_name:
+                if pos_name not in pos_cache:
+                    pos = db.query(Position).filter(
+                        Position.organization_id == resolved_org_id,
+                        func.lower(Position.name) == pos_name.lower()
+                    ).first()
+                    if not pos:
+                        pos = Position(organization_id=resolved_org_id, name=pos_name)
+                        db.add(pos)
+                        db.commit()
+                        db.refresh(pos)
+                    pos_cache[pos_name] = pos.id
+                pos_id = pos_cache[pos_name]
+            
+            emp_type = str(item.get("employee_type") or item.get("Xodim turi (oqituvchi/hodim)") or item.get("O'quvchi turi (oquvchi/talaba)") or payload.get("employee_type") or "staff").strip().lower()
+            if emp_type in ("oquvchi", "talaba", "students", "student"):
+                emp_type = "student"
+            else:
+                emp_type = "staff"
+
+            birth_date = None
+            raw_bdate = str(item.get("birth_date") or item.get("Tug'ilgan sana (YYYY-MM-DD)") or "").strip()
+            if raw_bdate:
+                try:
+                    birth_date = datetime.strptime(raw_bdate, "%Y-%m-%d")
+                except:
+                    pass
+
+            emp = Employee(
+                organization_id=resolved_org_id,
+                branch_id=branch_id,
+                first_name=first_name,
+                last_name=last_name,
+                middle_name=str(item.get("middle_name") or item.get("Otasining ismi") or "").strip() or None,
+                personal_id=personal_id or None,
+                phone=str(item.get("phone") or item.get("Telefon raqami") or "").strip() or None,
+                parent_phone=str(item.get("parent_phone") or item.get("Ota-onasining telefon raqami") or "").strip() or None,
+                employee_type=emp_type,
+                department_id=dept_id,
+                position_id=pos_id,
+                region=str(item.get("region") or item.get("Viloyat") or "").strip() or None,
+                district=str(item.get("district") or item.get("Tuman") or "").strip() or None,
+                address=str(item.get("address") or item.get("Manzil") or "").strip() or None,
+                birth_date=birth_date,
+                gender=str(item.get("gender") or item.get("Jinsi (male/female)") or "").strip().lower() or None,
+                has_access=True,
+            )
+            db.add(emp)
+            imported_count += 1
+        except Exception as e:
+            errors.append(f"Qator #{idx + 1}: Kutilmagan xato: {str(e)}")
+
+    db.commit()
+    return {"ok": True, "imported_count": imported_count, "errors": errors}
+
+
+@router.post("/api/employees/bulk-import-zip")
+async def bulk_import_employees_zip(
+    request: Request,
+    file: UploadFile = File(...),
+    organization_id: int = Form(...),
+    employee_type: str = Form("staff"),
+    branch_id: Optional[int] = Form(None),
+    db: Session = Depends(get_db),
+):
+    import zipfile
+    import io
+    import openpyxl
+
+    from routers.employees_parts.common import resolve_effective_org_id
+    resolved_org_id = resolve_effective_org_id(request, db, int(organization_id))
+    if not resolved_org_id:
+        raise HTTPException(status_code=403, detail="Tashkilotga kirish ruxsati yo'q")
+
+    if not branch_id:
+        branches = db.query(Branch).filter(Branch.organization_id == resolved_org_id).order_by(Branch.id).all()
+        if not branches:
+            org_obj = db.query(Organization).filter(Organization.id == resolved_org_id).first()
+            default_branch = Branch(
+                organization_id=resolved_org_id,
+                name="Asosiy filial",
+                address=org_obj.address if org_obj else None,
+                latitude=org_obj.latitude if org_obj else None,
+                longitude=org_obj.longitude if org_obj else None,
+                radius=(org_obj.radius or 100) if org_obj else 100,
+            )
+            db.add(default_branch)
+            db.commit()
+            db.refresh(default_branch)
+            branch_id = default_branch.id
+        else:
+            branch_id = branches[0].id
+    else:
+        branch_id = int(branch_id)
+
+    zip_bytes = await file.read()
+    try:
+        z = zipfile.ZipFile(io.BytesIO(zip_bytes))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Fayl to'g'ri ZIP arxiv emas: {str(e)}")
+
+    namelist = z.namelist()
+
+    excel_file_path = None
+    for name in namelist:
+        if "__MACOSX" in name or name.split('/')[-1].startswith('.'):
+            continue
+        if name.lower().endswith(('.xlsx', '.xls')):
+            excel_file_path = name
+            break
+
+    if not excel_file_path:
+        raise HTTPException(status_code=400, detail="ZIP arxivi ichida Excel (.xlsx, .xls) fayli topilmadi")
+
+    try:
+        excel_data = z.read(excel_file_path)
+        wb = openpyxl.load_workbook(io.BytesIO(excel_data), data_only=True)
+        sheet = wb.active
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Excel faylini o'qishda xatolik: {str(e)}")
+
+    rows = list(sheet.iter_rows(values_only=True))
+    if not rows or len(rows) < 2:
+        return {"ok": True, "imported_count": 0, "message": "Excel faylida ma'lumot topilmadi"}
+
+    headers = [str(cell).strip() if cell is not None else f"col_{idx}" for idx, cell in enumerate(rows[0])]
+    items = []
+    for r in rows[1:]:
+        if all(cell is None for cell in r):
+            continue
+        row_dict = {}
+        for idx, val in enumerate(r):
+            if idx < len(headers):
+                row_dict[headers[idx]] = val
+        items.append(row_dict)
+
+    dept_cache = {}
+    pos_cache = {}
+    imported_count = 0
+    errors = []
+
+    for idx, item in enumerate(items):
+        try:
+            first_name = str(item.get("first_name") or item.get("Ism") or "").strip()
+            last_name = str(item.get("last_name") or item.get("Familiya") or "").strip()
+            if not first_name or not last_name:
+                errors.append(f"Qator #{idx + 2}: Ism va Familiya bo'lishi shart")
+                continue
+
+            personal_id = str(item.get("personal_id") or item.get("Shaxsiy ID (Personal ID)") or "").strip()
+            normalized_personal_id = normalize_personal_id(personal_id) if personal_id else None
+            if not normalized_personal_id:
+                normalized_personal_id = generate_unique_personal_id(db)
+            else:
+                dup = db.query(Employee).filter(
+                    Employee.organization_id == resolved_org_id,
+                    Employee.personal_id == normalized_personal_id
+                ).first()
+                if dup:
+                    errors.append(f"Qator #{idx + 2}: Personal ID '{normalized_personal_id}' allaqachon mavjud")
+                    continue
+
+            # Department
+            dept_name = str(item.get("department") or item.get("Bo'lim") or item.get("Sinf / Guruh") or "").strip()
+            dept_id = None
+            if dept_name:
+                if dept_name not in dept_cache:
+                    dept = db.query(Department).filter(
+                        Department.organization_id == resolved_org_id,
+                        func.lower(Department.name) == dept_name.lower()
+                    ).first()
+                    if not dept:
+                        dept = Department(organization_id=resolved_org_id, name=dept_name)
+                        db.add(dept)
+                        db.commit()
+                        db.refresh(dept)
+                    dept_cache[dept_name] = dept.id
+                dept_id = dept_cache[dept_name]
+
+            # Position
+            pos_name = str(item.get("position") or item.get("Lavozim") or "").strip()
+            pos_id = None
+            if pos_name:
+                if pos_name not in pos_cache:
+                    pos = db.query(Position).filter(
+                        Position.organization_id == resolved_org_id,
+                        func.lower(Position.name) == pos_name.lower()
+                    ).first()
+                    if not pos:
+                        pos = Position(organization_id=resolved_org_id, name=pos_name, department_id=dept_id)
+                        db.add(pos)
+                        db.commit()
+                        db.refresh(pos)
+                    pos_cache[pos_name] = pos.id
+                pos_id = pos_cache[pos_name]
+
+            emp_type = str(item.get("employee_type") or item.get("Xodim turi (oqituvchi/hodim)") or item.get("O'quvchi turi (oquvchi/talaba)") or employee_type or "staff").strip().lower()
+            if emp_type in ("oquvchi", "talaba", "students", "student"):
+                emp_type = "student"
+            else:
+                emp_type = "staff"
+
+            birth_date = None
+            raw_bdate_cell = item.get("birth_date") or item.get("Tug'ilgan sana (YYYY-MM-DD)")
+            if isinstance(raw_bdate_cell, (datetime, date)):
+                birth_date = raw_bdate_cell
+            elif raw_bdate_cell:
+                raw_bdate = str(raw_bdate_cell).strip()
+                if raw_bdate:
+                    if raw_bdate.replace('.', '', 1).isdigit():
+                        try:
+                            from datetime import date as d_class, timedelta
+                            serial = float(raw_bdate)
+                            birth_date = d_class(1899, 12, 30) + timedelta(days=serial)
+                        except:
+                            pass
+                    else:
+                        try:
+                            birth_date = datetime.strptime(raw_bdate, "%Y-%m-%d")
+                        except:
+                            try:
+                                birth_date = datetime.strptime(raw_bdate, "%d.%m.%Y")
+                            except:
+                                pass
+
+            # Try to resolve photo from ZIP
+            avatar_url = None
+            img_filename = str(item.get("Rasm (URL yoki fayl nomi)") or item.get("Rasm") or item.get("image_url") or "").strip()
+            if img_filename:
+                base_name = img_filename.lower().split('/')[-1].split('\\')[-1]
+                for name in namelist:
+                    if "__MACOSX" in name or name.split('/')[-1].startswith('.'):
+                        continue
+                    zip_base_name = name.lower().split('/')[-1].split('\\')[-1]
+                    if zip_base_name == base_name:
+                        try:
+                            image_bytes = z.read(name)
+                            if image_bytes:
+                                avatar_url = _save_face_bytes_to_local_for_import(image_bytes)
+                        except Exception as img_err:
+                            errors.append(f"Qator #{idx + 2}: Rasmni o'qishda xato ({img_filename}): {str(img_err)}")
+                        break
+
+            emp = Employee(
+                organization_id=resolved_org_id,
+                branch_id=branch_id,
+                first_name=first_name,
+                last_name=last_name,
+                middle_name=str(item.get("middle_name") or item.get("Otasining ismi") or "").strip() or None,
+                personal_id=normalized_personal_id,
+                phone=str(item.get("phone") or item.get("Telefon raqami") or "").strip() or None,
+                parent_phone=str(item.get("parent_phone") or item.get("Ota-onasining telefon raqami") or "").strip() or None,
+                employee_type=emp_type,
+                department_id=dept_id,
+                position_id=pos_id,
+                region=str(item.get("region") or item.get("Viloyat") or "").strip() or None,
+                district=str(item.get("district") or item.get("Tuman") or "").strip() or None,
+                address=str(item.get("address") or item.get("Manzil") or "").strip() or None,
+                birth_date=birth_date,
+                gender=str(item.get("gender") or item.get("Jinsi (male/female)") or "").strip().lower() or None,
+                image_url=avatar_url,
+                has_access=True,
+            )
+            db.add(emp)
+            db.commit()
+            db.refresh(emp)
+
+            # Auto-create user account: username = personal_id, password = 'bioface'
+            if emp.personal_id:
+                try:
+                    import bcrypt
+                    existing_user = db.query(User).filter(User.name == str(emp.personal_id)).first()
+                    if not existing_user:
+                        hashed_pw = bcrypt.hashpw(b'bioface', bcrypt.gensalt()).decode('utf-8')
+                        auto_user = User(
+                            name=str(emp.personal_id),
+                            email=f"{emp.personal_id}@bioface.local",
+                            hashed_password=hashed_pw,
+                            role=UserRole.tashkilot_admin,
+                            status="active",
+                            is_staff=False,
+                            organization_id=resolved_org_id,
+                            branch_id=branch_id,
+                        )
+                        db.add(auto_user)
+                        db.commit()
+                except Exception as _ue:
+                    print(f"[AUTO USER] Failed to create user for employee {emp.personal_id}: {_ue}")
+
+            if emp.image_url:
+                trigger_embedding_generation_bg(employee_id=int(emp.id))
+
+            imported_count += 1
+        except Exception as e:
+            errors.append(f"Qator #{idx + 2}: Kutilmagan xato: {str(e)}")
+
+    return {"ok": True, "imported_count": imported_count, "errors": errors}
+
+
+@router.post("/api/employees/clear")
+def clear_employees(
+    request: Request,
+    payload: dict = Body(default={}),
+    db: Session = Depends(get_db),
+):
+    organization_id = payload.get("organization_id")
+    if not organization_id:
+        raise HTTPException(status_code=422, detail="Tashkilot tanlanishi shart")
+
+    from routers.employees_parts.common import resolve_effective_org_id
+    resolved_org_id = resolve_effective_org_id(request, db, int(organization_id))
+    if not resolved_org_id:
+        raise HTTPException(status_code=403, detail="Tashkilotga kirish ruxsati yo'q")
+
+    employee_type = payload.get("employee_type")
+    
+    query = db.query(Employee).filter(Employee.organization_id == resolved_org_id)
+    if employee_type:
+        emp_type = str(employee_type).strip().lower()
+        if emp_type in ("oquvchi", "talaba", "students", "student"):
+            query = query.filter(Employee.employee_type == "student")
+        else:
+            query = query.filter(Employee.employee_type == "staff")
+            
+    emp_ids = [e.id for e in query.all()]
+    if emp_ids:
+        db.query(EmployeeCameraLink).filter(EmployeeCameraLink.employee_id.in_(emp_ids)).delete(synchronize_session=False)
+        deleted_count = query.delete(synchronize_session=False)
+        db.commit()
+    else:
+        deleted_count = 0
+        
+    return {"ok": True, "deleted_count": deleted_count, "message": f"{deleted_count} ta xodim o'chirildi"}
+
+
+@router.post("/api/employees/preview-zip")
+async def preview_employees_zip(
+    request: Request,
+    file: UploadFile = File(...),
+    organization_id: int = Form(...),
+    employee_type: str = Form("staff"),
+    db: Session = Depends(get_db),
+):
+    import zipfile
+    import io
+    import openpyxl
+
+    from routers.employees_parts.common import resolve_effective_org_id
+    resolved_org_id = resolve_effective_org_id(request, db, int(organization_id))
+    if not resolved_org_id:
+        raise HTTPException(status_code=403, detail="Tashkilotga kirish ruxsati yo'q")
+
+    zip_bytes = await file.read()
+    try:
+        z = zipfile.ZipFile(io.BytesIO(zip_bytes))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Fayl to'g'ri ZIP arxiv emas: {str(e)}")
+
+    namelist = z.namelist()
+
+    excel_file_path = None
+    for name in namelist:
+        if "__MACOSX" in name or name.split('/')[-1].startswith('.'):
+            continue
+        if name.lower().endswith(('.xlsx', '.xls')):
+            excel_file_path = name
+            break
+
+    if not excel_file_path:
+        raise HTTPException(status_code=400, detail="ZIP arxivi ichida Excel (.xlsx, .xls) fayli topilmadi")
+
+    try:
+        excel_data = z.read(excel_file_path)
+        wb = openpyxl.load_workbook(io.BytesIO(excel_data), data_only=True)
+        sheet = wb.active
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Excel faylini o'qishda xatolik: {str(e)}")
+
+    rows = list(sheet.iter_rows(values_only=True))
+    if not rows or len(rows) < 2:
+        return {"ok": True, "items": []}
+
+    headers = [str(cell).strip() if cell is not None else f"col_{idx}" for idx, cell in enumerate(rows[0])]
+    items = []
+    for r in rows[1:]:
+        if all(cell is None for cell in r):
+            continue
+        row_dict = {}
+        for idx, val in enumerate(r):
+            if idx < len(headers):
+                row_dict[headers[idx]] = val
+        items.append(row_dict)
+
+    preview_items = []
+
+    for idx, item in enumerate(items):
+        first_name = str(item.get("first_name") or item.get("Ism") or "").strip()
+        last_name = str(item.get("last_name") or item.get("Familiya") or "").strip()
+        if not first_name or not last_name:
+            continue
+
+        personal_id = str(item.get("personal_id") or item.get("Shaxsiy ID (Personal ID)") or "").strip()
+        normalized_personal_id = normalize_personal_id(personal_id) if personal_id else None
+
+        is_auto_id = not normalized_personal_id
+        if is_auto_id:
+            normalized_personal_id = generate_unique_personal_id(db)
+
+        # Department
+        dept_name = str(item.get("department") or item.get("Bo'lim") or item.get("Sinf / Guruh") or "").strip()
+
+        # Position
+        pos_name = str(item.get("position") or item.get("Lavozim") or "").strip()
+
+        # Try to resolve photo from ZIP
+        avatar_url = None
+        img_filename = str(item.get("Rasm (URL yoki fayl nomi)") or item.get("Rasm") or item.get("image_url") or "").strip()
+        print(f"[DEBUG IMPORT] Row #{idx+1} ({last_name} {first_name}): img_filename={repr(img_filename)}")
+        if img_filename:
+            base_name = img_filename.lower().split('/')[-1].split('\\')[-1]
+            matched_in_zip = False
+            for name in namelist:
+                if "__MACOSX" in name or name.split('/')[-1].startswith('.'):
+                    continue
+                zip_base_name = name.lower().split('/')[-1].split('\\')[-1]
+                if zip_base_name == base_name:
+                    matched_in_zip = True
+                    print(f"[DEBUG IMPORT] Match found in zip for base_name={repr(base_name)} -> zip entry={repr(name)}")
+                    try:
+                        image_bytes = z.read(name)
+                        if image_bytes:
+                            print(f"[DEBUG IMPORT] Read {len(image_bytes)} bytes from zip entry={repr(name)}")
+                            avatar_url = _save_face_bytes_to_local_for_import(image_bytes)
+                            print(f"[DEBUG IMPORT] _save_face_bytes_to_local_for_import returned: {repr(avatar_url)}")
+                        else:
+                            print(f"[DEBUG IMPORT] Empty bytes for zip entry={repr(name)}")
+                    except Exception as _e:
+                        print(f"[DEBUG IMPORT] Exception during image read/save: {str(_e)}")
+                    break
+            if not matched_in_zip:
+                print(f"[DEBUG IMPORT] NO match in zip namelist for base_name={repr(base_name)}. List has {len(namelist)} items.")
+
+        emp_type = str(item.get("employee_type") or item.get("Xodim turi (oqituvchi/hodim)") or item.get("O'quvchi turi (oquvchi/talaba)") or employee_type or "staff").strip().lower()
+        if emp_type in ("oquvchi", "talaba", "students", "student"):
+            emp_type = "student"
+        else:
+            emp_type = "staff"
+
+        birth_date_str = ""
+        raw_bdate_cell = item.get("birth_date") or item.get("Tug'ilgan sana (YYYY-MM-DD)")
+        if isinstance(raw_bdate_cell, (datetime, date)):
+            birth_date_str = raw_bdate_cell.strftime("%Y-%m-%d")
+        elif raw_bdate_cell:
+            birth_date_str = str(raw_bdate_cell).strip()
+
+        phone = str(item.get("phone") or item.get("Telefon raqami") or "").strip() or None
+        parent_phone = str(item.get("parent_phone") or item.get("Ota-onasining telefon raqami") or "").strip() or None
+        region = str(item.get("region") or item.get("Viloyat") or "").strip() or None
+        district = str(item.get("district") or item.get("Tuman") or "").strip() or None
+        address = str(item.get("address") or item.get("Manzil") or "").strip() or None
+        gender = str(item.get("gender") or item.get("Jinsi (male/female)") or "").strip().lower() or None
+
+        preview_items.append({
+            "first_name": first_name,
+            "last_name": last_name,
+            "middle_name": str(item.get("middle_name") or item.get("Otasining ismi") or "").strip() or None,
+            "personal_id": normalized_personal_id,
+            "is_auto_id": is_auto_id,
+            "department": dept_name,
+            "position": pos_name,
+            "employee_type": emp_type,
+            "birth_date": birth_date_str,
+            "phone": phone,
+            "parent_phone": parent_phone,
+            "region": region,
+            "district": district,
+            "address": address,
+            "gender": gender,
+            "image_url": avatar_url,
+        })
+
+    return {"ok": True, "items": preview_items}
+
+
+@router.post("/api/employees/confirm-import-zip")
+def confirm_import_employees_zip(
+    request: Request,
+    payload: dict = Body(...),
+    db: Session = Depends(get_db),
+):
+    organization_id = payload.get("organization_id")
+    if not organization_id:
+        raise HTTPException(status_code=422, detail="Tashkilot tanlanishi shart")
+
+    from routers.employees_parts.common import resolve_effective_org_id
+    resolved_org_id = resolve_effective_org_id(request, db, int(organization_id))
+    if not resolved_org_id:
+        raise HTTPException(status_code=403, detail="Tashkilotga kirish ruxsati yo'q")
+
+    branch_id = payload.get("branch_id")
+    if not branch_id:
+        branches = db.query(Branch).filter(Branch.organization_id == resolved_org_id).order_by(Branch.id).all()
+        if not branches:
+            org_obj = db.query(Organization).filter(Organization.id == resolved_org_id).first()
+            default_branch = Branch(
+                organization_id=resolved_org_id,
+                name="Asosiy filial",
+                address=org_obj.address if org_obj else None,
+                latitude=org_obj.latitude if org_obj else None,
+                longitude=org_obj.longitude if org_obj else None,
+                radius=(org_obj.radius or 100) if org_obj else 100,
+            )
+            db.add(default_branch)
+            db.commit()
+            db.refresh(default_branch)
+            branch_id = default_branch.id
+        else:
+            branch_id = branches[0].id
+    else:
+        branch_id = int(branch_id)
+
+    items = payload.get("items") or []
+    if not items:
+        return {"ok": True, "imported_count": 0, "message": "Yuklanadigan xodimlar mavjud emas"}
+
+    # Pre-compute bcrypt hash once (bcrypt is slow, ~300ms per call)
+    import bcrypt as _bcrypt
+    _shared_hashed_pw = _bcrypt.hashpw(b'bioface', _bcrypt.gensalt()).decode('utf-8')
+
+    dept_cache = {}
+    pos_cache = {}
+    imported_count = 0
+    errors = []
+
+    for idx, item in enumerate(items):
+        try:
+            first_name = str(item.get("first_name") or "").strip()
+            last_name = str(item.get("last_name") or "").strip()
+            if not first_name or not last_name:
+                errors.append(f"Qator #{idx + 1}: Ism va Familiya bo'lishi shart")
+                continue
+
+            personal_id = str(item.get("personal_id") or "").strip()
+            normalized_personal_id = normalize_personal_id(personal_id) if personal_id else None
+            if not normalized_personal_id:
+                normalized_personal_id = generate_unique_personal_id(db)
+            else:
+                dup = db.query(Employee).filter(
+                    Employee.organization_id == resolved_org_id,
+                    Employee.personal_id == normalized_personal_id
+                ).first()
+                if dup:
+                    normalized_personal_id = generate_unique_personal_id(db)
+
+            # Department
+            dept_name = str(item.get("department") or "").strip()
+            dept_id = None
+            if dept_name:
+                if dept_name not in dept_cache:
+                    dept = db.query(Department).filter(
+                        Department.organization_id == resolved_org_id,
+                        func.lower(Department.name) == dept_name.lower()
+                    ).first()
+                    if not dept:
+                        dept = Department(organization_id=resolved_org_id, name=dept_name)
+                        db.add(dept)
+                        db.commit()
+                        db.refresh(dept)
+                    dept_cache[dept_name] = dept.id
+                dept_id = dept_cache[dept_name]
+
+            # Position
+            pos_name = str(item.get("position") or "").strip()
+            pos_id = None
+            if pos_name:
+                if pos_name not in pos_cache:
+                    pos = db.query(Position).filter(
+                        Position.organization_id == resolved_org_id,
+                        func.lower(Position.name) == pos_name.lower()
+                    ).first()
+                    if not pos:
+                        pos = Position(organization_id=resolved_org_id, name=pos_name, department_id=dept_id)
+                        db.add(pos)
+                        db.commit()
+                        db.refresh(pos)
+                    pos_cache[pos_name] = pos.id
+                pos_id = pos_cache[pos_name]
+
+            emp_type = str(item.get("employee_type") or "staff").strip().lower()
+
+            birth_date = None
+            raw_bdate = str(item.get("birth_date") or "").strip()
+            if raw_bdate:
+                try:
+                    birth_date = datetime.strptime(raw_bdate, "%Y-%m-%d")
+                except:
+                    try:
+                        birth_date = datetime.strptime(raw_bdate, "%d.%m.%Y")
+                    except:
+                        pass
+
+            emp = Employee(
+                organization_id=resolved_org_id,
+                branch_id=branch_id,
+                first_name=first_name,
+                last_name=last_name,
+                middle_name=str(item.get("middle_name") or "").strip() or None,
+                personal_id=normalized_personal_id,
+                phone=str(item.get("phone") or "").strip() or None,
+                parent_phone=str(item.get("parent_phone") or "").strip() or None,
+                employee_type=emp_type,
+                department_id=dept_id,
+                position_id=pos_id,
+                region=str(item.get("region") or "").strip() or None,
+                district=str(item.get("district") or "").strip() or None,
+                address=str(item.get("address") or "").strip() or None,
+                birth_date=birth_date,
+                gender=str(item.get("gender") or "").strip().lower() or None,
+                image_url=item.get("image_url") or None,
+                has_access=True,
+            )
+            db.add(emp)
+            db.flush()  # get emp.id without full commit
+
+            # Auto-create user account: username = personal_id, password = 'bioface'
+            if emp.personal_id:
+                try:
+                    existing_user = db.query(User).filter(User.name == str(emp.personal_id)).first()
+                    if not existing_user:
+                        auto_user = User(
+                            name=str(emp.personal_id),
+                            email=f"{emp.personal_id}@bioface.local",
+                            hashed_password=_shared_hashed_pw,
+                            role=UserRole.tashkilot_admin,
+                            status="active",
+                            is_staff=False,
+                            organization_id=resolved_org_id,
+                            branch_id=branch_id,
+                        )
+                        db.add(auto_user)
+                except Exception as _ue:
+                    print(f"[AUTO USER] Failed to create user for employee {emp.personal_id}: {_ue}")
+
+            imported_count += 1
+        except Exception as e:
+            db.rollback()
+            errors.append(f"Qator #{idx + 1}: Kutilmagan xato: {str(e)}")
+            continue
+
+    # Single batch commit for all employees + users
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        errors.append(f"Batch commit xatosi: {str(e)}")
+
+    # Trigger face embeddings after successful commit
+    try:
+        all_new_emps = db.query(Employee).filter(
+            Employee.organization_id == resolved_org_id,
+            Employee.image_url.isnot(None)
+        ).order_by(Employee.id.desc()).limit(imported_count).all()
+        for _emp in all_new_emps:
+            trigger_embedding_generation_bg(employee_id=int(_emp.id))
+    except Exception:
+        pass
+
+    return {"ok": True, "imported_count": imported_count, "errors": errors}
+

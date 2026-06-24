@@ -125,10 +125,29 @@ def list_organization_types(lang: str = Query("uz")):
 
 @router.get("/api/organizations")
 def list_organizations(
+    request: Request,
     lang: str = Query("uz"),
     db: Session = Depends(get_db),
 ):
-    orgs = db.query(Organization).order_by(Organization.id).all()
+    auth_user = request.session.get("auth_user") or {}
+    role = str(auth_user.get("role") or "").strip().lower()
+    is_super_admin = role in {"superadmin", "super_admin"}
+
+    query = db.query(Organization)
+    if not is_super_admin:
+        user_id = auth_user.get("id")
+        allowed_org_ids = set()
+        if user_id is not None:
+            rows = db.query(UserOrganizationLink.organization_id).filter(UserOrganizationLink.user_id == int(user_id)).all()
+            allowed_org_ids.update(int(r.organization_id) for r in rows if r.organization_id is not None)
+        
+        fallback = auth_user.get("organization_id")
+        if fallback is not None:
+            allowed_org_ids.add(int(fallback))
+            
+        query = query.filter(Organization.id.in_(list(allowed_org_ids)))
+
+    orgs = query.order_by(Organization.id).all()
     org_ids = [int(o.id) for o in orgs]
     users_count_by_org = _get_organization_user_counts(db, org_ids)
     return [
@@ -228,7 +247,7 @@ def create_organization(data: OrganizationCreate, db: Session = Depends(get_db))
 
 
 @router.put("/api/organizations/{org_id}")
-def update_organization(org_id: str, data: OrganizationUpdate, db: Session = Depends(get_db)):
+def update_organization(org_id: str, data: OrganizationUpdate, request: Request, db: Session = Depends(get_db)):
     org = db.query(Organization).filter(Organization.uuid == org_id).first()
     if not org and org_id.isdigit():
         org = db.query(Organization).filter(Organization.id == int(org_id)).first()
@@ -247,7 +266,13 @@ def update_organization(org_id: str, data: OrganizationUpdate, db: Session = Dep
     if data.default_end_time is not None:
         org.default_end_time = data.default_end_time
     if data.subscription_status is not None:
-        org.subscription_status = data.subscription_status
+        new_status = str(data.subscription_status).strip()
+        current_status = str(org.subscription_status.value if hasattr(org.subscription_status, "value") else org.subscription_status or "").strip()
+        if new_status != current_status:
+            auth_user = request.session.get("auth_user") or {}
+            if auth_user.get("role") != "SuperAdmin":
+                raise HTTPException(status_code=403, detail="Obuna holatini faqat asosiy administrator o'zgartira oladi")
+            org.subscription_status = data.subscription_status
     if data.address is not None:
         org.address = data.address
     if data.phone is not None:
@@ -364,7 +389,10 @@ def get_branch_detail(
 
 
 @router.post("/api/organizations/{org_id}/branches")
-def create_branch(org_id: str, data: BranchCreate, db: Session = Depends(get_db)):
+def create_branch(org_id: str, data: BranchCreate, request: Request, db: Session = Depends(get_db)):
+    auth_user = request.session.get("auth_user") or {}
+    if auth_user.get("role") != "SuperAdmin":
+        raise HTTPException(status_code=403, detail="Filial yaratish faqat asosiy administrator uchun ruxsat etilgan")
     org = db.query(Organization).filter(Organization.uuid == org_id).first()
     if not org and org_id.isdigit():
         org = db.query(Organization).filter(Organization.id == int(org_id)).first()
@@ -388,7 +416,10 @@ def create_branch(org_id: str, data: BranchCreate, db: Session = Depends(get_db)
 
 
 @router.put("/api/organizations/{org_id}/branches/{branch_id}")
-def update_branch(org_id: str, branch_id: str, data: BranchUpdate, db: Session = Depends(get_db)):
+def update_branch(org_id: str, branch_id: str, data: BranchUpdate, request: Request, db: Session = Depends(get_db)):
+    auth_user = request.session.get("auth_user") or {}
+    if auth_user.get("role") != "SuperAdmin":
+        raise HTTPException(status_code=403, detail="Filialni tahrirlash faqat asosiy administrator uchun ruxsat etilgan")
     org = db.query(Organization).filter(Organization.uuid == org_id).first()
     if not org and org_id.isdigit():
         org = db.query(Organization).filter(Organization.id == int(org_id)).first()
@@ -421,7 +452,10 @@ def update_branch(org_id: str, branch_id: str, data: BranchUpdate, db: Session =
 
 
 @router.delete("/api/organizations/{org_id}/branches/{branch_id}")
-def delete_branch(org_id: str, branch_id: str, db: Session = Depends(get_db)):
+def delete_branch(org_id: str, branch_id: str, request: Request, db: Session = Depends(get_db)):
+    auth_user = request.session.get("auth_user") or {}
+    if auth_user.get("role") != "SuperAdmin":
+        raise HTTPException(status_code=403, detail="Filialni o'chirish faqat asosiy administrator uchun ruxsat etilgan")
     org = db.query(Organization).filter(Organization.uuid == org_id).first()
     if not org and org_id.isdigit():
         org = db.query(Organization).filter(Organization.id == int(org_id)).first()

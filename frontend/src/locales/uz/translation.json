@@ -23,7 +23,8 @@
     "financeSalary": "Ish haqi",
     "financeKpi": "KPI (bonus)",
     "financeCashflow": "Kirim-chiqimlar",
-    "financeAccounts": "HISOB"
+    "financeAccounts": "HISOB",
+    "financeTabel": "Tabel"
   },
   "login": {
     "subtitle": "Boshqaruv paneliga kiring",

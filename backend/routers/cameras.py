@@ -19,7 +19,7 @@ from urllib.parse import urlsplit
 from xml.sax.saxutils import escape as xml_escape
 from fastapi import APIRouter, Request, Depends, HTTPException, File, UploadFile, Form, BackgroundTasks
 from fastapi.responses import Response, StreamingResponse
-from sqlalchemy import or_, case, cast, func, String, literal, Integer
+from sqlalchemy import and_, or_, case, cast, func, String, literal, Integer
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Any, Callable, Optional
@@ -3135,6 +3135,8 @@ def cameras_by_org(request: Request, org_id: str, db: Session = Depends(get_db))
             "model": c.model,
             "is_online": is_online,
             "organization_id": c.organization_id,
+            "branch_id": c.branch_id,
+            "branch_name": c.branch.name if c.branch else None,
         })
     return result
 

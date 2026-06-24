@@ -38,6 +38,8 @@ CAMERA_RAW_LOG.txt
 
 # Generated uploads
 static/uploads/
+backend/static/uploads/
+**/static/uploads/
 hikvision_sdk/*.db
 hikvision_sdk_linux/*.db
 scratch/
