@@ -841,10 +841,10 @@ async def update_user(
 
     # Sync session if the updated user is the currently logged-in user
     auth_user = request.session.get("auth_user")
+
     if auth_user and auth_user.get("id") == user.id:
         from routers.auth import _build_auth_user
-        request.session["auth_user"] = _build_auth_user(user)
-
+        request.session["auth_user"] = _build_auth_user(user, db=db)
     return {"ok": True, "message": "Foydalanuvchi yangilandi", "user": _serialize_user(user)}
 
 

@@ -75,13 +75,17 @@ def _google_redirect_uri(request: Request, db: Session) -> str:
 def _login_redirect_with_error(code: str) -> RedirectResponse:
     return RedirectResponse(url=f"/login?google_error={code}", status_code=303)
 
-
-def _build_auth_user(user: User) -> dict:
+def _build_auth_user(user: User, db: Session | None = None) -> dict:
     display_name = " ".join(
         part for part in [user.first_name or "", user.last_name or ""] if part.strip()
     ).strip()
     if not display_name:
         display_name = user.name
+
+    if db is None:
+        from sqlalchemy.orm import object_session
+        db = object_session(user)
+
     return {
         "id": user.id,
         "name": user.name,
@@ -92,7 +96,12 @@ def _build_auth_user(user: User) -> dict:
         "display_name": display_name,
         "email": user.email,
         "role": user.role.value if user.role else "",
-        "menu_permissions": resolve_user_menu_permissions(role=user.role, stored_permissions=user.menu_permissions),
+        "menu_permissions": resolve_user_menu_permissions(
+            role=user.role,
+            stored_permissions=user.menu_permissions,
+            user_id=user.id,
+            db=db,
+        ),
         "organization_id": user.organization_id,
         "image_url": user.image_url or "",
         "google_oauth_enabled": bool(user.google_oauth_enabled),
@@ -316,10 +325,8 @@ async def google_oauth_callback(
 
     if not was_approved:
         return RedirectResponse(url="/login?google_error=not_enabled", status_code=303)
-
-    request.session["auth_user"] = _build_auth_user(user)
+    request.session["auth_user"] = _build_auth_user(user, db=db)
     return RedirectResponse(url="/", status_code=303)
-
 
 @router.post("/api/auth/login")
 def login(payload: LoginPayload, request: Request, db: Session = Depends(get_db)):
@@ -386,12 +393,11 @@ def login(payload: LoginPayload, request: Request, db: Session = Depends(get_db)
                 status_code=403,
                 detail="Veb-panelga faqat tizim foydalanuvchilari (adminlar) kira oladi. Iltimos, mobil ilovadan foydalaning."
             )
-
     user.last_login_provider = "password"
     db.commit()
     db.refresh(user)
     _clear_login_fail_state(request)
-    auth_user = _build_auth_user(user)
+    auth_user = _build_auth_user(user, db=db)
     request.session["auth_user"] = auth_user
 
     from utils.jwt_utils import create_access_token
@@ -407,10 +413,9 @@ def get_me(request: Request, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == auth_user["id"]).first()
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
-    fresh_auth_user = _build_auth_user(user)
+    fresh_auth_user = _build_auth_user(user, db=db)
     request.session["auth_user"] = fresh_auth_user
     return fresh_auth_user
-
 
 @router.post("/api/auth/logout")
 def logout_api(request: Request):

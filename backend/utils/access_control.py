@@ -1,8 +1,7 @@
 from __future__ import annotations
-
 import json
 import re
-from typing import Any, Iterable
+from typing import Any, Iterable, Optional
 
 from models import UserRole
 
@@ -268,14 +267,33 @@ def normalize_menu_permissions(values: Iterable[Any]) -> list[str]:
             seen.add(normalized_key)
             result.append(normalized_key)
     return result
-
-
-def resolve_user_menu_permissions(*, role: Any, stored_permissions: Any = None) -> list[str]:
+def resolve_user_menu_permissions(*, role: Any, stored_permissions: Any = None, user_id: Optional[int] = None, db: Optional[Any] = None) -> list[str]:
     if normalize_role_value(role) == UserRole.super_admin.value:
         return list(ALL_MENU_PERMISSIONS)
-    return get_role_default_menu_permissions(role)
+        
+    permissions = get_role_default_menu_permissions(role)
+    
+    if user_id is not None and db is not None:
+        try:
+            from models import User, UserRole, Device
+            user = db.query(User).filter(User.id == user_id).first()
+            if user and normalize_role_value(user.role) != UserRole.super_admin.value:
+                org_ids = [link.organization_id for link in user.organization_links]
+                if user.organization_id and user.organization_id not in org_ids:
+                    org_ids.append(user.organization_id)
+                
+                has_cameras = False
+                if org_ids:
+                    has_cameras = db.query(Device.id).filter(Device.organization_id.in_(org_ids)).first() is not None
+                
+                if not has_cameras:
+                    permissions = [p for p in permissions if p not in ("devices", "commands")]
+        except Exception:
+            pass
 
+    return permissions
 
+from typing import Optional
 def user_has_menu_access(menu_permissions: Iterable[Any], menu_key: str | tuple[str, ...] | list[str] | set[str] | None) -> bool:
     if not menu_key:
         return True

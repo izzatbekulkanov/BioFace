@@ -225,12 +225,19 @@ async def require_auth(request, call_next):
             ONLINE_USERS[auth_user["id"]] = time.time()
         except Exception:
             pass
-
-        menu_permissions = resolve_user_menu_permissions(
-            role=auth_user.get("role"),
-            stored_permissions=auth_user.get("menu_permissions"),
-        )
-        if auth_user.get("menu_permissions") != menu_permissions:
+        menu_permissions = auth_user.get("menu_permissions")
+        if menu_permissions is None:
+            from database import SessionLocal
+            db = SessionLocal()
+            try:
+                menu_permissions = resolve_user_menu_permissions(
+                    role=auth_user.get("role"),
+                    stored_permissions=None,
+                    user_id=auth_user.get("id"),
+                    db=db,
+                )
+            finally:
+                db.close()
             auth_user = dict(auth_user)
             auth_user["menu_permissions"] = menu_permissions
             request.session["auth_user"] = auth_user
