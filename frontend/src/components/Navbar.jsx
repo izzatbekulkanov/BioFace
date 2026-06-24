@@ -162,6 +162,7 @@ function OrganizationsDropdown({ currentUser, active }) {
 
   const items = [
     { id: 'organizations', label: isRu ? 'Организации' : 'Tashkilotlar', icon: <BuildingRegular fontSize={15} />, path: '/organizations', perm: 'organizations' },
+    { id: 'tracking', label: isRu ? 'Отслеживание' : 'Kuzatuv', icon: <MapRegular fontSize={15} />, path: '/organizations/tracking', perm: 'organizations' },
     { id: 'shifts', label: isRu ? 'Смены' : 'Smenalar', icon: <CalendarClockRegular fontSize={15} />, path: '/shifts', perm: 'shifts' },
   ].filter(item => !currentUser || isSuper || (currentUser?.menu_permissions || []).includes(item.perm))
 
@@ -1491,6 +1492,7 @@ export default function Navbar({ isLoggedIn, onLogout, onLangChange }) {
             {isLoggedIn && (() => {
               const orgItems = [
                 { id: 'organizations', label: isRu ? 'Организации' : 'Tashkilotlar', icon: <BuildingRegular fontSize={14} />, path: '/organizations', perm: 'organizations' },
+                { id: 'tracking', label: isRu ? 'Отслеживание' : 'Kuzatuv', icon: <MapRegular fontSize={14} />, path: '/organizations/tracking', perm: 'organizations' },
                 { id: 'shifts', label: isRu ? 'Смены' : 'Smenalar', icon: <CalendarClockRegular fontSize={14} />, path: '/shifts', perm: 'shifts' },
               ].filter(item => isSuper || (currentUser?.menu_permissions || []).includes(item.perm));
 
