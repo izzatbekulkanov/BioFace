@@ -92,7 +92,7 @@ export default function AttendanceGroups() {
       setBranches(branchList)
       setCameras(camList)
 
-      if (!superAdmin && orgList.length === 1) {
+      if (orgList.length === 1) {
         setOrgFilter(String(orgList[0].id))
       }
     } catch {
@@ -366,19 +366,19 @@ export default function AttendanceGroups() {
               />
             </div>
 
-            <div style={{ flex: '1 1 200px', minWidth: 150 }}>
-              <FieldLabel>{isRu ? 'ID / Поиск' : 'ID / Qidiruv'}</FieldLabel>
+            <div style={{ flex: '1 1 280px', minWidth: 200 }}>
+              <FieldLabel>{isRu ? 'Поиск' : 'Qidiruv'}</FieldLabel>
               <input
                 type="text"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder={isRu ? 'Personal ID...' : 'Personal ID...'}
+                placeholder={isRu ? 'Имя, ID, отчество...' : 'Ism, ID, otasining ismi...'}
                 style={inpStyle}
               />
             </div>
 
             {/* Tashkilot filtri */}
-            {(isSuperAdmin || orgs.length > 1) && (
+            {orgs.length > 1 && (
               <div style={{ flex: '1 1 200px' }}>
                 <FieldLabel>{isRu ? 'Организация' : 'Tashkilot'}</FieldLabel>
                 <CustomSelect

@@ -3519,10 +3519,19 @@ def _apply_attendance_filters(
         query = query.filter(AttendanceLog.device_id == camera_id)
     personal_id_val = _normalize_personal_id(personal_id)
     if personal_id_val:
+        search_term = f"%{personal_id_val}%"
         query = query.filter(
             or_(
-                func.coalesce(func.nullif(func.trim(AttendanceLog.person_id), ""), "") == personal_id_val,
-                AttendanceLog.employee.has(Employee.personal_id == personal_id_val),
+                AttendanceLog.person_id.ilike(search_term),
+                AttendanceLog.person_name.ilike(search_term),
+                AttendanceLog.employee.has(
+                    or_(
+                        Employee.personal_id.ilike(search_term),
+                        Employee.first_name.ilike(search_term),
+                        Employee.last_name.ilike(search_term),
+                        Employee.middle_name.ilike(search_term),
+                    )
+                )
             )
         )
     if year is not None:
@@ -3907,7 +3916,15 @@ def _build_today_status_items(
     if branch_id is not None:
         employees_query = employees_query.filter(Employee.branch_id == branch_id)
     if personal_id:
-        employees_query = employees_query.filter(Employee.personal_id == personal_id)
+        search_term = f"%{personal_id.strip()}%"
+        employees_query = employees_query.filter(
+            or_(
+                Employee.personal_id.ilike(search_term),
+                Employee.first_name.ilike(search_term),
+                Employee.last_name.ilike(search_term),
+                Employee.middle_name.ilike(search_term),
+            )
+        )
     if camera_id is not None:
         employees_query = employees_query.join(
             EmployeeCameraLink,
@@ -4035,7 +4052,15 @@ def _compute_employee_daily_summary(
     if branch_id is not None:
         employees_query = employees_query.filter(Employee.branch_id == branch_id)
     if personal_id:
-        employees_query = employees_query.filter(Employee.personal_id == personal_id)
+        search_term = f"%{personal_id.strip()}%"
+        employees_query = employees_query.filter(
+            or_(
+                Employee.personal_id.ilike(search_term),
+                Employee.first_name.ilike(search_term),
+                Employee.last_name.ilike(search_term),
+                Employee.middle_name.ilike(search_term),
+            )
+        )
     if camera_id is not None:
         employees_query = employees_query.join(
             EmployeeCameraLink,

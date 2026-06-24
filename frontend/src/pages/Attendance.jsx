@@ -107,7 +107,7 @@ export default function Attendance() {
         setCameras(camList)
         setSchedules(schedList)
         // Agar faqat 1 ta tashkilot bo'lsa, avtomatik tanlash
-        if (!superAdmin && orgList.length === 1) {
+        if (orgList.length === 1) {
           setOrgFilter(String(orgList[0].id))
         }
       }
@@ -426,8 +426,8 @@ export default function Attendance() {
               />
             </div>
 
-            {/* Tashkilot filtri — faqat super admin yoki ko'p tashkilot uchun */}
-            {(isSuperAdmin || orgs.length > 1) && (
+            {/* Tashkilot filtri — faqat ko'p tashkilot bo'lsa */}
+            {orgs.length > 1 && (
               <div style={{ flex: '1 1 200px' }}>
                 <FieldLabel>{isRu ? 'Организация' : 'Tashkilot'}</FieldLabel>
                 <CustomSelect
