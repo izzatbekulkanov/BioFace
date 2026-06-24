@@ -270,12 +270,9 @@ def normalize_menu_permissions(values: Iterable[Any]) -> list[str]:
     return result
 
 
-def resolve_user_menu_permissions(*, role: Any, stored_permissions: Any) -> list[str]:
+def resolve_user_menu_permissions(*, role: Any, stored_permissions: Any = None) -> list[str]:
     if normalize_role_value(role) == UserRole.super_admin.value:
         return list(ALL_MENU_PERMISSIONS)
-    explicit = deserialize_menu_permissions(stored_permissions)
-    if explicit:
-        return explicit
     return get_role_default_menu_permissions(role)
 
 

@@ -728,15 +728,11 @@ export default function UserForm() {
       setShowEmailSugg(false)
     }
   }
-
   const validate = () => {
     if (!form.first_name.trim()) return isRu ? 'Имя обязательно' : 'Ism majburiy'
     if (!form.username.trim()) return 'Username majburiy'
     if (usernameStatus.available === false) return usernameStatus.message || (isRu ? 'Username недоступен' : "Username band")
     if (!form.email.trim()) return 'Email majburiy'
-    if (form.role !== 'SuperAdmin' && (!form.menu_permissions || form.menu_permissions.length === 0)) {
-      return isRu ? 'Выберите как минимум одно разрешение меню' : 'Kamida bitta menyu ruxsatini tanlang'
-    }
     if (!isEdit && !form.password.trim()) return isRu ? 'Пароль обязателен' : 'Parol majburiy'
     if (form.password.trim() && form.password !== form.password_confirm) {
       return isRu ? 'Пароли не совпадают' : 'Parollar mos kelmaydi'
@@ -1135,98 +1131,7 @@ export default function UserForm() {
               </Section>
             )}
 
-            {/* 5. Menu Permissions */}
-            <Section
-              kicker={isRu ? 'Права доступа' : 'Ruxsatnomalar'}
-              title={isRu ? 'Доступ к разделам меню' : 'Menyu bo\'limlariga ruxsat'}
-              hint={
-                form.role === 'SuperAdmin'
-                  ? null
-                  : (isRu ? 'Выберите разделы, которые будут видны этому пользователю' : 'Ushbu foydalanuvchiga ko\'rinadigan menyu bo\'limlarini tanlang')
-              }
-            >
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {permissionGroups.map(group => (
-                  <div key={group.key} style={{
-                    border: '1px solid var(--border-2)',
-                    borderRadius: 10,
-                    padding: 14,
-                    background: 'var(--surface-2)',
-                  }}>
-                    <div style={{
-                      fontSize: 12,
-                      fontWeight: 700,
-                      color: 'var(--accent-tx)',
-                      marginBottom: 10,
-                      textTransform: 'uppercase',
-                      letterSpacing: 0.5,
-                    }}>
-                      {isRu ? group.title_ru : group.title_uz}
-                    </div>
 
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-                      gap: 10,
-                    }}>
-                      {group.items.map(item => {
-                        const isChecked = form.menu_permissions.includes(item.key)
-                        const disabled = form.role === 'SuperAdmin' // Disable since SuperAdmin always has full access
-
-                        const handleToggle = () => {
-                          if (disabled) return
-                          setForm(prev => {
-                            const has = prev.menu_permissions.includes(item.key)
-                            const nextPerms = has
-                              ? prev.menu_permissions.filter(p => p !== item.key)
-                              : [...prev.menu_permissions, item.key]
-                            return { ...prev, menu_permissions: nextPerms }
-                          })
-                        }
-
-                        return (
-                          <label
-                            key={item.key}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'flex-start',
-                              gap: 10,
-                              padding: '10px 12px',
-                              borderRadius: 8,
-                              background: isChecked ? 'var(--accent-bg)' : 'var(--bg)',
-                              border: `1px solid ${isChecked ? 'var(--accent-bd)' : 'var(--border-2)'}`,
-                              cursor: disabled ? 'default' : 'pointer',
-                              opacity: disabled ? 0.75 : 1,
-                              transition: 'all 0.15s ease',
-                            }}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              disabled={disabled}
-                              onChange={handleToggle}
-                              style={{
-                                accentColor: 'var(--accent)',
-                                marginTop: 3,
-                                cursor: disabled ? 'default' : 'pointer',
-                              }}
-                            />
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>
-                                {isRu ? item.label_ru : item.label_uz}
-                              </span>
-                              <span style={{ fontSize: 11, color: 'var(--text-4)' }}>
-                                {isRu ? item.desc_ru : item.desc_uz}
-                              </span>
-                            </div>
-                          </label>
-                        )
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Section>
 
           </div>
 

@@ -313,29 +313,7 @@ def _parse_optional_int_list(value: Any) -> List[int]:
 
 
 def _parse_menu_permission_list(value: Any, role: UserRole) -> List[str]:
-    if value is None:
-        raw_items: list[Any] = []
-    elif isinstance(value, (list, tuple, set)):
-        raw_items = list(value)
-    else:
-        text = _as_clean_str(value)
-        if not text:
-            raw_items = []
-        elif text.startswith("["):
-            try:
-                parsed = json.loads(text)
-            except Exception as exc:
-                raise HTTPException(status_code=400, detail="Menyu ruxsatlari formati noto'g'ri") from exc
-            raw_items = parsed if isinstance(parsed, list) else [parsed]
-        else:
-            raw_items = [chunk.strip() for chunk in text.split(",") if chunk.strip()]
-
-    permissions = normalize_menu_permissions(raw_items)
-    if not permissions:
-        permissions = resolve_user_menu_permissions(role=role, stored_permissions=None)
-    if not permissions:
-        raise HTTPException(status_code=400, detail="Kamida bitta menyu ruxsati tanlang")
-    return permissions
+    return resolve_user_menu_permissions(role=role, stored_permissions=None)
 
 
 def _validate_org_ids_exist(db: Session, organization_ids: List[int]) -> None:
@@ -747,7 +725,12 @@ async def update_user(
         user.phone = _as_clean_str(payload.get("phone")) or None
 
     if (is_json and "role" in payload) or (not is_json and role is not None):
-        user.role = _parse_role(payload.get("role"), default=user.role or UserRole.tashkilot_admin)
+        new_role = _parse_role(payload.get("role"), default=user.role or UserRole.tashkilot_admin)
+        if user.role != new_role:
+            user.role = new_role
+            user.menu_permissions = serialize_menu_permissions(resolve_user_menu_permissions(role=new_role))
+        else:
+            user.role = new_role
 
     if (is_json and "status" in payload) or (not is_json and status is not None):
         user.status = _as_clean_str(payload.get("status")) or "active"
