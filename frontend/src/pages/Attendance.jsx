@@ -457,15 +457,17 @@ export default function Attendance() {
               />
             </div>
 
-            <div style={{ flex: '1 1 180px' }}>
-              <FieldLabel>{isRu ? 'Камера' : 'Kamera'}</FieldLabel>
-              <CustomSelect
-                value={camFilter}
-                onChange={setCamFilter}
-                options={camOptions}
-                placeholder={isRu ? 'Все камеры' : 'Hamma kameralar'}
-              />
-            </div>
+            {camerasByOrgAndBranch.length > 0 && (
+              <div style={{ flex: '1 1 180px' }}>
+                <FieldLabel>{isRu ? 'Камера' : 'Kamera'}</FieldLabel>
+                <CustomSelect
+                  value={camFilter}
+                  onChange={setCamFilter}
+                  options={camOptions}
+                  placeholder={isRu ? 'Все камеры' : 'Hamma kameralar'}
+                />
+              </div>
+            )}
 
             <div style={{ flex: '1 1 180px' }}>
               <FieldLabel>{isRu ? 'Тип' : 'Turi'}</FieldLabel>
