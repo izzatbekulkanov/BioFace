@@ -114,10 +114,10 @@ export default function AttendanceGroups() {
         day: String(parseInt(d)),
       })
 
-      if (orgFilter !== 'all') params.set('organization_id', orgFilter)
-      if (branchFilter !== 'all') params.set('branch_id', branchFilter)
-      if (camFilter !== 'all') params.set('camera_id', camFilter)
-      if (statusFilter !== 'all') params.set('today_status', statusFilter)
+      if (orgFilter && orgFilter !== 'all' && orgFilter !== 'null') params.set('organization_id', orgFilter)
+      if (branchFilter && branchFilter !== 'all' && branchFilter !== 'null') params.set('branch_id', branchFilter)
+      if (camFilter && camFilter !== 'all' && camFilter !== 'null') params.set('camera_id', camFilter)
+      if (statusFilter && statusFilter !== 'all' && statusFilter !== 'null') params.set('today_status', statusFilter)
       if (search.trim()) params.set('personal_id', search.trim())
 
       const res = await fetch(`/api/attendance/groups?${params}`, { credentials: 'include' })

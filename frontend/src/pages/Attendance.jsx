@@ -122,11 +122,11 @@ export default function Attendance() {
     setError('')
     try {
       const params = new URLSearchParams({ limit: '100' })
-      if (orgFilter !== 'all') params.set('organization_id', orgFilter)
-      if (branchFilter !== 'all') params.set('branch_id', branchFilter)
-      if (camFilter !== 'all') params.set('camera_id', camFilter)
-      if (employeeTypeFilter !== 'all') params.set('employee_type', employeeTypeFilter)
-      if (shiftFilter !== 'all') params.set('schedule_id', shiftFilter)
+      if (orgFilter && orgFilter !== 'all' && orgFilter !== 'null') params.set('organization_id', orgFilter)
+      if (branchFilter && branchFilter !== 'all' && branchFilter !== 'null') params.set('branch_id', branchFilter)
+      if (camFilter && camFilter !== 'all' && camFilter !== 'null') params.set('camera_id', camFilter)
+      if (employeeTypeFilter && employeeTypeFilter !== 'all' && employeeTypeFilter !== 'null') params.set('employee_type', employeeTypeFilter)
+      if (shiftFilter && shiftFilter !== 'all' && shiftFilter !== 'null') params.set('schedule_id', shiftFilter)
       if (dateFilter) params.set('date', dateFilter)
 
       const res = await fetch(`/api/attendance?${params}`, { credentials: 'include' })
@@ -163,11 +163,11 @@ export default function Attendance() {
     if (!lastIdRef.current) return
     try {
       const params = new URLSearchParams({ limit: '50', after_id: String(lastIdRef.current) })
-      if (orgFilter !== 'all') params.set('organization_id', orgFilter)
-      if (branchFilter !== 'all') params.set('branch_id', branchFilter)
-      if (camFilter !== 'all') params.set('camera_id', camFilter)
-      if (employeeTypeFilter !== 'all') params.set('employee_type', employeeTypeFilter)
-      if (shiftFilter !== 'all') params.set('schedule_id', shiftFilter)
+      if (orgFilter && orgFilter !== 'all' && orgFilter !== 'null') params.set('organization_id', orgFilter)
+      if (branchFilter && branchFilter !== 'all' && branchFilter !== 'null') params.set('branch_id', branchFilter)
+      if (camFilter && camFilter !== 'all' && camFilter !== 'null') params.set('camera_id', camFilter)
+      if (employeeTypeFilter && employeeTypeFilter !== 'all' && employeeTypeFilter !== 'null') params.set('employee_type', employeeTypeFilter)
+      if (shiftFilter && shiftFilter !== 'all' && shiftFilter !== 'null') params.set('schedule_id', shiftFilter)
       if (dateFilter) params.set('date', dateFilter)
 
       const res = await fetch(`/api/attendance?${params}`, { credentials: 'include' })
@@ -206,11 +206,11 @@ export default function Attendance() {
     try {
       const before = oldestIdRef.current
       const params = new URLSearchParams({ limit: '100', before_id: String(before) })
-      if (orgFilter !== 'all') params.set('organization_id', orgFilter)
-      if (branchFilter !== 'all') params.set('branch_id', branchFilter)
-      if (camFilter !== 'all') params.set('camera_id', camFilter)
-      if (employeeTypeFilter !== 'all') params.set('employee_type', employeeTypeFilter)
-      if (shiftFilter !== 'all') params.set('schedule_id', shiftFilter)
+      if (orgFilter && orgFilter !== 'all' && orgFilter !== 'null') params.set('organization_id', orgFilter)
+      if (branchFilter && branchFilter !== 'all' && branchFilter !== 'null') params.set('branch_id', branchFilter)
+      if (camFilter && camFilter !== 'all' && camFilter !== 'null') params.set('camera_id', camFilter)
+      if (employeeTypeFilter && employeeTypeFilter !== 'all' && employeeTypeFilter !== 'null') params.set('employee_type', employeeTypeFilter)
+      if (shiftFilter && shiftFilter !== 'all' && shiftFilter !== 'null') params.set('schedule_id', shiftFilter)
       if (dateFilter) params.set('date', dateFilter)
       const res = await fetch(`/api/attendance?${params}`, { credentials: 'include' })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
