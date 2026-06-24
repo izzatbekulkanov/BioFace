@@ -102,8 +102,17 @@ def _build_dashboard_metrics(request: Request, db: Session) -> dict:
     allowed_org_ids = _resolve_allowed_org_ids(request, db)
     today_start, today_end = today_tashkent_range()
 
+    auth_user = request.session.get("auth_user") or {}
+    role = auth_user.get("role")
+    user_id = auth_user.get("id")
+
+    from utils.access_control import resolve_user_menu_permissions
+    user_menu_permissions = resolve_user_menu_permissions(role=role, user_id=user_id, db=db)
+    show_cameras = "devices" in user_menu_permissions
+
     base_payload = {
         "allowed_org_ids": allowed_org_ids,
+        "show_cameras": show_cameras,
         "summary": {
             "organizations": 0,
             "users": 0,

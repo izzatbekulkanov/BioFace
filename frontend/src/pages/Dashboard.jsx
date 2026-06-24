@@ -50,7 +50,7 @@ function ProgressBar({ label, percent, color }) {
   )
 }
 
-function OrgCard({ org, isRu }) {
+function OrgCard({ org, isRu, showCameras = true }) {
   const total = (org.present_today || 0) + (org.absent_today || 0)
   const rate = total > 0 ? Math.round((org.present_today / total) * 100) : 0
   const statusColors = { active: 'var(--green)', pending: 'var(--yellow)', expired: 'var(--red)' }
@@ -71,15 +71,17 @@ function OrgCard({ org, isRu }) {
           {statusLabels[org.subscription_status] || org.subscription_status}
         </span>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: showCameras ? '1fr 1fr 1fr' : '1fr 1fr', gap: 8, marginBottom: 14 }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-1)' }}>{org.employee_count}</div>
           <div style={{ fontSize: 10, color: 'var(--text-4)' }}>{isRu ? 'Сотр.' : 'Xodim'}</div>
         </div>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-1)' }}>{org.camera_count}</div>
-          <div style={{ fontSize: 10, color: 'var(--text-4)' }}>{isRu ? 'Камер' : 'Kamera'}</div>
-        </div>
+        {showCameras && (
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-1)' }}>{org.camera_count}</div>
+            <div style={{ fontSize: 10, color: 'var(--text-4)' }}>{isRu ? 'Камер' : 'Kamera'}</div>
+          </div>
+        )}
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 18, fontWeight: 700, color: rate > 70 ? 'var(--green)' : rate > 40 ? 'var(--yellow)' : 'var(--red)' }}>{rate}%</div>
           <div style={{ fontSize: 10, color: 'var(--text-4)' }}>{isRu ? 'Явка' : 'Davomat'}</div>
@@ -383,6 +385,7 @@ export default function Dashboard() {
   const summary = data?.summary || {}
   const orgs = data?.org_cards || []
   const charts = data?.charts || {}
+  const showCameras = data?.show_cameras !== false
   const isRu = i18n.language === 'ru'
   const now = new Date()
   const locale = isRu ? 'ru-RU' : 'uz-UZ'
@@ -400,7 +403,9 @@ export default function Dashboard() {
     else pendingSub++
   })
   const subRate = summary.organizations ? (activeSub * 100 / summary.organizations) : 0
-  const systemPulse = (attendanceRate + cameraHealth + subRate) / 3
+  const systemPulse = showCameras
+    ? (attendanceRate + cameraHealth + subRate) / 3
+    : (attendanceRate + subRate) / 2
 
   const radarData = useMemo(() => {
     const presentRate = safeRatio(summary.present_today || 0, attendanceTotal)
@@ -740,7 +745,7 @@ export default function Dashboard() {
                   <GridDotsRegular fontSize={16} color="var(--accent)" />
                   {isRu ? 'Сводка на сегодня' : 'Bugungi xulosa'}
                 </div>
-                <div className="db-grid-today" style={{ gap: 12 }}>
+                <div className="db-grid-today" style={{ gap: 12, gridTemplateColumns: showCameras ? 'repeat(5, 1fr)' : 'repeat(4, 1fr)' }}>
                   <div>
                     <div style={{ fontSize: 11, color: 'var(--text-4)', textTransform: 'uppercase', marginBottom: 4 }}>{isRu ? 'Организации' : 'Tashkilotlar'}</div>
                     <div style={{ fontSize: 22, fontWeight: 700 }}>{summary.organizations}</div>
@@ -749,10 +754,12 @@ export default function Dashboard() {
                     <div style={{ fontSize: 11, color: 'var(--text-4)', textTransform: 'uppercase', marginBottom: 4 }}>{isRu ? 'Сотрудники' : 'Xodimlar'}</div>
                     <div style={{ fontSize: 22, fontWeight: 700 }}>{summary.employees}</div>
                   </div>
-                  <div>
-                    <div style={{ fontSize: 11, color: 'var(--text-4)', textTransform: 'uppercase', marginBottom: 4 }}>{isRu ? 'Камеры' : 'Kameralar'}</div>
-                    <div style={{ fontSize: 22, fontWeight: 700 }}>{summary.active_cameras}<span style={{ fontSize: 13, color: 'var(--text-4)' }}>/{summary.cameras}</span></div>
-                  </div>
+                  {showCameras && (
+                    <div>
+                      <div style={{ fontSize: 11, color: 'var(--text-4)', textTransform: 'uppercase', marginBottom: 4 }}>{isRu ? 'Камеры' : 'Kameralar'}</div>
+                      <div style={{ fontSize: 22, fontWeight: 700 }}>{summary.active_cameras}<span style={{ fontSize: 13, color: 'var(--text-4)' }}>/{summary.cameras}</span></div>
+                    </div>
+                  )}
                   <div>
                     <div style={{ fontSize: 11, color: 'var(--text-4)', textTransform: 'uppercase', marginBottom: 4 }}>{isRu ? 'Явка' : 'Davomat'}</div>
                     <div style={{ fontSize: 22, fontWeight: 700, color: attendanceRate > 70 ? 'var(--green)' : 'var(--yellow)' }}>{Math.round(attendanceRate)}%</div>
@@ -771,7 +778,9 @@ export default function Dashboard() {
               <StatBox label={isRu ? 'Отсутствуют' : 'Kelmaganlar'} value={summary.absent_today} icon={<DismissCircleRegular fontSize={22} />} color="var(--gray)" bg="var(--gray-bg)" border="var(--gray-bd)" />
               <StatBox label={isRu ? 'Опоздали' : 'Kechikkanlar'} value={summary.late_today} icon={<ClockRegular fontSize={22} />} color="var(--yellow)" bg="var(--yellow-bg)" border="var(--yellow-bd)" sub={`${Math.round(lateRate)}% ${isRu ? 'от пришедших' : 'kelganlardan'}`} />
               <StatBox label={isRu ? 'Пользователи' : 'Foydalanuvchilar'} value={summary.users} icon={<PersonRegular fontSize={22} />} color="var(--accent)" bg="var(--accent-bg)" border="var(--accent-bd)" />
-              <StatBox label={isRu ? 'Камеры онлайн' : 'Online kameralar'} value={summary.active_cameras} icon={<CameraRegular fontSize={22} />} color="var(--purple)" bg="var(--purple-bg)" border="var(--purple-bd)" sub={`${Math.round(cameraHealth)}% ${isRu ? 'активны' : 'faol'}`} />
+              {showCameras && (
+                <StatBox label={isRu ? 'Камеры онлайн' : 'Online kameralar'} value={summary.active_cameras} icon={<CameraRegular fontSize={22} />} color="var(--purple)" bg="var(--purple-bg)" border="var(--purple-bd)" sub={`${Math.round(cameraHealth)}% ${isRu ? 'активны' : 'faol'}`} />
+              )}
             </div>
 
             {/* === ROW 3: Weekly Trend + Recent Events === */}
@@ -838,7 +847,7 @@ export default function Dashboard() {
                   <span style={{ fontSize: 11, color: 'var(--text-4)', fontWeight: 400 }}>({orgs.length})</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
-                  {orgs.map(org => <OrgCard key={org.id} org={org} isRu={isRu} />)}
+                  {orgs.map(org => <OrgCard key={org.id} org={org} isRu={isRu} showCameras={showCameras} />)}
                 </div>
               </div>
             )}
@@ -873,7 +882,9 @@ export default function Dashboard() {
                   {isRu ? 'Коэффициенты' : 'Koeffitsiyentlar'}
                 </div>
                 <ProgressBar label={isRu ? 'Охват посещаемости' : 'Davomat qamrovi'} percent={attendanceRate} color="var(--green)" />
-                <ProgressBar label={isRu ? 'Стабильность камер' : 'Kamera barqarorligi'} percent={cameraHealth} color="var(--accent)" />
+                {showCameras && (
+                  <ProgressBar label={isRu ? 'Стабильность камер' : 'Kamera barqarorligi'} percent={cameraHealth} color="var(--accent)" />
+                )}
                 <ProgressBar label={isRu ? 'Активные подписки' : 'Faol obunalar'} percent={subRate} color="var(--yellow)" />
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 20, textAlign: 'center' }}>
                   <div style={{ background: 'var(--green-bg)', border: '1px solid var(--green-bd)', padding: '10px 6px', borderRadius: 8 }}>
@@ -922,7 +933,7 @@ export default function Dashboard() {
                       <RechartsTooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} />
                       <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
                       <Bar dataKey="employees" name={isRu ? 'Сотрудники' : 'Xodimlar'} fill="var(--dir-in)" radius={[4,4,0,0]} />
-                      <Bar dataKey="cameras" name={isRu ? 'Камеры' : 'Kameralar'} fill="var(--yellow)" radius={[4,4,0,0]} />
+                      {showCameras && <Bar dataKey="cameras" name={isRu ? 'Камеры' : 'Kameralar'} fill="var(--yellow)" radius={[4,4,0,0]} />}
                       <Bar dataKey="users" name={isRu ? 'Пользователи' : 'Users'} fill="var(--purple)" radius={[4,4,0,0]} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -930,7 +941,7 @@ export default function Dashboard() {
               )}
 
               {/* Camera Load */}
-              {cameraLoadData.length > 0 && (
+              {showCameras && cameraLoadData.length > 0 && (
                 <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '24px' }}>
                   <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
                     <CameraRegular fontSize={16} color="var(--purple)" />
