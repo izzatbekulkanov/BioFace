@@ -47,6 +47,7 @@ export default function Shifts() {
   const [holidayLoading, setHolidayLoading] = useState(false)
   const [currentDate, setCurrentDate] = useState(new Date())
   const [holidayViewMode, setHolidayViewMode] = useState('calendar') // 'calendar' or 'list'
+  const [currentUser, setCurrentUser] = useState(null)
 
   // Modal States
   // 1. Schedule Modal
@@ -89,6 +90,16 @@ export default function Shifts() {
 
   // Initial Load
   useEffect(() => {
+    // Fetch current user details
+    fetch('/api/auth/me')
+      .then(r => r.ok ? r.json() : null)
+      .then(user => {
+        if (user) {
+          setCurrentUser(user)
+        }
+      })
+      .catch(console.error)
+
     fetch('/api/employees/filter-options')
       .then(r => r.json())
       .then(data => {
@@ -101,6 +112,17 @@ export default function Shifts() {
       })
       .catch(console.error)
   }, [])
+
+  // Auto-switch holidayOrg away from 'global' for non-superadmins
+  useEffect(() => {
+    if (currentUser) {
+      const role = (currentUser.role || '').toLowerCase().replace(/_/g, '')
+      const isSuper = role === 'superadmin'
+      if (!isSuper && holidayOrg === 'global' && filterOptions.organizations?.length > 0) {
+        setHolidayOrg(filterOptions.organizations[0].id.toString())
+      }
+    }
+  }, [currentUser, filterOptions.organizations, holidayOrg])
 
   // Load Monitor Status
   const loadMonitorStatus = useCallback(async () => {
@@ -197,11 +219,23 @@ export default function Shifts() {
   }
 
   const handleOpenHolModal = (hol = null) => {
-    setHolEditing(hol)
-    setHolTitle(hol ? hol.title : '')
-    const defaultDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-01`
-    setHolDate(hol ? hol.date : defaultDate)
-    setHolIsWeekend(hol ? hol.is_weekend : false)
+    if (hol) {
+      const isSuper = (currentUser?.role || '').toLowerCase().replace(/_/g, '') === 'superadmin'
+      if (hol.organization_id === null && !isSuper) {
+        toast.error(isRu ? 'Вы не можете изменять глобальные праздники' : 'Siz global bayramlarni o\'zgartira olmaysiz')
+        return
+      }
+      setHolEditing(hol)
+      setHolTitle(hol.title || '')
+      setHolDate(hol.date || '')
+      setHolIsWeekend(!!hol.is_weekend)
+    } else {
+      setHolEditing(null)
+      setHolTitle('')
+      const defaultDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-01`
+      setHolDate(defaultDate)
+      setHolIsWeekend(false)
+    }
     setHolError('')
     setIsHolModalOpen(true)
   }
@@ -379,6 +413,11 @@ export default function Shifts() {
   }
 
   const handleDeleteHol = async (h) => {
+    const isSuper = (currentUser?.role || '').toLowerCase().replace(/_/g, '') === 'superadmin'
+    if (h.organization_id === null && !isSuper) {
+      toast.error(isRu ? 'Вы не можете удалять глобальные праздники' : 'Siz global bayramlarni o\'chira olmaysiz')
+      return
+    }
     const confirmed = await confirm({
       title: isRu ? 'Удалить праздник/выходной' : 'Yozuvni o\'chirish',
       message: isRu 
@@ -939,7 +978,10 @@ export default function Shifts() {
                     value={holidayOrg}
                     onChange={setHolidayOrg}
                     options={[
-                      { label: isRu ? 'Глобально' : 'Global bayramlar', value: 'global' },
+                      ...((currentUser?.role || '').toLowerCase().replace(/_/g, '') === 'superadmin'
+                        ? [{ label: isRu ? 'Глобально' : 'Global bayramlar', value: 'global' }]
+                        : []
+                      ),
                       ...filterOptions.organizations.map(o => ({ label: o.name, value: o.id.toString() }))
                     ]}
                   />
@@ -973,18 +1015,22 @@ export default function Shifts() {
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
-                         <button 
-                           onClick={() => handleOpenHolModal(h)}
-                           style={{ background: 'var(--surface)', border: '1px solid var(--border-3)', color: 'var(--text-1)', padding: 6, borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                         >
-                           <EditRegular />
-                         </button>
-                         <button 
-                           onClick={() => handleDeleteHol(h)}
-                           style={{ background: 'var(--red-bg)', border: '1px solid var(--red-bd)', color: 'var(--red)', padding: 6, borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                         >
-                           <DeleteRegular />
-                         </button>
+                         {((currentUser?.role || '').toLowerCase().replace(/_/g, '') === 'superadmin' || h.organization_id !== null) && (
+                           <>
+                             <button 
+                               onClick={() => handleOpenHolModal(h)}
+                               style={{ background: 'var(--surface)', border: '1px solid var(--border-3)', color: 'var(--text-1)', padding: 6, borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                             >
+                               <EditRegular />
+                             </button>
+                             <button 
+                               onClick={() => handleDeleteHol(h)}
+                               style={{ background: 'var(--red-bg)', border: '1px solid var(--red-bd)', color: 'var(--red)', padding: 6, borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                             >
+                               <DeleteRegular />
+                             </button>
+                           </>
+                         )}
                       </div>
                     </div>
                   ))}
