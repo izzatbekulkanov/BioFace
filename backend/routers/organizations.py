@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import Organization, User, UserOrganizationLink, Branch, Device
+from models import Organization, User, UserOrganizationLink, Branch, Device, Employee
 from utils.organization_types import (
     get_organization_type_choices,
     get_organization_type_label,
@@ -663,3 +663,113 @@ def list_public_branches(db: Session = Depends(get_db)):
         result.append(serialized)
     return result
 
+
+
+from pydantic import BaseModel
+from datetime import datetime, time
+from zoneinfo import ZoneInfo
+
+class LocationUpdateSchema(BaseModel):
+    employee_id: int
+    latitude: float
+    longitude: float
+
+@router.post("/api/employees/update-location")
+def update_employee_location(
+    payload: LocationUpdateSchema,
+    db: Session = Depends(get_db)
+):
+    employee = db.query(Employee).filter(Employee.id == payload.employee_id).first()
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+        
+    employee.last_latitude = payload.latitude
+    employee.last_longitude = payload.longitude
+    employee.last_location_time = datetime.now()
+    
+    db.commit()
+    return {"ok": True, "message": "Location updated successfully"}
+
+@router.get("/api/organizations/tracking-data")
+def get_tracking_data(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    auth_user = request.session.get("auth_user") or {}
+    if not auth_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+        
+    role = str(auth_user.get("role") or "").strip().lower()
+    is_super_admin = role in {"superadmin", "super_admin"}
+    
+    allowed_org_ids = set()
+    if is_super_admin:
+        orgs = db.query(Organization.id).all()
+        allowed_org_ids.update(int(o.id) for o in orgs)
+    else:
+        user_id = auth_user.get("id")
+        if user_id is not None:
+            rows = db.query(UserOrganizationLink.organization_id).filter(UserOrganizationLink.user_id == int(user_id)).all()
+            allowed_org_ids.update(int(r.organization_id) for r in rows if r.organization_id is not None)
+        
+        fallback = auth_user.get("organization_id")
+        if fallback is not None:
+            allowed_org_ids.add(int(fallback))
+            
+    if not allowed_org_ids:
+        return []
+        
+    employees = db.query(Employee).filter(Employee.organization_id.in_(list(allowed_org_ids))).all()
+    
+    tz = ZoneInfo("Asia/Tashkent")
+    now_local = datetime.now(tz)
+    now_time = now_local.time()
+    is_weekend = now_local.weekday() >= 5
+    
+    from utils.schedule_utils import resolve_employee_schedule
+    
+    result = []
+    for emp in employees:
+        sched = resolve_employee_schedule(emp)
+        start_str = sched.get("start_time", "09:00")
+        end_str = sched.get("end_time", "18:00")
+        
+        try:
+            sh, sm = map(int, start_str.split(":"))
+            eh, em = map(int, end_str.split(":"))
+        except:
+            sh, sm = 9, 0
+            eh, em = 18, 0
+            
+        start_time = time(sh, sm)
+        end_time = time(eh, em)
+        
+        in_working_hours = False
+        if not is_weekend:
+            if start_time <= end_time:
+                in_working_hours = start_time <= now_time <= end_time
+            else:
+                in_working_hours = now_time >= start_time or now_time <= end_time
+                
+        lat = emp.last_latitude if in_working_hours else None
+        lng = emp.last_longitude if in_working_hours else None
+        loc_time = emp.last_location_time.isoformat() if (emp.last_location_time and in_working_hours) else None
+        
+        result.append({
+            "id": emp.id,
+            "first_name": emp.first_name,
+            "last_name": emp.last_name,
+            "middle_name": emp.middle_name,
+            "personal_id": emp.personal_id,
+            "phone": emp.phone,
+            "employee_type": emp.employee_type,
+            "department": emp.department_ref.name if emp.department_ref else emp.department,
+            "position": emp.position_ref.name if emp.position_ref else emp.position,
+            "latitude": lat,
+            "longitude": lng,
+            "last_location_time": loc_time,
+            "in_working_hours": in_working_hours,
+            "work_time": f"{start_str} - {end_str}"
+        })
+        
+    return result

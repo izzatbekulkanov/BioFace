@@ -174,6 +174,9 @@ class Employee(Base):
     address = Column(String, nullable=True)
     birth_date = Column(String, nullable=True)
     gender = Column(String, nullable=True)
+    last_latitude = Column(Float, nullable=True)
+    last_longitude = Column(Float, nullable=True)
+    last_location_time = Column(DateTime, nullable=True)
     has_access = Column(Boolean, default=True)
     start_time = Column(String, nullable=True)  # HH:MM format, override default
     end_time = Column(String, nullable=True)    # HH:MM format, override default

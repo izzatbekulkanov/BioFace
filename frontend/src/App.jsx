@@ -29,6 +29,7 @@ import Shifts         from './pages/Shifts'
 import Organizations  from './pages/Organizations'
 import OrganizationDetail from './pages/OrganizationDetail'
 import OrganizationForm from './pages/OrganizationForm'
+import Tracking from './pages/Tracking'
 import BranchDetail from './pages/BranchDetail'
 import Profile          from './pages/Profile'
 import ContactMessages  from './pages/ContactMessages'
@@ -131,6 +132,7 @@ export default function App() {
               <Route path="/organizations"        element={isLoggedIn ? <Organizations /> : <Navigate to="/login" replace />} />
               <Route path="/organizations/new"    element={isLoggedIn ? <OrganizationForm /> : <Navigate to="/login" replace />} />
               <Route path="/organizations/:id"    element={isLoggedIn ? <OrganizationDetail /> : <Navigate to="/login" replace />} />
+              <Route path="/organizations/tracking" element={isLoggedIn ? <Tracking /> : <Navigate to="/login" replace />} />
               <Route path="/organizations/:id/branches/:branchId" element={isLoggedIn ? <BranchDetail /> : <Navigate to="/login" replace />} />
               <Route path="/organizations/:id/edit" element={isLoggedIn ? <OrganizationForm /> : <Navigate to="/login" replace />} />
               <Route path="/middleware-logs" element={isLoggedIn ? <MiddlewareLogs /> : <Navigate to="/login" replace />} />

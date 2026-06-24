@@ -393,6 +393,12 @@ def ensure_schema() -> bool:
                     conn.execute(text("ALTER TABLE employees ADD COLUMN birth_date VARCHAR"))
                 if "gender" not in emp_cols:
                     conn.execute(text("ALTER TABLE employees ADD COLUMN gender VARCHAR"))
+                if "last_latitude" not in emp_cols:
+                    conn.execute(text("ALTER TABLE employees ADD COLUMN last_latitude FLOAT"))
+                if "last_longitude" not in emp_cols:
+                    conn.execute(text("ALTER TABLE employees ADD COLUMN last_longitude FLOAT"))
+                if "last_location_time" not in emp_cols:
+                    conn.execute(text("ALTER TABLE employees ADD COLUMN last_location_time TIMESTAMP"))
                 conn.execute(
                     text(
                         "CREATE UNIQUE INDEX IF NOT EXISTS ux_employees_personal_id "
