@@ -788,8 +788,7 @@ export default function EmployeeForm() {
     if (fileRef.current) fileRef.current.value = '';
   };
 
-  const onPickImage = async (e) => {
-    const file = e.target.files?.[0]
+  const handleImageFile = async (file) => {
     if (!file) return
 
     setCheckingFace(true)
@@ -833,6 +832,74 @@ export default function EmployeeForm() {
       setTimeout(() => setFaceError(false), 2000)
     }
   }
+
+  const onPickImage = async (e) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      await handleImageFile(file)
+    }
+  }
+
+  // Paste image handler from clipboard
+  useEffect(() => {
+    const handlePaste = async (e) => {
+      const items = e.clipboardData?.items
+      if (!items) return
+
+      let hasImage = false
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile()
+          if (file) {
+            e.preventDefault()
+            hasImage = true
+            await handleImageFile(file)
+            break
+          }
+        }
+      }
+
+      if (!hasImage) {
+        // Check for pasted text URL or base64 data
+        const text = e.clipboardData?.getData('text')
+        if (text) {
+          const trimmed = text.trim()
+          if (trimmed.startsWith('data:image/')) {
+            e.preventDefault()
+            try {
+              const res = await fetch(trimmed)
+              const blob = await res.blob()
+              const file = new File([blob], 'pasted_image.jpg', { type: blob.type })
+              await handleImageFile(file)
+            } catch {
+              // silent
+            }
+          } else if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+            e.preventDefault()
+            try {
+              const res = await fetch(trimmed, { referrerPolicy: 'no-referrer' })
+              if (!res.ok) throw new Error('Fetch failed')
+              const blob = await res.blob()
+              if (!blob.type.startsWith('image/')) {
+                toast.error(isRu ? 'URL не является изображением' : 'URL rasm manzili emas')
+                return
+              }
+              const file = new File([blob], 'pasted_image.jpg', { type: blob.type })
+              await handleImageFile(file)
+            } catch (err) {
+              toast.error(isRu 
+                ? 'Не удалось загрузить изображение по ссылке из-за ограничений безопасности (CORS). Пожалуйста, скопируйте саму картинку или скачайте её.' 
+                : 'CORS xavfsizlik cheklovlari sababli rasmni havola orqali yuklab bo\'lmadi. Iltimos, rasmni o\'zini nusxalab (copy) oling yoki yuklab oling.'
+              )
+            }
+          }
+        }
+      }
+    }
+
+    window.addEventListener('paste', handlePaste)
+    return () => window.removeEventListener('paste', handlePaste)
+  }, [isRu, validateFace])
 
   const snapshotUrl = searchParams.get('snapshot_url')
   useEffect(() => {
