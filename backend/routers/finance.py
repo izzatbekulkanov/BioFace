@@ -838,10 +838,10 @@ def get_finance_accounts(
         acc_count = db.query(FinanceAccount).filter(FinanceAccount.organization_id == org_id).count()
         if acc_count == 0:
             defaults = [
-                {"name_uz": "Asosiy Kassa (Naqd)", "name_ru": "Основная касса (Наличные)", "balance": 45000000.0, "type": "cash"},
-                {"name_uz": "Milliy Bank (Hisob raqam)", "name_ru": "Национальный Банк (Расч. счет)", "balance": 128500000.0, "type": "bank"},
-                {"name_uz": "Korporativ Karta (Uzcard/Humo)", "name_ru": "Корпоративная карта (Uzcard/Humo)", "balance": 12000000.0, "type": "card"},
-                {"name_uz": "Zaxira jamg'armasi (Kelajak)", "name_ru": "Резервный фонд (Будущее)", "balance": 50000000.0, "type": "reserve"},
+                {"name_uz": "Asosiy Kassa (Naqd)", "name_ru": "Основная касса (Наличные)", "balance": 0.0, "type": "cash"},
+                {"name_uz": "Milliy Bank (Hisob raqam)", "name_ru": "Национальный Банк (Расч. счет)", "balance": 0.0, "type": "bank"},
+                {"name_uz": "Korporativ Karta (Uzcard/Humo)", "name_ru": "Корпоративная карта (Uzcard/Humo)", "balance": 0.0, "type": "card"},
+                {"name_uz": "Zaxira jamg'armasi (Kelajak)", "name_ru": "Резервный фонд (Будущее)", "balance": 0.0, "type": "reserve"},
             ]
             for d in defaults:
                 new_acc = FinanceAccount(

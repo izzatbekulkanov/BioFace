@@ -35,7 +35,7 @@ def list_chat_contacts(request: Request, db: Session = Depends(get_db)):
     current_user = get_current_user(request, db)
 
     # 1. Fetch potential contacts based on roles
-    if current_user.role == UserRole.super_admin:
+    if current_user.role == UserRole.super_admin.value:
         # SuperAdmin can chat with any active user in the system
         contacts_query = db.query(User).filter(
             User.id != current_user.id,
@@ -50,7 +50,7 @@ def list_chat_contacts(request: Request, db: Session = Depends(get_db)):
             User.is_staff == True,
             or_(
                 User.organization_id == current_user.organization_id,
-                User.role == UserRole.super_admin
+                User.role == UserRole.super_admin.value
             )
         )
 
@@ -85,7 +85,7 @@ def list_chat_contacts(request: Request, db: Session = Depends(get_db)):
             "middle_name": contact.middle_name,
             "email": contact.email,
             "phone": contact.phone,
-            "role": contact.role.value if contact.role else "User",
+            "role": str(contact.role or "User"),
             "organization_name": contact.organization.name if contact.organization else "Tashkilotsiz",
             "unread_count": unread_count,
             "is_online": is_online,
@@ -132,8 +132,8 @@ def get_chat_history(
 
     # 2. Check permission to chat
     is_allowed = (
-        current_user.role == UserRole.super_admin or
-        contact.role == UserRole.super_admin or
+        current_user.role == UserRole.super_admin.value or
+        contact.role == UserRole.super_admin.value or
         current_user.organization_id == contact.organization_id
     )
     if not is_allowed:
@@ -193,8 +193,8 @@ def send_chat_message(req: SendMessageRequest, request: Request, db: Session = D
 
     # 2. Check permission to send message
     is_allowed = (
-        current_user.role == UserRole.super_admin or
-        receiver.role == UserRole.super_admin or
+        current_user.role == UserRole.super_admin.value or
+        receiver.role == UserRole.super_admin.value or
         current_user.organization_id == receiver.organization_id
     )
     if not is_allowed:

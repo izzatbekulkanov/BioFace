@@ -58,11 +58,17 @@ export default function VersionDetail() {
   const confirm = useConfirm()
   const toast = useToast()
 
+  const [currentUser, setCurrentUser] = useState(null)
   const [version, setVersion] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
+    fetch('/api/auth/me', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setCurrentUser(d) })
+      .catch(() => {})
+
     fetch('/api/versions', { credentials: 'include' })
       .then(r => r.json())
       .then(list => {
@@ -73,6 +79,9 @@ export default function VersionDetail() {
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
   }, [id, isRu])
+
+  const role = (currentUser?.role || '').toLowerCase().replace(/_/g, '')
+  const isSuper = role === 'superadmin'
 
   async function handleDelete() {
     const ok = await confirm({
@@ -130,7 +139,7 @@ export default function VersionDetail() {
         title={version.title || `v${version.version}`}
         sub={`v${version.version} · ${version.module || 'core'}`}
         backPath="/settings/versions"
-        right={
+        right={isSuper && (
           <div style={{ display: 'flex', gap: 10 }}>
             <button
               onClick={() => navigate(`/settings/versions/${id}/edit`)}
@@ -156,7 +165,7 @@ export default function VersionDetail() {
               <DeleteRegular fontSize={15} />
             </button>
           </div>
-        }
+        )}
       />
 
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 32px 80px', display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -244,13 +253,15 @@ export default function VersionDetail() {
               <div style={{ fontSize: 13, color: 'var(--text-4)', marginBottom: 16 }}>
                 {isRu ? 'Nashr eslatmalari qo\'shilmagan' : 'Nashr eslatmalari qo\'shilmagan'}
               </div>
-              <button
-                onClick={() => navigate(`/settings/versions/${id}/edit`)}
-                style={{ ...accentBtn, margin: '0 auto' }}
-              >
-                <EditRegular fontSize={14} />
-                {isRu ? 'Eslatma qo\'shish' : 'Eslatma qo\'shish'}
-              </button>
+              {isSuper && (
+                <button
+                  onClick={() => navigate(`/settings/versions/${id}/edit`)}
+                  style={{ ...accentBtn, margin: '0 auto' }}
+                >
+                  <EditRegular fontSize={14} />
+                  {isRu ? 'Eslatma qo\'shish' : 'Eslatma qo\'shish'}
+                </button>
+              )}
             </div>
           )}
         </section>
@@ -260,10 +271,12 @@ export default function VersionDetail() {
           <button onClick={() => navigate('/settings/versions')} style={subtleBtn}>
             {isRu ? 'Ro\'yxatga qaytish' : 'Ro\'yxatga qaytish'}
           </button>
-          <button onClick={() => navigate(`/settings/versions/${id}/edit`)} style={accentBtn}>
-            <EditRegular fontSize={14} />
-            {isRu ? 'Tahrirlash' : 'Tahrirlash'}
-          </button>
+          {isSuper && (
+            <button onClick={() => navigate(`/settings/versions/${id}/edit`)} style={accentBtn}>
+              <EditRegular fontSize={14} />
+              {isRu ? 'Tahrirlash' : 'Tahrirlash'}
+            </button>
+          )}
         </div>
       </div>
     </div>

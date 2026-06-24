@@ -248,8 +248,11 @@ export default function Login({ onLogin }) {
           </button>
         </form>
 
-        <p style={{ textAlign: 'center', marginTop: 20, fontSize: 11, color: 'var(--text-5)' }}>
-          BioFace Attendance System v{version}
+        <p style={{ textAlign: 'center', marginTop: 20, fontSize: 11, color: 'var(--text-5)', display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'center' }}>
+          <span>BioFace Attendance System v{version}</span>
+          <a href="/privacy-policy" style={{ color: 'var(--accent)', textDecoration: 'none' }}>
+            {isRu ? 'Политика конфиденциальности' : 'Maxfiylik siyosati'}
+          </a>
         </p>
       </div>
     </div>

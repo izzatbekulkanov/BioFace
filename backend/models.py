@@ -25,6 +25,9 @@ class UserRole(str, enum.Enum):
     kollej_admin = "KollejAdmin"
     tashkilot_admin = "TashkilotAdmin"
     korxona_admin = "KorxonaAdmin"
+    kadr = "Kadr"
+    buxgalter = "Buxgalter"
+    psixolog = "Psixolog"
 
 class Organization(Base):
     __tablename__ = "organizations"
@@ -92,7 +95,7 @@ class User(Base):
     phone = Column(String, nullable=True)
     image_url = Column(String, nullable=True)
     hashed_password = Column(String, nullable=False)
-    role = Column(SQLEnum(UserRole), default=UserRole.tashkilot_admin)
+    role = Column(String(20), default=UserRole.tashkilot_admin.value)
     status = Column(String, default="active")
     menu_permissions = Column(String, nullable=True)
     google_oauth_enabled = Column(Boolean, default=False)
@@ -484,4 +487,14 @@ class AccountTransfer(Base):
     to_account = relationship("FinanceAccount", foreign_keys=[to_account_id])
 
 
+class Feedback(Base):
+    __tablename__ = "feedbacks"
+    id = Column(Integer, primary_key=True, index=True)
+    uuid = Column(String(36), unique=True, index=True, default=lambda: str(uuid_lib.uuid4()))
+    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="SET NULL"), nullable=True, index=True)
+    title = Column(String, nullable=True)
+    message = Column(String, nullable=False)
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=now_tashkent)
 
+    employee = relationship("Employee")

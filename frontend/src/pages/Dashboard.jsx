@@ -220,6 +220,17 @@ function LatenessHeatmap({ heatmapData, isRu, t }) {
 export default function Dashboard() {
   const { t, i18n } = useTranslation()
 
+  // Joriy foydalanuvchi va roli
+  const [currentUser, setCurrentUser] = useState(null)
+  useEffect(() => {
+    fetch('/api/auth/me', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setCurrentUser(d) })
+      .catch(() => {})
+  }, [])
+  const role = (currentUser?.role || '').toLowerCase().replace(/_/g, '')
+  const isStaff = role === 'kadr' || role === 'buxgalter'
+
   // Analytics tab state
   const [activeTab, setActiveTab] = useState('summary')  // 'summary' | 'analytics'
   const [heatmapData, setHeatmapData] = useState([])
@@ -403,9 +414,14 @@ export default function Dashboard() {
     else pendingSub++
   })
   const subRate = summary.organizations ? (activeSub * 100 / summary.organizations) : 0
-  const systemPulse = showCameras
-    ? (attendanceRate + cameraHealth + subRate) / 3
-    : (attendanceRate + subRate) / 2
+  const disciplineScore = Math.max(0, 100 - lateRate)
+  const systemPulse = isStaff
+    ? (showCameras
+      ? (attendanceRate + cameraHealth + disciplineScore) / 3
+      : (attendanceRate + disciplineScore) / 2)
+    : (showCameras
+      ? (attendanceRate + cameraHealth + subRate) / 3
+      : (attendanceRate + subRate) / 2)
 
   const radarData = useMemo(() => {
     const presentRate = safeRatio(summary.present_today || 0, attendanceTotal)
@@ -723,13 +739,16 @@ export default function Dashboard() {
                 <div>
                   <div style={{ fontSize: 11, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
                     <ShieldRegular fontSize={15} />
-                    {isRu ? 'Индекс системы' : 'Tizim indeksi'}
+                    {isStaff ? (isRu ? 'Индекс дисциплины' : 'Intizom indeksi') : (isRu ? 'Индекс системы' : 'Tizim indeksi')}
                   </div>
                   <div style={{ fontSize: 36, fontWeight: 700, color: 'var(--text-1)', lineHeight: 1 }}>
                     {Math.round(systemPulse)}<span style={{ fontSize: 16, color: 'var(--text-4)', fontWeight: 400 }}>/100</span>
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 8 }}>
-                    {systemPulse > 70 ? (isRu ? 'Система стабильна' : 'Tizim barqaror') : systemPulse > 40 ? (isRu ? 'Требует внимания' : "E'tibor kerak") : (isRu ? 'Критическое состояние' : 'Kritik holat')}
+                    {isStaff
+                      ? (systemPulse > 70 ? (isRu ? 'Высокая дисциплина' : 'Yuqori intizom') : systemPulse > 40 ? (isRu ? 'Удовлетворительно' : 'Qoniqarli') : (isRu ? 'Низкая дисциплина' : 'Past intizom'))
+                      : (systemPulse > 70 ? (isRu ? 'Система стабильна' : 'Tizim barqaror') : systemPulse > 40 ? (isRu ? 'Требует внимания' : "E'tibor kerak") : (isRu ? 'Критическое состояние' : 'Kritik holat'))
+                    }
                   </div>
                 </div>
                 <div style={{ width: 80, height: 80, borderRadius: '50%', background: `conic-gradient(var(--accent) ${systemPulse * 3.6}deg, var(--border) 0deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -745,11 +764,13 @@ export default function Dashboard() {
                   <GridDotsRegular fontSize={16} color="var(--accent)" />
                   {isRu ? 'Сводка на сегодня' : 'Bugungi xulosa'}
                 </div>
-                <div className="db-grid-today" style={{ gap: 12, gridTemplateColumns: showCameras ? 'repeat(5, 1fr)' : 'repeat(4, 1fr)' }}>
-                  <div>
-                    <div style={{ fontSize: 11, color: 'var(--text-4)', textTransform: 'uppercase', marginBottom: 4 }}>{isRu ? 'Организации' : 'Tashkilotlar'}</div>
-                    <div style={{ fontSize: 22, fontWeight: 700 }}>{summary.organizations}</div>
-                  </div>
+                <div className="db-grid-today" style={{ gap: 12, gridTemplateColumns: isStaff ? (showCameras ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)') : (showCameras ? 'repeat(5, 1fr)' : 'repeat(4, 1fr)') }}>
+                  {!isStaff && (
+                    <div>
+                      <div style={{ fontSize: 11, color: 'var(--text-4)', textTransform: 'uppercase', marginBottom: 4 }}>{isRu ? 'Организации' : 'Tashkilotlar'}</div>
+                      <div style={{ fontSize: 22, fontWeight: 700 }}>{summary.organizations}</div>
+                    </div>
+                  )}
                   <div>
                     <div style={{ fontSize: 11, color: 'var(--text-4)', textTransform: 'uppercase', marginBottom: 4 }}>{isRu ? 'Сотрудники' : 'Xodimlar'}</div>
                     <div style={{ fontSize: 22, fontWeight: 700 }}>{summary.employees}</div>
@@ -777,7 +798,9 @@ export default function Dashboard() {
               <StatBox label={isRu ? 'Присутствуют' : 'Kelganlar'} value={summary.present_today} icon={<CheckmarkCircleRegular fontSize={22} />} color="var(--green)" bg="var(--green-bg)" border="var(--green-bd)" sub={`${Math.round(attendanceRate)}% ${isRu ? 'от общего' : 'umumiydan'}`} />
               <StatBox label={isRu ? 'Отсутствуют' : 'Kelmaganlar'} value={summary.absent_today} icon={<DismissCircleRegular fontSize={22} />} color="var(--gray)" bg="var(--gray-bg)" border="var(--gray-bd)" />
               <StatBox label={isRu ? 'Опоздали' : 'Kechikkanlar'} value={summary.late_today} icon={<ClockRegular fontSize={22} />} color="var(--yellow)" bg="var(--yellow-bg)" border="var(--yellow-bd)" sub={`${Math.round(lateRate)}% ${isRu ? 'от пришедших' : 'kelganlardan'}`} />
-              <StatBox label={isRu ? 'Пользователи' : 'Foydalanuvchilar'} value={summary.users} icon={<PersonRegular fontSize={22} />} color="var(--accent)" bg="var(--accent-bg)" border="var(--accent-bd)" />
+              {role === 'superadmin' && (
+                <StatBox label={isRu ? 'Пользователи' : 'Foydalanuvchilar'} value={summary.users} icon={<PersonRegular fontSize={22} />} color="var(--accent)" bg="var(--accent-bg)" border="var(--accent-bd)" />
+              )}
               {showCameras && (
                 <StatBox label={isRu ? 'Камеры онлайн' : 'Online kameralar'} value={summary.active_cameras} icon={<CameraRegular fontSize={22} />} color="var(--purple)" bg="var(--purple-bg)" border="var(--purple-bd)" sub={`${Math.round(cameraHealth)}% ${isRu ? 'активны' : 'faol'}`} />
               )}
@@ -839,7 +862,7 @@ export default function Dashboard() {
             </div>
 
             {/* === ROW 4: Organizations Cards === */}
-            {orgs.length > 0 && (
+            {orgs.length > 0 && !isStaff && (
               <div>
                 <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <BuildingRegular fontSize={16} color="var(--purple)" />
@@ -885,21 +908,27 @@ export default function Dashboard() {
                 {showCameras && (
                   <ProgressBar label={isRu ? 'Стабильность камер' : 'Kamera barqarorligi'} percent={cameraHealth} color="var(--accent)" />
                 )}
-                <ProgressBar label={isRu ? 'Активные подписки' : 'Faol obunalar'} percent={subRate} color="var(--yellow)" />
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 20, textAlign: 'center' }}>
-                  <div style={{ background: 'var(--green-bg)', border: '1px solid var(--green-bd)', padding: '10px 6px', borderRadius: 8 }}>
-                    <div style={{ fontSize: 9, textTransform: 'uppercase', color: 'var(--green)', fontWeight: 600 }}>{isRu ? 'Активные' : 'Faol'}</div>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--green)', marginTop: 2 }}>{activeSub}</div>
+                {isStaff ? (
+                  <ProgressBar label={isRu ? 'Коэффициент опозданий' : 'Kechikish koeffitsiyenti'} percent={lateRate} color="var(--red)" />
+                ) : (
+                  <ProgressBar label={isRu ? 'Активные подписки' : 'Faol obunalar'} percent={subRate} color="var(--yellow)" />
+                )}
+                {!isStaff && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 20, textAlign: 'center' }}>
+                    <div style={{ background: 'var(--green-bg)', border: '1px solid var(--green-bd)', padding: '10px 6px', borderRadius: 8 }}>
+                      <div style={{ fontSize: 9, textTransform: 'uppercase', color: 'var(--green)', fontWeight: 600 }}>{isRu ? 'Активные' : 'Faol'}</div>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--green)', marginTop: 2 }}>{activeSub}</div>
+                    </div>
+                    <div style={{ background: 'var(--accent-bg)', border: '1px solid var(--accent-bd)', padding: '10px 6px', borderRadius: 8 }}>
+                      <div style={{ fontSize: 9, textTransform: 'uppercase', color: 'var(--accent)', fontWeight: 600 }}>{isRu ? 'Ожидание' : 'Kutilmoqda'}</div>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--accent)', marginTop: 2 }}>{pendingSub}</div>
+                    </div>
+                    <div style={{ background: 'var(--red-bg)', border: '1px solid var(--red-bd)', padding: '10px 6px', borderRadius: 8 }}>
+                      <div style={{ fontSize: 9, textTransform: 'uppercase', color: 'var(--red)', fontWeight: 600 }}>{isRu ? 'Истекли' : 'Tugagan'}</div>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--red)', marginTop: 2 }}>{expiredSub}</div>
+                    </div>
                   </div>
-                  <div style={{ background: 'var(--accent-bg)', border: '1px solid var(--accent-bd)', padding: '10px 6px', borderRadius: 8 }}>
-                    <div style={{ fontSize: 9, textTransform: 'uppercase', color: 'var(--accent)', fontWeight: 600 }}>{isRu ? 'Ожидание' : 'Kutilmoqda'}</div>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--accent)', marginTop: 2 }}>{pendingSub}</div>
-                  </div>
-                  <div style={{ background: 'var(--red-bg)', border: '1px solid var(--red-bd)', padding: '10px 6px', borderRadius: 8 }}>
-                    <div style={{ fontSize: 9, textTransform: 'uppercase', color: 'var(--red)', fontWeight: 600 }}>{isRu ? 'Истекли' : 'Tugagan'}</div>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--red)', marginTop: 2 }}>{expiredSub}</div>
-                  </div>
-                </div>
+                )}
               </div>
 
               {/* AI Radar */}
@@ -934,7 +963,7 @@ export default function Dashboard() {
                       <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
                       <Bar dataKey="employees" name={isRu ? 'Сотрудники' : 'Xodimlar'} fill="var(--dir-in)" radius={[4,4,0,0]} />
                       {showCameras && <Bar dataKey="cameras" name={isRu ? 'Камеры' : 'Kameralar'} fill="var(--yellow)" radius={[4,4,0,0]} />}
-                      <Bar dataKey="users" name={isRu ? 'Пользователи' : 'Users'} fill="var(--purple)" radius={[4,4,0,0]} />
+                      {role === 'superadmin' && <Bar dataKey="users" name={isRu ? 'Пользователи' : 'Users'} fill="var(--purple)" radius={[4,4,0,0]} />}
                     </BarChart>
                   </ResponsiveContainer>
                 </div>

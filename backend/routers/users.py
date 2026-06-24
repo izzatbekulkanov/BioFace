@@ -219,7 +219,7 @@ def _serialize_user(user: User) -> Dict[str, Any]:
         "email": user.email,
         "phone": user.phone or "",
         "image_url": (user.image_url or "") if (user.image_url or "").startswith(("/static/", "http://", "https://")) else "",
-        "role": user.role.value if user.role else "",
+        "role": str(user.role or ""),
         "status": user.status or "active",
         "menu_permissions": user.menu_permissions or "",
         "google_oauth_enabled": bool(user.google_oauth_enabled),
@@ -313,7 +313,7 @@ def _parse_optional_int_list(value: Any) -> List[int]:
 
 
 def _parse_menu_permission_list(value: Any, role: UserRole) -> List[str]:
-    return resolve_user_menu_permissions(role=role, stored_permissions=None)
+    return resolve_user_menu_permissions(role=role, stored_permissions=value)
 
 
 def _validate_org_ids_exist(db: Session, organization_ids: List[int]) -> None:

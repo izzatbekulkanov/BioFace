@@ -68,6 +68,12 @@ MENU_PERMISSION_METADATA = [
         "descriptions": {"uz": "Tashkilotlarni boshqarish", "ru": "Управление организациями"},
     },
     {
+        "key": "tracking",
+        "group": "management",
+        "titles": {"uz": "Kuzatuv", "ru": "Отслеживание"},
+        "descriptions": {"uz": "Xodimlarni xaritada kuzatish", "ru": "Отслеживание сотрудников на карте"},
+    },
+    {
         "key": "users",
         "group": "management",
         "titles": {"uz": "Foydalanuvchilar", "ru": "Пользователи"},
@@ -148,6 +154,7 @@ LIMITED_ADMIN_DEFAULTS = (
     "reports",
     "user_approvals",
     "about",
+    "tracking",
     "chat",
 )
 
@@ -158,6 +165,19 @@ ROLE_DEFAULT_MENU_KEYS = {
     UserRole.kollej_admin: LIMITED_ADMIN_DEFAULTS,
     UserRole.tashkilot_admin: LIMITED_ADMIN_DEFAULTS,
     UserRole.korxona_admin: LIMITED_ADMIN_DEFAULTS,
+    # Yangi rollar — o'zlariga mos default ruxsatlar
+    UserRole.kadr: (
+        "dashboard", "staff", "students", "shifts", "attendance",
+        "reports", "about", "devices", "commands", "tracking",
+    ),
+    UserRole.buxgalter: (
+        "dashboard", "staff", "students", "attendance",
+        "reports", "about", "devices", "commands",
+    ),
+    UserRole.psixolog: (
+        "dashboard", "staff", "students", "psychological_portrait",
+        "attendance", "reports", "about",
+    ),
 }
 
 _EMPLOYEE_MENU_KEYS = ("staff", "students", "shifts")
@@ -178,6 +198,8 @@ _PATH_RULES: list[tuple[re.Pattern[str], str | tuple[str, ...]]] = [
     (re.compile(r"^/attendance(?:/|$)"), "attendance"),
     (re.compile(r"^/psixologik-portret(?:/|$)"), "psychological_portrait"),
     (re.compile(r"^/reports(?:/|$)"), "reports"),
+    (re.compile(r"^/organizations/tracking(?:/|$)"), "tracking"),
+    (re.compile(r"^/api/organizations/tracking-data(?:/|$)"), "tracking"),
     (re.compile(r"^/organizations(?:/|$)"), "organizations"),
     (re.compile(r"^/api/organizations(?:/|$)"), "organizations"),
     # Keep approval APIs ahead of the generic /api/users matcher.

@@ -16,19 +16,6 @@ import PageHero from '../components/PageHero'
 import { useToast } from '../components/Toaster'
 import CustomSelect from '../components/CustomSelect'
 
-const INITIAL_ACCOUNTS = [
-  { id: 1, nameUz: 'Asosiy Kassa (Naqd)', nameRu: 'Основная касса (Наличные)', balance: 45000000, type: 'cash' },
-  { id: 2, nameUz: 'Milliy Bank (Hisob raqam)', nameRu: 'Национальный Банк (Расч. счет)', balance: 128500000, type: 'bank' },
-  { id: 3, nameUz: 'Korporativ Karta (Uzcard/Humo)', nameRu: 'Корпоративная карта (Uzcard/Humo)', balance: 12000000, type: 'card' },
-  { id: 4, nameUz: 'Zaxira jamg\'armasi (Kelajak)', nameRu: 'Резервный фонд (Будущее)', balance: 50000000, type: 'reserve' },
-]
-
-const INITIAL_TRANSFERS = [
-  { id: 1, from: 'Milliy Bank', to: 'Asosiy Kassa', amount: 10000000, date: '2026-06-07', desc: 'Kassani to\'ldirish uchun naqdlashtirish' },
-  { id: 2, from: 'Korporativ Karta', to: 'Milliy Bank', amount: 5000000, date: '2026-06-05', desc: 'Mablag\'ni hisob raqamga qaytarish' },
-  { id: 3, from: 'Milliy Bank', to: 'Zaxira jamg\'armasi', amount: 15000000, date: '2026-06-01', desc: 'Zaxira fondini shakllantirish ajratmasi' },
-]
-
 export default function Accounts() {
   const { i18n } = useTranslation()
   const isRu = i18n.language === 'ru'

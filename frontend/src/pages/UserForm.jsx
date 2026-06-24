@@ -17,6 +17,7 @@ import {
 import PageHero from '../components/PageHero'
 import Skeleton from '../components/Skeleton'
 import { useToast } from '../components/Toaster'
+import CustomSelect from '../components/CustomSelect'
 
 // Email domain suggestions shown after "@"
 const EMAIL_DOMAINS = [
@@ -70,6 +71,9 @@ const ROLES = [
   { value: 'KollejAdmin',    label_uz: 'Kollej Admini',        label_ru: 'Колледжский админ' },
   { value: 'TashkilotAdmin', label_uz: 'Tashkilot Admini',     label_ru: 'Админ организации' },
   { value: 'KorxonaAdmin',   label_uz: 'Korxona Admini',       label_ru: 'Админ предприятия' },
+  { value: 'Kadr',           label_uz: 'Kadr bo\'limi',        label_ru: 'Кадровый специалист' },
+  { value: 'Buxgalter',      label_uz: 'Buxgalter',            label_ru: 'Бухгалтер' },
+  { value: 'Psixolog',       label_uz: 'Psixolog',             label_ru: 'Психолог' },
 ]
 
 const STATUSES = [
@@ -172,6 +176,11 @@ export default function UserForm() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [orgs, setOrgs] = useState([])
+
+  // Employee import state (faqat yangi foydalanuvchi yaratishda)
+  const [importId, setImportId] = useState('')
+  const [importing, setImporting] = useState(false)
+  const [importedEmp, setImportedEmp] = useState(null)
 
   const [form, setForm] = useState({
     first_name: '',
@@ -414,6 +423,98 @@ export default function UserForm() {
   const setField = (k) => (e) => {
     const v = e?.target?.type === 'checkbox' ? e.target.checked : e.target.value
     setForm(prev => ({ ...prev, [k]: v }))
+  }
+
+  // Translit: o'zbek/kirill harflarini lotin username ga aylantirish
+  const toLatinUsername = (name) => {
+    const map = {
+      'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'yo','ж':'j',
+      'з':'z','и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o',
+      'п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'h','ц':'ts',
+      'ч':'ch','ш':'sh','щ':'sh','ъ':'','ы':'i','ь':'','э':'e','ю':'yu','я':'ya',
+      'ʻ':'','ʼ':'',"'": '',"'": '',
+      'ğ':'g','ş':'sh','ç':'ch','ı':'i','ö':'o','ü':'u','ñ':'n',
+    }
+    return name.toLowerCase()
+      .split('')
+      .map(c => map[c] ?? (/[a-z0-9]/.test(c) ? c : ''))
+      .join('')
+      .replace(/[^a-z0-9]/g, '')
+  }
+
+  // Hodim shaxsiy ID bo'yicha ma'lumotlarni import qilish
+  const handleImportFromEmployee = async () => {
+    const pid = importId.trim()
+    if (!pid) {
+      toast.error(isRu ? 'Введите ID сотрудника' : "Xodim ID'sini kiriting")
+      return
+    }
+    setImporting(true)
+    try {
+      const res = await fetch(`/api/employees?search=${encodeURIComponent(pid)}&page_size=5`, { credentials: 'include' })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      const items = Array.isArray(data) ? data : (data?.items || [])
+      // personal_id ga to'liq mos keluvchisini topamiz
+      const emp = items.find(e => String(e.personal_id) === String(pid)) || items[0]
+      if (!emp) {
+        toast.error(isRu ? 'Сотрудник не найден' : "Xodim topilmadi")
+        return
+      }
+
+      const firstName = emp.first_name || ''
+      const lastName  = emp.last_name  || ''
+      const middleName = emp.middle_name || ''
+
+      // Username: ismidan lotin username generatsiya
+      const baseUsername = toLatinUsername(firstName + (lastName ? lastName : ''))
+      const username = baseUsername || `user${pid}`
+
+      // Tashkilot
+      const orgId = emp.organization_id ? String(emp.organization_id) : ''
+      const orgIds = orgId ? [orgId] : []
+
+      // Email: firstname.lastname@bioface.uz
+      const emailFirst = toLatinUsername(firstName)
+      const emailLast  = toLatinUsername(lastName)
+      const autoEmail  = emp.email ||
+        (emailFirst && emailLast
+          ? `${emailFirst}.${emailLast}@bioface.uz`
+          : emailFirst
+            ? `${emailFirst}@bioface.uz`
+            : '')
+
+      setForm(prev => ({
+        ...prev,
+        first_name:       firstName,
+        last_name:        lastName,
+        middle_name:      middleName,
+        username:         username,
+        password:         'bioface2026',
+        password_confirm: 'bioface2026',
+        phone:            emp.phone || prev.phone,
+        email:            autoEmail || prev.email,
+        organization_ids: orgIds.length ? orgIds : prev.organization_ids,
+        image_url:        emp.image_url || prev.image_url,
+      }))
+
+      // Avatar preview
+      if (emp.image_url) {
+        const isValid = emp.image_url.startsWith('/static/') || emp.image_url.startsWith('http')
+        if (isValid) setImagePreview(emp.image_url)
+      }
+
+      setImportedEmp(emp)
+      toast.success(
+        isRu
+          ? `Ma'lumotlar yuklandi: ${firstName} ${lastName}`
+          : `Ma'lumotlar yuklandi: ${firstName} ${lastName}`
+      )
+    } catch (e) {
+      toast.error(e.message)
+    } finally {
+      setImporting(false)
+    }
   }
 
   const onRoleChange = (e) => {
@@ -887,6 +988,100 @@ export default function UserForm() {
         <div className="usr-form-layout">
           {/* MAIN COLUMN */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+            {/* 0. Hodimdan import (faqat yangi foydalanuvchi yaratishda) */}
+            {!isEdit && (
+              <div style={{
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: 14,
+                padding: '20px 24px',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                    background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.25)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <PersonRegular fontSize={18} style={{ color: '#6366f1' }} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)' }}>
+                      {isRu ? 'Импортировать из базы сотрудников' : "Xodimlar bazasidan import qilish"}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-4)', marginTop: 2 }}>
+                      {isRu
+                        ? 'Введите Личный ID сотрудника — форма заполнится автоматически'
+                        : "Xodimning Shaxsiy ID'sini kiriting — forma avtomatik to'ldiriladi"}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: 180 }}>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 0.4, display: 'block', marginBottom: 5 }}>
+                      {isRu ? 'Личный ID сотрудника' : "Xodim Shaxsiy ID'si"}
+                    </label>
+                    <input
+                      type="text"
+                      value={importId}
+                      onChange={e => setImportId(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleImportFromEmployee())}
+                      placeholder={isRu ? 'Напр. 7971488' : 'Mas. 7971488'}
+                      style={{ ...inpStyle, fontFamily: 'monospace', letterSpacing: 1 }}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleImportFromEmployee}
+                    disabled={importing || !importId.trim()}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 7,
+                      padding: '9px 20px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+                      background: importing || !importId.trim() ? 'rgba(99,102,241,0.4)' : '#6366f1',
+                      border: 'none', color: '#fff', cursor: importing || !importId.trim() ? 'not-allowed' : 'pointer',
+                      transition: 'background 0.15s', flexShrink: 0,
+                    }}
+                  >
+                    {importing
+                      ? <ArrowSyncRegular fontSize={15} style={{ animation: 'spin 1s linear infinite' }} />
+                      : <CheckmarkRegular fontSize={15} />}
+                    {importing ? (isRu ? 'Загрузка...' : 'Yuklanmoqda...') : (isRu ? 'Импортировать' : 'Import qilish')}
+                  </button>
+                </div>
+
+                {/* Yuklangan hodim preview */}
+                {importedEmp && (
+                  <div style={{
+                    marginTop: 14, padding: '10px 14px', borderRadius: 9,
+                    background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)',
+                    display: 'flex', alignItems: 'center', gap: 12,
+                  }}>
+                    {importedEmp.image_url && (
+                      <img
+                        src={importedEmp.image_url}
+                        alt=""
+                        style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(16,185,129,0.3)', flexShrink: 0 }}
+                        onError={e => { e.target.style.display = 'none' }}
+                      />
+                    )}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#10b981' }}>
+                        {importedEmp.full_name || `${importedEmp.first_name} ${importedEmp.last_name}`}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-4)', marginTop: 2, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                        {importedEmp.personal_id && <span>ID: {importedEmp.personal_id}</span>}
+                        {importedEmp.department && <span>{importedEmp.department}</span>}
+                        {importedEmp.position && <span>{importedEmp.position}</span>}
+                        {importedEmp.organization_name && <span>{importedEmp.organization_name}</span>}
+                      </div>
+                    </div>
+                    <CheckmarkCircleRegular fontSize={20} style={{ color: '#10b981', flexShrink: 0 }} />
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* 1. Shaxsiy ma'lumotlar */}
             <Section
               kicker={isRu ? 'Личные данные' : "Shaxsiy ma'lumotlar"}
@@ -1057,14 +1252,20 @@ export default function UserForm() {
                   />
                 </Field>
                 <Field label={isRu ? 'Роль' : 'Huquqi'} required>
-                  <select value={form.role} onChange={onRoleChange} style={inpStyle}>
-                    {ROLES.map(r => <option key={r.value} value={r.value}>{isRu ? r.label_ru : r.label_uz}</option>)}
-                  </select>
+                  <CustomSelect
+                    value={form.role}
+                    onChange={(val) => onRoleChange({ target: { value: val } })}
+                    options={ROLES.map(r => ({ value: r.value, label: isRu ? r.label_ru : r.label_uz }))}
+                    placeholder={isRu ? '— Rol tanlang —' : '— Rol tanlang —'}
+                  />
                 </Field>
                 <Field label="Status" required>
-                  <select value={form.status} onChange={setField('status')} style={inpStyle}>
-                    {STATUSES.map(s => <option key={s.value} value={s.value}>{isRu ? s.label_ru : s.label_uz}</option>)}
-                  </select>
+                  <CustomSelect
+                    value={form.status}
+                    onChange={(val) => setForm(prev => ({ ...prev, status: val }))}
+                    options={STATUSES.map(s => ({ value: s.value, label: isRu ? s.label_ru : s.label_uz }))}
+                    placeholder={isRu ? '— Status —' : '— Status —'}
+                  />
                 </Field>
               </div>
             </Section>
@@ -1117,16 +1318,15 @@ export default function UserForm() {
                     {isRu ? 'У этой организации нет филиалов' : "Ushbu tashkilotda filiallar mavjud emas"}
                   </div>
                 ) : (
-                  <select
+                  <CustomSelect
                     value={form.branch_id}
-                    onChange={e => setForm(prev => ({ ...prev, branch_id: e.target.value }))}
-                    style={inpStyle}
-                  >
-                    <option value="">{isRu ? 'Все филиалы (Организация целиком)' : 'Barcha filiallar (Tashkilot darajasida)'}</option>
-                    {branches.map(b => (
-                      <option key={b.id} value={b.id}>{b.name}</option>
-                    ))}
-                  </select>
+                    onChange={(val) => setForm(prev => ({ ...prev, branch_id: val }))}
+                    options={[
+                      { value: '', label: isRu ? 'Все филиалы (Организация целиком)' : 'Barcha filiallar (Tashkilot darajasida)' },
+                      ...branches.map(b => ({ value: String(b.id), label: b.name }))
+                    ]}
+                    placeholder={isRu ? '— Filial tanlang —' : '— Filial tanlang —'}
+                  />
                 )}
               </Section>
             )}

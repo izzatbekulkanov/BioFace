@@ -169,7 +169,7 @@ export default function About() {
     { color: STACK_COLORS[0], icon: <CodeRegular fontSize={18}/>,         name: 'FastAPI',         desc: 'Backend API'  },
     { color: STACK_COLORS[1], icon: <CameraRegular fontSize={18}/>,        name: 'Hikvision ISUP', desc: 'SDK / ISUP'   },
     { color: STACK_COLORS[2], icon: <ChartMultipleRegular fontSize={18}/>, name: 'React + Vite',   desc: 'Frontend UI'  },
-    { color: STACK_COLORS[3], icon: <ShieldLockRegular fontSize={18}/>,    name: 'SQLite / JWT',   desc: 'DB / Auth'    },
+    { color: STACK_COLORS[3], icon: <ShieldLockRegular fontSize={18}/>,    name: 'PostgreSQL / JWT', desc: 'DB / Auth'    },
   ]
 
   return (

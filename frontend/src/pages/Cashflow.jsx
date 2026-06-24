@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   ArrowSyncRegular,
@@ -23,21 +23,13 @@ import {
   Legend,
 } from 'recharts'
 
-const INITIAL_TRANSACTIONS = [
-  { id: 1, desc: 'O\'quv to\'lovlari (Tashkilotlardan)', type: 'income', amount: 15400000, comment: 'Shartnoma bo\'yicha to\'liq to\'lov', date: '2026-06-07' },
-  { id: 2, desc: 'Internet va aloqa provayderi xizmati', type: 'expense', amount: 800000, comment: 'Firma interneti', date: '2026-06-06' },
-  { id: 3, desc: 'Server ijarasi (AWS Cloud)', type: 'expense', amount: 2500000, comment: 'Oylik server to\'lovi', date: '2026-06-05' },
-  { id: 4, desc: 'Xodimlar uchun ish haqi to\'lovi', type: 'expense', amount: 12800000, comment: 'May oyi uchun maosh', date: '2026-06-01' },
-  { id: 5, desc: 'API integratsiyalari integratsiya to\'lovi', type: 'income', amount: 4500000, comment: 'Qo\'shimcha API xizmati', date: '2026-05-28' },
-  { id: 6, desc: 'Elektr energiyasi va komunal to\'lovlar', type: 'expense', amount: 1200000, comment: 'Bosh ofis komunal', date: '2026-05-25' },
-]
-
 export default function Cashflow() {
   const { i18n } = useTranslation()
   const isRu = i18n.language === 'ru'
   const toast = useToast()
 
-  const [transactions, setTransactions] = useState(INITIAL_TRANSACTIONS)
+  const [transactions, setTransactions] = useState([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
   const [showAddModal, setShowAddModal] = useState(false)
@@ -49,6 +41,24 @@ export default function Cashflow() {
   const [formAmount, setFormAmount] = useState('')
   const [formComment, setFormComment] = useState('')
 
+  const loadCashflow = async () => {
+    try {
+      const res = await fetch('/api/finance/cashflow', { credentials: 'include' })
+      if (res.ok) {
+        const data = await res.json()
+        setTransactions(data.transactions || [])
+      }
+    } catch (err) {
+      console.error('Failed to load cashflow data:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadCashflow()
+  }, [])
+
   const stats = useMemo(() => {
     let income = 0
     let expense = 0
@@ -59,14 +69,39 @@ export default function Cashflow() {
     return { income, expense, profit: income - expense }
   }, [transactions])
 
-  const chartData = [
-    { name: isRu ? 'Янв' : 'Yan', income: 14000000, expense: 9000000 },
-    { name: isRu ? 'Фев' : 'Fev', income: 18000000, expense: 12000000 },
-    { name: isRu ? 'Мар' : 'Mar', income: 15000000, expense: 11000000 },
-    { name: isRu ? 'Апр' : 'Apr', income: 21000000, expense: 13000000 },
-    { name: isRu ? 'Май' : 'May', income: 24000000, expense: 15000000 },
-    { name: isRu ? 'Июн' : 'Iyun', income: stats.income, expense: stats.expense },
-  ]
+  const chartData = useMemo(() => {
+    const monthly = {}
+    const monthsUz = ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyun', 'Iyul', 'Avg', 'Sen', 'Okt', 'Noy', 'Dek']
+    const monthsRu = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек']
+    
+    const result = []
+    const now = new Date()
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const year = d.getFullYear()
+      const monthIdx = d.getMonth()
+      const key = `${year}-${String(monthIdx + 1).padStart(2, '0')}`
+      monthly[key] = {
+        name: isRu ? monthsRu[monthIdx] : monthsUz[monthIdx],
+        income: 0,
+        expense: 0
+      }
+    }
+    
+    transactions.forEach(t => {
+      if (!t.date) return
+      const part = t.date.slice(0, 7) // 'YYYY-MM'
+      if (monthly[part]) {
+        if (t.type === 'income') {
+          monthly[part].income += t.amount
+        } else {
+          monthly[part].expense += t.amount
+        }
+      }
+    })
+    
+    return Object.values(monthly)
+  }, [transactions, isRu])
 
   const filteredTransactions = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -81,39 +116,48 @@ export default function Cashflow() {
     return new Intl.NumberFormat('uz-UZ', { style: 'currency', currency: 'UZS', maximumFractionDigits: 0 }).format(val)
   }
 
-  const handleAddTransaction = (e) => {
+  const handleAddTransaction = async (e) => {
     e.preventDefault()
     if (!formDesc.trim() || !formAmount) {
       toast.error(isRu ? 'Заполните все поля!' : 'Barcha maydonlarni to\'ldiring!')
       return
     }
 
-    const newTx = {
-      id: Date.now(),
-      desc: formDesc.trim(),
-      type: formType,
-      amount: parseFloat(formAmount),
-      comment: formComment.trim(),
-      date: new Date().toISOString().split('T')[0],
+    try {
+      const res = await fetch('/api/finance/cashflow', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          desc: formDesc.trim(),
+          type: formType,
+          amount: parseFloat(formAmount),
+          comment: formComment.trim(),
+          date: new Date().toISOString().split('T')[0]
+        })
+      })
+      if (res.ok) {
+        toast.success(isRu ? 'Операция добавлена' : 'Amal muvaffaqiyatli qo\'shildi')
+        setShowAddModal(false)
+        setFormDesc('')
+        setFormType('income')
+        setFormAmount('')
+        setFormComment('')
+        loadCashflow()
+      } else {
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.detail || 'Failed to save')
+      }
+    } catch (err) {
+      toast.error(err.message)
     }
-
-    setTransactions(prev => [newTx, ...prev])
-    setShowAddModal(false)
-    toast.success(isRu ? 'Операция добавлена' : 'Amal muvaffaqiyatli qo\'shildi')
-
-    // Reset Form
-    setFormDesc('')
-    setFormType('income')
-    setFormAmount('')
-    setFormComment('')
   }
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true)
-    setTimeout(() => {
-      setRefreshing(false)
-      toast.success(isRu ? 'Данные о доходах и расходах обновлены' : 'Kirim-chiqim ma\'lumotlari yangilandi')
-    }, 600)
+    await loadCashflow()
+    setRefreshing(false)
+    toast.success(isRu ? 'Данные о доходах и расходах обновлены' : 'Kirim-chiqim ma\'lumotlari yangilandi')
   }
 
   return (
@@ -293,16 +337,35 @@ export default function Cashflow() {
                 </tr>
               </thead>
               <tbody>
-                {filteredTransactions.map(t => (
-                  <tr key={t.id} style={{ borderBottom: '1px solid var(--border-2)', fontSize: 13, color: 'var(--text-2)' }}>
-                    <td style={{ padding: '14px 16px', fontWeight: 600, color: 'var(--text-1)' }}>{t.desc}</td>
-                    <td style={{ padding: '14px 16px' }}>{t.comment || '—'}</td>
-                    <td style={{ padding: '14px 16px' }}>{t.date}</td>
-                    <td style={{ padding: '14px 16px', fontWeight: 700, color: t.type === 'income' ? '#10b981' : '#ef4444' }}>
-                      {t.type === 'income' ? '+' : '-'}{formatMoney(t.amount)}
+                {loading ? (
+                  <tr>
+                    <td colSpan="4" style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-4)' }}>
+                      <div style={{
+                        display: 'inline-block', width: 24, height: 24,
+                        border: '2px solid var(--border)', borderTopColor: 'var(--accent)',
+                        borderRadius: '50%', animation: 'spin 1s linear infinite', marginBottom: 8
+                      }} />
+                      <div>{isRu ? 'Загрузка...' : 'Yuklanmoqda...'}</div>
                     </td>
                   </tr>
-                ))}
+                ) : filteredTransactions.length === 0 ? (
+                  <tr>
+                    <td colSpan="4" style={{ padding: 40, textAlign: 'center', color: 'var(--text-4)' }}>
+                      {isRu ? 'Операции не найдены' : 'Tranzaksiyalar topilmadi'}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredTransactions.map(t => (
+                    <tr key={t.id} style={{ borderBottom: '1px solid var(--border-2)', fontSize: 13, color: 'var(--text-2)' }}>
+                      <td style={{ padding: '14px 16px', fontWeight: 600, color: 'var(--text-1)' }}>{t.desc}</td>
+                      <td style={{ padding: '14px 16px' }}>{t.comment || '—'}</td>
+                      <td style={{ padding: '14px 16px' }}>{t.date}</td>
+                      <td style={{ padding: '14px 16px', fontWeight: 700, color: t.type === 'income' ? '#10b981' : '#ef4444' }}>
+                        {t.type === 'income' ? '+' : '-'}{formatMoney(t.amount)}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

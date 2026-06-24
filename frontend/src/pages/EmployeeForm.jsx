@@ -325,15 +325,24 @@ export default function EmployeeForm() {
     return parseInt(clean, 10).toLocaleString('uz-UZ').replace(/,/g, ' ')
   }
 
-  // Initial load
   useEffect(() => {
     let alive = true
     ;(async () => {
       try {
-        const [orgRes, camRes] = await Promise.all([
+        const [meRes, orgRes, camRes] = await Promise.all([
+          fetch('/api/auth/me', { credentials: 'include' }),
           fetch('/api/organizations', { credentials: 'include' }),
           fetch('/api/cameras', { credentials: 'include' }),
         ])
+        if (meRes.ok) {
+          const meData = await meRes.json()
+          const myRole = (meData?.role || '').toLowerCase().replace(/_/g, '')
+          if (myRole === 'buxgalter') {
+            toast.error(isRu ? 'Вам не разрешено управлять сотрудниками' : 'Sizga xodimlarni boshqarishga ruxsat etilmagan')
+            navigate('/users/staff')
+            return
+          }
+        }
         if (orgRes.ok) {
           const data = await orgRes.json()
           if (alive) setOrgs(Array.isArray(data) ? data : (data?.items || []))

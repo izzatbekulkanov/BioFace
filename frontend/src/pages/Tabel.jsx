@@ -129,6 +129,7 @@ export default function Tabel() {
     if (orgFilter === 'all') {
       setDepartments([])
       setPositions([])
+      setDeptFilter('all')
       return
     }
     const loadCatalogs = async () => {
@@ -136,8 +137,14 @@ export default function Tabel() {
         const res = await fetch(`/api/employee-catalogs?organization_id=${orgFilter}`, { credentials: 'include' })
         if (res.ok) {
           const data = await res.json()
-          setDepartments(data?.departments || [])
+          const depts = data?.departments || []
+          setDepartments(depts)
           setPositions(data?.positions || [])
+          if (depts.length > 0) {
+            setDeptFilter(String(depts[0].id))
+          } else {
+            setDeptFilter('all')
+          }
         }
       } catch (err) {
         console.error('Failed to load catalogs:', err)
@@ -177,11 +184,8 @@ export default function Tabel() {
   }, [filteredBranches, isRu])
 
   const deptOptions = useMemo(() => {
-    return [
-      { value: 'all', label: isRu ? 'Все отделы' : 'Barcha bo\'limlar' },
-      ...filteredDepartments.map(d => ({ value: String(d.id), label: d.name }))
-    ]
-  }, [filteredDepartments, isRu])
+    return filteredDepartments.map(d => ({ value: String(d.id), label: d.name }))
+  }, [filteredDepartments])
 
   const posOptions = useMemo(() => {
     return [
@@ -359,11 +363,11 @@ export default function Tabel() {
                   options={deptOptions}
                   value={deptFilter}
                   onChange={val => {
-                    setDeptFilter(val || 'all')
+                    setDeptFilter(val || (departments[0] ? String(departments[0].id) : 'all'))
                     setPosFilter('all')
                   }}
                   disabled={orgFilter === 'all'}
-                  placeholder={isRu ? 'Все отделы' : 'Barcha bo\'limlar'}
+                  placeholder={isRu ? 'Выберите отдел' : 'Bo\'limni tanlang'}
                 />
               </div>
 

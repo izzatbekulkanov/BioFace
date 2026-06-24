@@ -1,6 +1,8 @@
 from typing import Optional
 from collections import defaultdict
 import httpx
+from datetime import datetime, time
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
@@ -123,6 +125,99 @@ def _serialize_branch(b: Branch) -> dict:
 @router.get("/api/organizations/types")
 def list_organization_types(lang: str = Query("uz")):
     return get_organization_type_choices(lang=lang)
+
+
+@router.get("/api/organizations/tracking-data")
+def get_tracking_data(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    auth_user = request.session.get("auth_user") or {}
+    if not auth_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+        
+    role = str(auth_user.get("role") or "").strip().lower()
+    is_super_admin = role in {"superadmin", "super_admin"}
+    
+    allowed_org_ids = set()
+    if is_super_admin:
+        orgs = db.query(Organization.id).all()
+        allowed_org_ids.update(int(o.id) for o in orgs)
+    else:
+        user_id = auth_user.get("id")
+        if user_id is not None:
+            rows = db.query(UserOrganizationLink.organization_id).filter(UserOrganizationLink.user_id == int(user_id)).all()
+            allowed_org_ids.update(int(r.organization_id) for r in rows if r.organization_id is not None)
+        
+        fallback = auth_user.get("organization_id")
+        if fallback is not None:
+            allowed_org_ids.add(int(fallback))
+            
+    if not allowed_org_ids:
+        return []
+        
+    employees = db.query(Employee).filter(Employee.organization_id.in_(list(allowed_org_ids))).all()
+    
+    tz = ZoneInfo("Asia/Tashkent")
+    now_local = datetime.now(tz)
+    now_time = now_local.time()
+    is_weekend = now_local.weekday() >= 5
+    
+    from utils.schedule_utils import resolve_employee_schedule
+    
+    result = []
+    for emp in employees:
+        sched = resolve_employee_schedule(emp)
+        start_str = sched.get("start_time", "09:00")
+        end_str = sched.get("end_time", "18:00")
+        
+        try:
+            sh, sm = map(int, start_str.split(":"))
+            eh, em = map(int, end_str.split(":"))
+        except:
+            sh, sm = 9, 0
+            eh, em = 18, 0
+            
+        start_time = time(sh, sm)
+        end_time = time(eh, em)
+        
+        in_working_hours = False
+        if not is_weekend:
+            if start_time <= end_time:
+                in_working_hours = start_time <= now_time <= end_time
+            else:
+                in_working_hours = now_time >= start_time or now_time <= end_time
+                
+        lat = emp.last_latitude if in_working_hours else None
+        lng = emp.last_longitude if in_working_hours else None
+        loc_time = emp.last_location_time.isoformat() if (emp.last_location_time and in_working_hours) else None
+        
+        is_online = False
+        if in_working_hours and emp.last_location_time:
+            diff = datetime.now() - emp.last_location_time
+            if diff.total_seconds() < 600:  # 10 minutes
+                is_online = True
+                
+        result.append({
+            "id": emp.id,
+            "first_name": emp.first_name,
+            "last_name": emp.last_name,
+            "middle_name": emp.middle_name,
+            "personal_id": emp.personal_id,
+            "phone": emp.phone,
+            "employee_type": emp.employee_type,
+            "department": emp.department_ref.name if emp.department_ref else emp.department,
+            "position": emp.position_ref.name if emp.position_ref else emp.position,
+            "latitude": lat,
+            "longitude": lng,
+            "image_url": emp.image_url,
+            "last_location_time": loc_time,
+            "in_working_hours": in_working_hours,
+            "is_online": is_online,
+            "work_time": f"{start_str} - {end_str}"
+        })
+        
+    return result
 
 
 @router.get("/api/organizations")
@@ -376,7 +471,7 @@ def get_branch_detail(
         "last_name": u.last_name,
         "email": u.email,
         "phone": u.phone,
-        "role": u.role.value if u.role else "",
+        "role": str(u.role or ""),
         "status": u.status,
     } for u in users]
     
@@ -666,8 +761,6 @@ def list_public_branches(db: Session = Depends(get_db)):
 
 
 from pydantic import BaseModel
-from datetime import datetime, time
-from zoneinfo import ZoneInfo
 
 class LocationUpdateSchema(BaseModel):
     employee_id: int
@@ -681,6 +774,9 @@ def update_employee_location(
 ):
     employee = db.query(Employee).filter(Employee.id == payload.employee_id).first()
     if not employee:
+        # Fallback: check by personal_id if not found by primary key id
+        employee = db.query(Employee).filter(Employee.personal_id == str(payload.employee_id)).first()
+    if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
         
     employee.last_latitude = payload.latitude
@@ -690,86 +786,4 @@ def update_employee_location(
     db.commit()
     return {"ok": True, "message": "Location updated successfully"}
 
-@router.get("/api/organizations/tracking-data")
-def get_tracking_data(
-    request: Request,
-    db: Session = Depends(get_db)
-):
-    auth_user = request.session.get("auth_user") or {}
-    if not auth_user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-        
-    role = str(auth_user.get("role") or "").strip().lower()
-    is_super_admin = role in {"superadmin", "super_admin"}
-    
-    allowed_org_ids = set()
-    if is_super_admin:
-        orgs = db.query(Organization.id).all()
-        allowed_org_ids.update(int(o.id) for o in orgs)
-    else:
-        user_id = auth_user.get("id")
-        if user_id is not None:
-            rows = db.query(UserOrganizationLink.organization_id).filter(UserOrganizationLink.user_id == int(user_id)).all()
-            allowed_org_ids.update(int(r.organization_id) for r in rows if r.organization_id is not None)
-        
-        fallback = auth_user.get("organization_id")
-        if fallback is not None:
-            allowed_org_ids.add(int(fallback))
-            
-    if not allowed_org_ids:
-        return []
-        
-    employees = db.query(Employee).filter(Employee.organization_id.in_(list(allowed_org_ids))).all()
-    
-    tz = ZoneInfo("Asia/Tashkent")
-    now_local = datetime.now(tz)
-    now_time = now_local.time()
-    is_weekend = now_local.weekday() >= 5
-    
-    from utils.schedule_utils import resolve_employee_schedule
-    
-    result = []
-    for emp in employees:
-        sched = resolve_employee_schedule(emp)
-        start_str = sched.get("start_time", "09:00")
-        end_str = sched.get("end_time", "18:00")
-        
-        try:
-            sh, sm = map(int, start_str.split(":"))
-            eh, em = map(int, end_str.split(":"))
-        except:
-            sh, sm = 9, 0
-            eh, em = 18, 0
-            
-        start_time = time(sh, sm)
-        end_time = time(eh, em)
-        
-        in_working_hours = False
-        if not is_weekend:
-            if start_time <= end_time:
-                in_working_hours = start_time <= now_time <= end_time
-            else:
-                in_working_hours = now_time >= start_time or now_time <= end_time
-                
-        lat = emp.last_latitude if in_working_hours else None
-        lng = emp.last_longitude if in_working_hours else None
-        loc_time = emp.last_location_time.isoformat() if (emp.last_location_time and in_working_hours) else None
-        
-        result.append({
-            "id": emp.id,
-            "first_name": emp.first_name,
-            "last_name": emp.last_name,
-            "middle_name": emp.middle_name,
-            "personal_id": emp.personal_id,
-            "phone": emp.phone,
-            "employee_type": emp.employee_type,
-            "department": emp.department_ref.name if emp.department_ref else emp.department,
-            "position": emp.position_ref.name if emp.position_ref else emp.position,
-            "latitude": lat,
-            "longitude": lng,
-            "last_location_time": loc_time,
-            "in_working_hours": in_working_hours,
-            "work_time": f"{start_str} - {end_str}"
-        })
-        
-    return result
+

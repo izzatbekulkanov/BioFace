@@ -21,6 +21,11 @@ import {
   CheckmarkRegular,
   ArchiveRegular,
   SearchRegular,
+  BuildingRegular,
+  BriefcaseRegular,
+  Person5Regular,
+  ImageProhibitedRegular,
+  SparkleRegular,
 } from '@fluentui/react-icons'
 import PageHero from '../components/PageHero'
 import Skeleton from '../components/Skeleton'
@@ -46,6 +51,19 @@ export default function EmployeesPage({ mode = 'staff' }) {
   const toast = useToast()
   const confirm = useConfirm()
   const [importModalOpen, setImportModalOpen] = useState(false)
+  const [clearImagesOpen, setClearImagesOpen] = useState(false)
+
+  // Joriy foydalanuvchi va roli
+  const [currentUser, setCurrentUser] = useState(null)
+  useEffect(() => {
+    fetch('/api/auth/me', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setCurrentUser(d) })
+      .catch(() => {})
+  }, [])
+  const isSuperAdmin = (currentUser?.role || '').toLowerCase().replace(/_/g, '') === 'superadmin'
+  const role = (currentUser?.role || '').toLowerCase().replace(/_/g, '')
+  const canEdit = role !== 'buxgalter'
 
   const handleDownloadTemplate = () => {
     try {
@@ -117,58 +135,13 @@ export default function EmployeesPage({ mode = 'staff' }) {
 
 
   const [exportModalOpen, setExportModalOpen] = useState(false)
+  const [clearEmployeesOpen, setClearEmployeesOpen] = useState(false)
 
 
 
 
-  const handleClearEmployees = async () => {
-    let targetOrgId = orgFilter
-    if (!targetOrgId && organizations.length === 1) {
-      targetOrgId = organizations[0].id
-    }
-    if (!targetOrgId) {
-      toast.error(isRu ? 'Пожалуйста, сначала выберите организацию' : 'Iltimos, avval tashkilotni tanlang')
-      return
-    }
-
-    const orgName = organizations.find(o => String(o.id) === String(targetOrgId))?.name || ''
-    const entityType = isStudents ? (isRu ? 'учащихся' : 'talaba/o\'quvchilarni') : (isRu ? 'сотрудников' : 'xodimlarni')
-
-    const ok = await confirm({
-      title: isRu ? 'Очистить данные?' : "Ma'lumotlarni tozalash?",
-      message: isRu 
-        ? `Вы действительно хотите удалить ВСЕХ ${entityType} организации ${orgName}? Это действие нельзя отменить.`
-        : `Haqiqatan ham ${orgName} tashkilotidagi BARCHA ${entityType} o'chirib tashlamoqchimisiz? Ushbu amalni qaytarib bo'lmaydi.`,
-      confirmText: isRu ? 'Удалить все' : "Hammasini o'chirish",
-      cancelText: isRu ? 'Отмена' : 'Bekor qilish',
-      danger: true,
-    })
-    if (!ok) return
-
-    try {
-      const res = await fetch('/api/employees/clear', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          organization_id: Number(targetOrgId),
-          employee_type: mode,
-        })
-      })
-      if (!res.ok) throw new Error('HTTP ' + res.status)
-      const resData = await res.json()
-      if (resData.ok) {
-        toast.success(
-          isRu 
-            ? `Успешно удалено: ${resData.deleted_count}` 
-            : `Muvaffaqiyatli o'chirildi: ${resData.deleted_count} ta`
-        )
-        load()
-      }
-    } catch (err) {
-      console.error(err)
-      toast.error(isRu ? 'Ошибка при очистке данных' : 'Tozalashda xatolik yuz berdi')
-    }
+  const handleClearEmployees = () => {
+    setClearEmployeesOpen(true)
   }
 
   const [items, setItems] = useState([])
@@ -349,13 +322,13 @@ export default function EmployeesPage({ mode = 'staff' }) {
   const HeroIcon = isStudents ? HatGraduationRegular : PeopleRegular
 
   const statsItems = stats ? [
-    { id: 'total', label: isRu ? 'Всего' : 'Jami', value: stats.total, color: '#6366f1', bg: 'rgba(99,102,241,0.10)', border: 'rgba(99,102,241,0.20)', icon: '👥' },
-    { id: 'male', label: isRu ? 'Мужчины' : 'Erkak', value: stats.male, color: '#3b82f6', bg: 'rgba(59,130,246,0.10)', border: 'rgba(59,130,246,0.20)', icon: '👨' },
-    { id: 'female', label: isRu ? 'Женщины' : 'Ayol', value: stats.female, color: '#ec4899', bg: 'rgba(236,72,153,0.10)', border: 'rgba(236,72,153,0.20)', icon: '👩' },
-    { id: 'wface', label: isRu ? 'С фото' : 'Yuzi bor', value: stats.with_face, color: '#22c55e', bg: 'rgba(34,197,94,0.10)', border: 'rgba(34,197,94,0.20)', icon: '✅' },
-    { id: 'nface', label: isRu ? 'Без фото' : "Yuzi yo'q", value: stats.without_face, color: '#ef4444', bg: 'rgba(239,68,68,0.10)', border: 'rgba(239,68,68,0.20)', icon: '❌' },
-    { id: 'dept', label: isStudents ? (isRu ? 'Классы / Группы' : 'Sinflar / Guruhlar') : (isRu ? 'Отделы' : "Bo'limlar"), value: stats.departments, color: '#f59e0b', bg: 'rgba(245,158,11,0.10)', border: 'rgba(245,158,11,0.20)', icon: '🏢' },
-    ...(!isStudents ? [{ id: 'pos', label: isRu ? 'Должности' : 'Lavozimlar', value: stats.positions, color: '#8b5cf6', bg: 'rgba(139,92,246,0.10)', border: 'rgba(139,92,246,0.20)', icon: '💼' }] : []),
+    { id: 'total', label: isRu ? 'Всего' : 'Jami', value: stats.total, color: '#6366f1', bg: 'rgba(99,102,241,0.10)', border: 'rgba(99,102,241,0.20)', icon: <PeopleRegular fontSize={13} /> },
+    { id: 'male', label: isRu ? 'Мужчины' : 'Erkak', value: stats.male, color: '#3b82f6', bg: 'rgba(59,130,246,0.10)', border: 'rgba(59,130,246,0.20)', icon: <PersonRegular fontSize={13} /> },
+    { id: 'female', label: isRu ? 'Женщины' : 'Ayol', value: stats.female, color: '#ec4899', bg: 'rgba(236,72,153,0.10)', border: 'rgba(236,72,153,0.20)', icon: <Person5Regular fontSize={13} /> },
+    { id: 'wface', label: isRu ? 'С фото' : 'Yuzi bor', value: stats.with_face, color: '#22c55e', bg: 'rgba(34,197,94,0.10)', border: 'rgba(34,197,94,0.20)', icon: <CheckmarkCircleRegular fontSize={13} /> },
+    { id: 'nface', label: isRu ? 'Без фото' : "Yuzi yo'q", value: stats.without_face, color: '#ef4444', bg: 'rgba(239,68,68,0.10)', border: 'rgba(239,68,68,0.20)', icon: <DismissCircleRegular fontSize={13} /> },
+    { id: 'dept', label: isStudents ? (isRu ? 'Классы / Группы' : 'Sinflar / Guruhlar') : (isRu ? 'Отделы' : "Bo'limlar"), value: stats.departments, color: '#f59e0b', bg: 'rgba(245,158,11,0.10)', border: 'rgba(245,158,11,0.20)', icon: <BuildingRegular fontSize={13} /> },
+    ...(!isStudents ? [{ id: 'pos', label: isRu ? 'Должности' : 'Lavozimlar', value: stats.positions, color: '#8b5cf6', bg: 'rgba(139,92,246,0.10)', border: 'rgba(139,92,246,0.20)', icon: <BriefcaseRegular fontSize={13} /> }] : []),
   ] : []
 
   return (
@@ -368,34 +341,38 @@ export default function EmployeesPage({ mode = 'staff' }) {
           : (isRu ? 'Сотрудники и преподаватели' : "Hodimlar va o'qituvchilar")}
         right={
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              onClick={() => setImportModalOpen(true)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 7,
-                padding: '8px 16px', borderRadius: 8,
-                background: '#0f52ba', border: 'none',
-                color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-              }}
-              title={isRu ? 'Импортировать из Excel' : 'Exceldan import qilish'}
-            >
-              <ArrowUploadRegular fontSize={16} />
-              {isRu ? 'Импорт' : 'Import'}
-            </button>
-            <button
-              type="button"
-              onClick={handleDownloadTemplate}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 7,
-                padding: '8px 16px', borderRadius: 8,
-                background: '#107c41', border: 'none',
-                color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-              }}
-              title={isRu ? 'Скачать шаблон Excel' : 'Excel shablonini yuklab olish'}
-            >
-              <DocumentTableRegular fontSize={16} />
-              {isRu ? 'Шаблон Excel' : 'Excel shablon'}
-            </button>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => setImportModalOpen(true)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 7,
+                  padding: '8px 16px', borderRadius: 8,
+                  background: '#0f52ba', border: 'none',
+                  color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                }}
+                title={isRu ? 'Импортировать из Excel' : 'Exceldan import qilish'}
+              >
+                <ArrowUploadRegular fontSize={16} />
+                {isRu ? 'Импорт' : 'Import'}
+              </button>
+            )}
+            {canEdit && (
+              <button
+                type="button"
+                onClick={handleDownloadTemplate}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 7,
+                  padding: '8px 16px', borderRadius: 8,
+                  background: '#107c41', border: 'none',
+                  color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                }}
+                title={isRu ? 'Скачать шаблон Excel' : 'Excel shablonini yuklab olish'}
+              >
+                <DocumentTableRegular fontSize={16} />
+                {isRu ? 'Шаблон Excel' : 'Excel shablon'}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setExportModalOpen(true)}
@@ -414,7 +391,8 @@ export default function EmployeesPage({ mode = 'staff' }) {
               type="button"
               onClick={handleClearEmployees}
               style={{
-                display: 'flex', alignItems: 'center', gap: 7,
+                display: isSuperAdmin && canEdit ? 'flex' : 'none',
+                alignItems: 'center', gap: 7,
                 padding: '8px 16px', borderRadius: 8,
                 background: '#e11d48', border: 'none',
                 color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
@@ -426,16 +404,33 @@ export default function EmployeesPage({ mode = 'staff' }) {
             </button>
             <button
               type="button"
-              onClick={() => navigate(isStudents ? '/users/students/new?type=oquvchi' : '/users/staff/new?type=hodim')}
+              onClick={() => setClearImagesOpen(true)}
               style={{
-                display: 'flex', alignItems: 'center', gap: 7,
+                display: isSuperAdmin && canEdit ? 'flex' : 'none',
+                alignItems: 'center', gap: 7,
                 padding: '8px 16px', borderRadius: 8,
-                background: 'var(--accent)', border: 'none',
+                background: '#7c3aed', border: 'none',
                 color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
               }}
+              title={isRu ? 'Удалить некачественные фото' : 'Sifatsiz rasmlarni tozalash'}
             >
-              <AddRegular fontSize={16} /> {isRu ? 'Добавить' : "Qo'shish"}
+              <ImageProhibitedRegular fontSize={16} />
+              {isRu ? 'Rasmni tozalash' : 'Rasmni tozalash'}
             </button>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => navigate(isStudents ? '/users/students/new?type=oquvchi' : '/users/staff/new?type=hodim')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 7,
+                  padding: '8px 16px', borderRadius: 8,
+                  background: 'var(--accent)', border: 'none',
+                  color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                <AddRegular fontSize={16} /> {isRu ? 'Добавить' : "Qo'shish"}
+              </button>
+            )}
             <button onClick={() => load()} disabled={refreshing || initialLoading} style={refreshBtnStyle(refreshing || initialLoading)}>
               <ArrowSyncRegular fontSize={16} style={{ animation: (refreshing || initialLoading) ? 'spin 1s linear infinite' : 'none' }} />
               {isRu ? 'Обновить' : 'Yangilash'}
@@ -540,8 +535,8 @@ export default function EmployeesPage({ mode = 'staff' }) {
                 style={{ minWidth: 130, ...inpStyle }}
               >
                 <option value="">{isRu ? 'Все (лицо)' : "Barcha (yuz)"}</option>
-                <option value="yes">{isRu ? '✅ Есть лицо' : '✅ Yuzi bor'}</option>
-                <option value="no">{isRu ? '❌ Нет лица' : "❌ Yuzi yo'q"}</option>
+                <option value="yes">{isRu ? 'Yuzi bor' : 'Yuzi bor'}</option>
+                <option value="no">{isRu ? "Yuzi yo'q" : "Yuzi yo'q"}</option>
               </select>
 
               <select
@@ -682,7 +677,7 @@ export default function EmployeesPage({ mode = 'staff' }) {
                               border: '1px solid var(--green-bd)',
                               whiteSpace: 'nowrap',
                             }}>
-                              ✅ {isRu ? 'Есть' : 'Mavjud'}
+                              <CheckmarkCircleRegular fontSize={12} /> {isRu ? 'Есть' : 'Mavjud'}
                             </span>
                           ) : (
                             <span style={{
@@ -693,7 +688,7 @@ export default function EmployeesPage({ mode = 'staff' }) {
                               border: '1px solid var(--red-bd)',
                               whiteSpace: 'nowrap',
                             }}>
-                              ❌ {isRu ? 'Нет' : "Yo'q"}
+                              <DismissCircleRegular fontSize={12} /> {isRu ? 'Нет' : "Yo'q"}
                             </span>
                           )}
                         </td>
@@ -709,12 +704,16 @@ export default function EmployeesPage({ mode = 'staff' }) {
                             <button type="button" onClick={() => navigate(`/employees/${emp.uuid || emp.id}`)} style={iconBtn('subtle')} title={isRu ? 'Просмотр' : "Ko'rish"}>
                               <EyeRegular fontSize={13} />
                             </button>
-                            <button type="button" onClick={() => navigate(`/employees/${emp.uuid || emp.id}/edit`)} style={iconBtn('subtle')} title={isRu ? 'Редактировать' : 'Tahrirlash'}>
-                              <EditRegular fontSize={13} />
-                            </button>
-                            <button type="button" onClick={() => setDeleting(emp)} style={iconBtn('danger')} title={isRu ? 'Удалить' : "O'chirish"}>
-                              <DeleteRegular fontSize={13} />
-                            </button>
+                            {canEdit && (
+                              <button type="button" onClick={() => navigate(`/employees/${emp.uuid || emp.id}/edit`)} style={iconBtn('subtle')} title={isRu ? 'Редактировать' : 'Tahrirlash'}>
+                                <EditRegular fontSize={13} />
+                              </button>
+                            )}
+                            {canEdit && (
+                              <button type="button" onClick={() => setDeleting(emp)} style={iconBtn('danger')} title={isRu ? 'Удалить' : "O'chirish"}>
+                                <DeleteRegular fontSize={13} />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -768,6 +767,27 @@ export default function EmployeesPage({ mode = 'staff' }) {
         />
       )}
 
+      {clearImagesOpen && (
+
+        <ClearImagesModal
+          organizations={organizations}
+          onClose={() => setClearImagesOpen(false)}
+          isRu={isRu}
+          toast={toast}
+        />
+      )}
+
+      {clearEmployeesOpen && (
+        <ClearEmployeesModal
+          organizations={organizations}
+          onClose={() => setClearEmployeesOpen(false)}
+          isRu={isRu}
+          toast={toast}
+          mode={mode}
+          load={load}
+        />
+      )}
+
       {exportModalOpen && (
         <ExportModal
           onClose={() => setExportModalOpen(false)}
@@ -814,6 +834,404 @@ export default function EmployeesPage({ mode = 'staff' }) {
           }
         }
       `}</style>
+    </div>
+  )
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Clear Images Modal (Sifatsiz rasmlarni tozalash)
+// ────────────────────────────────────────────────────────────────────────────
+
+function ClearImagesModal({ organizations, onClose, isRu, toast }) {
+  const [selectedOrg, setSelectedOrg] = useState('')
+  const [minSizeKb, setMinSizeKb] = useState(10)
+  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState(null)
+  const [error, setError] = useState('')
+
+  const onSubmit = async () => {
+    if (!selectedOrg) {
+      setError(isRu ? 'Tashkilotni tanlang' : 'Tashkilotni tanlang')
+      return
+    }
+    setLoading(true)
+    setError('')
+    setResult(null)
+    try {
+      const res = await fetch('/api/employees/clear-images', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organization_id: Number(selectedOrg),
+          min_size_kb: Number(minSizeKb),
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.detail || `HTTP ${res.status}`)
+      setResult(data)
+      toast.success(
+        isRu
+          ? `Tozalandi: ${data.cleared} ta rasm o'chirildi`
+          : `Tozalandi: ${data.cleared} ta rasm o'chirildi`
+      )
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 2000, padding: 16,
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: 480,
+          background: 'var(--surface)', border: '1px solid var(--border)',
+          borderRadius: 16, padding: 28, boxShadow: '0 24px 60px rgba(0,0,0,0.4)',
+        }}
+      >
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+          <div style={{
+            width: 42, height: 42, borderRadius: 12, flexShrink: 0,
+            background: 'rgba(124,58,237,0.12)', border: '1px solid rgba(124,58,237,0.25)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <ImageProhibitedRegular fontSize={22} style={{ color: '#7c3aed' }} />
+          </div>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)' }}>
+              {isRu ? 'Sifatsiz rasmlarni tozalash' : 'Sifatsiz rasmlarni tozalash'}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-4)', marginTop: 2 }}>
+              {isRu
+                ? "Exceldan yuklangan kichik / sifatsiz rasmlar o'chiriladi"
+                : "Exceldan yuklangan kichik / sifatsiz rasmlar o'chiriladi"}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--text-4)', cursor: 'pointer', padding: 4 }}
+          >
+            <DismissCircleRegular fontSize={20} />
+          </button>
+        </div>
+
+        {/* Warning */}
+        <div style={{
+          padding: '10px 14px', borderRadius: 9, marginBottom: 18,
+          background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)',
+          display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 12, color: '#d97706',
+        }}>
+          <WarningRegular fontSize={16} style={{ flexShrink: 0, marginTop: 1 }} />
+          <span>
+            {isRu
+              ? `Belgilangan hajmdan (${minSizeKb} KB) kichik barcha rasmlar serverdan va ma'lumotlar bazasidan o'chiriladi. Xodim rasmsiz qoladi.`
+              : `Belgilangan hajmdan (${minSizeKb} KB) kichik barcha rasmlar serverdan va ma'lumotlar bazasidan o'chiriladi. Xodim rasmsiz qoladi.`}
+          </span>
+        </div>
+
+        {/* Tashkilot tanlash */}
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 0.4, display: 'block', marginBottom: 6 }}>
+            {isRu ? 'Tashkilot' : 'Tashkilot'} <span style={{ color: '#f43f5e' }}>*</span>
+          </label>
+          <select
+            value={selectedOrg}
+            onChange={e => setSelectedOrg(e.target.value)}
+            style={{
+              width: '100%', padding: '9px 12px', borderRadius: 8,
+              border: '1px solid var(--border-2)', background: 'var(--bg)',
+              color: 'var(--text-1)', fontSize: 13, outline: 'none',
+            }}
+          >
+            <option value="">{isRu ? '— Tashkilotni tanlang —' : '— Tashkilotni tanlang —'}</option>
+            {organizations.map(o => (
+              <option key={o.id} value={o.id}>{o.name}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Min hajm */}
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 0.4, display: 'block', marginBottom: 6 }}>
+            {isRu ? "Minimal rasm hajmi (KB)" : "Minimal rasm hajmi (KB)"}
+          </label>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {[5, 10, 20, 50].map(v => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setMinSizeKb(v)}
+                style={{
+                  padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  border: `1px solid ${minSizeKb === v ? '#7c3aed' : 'var(--border-2)'}`,
+                  background: minSizeKb === v ? 'rgba(124,58,237,0.12)' : 'var(--bg)',
+                  color: minSizeKb === v ? '#7c3aed' : 'var(--text-2)',
+                  transition: 'all 0.15s',
+                }}
+              >{v} KB</button>
+            ))}
+            <input
+              type="number"
+              value={minSizeKb}
+              onChange={e => setMinSizeKb(Math.max(1, Number(e.target.value)))}
+              style={{
+                width: 70, padding: '6px 10px', borderRadius: 8, fontSize: 12,
+                border: '1px solid var(--border-2)', background: 'var(--bg)',
+                color: 'var(--text-1)', outline: 'none', textAlign: 'center',
+              }}
+              min={1}
+            />
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-4)', marginTop: 6 }}>
+            {isRu
+              ? `${minSizeKb} KB dan kichik rasmlar o'chiriladi. Odatda sifatli portret rasm 20 KB dan katta bo'ladi.`
+              : `${minSizeKb} KB dan kichik rasmlar o'chiriladi. Odatda sifatli portret rasm 20 KB dan katta bo'ladi.`}
+          </div>
+        </div>
+
+        {/* Result */}
+        {result && (
+          <div style={{
+            padding: '12px 14px', borderRadius: 9, marginBottom: 16,
+            background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)',
+          }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#10b981', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <CheckmarkCircleRegular fontSize={15} />
+              {isRu ? 'Natija' : 'Natija'}: {result.organization}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-2)', display: 'flex', gap: 16 }}>
+              <span>🗑 {isRu ? "O'chirildi" : "O'chirildi"}: <strong style={{ color: '#f43f5e' }}>{result.cleared}</strong></span>
+              <span>✓ {isRu ? 'Saqlab qolindi' : 'Saqlab qolindi'}: <strong style={{ color: '#10b981' }}>{result.skipped}</strong></span>
+              {result.errors?.length > 0 && <span style={{ color: '#f59e0b' }}>⚠ Xatolik: {result.errors.length}</span>}
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div style={{
+            padding: '10px 14px', borderRadius: 9, marginBottom: 14,
+            background: 'var(--red-bg)', border: '1px solid var(--red-bd)',
+            color: 'var(--red)', fontSize: 12,
+          }}>{error}</div>
+        )}
+
+        {/* Actions */}
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={loading}
+            style={{
+              padding: '9px 18px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              background: 'var(--surface-2)', border: '1px solid var(--border-2)', color: 'var(--text-1)',
+            }}
+          >
+            {isRu ? 'Yopish' : 'Yopish'}
+          </button>
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={loading || !selectedOrg}
+            style={{
+              padding: '9px 20px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: loading || !selectedOrg ? 'not-allowed' : 'pointer',
+              background: loading || !selectedOrg ? '#7c3aed88' : '#7c3aed',
+              border: 'none', color: '#fff',
+              display: 'flex', alignItems: 'center', gap: 7,
+              transition: 'background 0.15s',
+            }}
+          >
+            {loading
+              ? <ArrowSyncRegular fontSize={15} style={{ animation: 'spin 1s linear infinite' }} />
+              : <ImageProhibitedRegular fontSize={15} />}
+            {loading
+              ? (isRu ? 'Tekshirilmoqda...' : 'Tekshirilmoqda...')
+              : (isRu ? 'Sifatsiz rasmlarni tozala' : 'Sifatsiz rasmlarni tozala')}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Clear Employees Modal (Tashkilot xodimlarini tozalash)
+// ────────────────────────────────────────────────────────────────────────────
+
+function ClearEmployeesModal({ organizations, onClose, isRu, toast, mode, load }) {
+  const [selectedOrg, setSelectedOrg] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  
+  const isStudents = mode === 'students' || mode === 'oquvchi' || mode === 'student'
+  const entityTypeUz = isStudents ? "o'quvchilar va talabalar" : "xodimlar va o'qituvchilar"
+  const entityTypeRu = isStudents ? "учащихся и студентов" : "сотрудников и преподавателей"
+
+  const onSubmit = async () => {
+    if (!selectedOrg) {
+      setError(isRu ? 'Выберите организацию' : 'Tashkilotni tanlang')
+      return
+    }
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch('/api/employees/clear', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          organization_id: Number(selectedOrg),
+          employee_type: isStudents ? 'students' : 'staff',
+        })
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.detail || data?.message || `HTTP ${res.status}`)
+      
+      toast.success(
+        isRu 
+          ? `Успешно удалено: ${data.deleted_count || 0} ${entityTypeRu}` 
+          : `Muvaffaqiyatli o'chirildi: ${data.deleted_count || 0} ta ${entityTypeUz}`
+      )
+      if (load) load()
+      onClose()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 2000, padding: 16,
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: 480,
+          background: 'var(--surface)', border: '1px solid var(--border)',
+          borderRadius: 16, padding: 28, boxShadow: '0 24px 60px rgba(0,0,0,0.4)',
+        }}
+      >
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+          <div style={{
+            width: 42, height: 42, borderRadius: 12, flexShrink: 0,
+            background: 'rgba(225,29,72,0.12)', border: '1px solid rgba(225,29,72,0.25)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <DeleteRegular fontSize={22} style={{ color: '#e11d48' }} />
+          </div>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)' }}>
+              {isRu ? 'Очистить данные организации' : "Tashkilot ma'lumotlarini tozalash"}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-4)', marginTop: 2 }}>
+              {isRu
+                ? `Все ${entityTypeRu} выбранной организации будут удалены`
+                : `Tanlangan tashkilotdagi barcha ${entityTypeUz} o'chirib tashlanadi`}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--text-4)', cursor: 'pointer', padding: 4 }}
+          >
+            <DismissCircleRegular fontSize={20} />
+          </button>
+        </div>
+
+        {/* Warning */}
+        <div style={{
+          padding: '10px 14px', borderRadius: 9, marginBottom: 18,
+          background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.25)',
+          display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 12, color: '#e11d48',
+        }}>
+          <WarningRegular fontSize={16} style={{ flexShrink: 0, marginTop: 1 }} />
+          <span>
+            {isRu
+              ? 'Внимание! Это действие необратимо. Будут удалены все записи, их фото и история доступа.'
+              : "Diqqat! Ushbu amalni ortga qaytarib bo'lmaydi. Barcha a'zolar, ularning rasmlari va kirish tarixi o'chib ketadi."}
+          </span>
+        </div>
+
+        {/* Tashkilot tanlash */}
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 0.4, display: 'block', marginBottom: 6 }}>
+            {isRu ? 'Организация' : 'Tashkilot'} <span style={{ color: '#f43f5e' }}>*</span>
+          </label>
+          <select
+            value={selectedOrg}
+            onChange={e => setSelectedOrg(e.target.value)}
+            style={{
+              width: '100%', padding: '9px 12px', borderRadius: 8,
+              border: '1px solid var(--border-2)', background: 'var(--bg)',
+              color: 'var(--text-1)', fontSize: 13, outline: 'none',
+            }}
+          >
+            <option value="">{isRu ? '— Выберите организацию —' : '— Tashkilotni tanlang —'}</option>
+            {organizations.map(o => (
+              <option key={o.id} value={o.id}>{o.name}</option>
+            ))}
+          </select>
+        </div>
+
+        {error && (
+          <div style={{
+            padding: '10px 14px', borderRadius: 9, marginBottom: 14,
+            background: 'var(--red-bg)', border: '1px solid var(--red-bd)',
+            color: 'var(--red)', fontSize: 12,
+          }}>{error}</div>
+        )}
+
+        {/* Actions */}
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={loading}
+            style={{
+              padding: '9px 18px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              background: 'var(--surface-2)', border: '1px solid var(--border-2)', color: 'var(--text-1)',
+            }}
+          >
+            {isRu ? 'Отмена' : 'Bekor qilish'}
+          </button>
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={loading || !selectedOrg}
+            style={{
+              padding: '9px 20px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: loading || !selectedOrg ? 'not-allowed' : 'pointer',
+              background: loading || !selectedOrg ? '#e11d4888' : '#e11d48',
+              border: 'none', color: '#fff',
+              display: 'flex', alignItems: 'center', gap: 7,
+              transition: 'background 0.15s',
+            }}
+          >
+            {loading
+              ? <ArrowSyncRegular fontSize={15} style={{ animation: 'spin 1s linear infinite' }} />
+              : <DeleteRegular fontSize={15} />}
+            {loading
+              ? (isRu ? 'Удаление...' : 'Tozalanmoqda...')
+              : (isRu ? 'Очистить' : 'Tozalash')}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

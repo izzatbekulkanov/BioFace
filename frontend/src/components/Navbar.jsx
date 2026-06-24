@@ -12,16 +12,17 @@ import {
   PeopleRegular, ShieldRegular, HatGraduationRegular,
   ClipboardTaskListLtrRegular, BrainCircuitRegular, BuildingRegular, AlertRegular,
   ChatRegular, SendRegular, ArrowLeftRegular, CheckmarkRegular, DismissRegular,
-  MoneyRegular, WalletRegular, StarRegular, ArrowSwapRegular, TagRegular, CalendarRegular,
+  MoneyRegular, WalletRegular, StarRegular, ArrowSwapRegular, TagRegular, CalendarRegular, BriefcaseRegular,
 } from '@fluentui/react-icons'
 
-const PUBLIC_LINKS  = ['map', 'about', 'contact']
+const PUBLIC_LINKS  = ['map', 'about', 'contact', 'privacyPolicy']
 const PRIVATE_LINKS = ['dashboard', 'devices']
 
 const LINK_ICONS = {
   map:            <MapRegular  fontSize={17} />,
   about:          <InfoRegular fontSize={17} />,
   contact:        <MailRegular fontSize={17} />,
+  privacyPolicy:  <ShieldRegular fontSize={17} />,
   dashboard:      <GridRegular fontSize={17} />,
   devices:        <CameraRegular fontSize={17} />,
   shifts:         <CalendarClockRegular fontSize={17} />,
@@ -33,7 +34,7 @@ const LINK_ICONS = {
   finance:        <MoneyRegular fontSize={17} />,
 }
 const LINK_PATHS = {
-  map: '/map', about: '/about', contact: '/contact', dashboard: '/dashboard', 
+  map: '/map', about: '/about', contact: '/contact', privacyPolicy: '/privacy-policy', dashboard: '/dashboard', 
   devices: '/devices', shifts: '/shifts', attendance: '/attendance', psychology: '/psychology', organizations: '/organizations', middlewareLogs: '/middleware-logs', settings: '/settings',
   finance: '/finance',
 }
@@ -162,7 +163,7 @@ function OrganizationsDropdown({ currentUser, active }) {
 
   const items = [
     { id: 'organizations', label: isRu ? 'Организации' : 'Tashkilotlar', icon: <BuildingRegular fontSize={15} />, path: '/organizations', perm: 'organizations' },
-    { id: 'tracking', label: isRu ? 'Отслеживание' : 'Kuzatuv', icon: <MapRegular fontSize={15} />, path: '/organizations/tracking', perm: 'organizations' },
+    { id: 'tracking', label: isRu ? 'Отслеживание' : 'Kuzatuv', icon: <MapRegular fontSize={15} />, path: '/organizations/tracking', perm: 'tracking' },
     { id: 'shifts', label: isRu ? 'Смены' : 'Smenalar', icon: <CalendarClockRegular fontSize={15} />, path: '/shifts', perm: 'shifts' },
   ].filter(item => !currentUser || isSuper || (currentUser?.menu_permissions || []).includes(item.perm))
 
@@ -182,7 +183,7 @@ function OrganizationsDropdown({ currentUser, active }) {
 }
 
 // Dropdown menu for Finance section
-function FinanceDropdown({ active }) {
+function FinanceDropdown({ currentUser, active }) {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
@@ -198,13 +199,22 @@ function FinanceDropdown({ active }) {
     return () => document.removeEventListener('mousedown', handleOutside)
   }, [open])
 
-  const items = [
+  const role = (currentUser?.role || '').toLowerCase().replace(/_/g, '')
+
+  const allItems = [
     { id: 'financeSalary', label: t('nav.financeSalary'), icon: <MoneyRegular fontSize={15} />, path: '/finance/salary' },
     { id: 'financeKpi', label: t('nav.financeKpi'), icon: <StarRegular fontSize={15} />, path: '/finance/kpi' },
     { id: 'financeCashflow', label: t('nav.financeCashflow'), icon: <ArrowSwapRegular fontSize={15} />, path: '/finance/cashflow' },
     { id: 'financeAccounts', label: t('nav.financeAccounts'), icon: <WalletRegular fontSize={15} />, path: '/finance/accounts' },
     { id: 'financeTabel', label: t('nav.financeTabel'), icon: <CalendarRegular fontSize={15} />, path: '/finance/tabel' },
+    { id: 'financeRates', label: t('nav.financeRates'), icon: <BriefcaseRegular fontSize={15} />, path: '/finance/rates' },
   ]
+
+  const items = role === 'kadr'
+    ? allItems.filter(item => item.id === 'financeTabel' || item.id === 'financeRates')
+    : allItems
+
+  if (items.length === 0) return null
 
   return <NavDropdown
     label={isRu ? 'Финансы' : 'Moliya'}
@@ -235,9 +245,10 @@ function SettingsDropdown({ active }) {
     if (open) document.addEventListener('mousedown', handleOutside)
     return () => document.removeEventListener('mousedown', handleOutside)
   }, [open])
-  const items = [
+    const items = [
     { id: 'settings', label: isRu ? 'Настройки' : 'Sozlamalar', icon: <SettingsRegular fontSize={15} />, path: '/settings' },
     { id: 'messages', label: isRu ? 'Обращения' : 'Murojaatlar', icon: <MailRegular fontSize={15} />, path: '/settings/messages' },
+    { id: 'feedbacks', label: isRu ? 'Отзывы' : 'Fikr-mulohazalar', icon: <ChatRegular fontSize={15} />, path: '/settings/feedbacks' },
     { id: 'middlewareLogs', label: isRu ? 'Логи API' : 'API Jurnali', icon: <HistoryRegular fontSize={15} />, path: '/middleware-logs' },
     { id: 'isup', label: 'ISUP Server', icon: <ServerRegular fontSize={15} />, path: '/settings/isup' },
     { id: 'redis', label: 'Redis', icon: <DatabaseRegular fontSize={15} />, path: '/settings/redis' },
@@ -974,7 +985,7 @@ export default function Navbar({ isLoggedIn, onLogout, onLangChange }) {
               <AttendanceDropdown currentUser={currentUser} active={location.pathname.startsWith('/attendance') || location.pathname.startsWith('/psychology')} />
               <UsersDropdown currentUser={currentUser} active={location.pathname.startsWith('/users')} />
               <OrganizationsDropdown currentUser={currentUser} active={location.pathname.startsWith('/organizations') || location.pathname.startsWith('/shifts')} />
-              <FinanceDropdown active={location.pathname.startsWith('/finance')} />
+              <FinanceDropdown currentUser={currentUser} active={location.pathname.startsWith('/finance')} />
               {isSuper && <SettingsDropdown active={location.pathname.startsWith('/settings') || location.pathname.startsWith('/middleware-logs')} />}
             </>
           )}
@@ -1492,7 +1503,7 @@ export default function Navbar({ isLoggedIn, onLogout, onLangChange }) {
             {isLoggedIn && (() => {
               const orgItems = [
                 { id: 'organizations', label: isRu ? 'Организации' : 'Tashkilotlar', icon: <BuildingRegular fontSize={14} />, path: '/organizations', perm: 'organizations' },
-                { id: 'tracking', label: isRu ? 'Отслеживание' : 'Kuzatuv', icon: <MapRegular fontSize={14} />, path: '/organizations/tracking', perm: 'organizations' },
+                { id: 'tracking', label: isRu ? 'Отслеживание' : 'Kuzatuv', icon: <MapRegular fontSize={14} />, path: '/organizations/tracking', perm: 'tracking' },
                 { id: 'shifts', label: isRu ? 'Смены' : 'Smenalar', icon: <CalendarClockRegular fontSize={14} />, path: '/shifts', perm: 'shifts' },
               ].filter(item => isSuper || (currentUser?.menu_permissions || []).includes(item.perm));
 
@@ -1545,7 +1556,8 @@ export default function Navbar({ isLoggedIn, onLogout, onLangChange }) {
                     { id: 'financeCashflow', label: t('nav.financeCashflow'), icon: <ArrowSwapRegular fontSize={14} />, path: '/finance/cashflow' },
                     { id: 'financeAccounts', label: t('nav.financeAccounts'), icon: <WalletRegular fontSize={14} />, path: '/finance/accounts' },
                     { id: 'financeTabel', label: t('nav.financeTabel'), icon: <CalendarRegular fontSize={14} />, path: '/finance/tabel' },
-                  ].map(item => {
+                    { id: 'financeRates', label: t('nav.financeRates'), icon: <BriefcaseRegular fontSize={14} />, path: '/finance/rates' },
+                  ].filter(item => role !== 'kadr' || item.id === 'financeTabel' || item.id === 'financeRates').map(item => {
                     const active = location.pathname === item.path;
                     return (
                       <button key={item.id} onClick={() => { navigate(item.path); setMenuOpen(false); }}
@@ -1579,6 +1591,7 @@ export default function Navbar({ isLoggedIn, onLogout, onLangChange }) {
                   {[
                     { id: 'settings', label: isRu ? 'Настройки' : 'Sozlamalar', icon: <SettingsRegular fontSize={14} />, path: '/settings' },
                     { id: 'messages', label: isRu ? 'Обращения' : 'Murojaatlar', icon: <MailRegular fontSize={14} />, path: '/settings/messages' },
+                    { id: 'feedbacks', label: isRu ? 'Отзывы' : 'Fikr-mulohazalar', icon: <ChatRegular fontSize={14} />, path: '/settings/feedbacks' },
                     { id: 'middlewareLogs', label: isRu ? 'Логи API' : 'API Jurnali', icon: <HistoryRegular fontSize={14} />, path: '/middleware-logs' },
                     { id: 'isup', label: 'ISUP Server', icon: <ServerRegular fontSize={14} />, path: '/settings/isup' },
                     { id: 'redis', label: 'Redis', icon: <DatabaseRegular fontSize={14} />, path: '/settings/redis' },

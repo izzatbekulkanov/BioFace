@@ -20,3 +20,5 @@ createRoot(document.getElementById('root')).render(
     </ThemeProvider>
   </StrictMode>,
 )
+
+console.log("BioFace init: 2026-06-24-v2");

@@ -31,31 +31,53 @@ export default function VersionForm() {
   const toast = useToast()
 
   const [form, setForm] = useState(EMPTY)
-  const [loading, setLoading] = useState(isEdit)
+  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (!isEdit) return
-    fetch('/api/versions', { credentials: 'include' })
-      .then(r => r.json())
-      .then(list => {
-        const v = list.find(v => String(v.id) === String(id))
-        if (v) {
-          setForm({
-            version:       v.version || '',
-            module:        v.module  || 'core',
-            title:         v.title   || '',
-            release_notes: v.release_notes || '',
-            author:        v.author  || '',
-            status:        v.status  || 'released',
-            released_at:   v.released_at ? v.released_at.slice(0, 10) : '',
+    fetch('/api/auth/me', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(user => {
+        if (!user) {
+          navigate('/login')
+          return
+        }
+        const role = (user.role || '').toLowerCase().replace(/_/g, '')
+        if (role !== 'superadmin') {
+          navigate(isEdit ? `/settings/versions/${id}` : '/settings/versions')
+          return
+        }
+        
+        if (!isEdit) {
+          setLoading(false)
+          return
+        }
+        
+        fetch('/api/versions', { credentials: 'include' })
+          .then(r => r.json())
+          .then(list => {
+            const v = list.find(v => String(v.id) === String(id))
+            if (v) {
+              setForm({
+                version:       v.version || '',
+                module:        v.module  || 'core',
+                title:         v.title   || '',
+                release_notes: v.release_notes || '',
+                author:        v.author  || '',
+                status:        v.status  || 'released',
+                released_at:   v.released_at ? v.released_at.slice(0, 10) : '',
+              })
+            } else setError(isRu ? 'Versiya topilmadi' : 'Versiya topilmadi')
           })
-        } else setError(isRu ? 'Versiya topilmadi' : 'Versiya topilmadi')
+          .catch(e => setError(e.message))
+          .finally(() => setLoading(false))
       })
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false))
-  }, [id, isEdit, isRu])
+      .catch(e => {
+        setError(e.message)
+        setLoading(false)
+      })
+  }, [id, isEdit, isRu, navigate])
 
   const setF = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
   const setV = k => v => setForm(f => ({ ...f, [k]: v }))

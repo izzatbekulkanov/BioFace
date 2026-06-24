@@ -33,12 +33,15 @@ import Tracking from './pages/Tracking'
 import BranchDetail from './pages/BranchDetail'
 import Profile          from './pages/Profile'
 import ContactMessages  from './pages/ContactMessages'
+import Feedbacks        from './pages/Feedbacks'
+import PrivacyPolicy    from './pages/PrivacyPolicy'
 import Salary           from './pages/Salary'
 import SalaryDetail     from './pages/SalaryDetail'
 import Kpi              from './pages/Kpi'
 import Cashflow         from './pages/Cashflow'
 import Accounts         from './pages/Accounts'
 import Tabel            from './pages/Tabel'
+import SalaryRates      from './pages/SalaryRates'
 import Versions         from './pages/Versions'
 import VersionForm      from './pages/VersionForm'
 import VersionDetail    from './pages/VersionDetail'
@@ -106,6 +109,7 @@ export default function App() {
               <Route path="/login"     element={<Login onLogin={handleLogin} />} />
               <Route path="/about"     element={<About />} />
               <Route path="/contact"   element={<Contact />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/map"       element={<MapView isLoggedIn={isLoggedIn} />} />
               <Route path="/dashboard"   element={isLoggedIn ? <Dashboard /> : <Navigate to="/login" replace />} />
               <Route path="/devices"     element={isLoggedIn ? <Devices />   : <Navigate to="/login" replace />} />
@@ -113,6 +117,7 @@ export default function App() {
               <Route path="/commands"        element={isLoggedIn ? <Commands />  : <Navigate to="/login" replace />} />
               <Route path="/settings"        element={isLoggedIn ? <Settings />     : <Navigate to="/login" replace />} />
               <Route path="/settings/messages" element={isLoggedIn ? <ContactMessages /> : <Navigate to="/login" replace />} />
+              <Route path="/settings/feedbacks" element={isLoggedIn ? <Feedbacks /> : <Navigate to="/login" replace />} />
               <Route path="/settings/isup"   element={isLoggedIn ? <IsupServer />   : <Navigate to="/login" replace />} />
               <Route path="/settings/redis"  element={isLoggedIn ? <RedisMonitor /> : <Navigate to="/login" replace />} />
               <Route path="/settings/api"    element={isLoggedIn ? <ApiHelper />    : <Navigate to="/login" replace />} />
@@ -142,6 +147,7 @@ export default function App() {
               <Route path="/finance/cashflow" element={isLoggedIn ? <Cashflow /> : <Navigate to="/login" replace />} />
               <Route path="/finance/accounts" element={isLoggedIn ? <Accounts /> : <Navigate to="/login" replace />} />
               <Route path="/finance/tabel"    element={isLoggedIn ? <Tabel />    : <Navigate to="/login" replace />} />
+              <Route path="/finance/rates"    element={isLoggedIn ? <SalaryRates /> : <Navigate to="/login" replace />} />
               <Route path="/profile"         element={isLoggedIn ? <Profile />        : <Navigate to="/login" replace />} />
               <Route path="/settings/versions"          element={isLoggedIn ? <Versions />      : <Navigate to="/login" replace />} />
               <Route path="/settings/versions/new"      element={isLoggedIn ? <VersionForm />   : <Navigate to="/login" replace />} />

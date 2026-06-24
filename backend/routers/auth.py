@@ -95,7 +95,7 @@ def _build_auth_user(user: User, db: Session | None = None) -> dict:
         "phone": user.phone or "",
         "display_name": display_name,
         "email": user.email,
-        "role": user.role.value if user.role else "",
+        "role": str(user.role or ""),
         "menu_permissions": resolve_user_menu_permissions(
             role=user.role,
             stored_permissions=user.menu_permissions,
@@ -529,7 +529,7 @@ def profile_dashboard(request: Request, db: Session = Depends(get_db)):
             "middle_name": user.middle_name or "",
             "email": user.email,
             "phone": user.phone or "",
-            "role": user.role.value if user.role else "",
+            "role": str(user.role or ""),
             "status": user.status or "active",
             "image_url": user.image_url or "",
             "google_oauth_enabled": bool(user.google_oauth_enabled),

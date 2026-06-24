@@ -48,6 +48,16 @@ export default function EmployeeDetail() {
   const toast = useToast()
   const confirm = useConfirm()
 
+  const [currentUser, setCurrentUser] = useState(null)
+  useEffect(() => {
+    fetch('/api/auth/me', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setCurrentUser(d) })
+      .catch(() => {})
+  }, [])
+  const role = (currentUser?.role || '').toLowerCase().replace(/_/g, '')
+  const canEdit = role !== 'buxgalter'
+
   const [employee, setEmployee] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -241,12 +251,16 @@ export default function EmployeeDetail() {
         backPath={backPath}
         right={
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => navigate(`/employees/${id}/edit`)} style={heroBtn('subtle')}>
-              <EditRegular fontSize={14} /> {isRu ? 'Изменить' : 'Tahrirlash'}
-            </button>
-            <button onClick={onDelete} style={heroBtn('danger')}>
-              <DeleteRegular fontSize={14} /> {isRu ? 'Удалить' : "O'chirish"}
-            </button>
+            {canEdit && (
+              <button onClick={() => navigate(`/employees/${id}/edit`)} style={heroBtn('subtle')}>
+                <EditRegular fontSize={14} /> {isRu ? 'Изменить' : 'Tahrirlash'}
+              </button>
+            )}
+            {canEdit && (
+              <button onClick={onDelete} style={heroBtn('danger')}>
+                <DeleteRegular fontSize={14} /> {isRu ? 'Удалить' : "O'chirish"}
+              </button>
+            )}
           </div>
         }
       />

@@ -19,6 +19,7 @@ import PageHero from '../components/PageHero'
 import Skeleton from '../components/Skeleton'
 import { useConfirm } from '../components/ConfirmDialog'
 import { useToast } from '../components/Toaster'
+import CustomSelect from '../components/CustomSelect'
 
 /**
  * Tizim foydalanuvchilari sahifasi.
@@ -41,6 +42,9 @@ const ROLES = [
   { value: 'KollejAdmin',     label_uz: 'Kollej Admini',        label_ru: 'Колледжский админ' },
   { value: 'TashkilotAdmin',  label_uz: 'Tashkilot Admini',     label_ru: 'Админ организации' },
   { value: 'KorxonaAdmin',    label_uz: 'Korxona Admini',       label_ru: 'Админ предприятия' },
+  { value: 'Kadr',            label_uz: 'Kadr bo\'limi',        label_ru: 'Кадровый специалист' },
+  { value: 'Buxgalter',       label_uz: 'Buxgalter',            label_ru: 'Бухгалтер' },
+  { value: 'Psixolog',        label_uz: 'Psixolog',             label_ru: 'Психолог' },
 ]
 
 export default function SystemUsers() {
@@ -465,9 +469,12 @@ function ApproveModal({ user, orgs, onClose, onSaved, isRu }) {
 
       <form onSubmit={onSubmit}>
         <Field label={isRu ? 'Роль' : 'Rol'} required>
-          <select value={role} onChange={e => setRole(e.target.value)} style={inpStyle}>
-            {ROLES.map(r => <option key={r.value} value={r.value}>{isRu ? r.label_ru : r.label_uz}</option>)}
-          </select>
+          <CustomSelect
+            value={role}
+            onChange={(val) => setRole(val)}
+            options={ROLES.map(r => ({ value: r.value, label: isRu ? r.label_ru : r.label_uz }))}
+            placeholder={isRu ? '— Rol tanlang —' : '— Rol tanlang —'}
+          />
         </Field>
 
         <div style={{ marginTop: 14 }}>
@@ -580,6 +587,9 @@ function RolePill({ role }) {
     KollejAdmin: '#06b6d4',
     TashkilotAdmin: '#f59e0b',
     KorxonaAdmin: '#ec4899',
+    Kadr: '#14b8a6',
+    Buxgalter: '#f97316',
+    Psixolog: '#8b5cf6',
   }
   const color = colorMap[role] || '#64748b'
   return (

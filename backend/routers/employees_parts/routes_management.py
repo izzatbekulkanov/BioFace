@@ -10,7 +10,7 @@ from sqlalchemy import String, and_, cast, exists, false, func, or_, true
 from sqlalchemy.orm import Session
 
 from core.database import get_db
-from core.models import Department, Device, Employee, EmployeeCameraLink, Organization, Position, Schedule, UserOrganizationLink, Branch, User, UserRole
+from core.models import Department, Device, Employee, EmployeeCameraLink, Organization, Position, Schedule, UserOrganizationLink, Branch, User, UserRole, FaceEmbedding
 from routers.employees_parts.catalogs import (
     UNSET,
     get_catalog_items_for_org,
@@ -114,7 +114,9 @@ def _serialize_employee_record(
 ) -> dict:
     schedule_payload = resolve_employee_schedule(employee)
 
-    if embedding_set is not None:
+    if not employee.image_url:
+        has_emb = False
+    elif embedding_set is not None:
         has_emb = int(employee.id) in embedding_set
     else:
         has_emb = len(employee.embeddings) > 0
@@ -768,7 +770,83 @@ def _employee_filter_options_payload(
         ],
     }
 
+
+@router.post("/api/employees/clear-images")
+def clear_employee_images(
+    request: Request,
+    db: Session = Depends(get_db),
+    organization_id: int = Body(..., embed=True),
+    min_size_kb: float = Body(10.0, embed=True),  # minimum file size threshold in KB
+):
+    """
+    SuperAdmin only: Sifatsiz (juda kichik) xodim rasmlarini o'chiradi.
+    Faqat local /static/uploads/... yo'lidagi rasmlarni tekshiradi.
+    Rasmni DB dan ham, serverdan ham tozalaydi.
+    """
+    auth_user = request.session.get("auth_user") or {}
+    role = str(auth_user.get("role") or "").strip().lower()
+    if role not in {"superadmin", "super_admin"}:
+        raise HTTPException(status_code=403, detail="Faqat SuperAdmin uchun ruxsat berilgan")
+
+    org = db.query(Organization).filter(Organization.id == organization_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Tashkilot topilmadi")
+
+    employees = db.query(Employee).filter(Employee.organization_id == organization_id).all()
+
+    cleared = 0
+    skipped = 0
+    errors = []
+    min_bytes = int(min_size_kb * 1024)
+
+    for emp in employees:
+        if not emp.image_url:
+            continue
+
+        # Faqat local static fayllarni tekshiramiz
+        url = emp.image_url.strip()
+        if not url.startswith("/static/") and not url.startswith("static/"):
+            skipped += 1
+            continue
+
+        # Fayl yo'lini aniqlash
+        rel_path = url.lstrip("/")  # "static/uploads/employees/xxx.jpg"
+        abs_path = os.path.join(os.path.dirname(__file__), "..", "..", rel_path)
+        abs_path = os.path.normpath(abs_path)
+
+        try:
+            if not os.path.isfile(abs_path):
+                # Fayl yo'q — DB dan ham tozalaymiz
+                emp.image_url = None
+                db.query(FaceEmbedding).filter(FaceEmbedding.employee_id == emp.id).delete()
+                cleared += 1
+                continue
+
+            file_size = os.path.getsize(abs_path)
+            if file_size < min_bytes:
+                # Sifatsiz rasm — faylni o'chirib, DB ni tozalaymiz
+                os.remove(abs_path)
+                emp.image_url = None
+                db.query(FaceEmbedding).filter(FaceEmbedding.employee_id == emp.id).delete()
+                cleared += 1
+            else:
+                skipped += 1
+        except Exception as e:
+            errors.append({"employee_id": emp.id, "error": str(e)})
+
+    db.commit()
+
+    return {
+        "ok": True,
+        "cleared": cleared,
+        "skipped": skipped,
+        "errors": errors,
+        "organization": org.name,
+    }
+
+
 @router.get("/api/employees/stats")
+
 def get_employees_stats(
     request: Request,
     db: Session = Depends(get_db),

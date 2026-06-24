@@ -16,7 +16,7 @@ from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 import models
 from database import engine, ensure_schema, SessionLocal
 from models import RequestLog
-from routers import auth, dashboard, webhook, cameras, employees, settings, organizations, users, system_monitor, planning, chat, versions, finance
+from routers import auth, dashboard, webhook, cameras, employees, settings, organizations, users, system_monitor, planning, chat, versions, finance, feedbacks
 from utils.time_utils import now_tashkent
 
 # Jadvallarni yaratish
@@ -53,6 +53,7 @@ PUBLIC_PATH_PREFIXES = (
     "/openapi.json",
     "/api/settings",      # Public branding settings (app name, logo)
     "/api/menu_settings", # Public branding settings
+    "/api/feedbacks/submit", # Public feedback submission from mobile app
 )
 
 PUBLIC_PATHS = frozenset({
@@ -64,6 +65,7 @@ PUBLIC_PATHS = frozenset({
     "/contact",
     "/about",
     "/map",
+    "/privacy-policy",
 })
 
 AUTH_PERMISSION_EXEMPT_PATHS = frozenset({
@@ -244,7 +246,20 @@ async def require_auth(request, call_next):
             auth_user["menu_permissions"] = menu_permissions
             request.session["auth_user"] = auth_user
 
-        if path not in AUTH_PERMISSION_EXEMPT_PATHS and not any(path.startswith(p) for p in AUTH_PERMISSION_EXEMPT_PREFIXES):
+        # Buxgalter xodimlarni va smena/jadvallarni o'chirish/tahrirlash/yaratish huquqiga ega emas
+        role = str(auth_user.get("role") or "").strip().lower()
+        if role == "buxgalter" and request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+            if (
+                path.startswith("/api/employees")
+                or path.startswith("/api/v1/employees")
+                or path.startswith("/api/schedules")
+            ):
+                return JSONResponse({"detail": "Forbidden: Buxgalter xodimlarni o'zgartira olmaydi"}, status_code=403)
+
+        is_exempt = (path in AUTH_PERMISSION_EXEMPT_PATHS) or (
+            any(path.startswith(p) for p in AUTH_PERMISSION_EXEMPT_PREFIXES) and path != "/api/organizations/tracking-data"
+        )
+        if not is_exempt:
             required_menu_key = resolve_menu_key_for_path(path)
             if required_menu_key and not user_has_menu_access(menu_permissions, required_menu_key):
                 if path.startswith("/api/"):
@@ -280,6 +295,19 @@ app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 
 @app.on_event("startup")
 async def startup_background_services():
+    # Clean up stale face embeddings on startup
+    from database import SessionLocal
+    from utils.face_embeddings import cleanup_stale_embeddings
+    db = SessionLocal()
+    try:
+        deleted = cleanup_stale_embeddings(db)
+        if deleted > 0:
+            print(f"[STARTUP] Cleaned up {deleted} stale face embeddings.")
+    except Exception as _e:
+        print(f"[STARTUP] Failed to cleanup embeddings on startup: {_e}")
+    finally:
+        db.close()
+
     start_attendance_monitor()
     start_self_healing_monitor()
     start_ai_process()
@@ -351,6 +379,7 @@ app.include_router(planning.router, tags=["Planning API"])
 app.include_router(chat.router, tags=["Chat API"])
 app.include_router(versions.router, tags=["Versions API"])
 app.include_router(finance.router, tags=["Finance API"])
+app.include_router(feedbacks.router, tags=["Feedbacks API"])
 
 # --- Frontend SPA Integration ---
 from fastapi.staticfiles import StaticFiles

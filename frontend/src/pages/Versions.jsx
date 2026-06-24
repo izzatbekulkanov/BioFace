@@ -59,11 +59,22 @@ export default function VersionsList() {
   const confirm = useConfirm()
   const toast = useToast()
 
+  const [currentUser, setCurrentUser] = useState(null)
   const [versions, setVersions] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
   const aliveRef = useRef(true)
+
+  useEffect(() => {
+    fetch('/api/auth/me', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setCurrentUser(d) })
+      .catch(() => {})
+  }, [])
+
+  const role = (currentUser?.role || '').toLowerCase().replace(/_/g, '')
+  const isSuper = role === 'superadmin'
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setRefreshing(true)
@@ -128,18 +139,20 @@ export default function VersionsList() {
               <ArrowSyncRegular fontSize={15} style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
               {isRu ? 'Yangilash' : 'Yangilash'}
             </button>
-            <button
-              onClick={() => navigate('/settings/versions/new')}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 7,
-                padding: '8px 16px', borderRadius: 8,
-                background: 'var(--accent)', border: 'none',
-                color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-              }}
-            >
-              <AddRegular fontSize={15} />
-              {isRu ? 'Versiya qo\'shish' : 'Versiya qo\'shish'}
-            </button>
+            {isSuper && (
+              <button
+                onClick={() => navigate('/settings/versions/new')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 7,
+                  padding: '8px 16px', borderRadius: 8,
+                  background: 'var(--accent)', border: 'none',
+                  color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                <AddRegular fontSize={15} />
+                {isRu ? 'Versiya qo\'shish' : 'Versiya qo\'shish'}
+              </button>
+            )}
           </div>
         }
       />
@@ -217,13 +230,15 @@ export default function VersionsList() {
               <div style={{ fontSize: 13, color: 'var(--text-4)', marginBottom: 20 }}>
                 {isRu ? 'Birinchi versiyani qo\'shing' : 'Birinchi versiyani qo\'shing'}
               </div>
-              <button
-                onClick={() => navigate('/settings/versions/new')}
-                style={{ ...accentBtn, margin: '0 auto' }}
-              >
-                <AddRegular fontSize={14} />
-                {isRu ? 'Versiya qo\'shish' : 'Versiya qo\'shish'}
-              </button>
+              {isSuper && (
+                <button
+                  onClick={() => navigate('/settings/versions/new')}
+                  style={{ ...accentBtn, margin: '0 auto' }}
+                >
+                  <AddRegular fontSize={14} />
+                  {isRu ? 'Versiya qo\'shish' : 'Versiya qo\'shish'}
+                </button>
+              )}
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -232,6 +247,7 @@ export default function VersionsList() {
                   key={v.id}
                   v={v}
                   isRu={isRu}
+                  isSuper={isSuper}
                   isLast={idx === versions.length - 1}
                   onView={() => navigate(`/settings/versions/${v.id}`)}
                   onEdit={() => navigate(`/settings/versions/${v.id}/edit`)}
@@ -247,7 +263,7 @@ export default function VersionsList() {
 }
 
 // ── VersionRow ────────────────────────────────────────────────────────────────
-function VersionRow({ v, isRu, isLast, onView, onEdit, onDelete }) {
+function VersionRow({ v, isRu, isSuper, isLast, onView, onEdit, onDelete }) {
   const [hov, setHov] = useState(false)
   return (
     <div
@@ -295,14 +311,16 @@ function VersionRow({ v, isRu, isLast, onView, onEdit, onDelete }) {
       <StatusBadge status={v.status} isRu={isRu} />
 
       {/* Actions */}
-      <div style={{ display: 'flex', gap: 5 }} onClick={e => e.stopPropagation()}>
-        <IconBtn onClick={onEdit} title={isRu ? 'Tahrirlash' : 'Tahrirlash'}>
-          <EditRegular fontSize={14} />
-        </IconBtn>
-        <IconBtn onClick={onDelete} title={isRu ? 'O\'chirish' : 'O\'chirish'} danger>
-          <DeleteRegular fontSize={14} />
-        </IconBtn>
-      </div>
+      {isSuper && (
+        <div style={{ display: 'flex', gap: 5 }} onClick={e => e.stopPropagation()}>
+          <IconBtn onClick={onEdit} title={isRu ? 'Tahrirlash' : 'Tahrirlash'}>
+            <EditRegular fontSize={14} />
+          </IconBtn>
+          <IconBtn onClick={onDelete} title={isRu ? 'O\'chirish' : 'O\'chirish'} danger>
+            <DeleteRegular fontSize={14} />
+          </IconBtn>
+        </div>
+      )}
     </div>
   )
 }
