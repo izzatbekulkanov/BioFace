@@ -389,15 +389,7 @@ export default function AttendanceGroups() {
                 />
               </div>
             )}
-            {!isSuperAdmin && orgs.length === 1 && (
-              <div style={{ flex: '1 1 200px' }}>
-                <FieldLabel>{isRu ? 'Организация' : 'Tashkilot'}</FieldLabel>
-                <div style={{ ...inpStyle, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-1)', fontWeight: 600, cursor: 'default' }}>
-                  <BuildingRegular fontSize={14} style={{ color: 'var(--accent)', flexShrink: 0 }} />
-                  {orgs[0].name}
-                </div>
-              </div>
-            )}
+
 
             {/* Filial filtri */}
             {(isSuperAdmin || branchesByOrg.length > 0) && (
