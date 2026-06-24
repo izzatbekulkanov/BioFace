@@ -213,7 +213,9 @@ def _build_dashboard_metrics(request: Request, db: Session) -> dict:
     linked_user_ids: set[int] = set()
     for row in (
         db.query(UserOrganizationLink.user_id, UserOrganizationLink.organization_id)
+        .join(User, UserOrganizationLink.user_id == User.id)
         .filter(UserOrganizationLink.organization_id.in_(org_ids))
+        .filter(User.is_staff == True)
         .all()
     ):
         if row.organization_id is None or row.user_id is None:
