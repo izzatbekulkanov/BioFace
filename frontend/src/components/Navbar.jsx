@@ -914,14 +914,13 @@ export default function Navbar({ isLoggedIn, onLogout, onLangChange }) {
     if (onLogout) onLogout()
     navigate('/login')
   }
-
+  const role = (currentUser?.role || '').toLowerCase().replace(/_/g, '')
+  const isSuper = role === 'superadmin'
   const links = isLoggedIn
     ? (currentUser
         ? PRIVATE_LINKS.filter(id => isSuper || (currentUser.menu_permissions || []).includes(id))
         : PRIVATE_LINKS)
     : PUBLIC_LINKS
-  const role = (currentUser?.role || '').toLowerCase().replace(/_/g, '')
-  const isSuper = role === 'superadmin'
 
   return (
     <>
