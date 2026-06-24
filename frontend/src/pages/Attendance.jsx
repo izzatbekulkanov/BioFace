@@ -413,14 +413,13 @@ export default function Attendance() {
         {/* Toolbar */}
         <div className="attendance-card" style={{ ...cardStyle, marginBottom: 20 }}>
           <div className="attendance-toolbar">
-            <div style={{ flex: '1 1 240px', minWidth: 200 }}>
-              <FieldLabel>{isRu ? 'Поиск' : 'Qidiruv'}</FieldLabel>
-              <input
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder={isRu ? 'Имя, ID, камера...' : 'Ism, ID, kamera...'}
-                style={inpStyle}
+            <div style={{ flex: '1 1 180px' }}>
+              <FieldLabel>{isRu ? 'Смена' : 'Smena'}</FieldLabel>
+              <CustomSelect
+                value={shiftFilter}
+                onChange={setShiftFilter}
+                options={shiftOptions}
+                placeholder={isRu ? 'Все смены' : 'Barcha smenalar'}
               />
             </div>
 
@@ -478,13 +477,14 @@ export default function Attendance() {
               />
             </div>
 
-            <div style={{ flex: '1 1 180px' }}>
-              <FieldLabel>{isRu ? 'Смена' : 'Smena'}</FieldLabel>
-              <CustomSelect
-                value={shiftFilter}
-                onChange={setShiftFilter}
-                options={shiftOptions}
-                placeholder={isRu ? 'Все смены' : 'Barcha smenalar'}
+            <div style={{ flex: '1 1 240px', minWidth: 200 }}>
+              <FieldLabel>{isRu ? 'Поиск' : 'Qidiruv'}</FieldLabel>
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder={isRu ? 'Имя, ID, kamera...' : 'Ism, ID, kamera...'}
+                style={inpStyle}
               />
             </div>
 
