@@ -275,17 +275,17 @@ def resolve_user_menu_permissions(*, role: Any, stored_permissions: Any = None, 
     
     if user_id is not None and db is not None:
         try:
-            from models import User, UserRole, Device
+            from models import User, Device
             user = db.query(User).filter(User.id == user_id).first()
             if user and normalize_role_value(user.role) != UserRole.super_admin.value:
                 org_ids = [link.organization_id for link in user.organization_links]
                 if user.organization_id and user.organization_id not in org_ids:
                     org_ids.append(user.organization_id)
-                
                 has_cameras = False
                 if org_ids:
-                    has_cameras = db.query(Device.id).filter(Device.organization_id.in_(org_ids)).first() is not None
-                
+                    has_cameras = db.query(Device.id).filter(
+                        Device.organization_id.in_(org_ids)
+                    ).first() is not None
                 if not has_cameras:
                     permissions = [p for p in permissions if p not in ("devices", "commands")]
         except Exception:
