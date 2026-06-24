@@ -61,7 +61,7 @@ function NavBtn({ id, active, onClick }) {
 }
 
 // Dropdown menu for Attendance section
-function AttendanceDropdown({ active }) {
+function AttendanceDropdown({ currentUser, active }) {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
@@ -77,11 +77,16 @@ function AttendanceDropdown({ active }) {
     return () => document.removeEventListener('mousedown', handleOutside)
   }, [open])
 
+  const role = (currentUser?.role || '').toLowerCase().replace(/_/g, '')
+  const isSuper = role === 'superadmin'
+
   const items = [
-    { id: 'attendance', label: isRu ? 'Журнал событий' : 'Voqealar jurnali', icon: <HistoryRegular fontSize={15} />, path: '/attendance' },
-    { id: 'attendanceEmployees', label: isRu ? 'В разрезе сотрудников' : 'Xodimlar kesimida', icon: <PeopleRegular fontSize={15} />, path: '/attendance/employees' },
-    { id: 'psychology', label: isRu ? 'Психологический портрет' : 'Psixologik portret', icon: <BrainCircuitRegular fontSize={15} />, path: '/psychology' },
-  ]
+    { id: 'attendance', label: isRu ? 'Журнал событий' : 'Voqealar jurnali', icon: <HistoryRegular fontSize={15} />, path: '/attendance', perm: 'attendance' },
+    { id: 'attendanceEmployees', label: isRu ? 'В разрезе сотрудников' : 'Xodimlar kesimida', icon: <PeopleRegular fontSize={15} />, path: '/attendance/employees', perm: 'attendance' },
+    { id: 'psychology', label: isRu ? 'Психологический портрет' : 'Psixologik portret', icon: <BrainCircuitRegular fontSize={15} />, path: '/psychology', perm: 'psychological_portrait' },
+  ].filter(item => !currentUser || isSuper || (currentUser?.menu_permissions || []).includes(item.perm))
+
+  if (currentUser && items.length === 0) return null
 
   return <NavDropdown
     label={isRu ? 'Посещаемость' : 'Davomat'}
@@ -115,10 +120,12 @@ function UsersDropdown({ currentUser, active }) {
   const role = (currentUser?.role || '').toLowerCase().replace(/_/g, '')
   const isSuper = role === 'superadmin'
   const items = [
-    { id: 'usersAdmins',  label: t('nav.usersAdmins'),  icon: <ShieldRegular fontSize={15} />,         path: '/users' },
-    { id: 'usersStaff',   label: t('nav.usersStaff'),   icon: <PeopleRegular fontSize={15} />,         path: '/users/staff' },
-    { id: 'usersStudents',label: t('nav.usersStudents'),icon: <HatGraduationRegular fontSize={15} />,  path: '/users/students' },
-  ].filter(item => isSuper || item.id !== 'usersAdmins')
+    { id: 'usersAdmins',  label: t('nav.usersAdmins'),  icon: <ShieldRegular fontSize={15} />,         path: '/users', perm: 'users' },
+    { id: 'usersStaff',   label: t('nav.usersStaff'),   icon: <PeopleRegular fontSize={15} />,         path: '/users/staff', perm: 'staff' },
+    { id: 'usersStudents',label: t('nav.usersStudents'),icon: <HatGraduationRegular fontSize={15} />,  path: '/users/students', perm: 'students' },
+  ].filter(item => !currentUser || isSuper || (currentUser?.menu_permissions || []).includes(item.perm))
+
+  if (currentUser && items.length === 0) return null
 
   return <NavDropdown
     label={t('nav.users')}
@@ -134,7 +141,7 @@ function UsersDropdown({ currentUser, active }) {
 }
 
 // Dropdown menu for Organizations section
-function OrganizationsDropdown({ active }) {
+function OrganizationsDropdown({ currentUser, active }) {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
@@ -150,10 +157,15 @@ function OrganizationsDropdown({ active }) {
     return () => document.removeEventListener('mousedown', handleOutside)
   }, [open])
 
+  const role = (currentUser?.role || '').toLowerCase().replace(/_/g, '')
+  const isSuper = role === 'superadmin'
+
   const items = [
-    { id: 'organizations', label: isRu ? 'Организации' : 'Tashkilotlar', icon: <BuildingRegular fontSize={15} />, path: '/organizations' },
-    { id: 'shifts', label: isRu ? 'Смены' : 'Smenalar', icon: <CalendarClockRegular fontSize={15} />, path: '/shifts' },
-  ]
+    { id: 'organizations', label: isRu ? 'Организации' : 'Tashkilotlar', icon: <BuildingRegular fontSize={15} />, path: '/organizations', perm: 'organizations' },
+    { id: 'shifts', label: isRu ? 'Смены' : 'Smenalar', icon: <CalendarClockRegular fontSize={15} />, path: '/shifts', perm: 'shifts' },
+  ].filter(item => !currentUser || isSuper || (currentUser?.menu_permissions || []).includes(item.perm))
+
+  if (currentUser && items.length === 0) return null
 
   return <NavDropdown
     label={isRu ? 'Организации' : 'Tashkilotlar'}
@@ -903,7 +915,11 @@ export default function Navbar({ isLoggedIn, onLogout, onLangChange }) {
     navigate('/login')
   }
 
-  const links = isLoggedIn ? PRIVATE_LINKS : PUBLIC_LINKS
+  const links = isLoggedIn
+    ? (currentUser
+        ? PRIVATE_LINKS.filter(id => isSuper || (currentUser.menu_permissions || []).includes(id))
+        : PRIVATE_LINKS)
+    : PUBLIC_LINKS
   const role = (currentUser?.role || '').toLowerCase().replace(/_/g, '')
   const isSuper = role === 'superadmin'
 
@@ -957,9 +973,9 @@ export default function Navbar({ isLoggedIn, onLogout, onLangChange }) {
           ))}
           {isLoggedIn && (
             <>
-              <AttendanceDropdown active={location.pathname.startsWith('/attendance') || location.pathname.startsWith('/psychology')} />
+              <AttendanceDropdown currentUser={currentUser} active={location.pathname.startsWith('/attendance') || location.pathname.startsWith('/psychology')} />
               <UsersDropdown currentUser={currentUser} active={location.pathname.startsWith('/users')} />
-              <OrganizationsDropdown active={location.pathname.startsWith('/organizations') || location.pathname.startsWith('/shifts')} />
+              <OrganizationsDropdown currentUser={currentUser} active={location.pathname.startsWith('/organizations') || location.pathname.startsWith('/shifts')} />
               <FinanceDropdown active={location.pathname.startsWith('/finance')} />
               {isSuper && <SettingsDropdown active={location.pathname.startsWith('/settings') || location.pathname.startsWith('/middleware-logs')} />}
             </>
@@ -1394,111 +1410,125 @@ export default function Navbar({ isLoggedIn, onLogout, onLangChange }) {
             })}
 
             {/* Attendance group if logged in */}
-            {isLoggedIn && (
-              <div style={{ marginTop: 10 }}>
-                <div style={{
-                  fontSize: 11, fontWeight: 700, color: 'rgba(255, 255, 255, 0.35)',
-                  textTransform: 'uppercase', letterSpacing: 0.8, padding: '0 14px 6px'
-                }}>
-                  {isRu ? 'Посещаемость' : 'Davomat'}
+            {isLoggedIn && (() => {
+              const attendanceItems = [
+                { id: 'attendance', label: isRu ? 'Посещаемость' : 'Davomat', icon: <ClipboardTaskListLtrRegular fontSize={14} />, path: '/attendance', perm: 'attendance' },
+                { id: 'psychology', label: isRu ? 'Психологический портрет' : 'Psixologik portret', icon: <BrainCircuitRegular fontSize={14} />, path: '/psychology', perm: 'psychological_portrait' },
+              ].filter(item => isSuper || (currentUser?.menu_permissions || []).includes(item.perm));
+
+              if (currentUser && attendanceItems.length === 0) return null;
+
+              return (
+                <div style={{ marginTop: 10 }}>
+                  <div style={{
+                    fontSize: 11, fontWeight: 700, color: 'rgba(255, 255, 255, 0.35)',
+                    textTransform: 'uppercase', letterSpacing: 0.8, padding: '0 14px 6px'
+                  }}>
+                    {isRu ? 'Посещаемость' : 'Davomat'}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {attendanceItems.map(item => {
+                      const active = location.pathname === item.path;
+                      return (
+                        <button key={item.id} onClick={() => { navigate(item.path); setMenuOpen(false); }}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 10,
+                            padding: '8px 14px 8px 24px', borderRadius: 8, border: 'none',
+                            background: active ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+                            color: active ? '#fff' : 'rgba(255, 255, 255, 0.6)',
+                            fontSize: 13.5, cursor: 'pointer', textAlign: 'left',
+                          }}
+                        >
+                          {item.icon}
+                          {item.label}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {[
-                    { id: 'attendance', label: isRu ? 'Посещаемость' : 'Davomat', icon: <ClipboardTaskListLtrRegular fontSize={14} />, path: '/attendance' },
-                    { id: 'psychology', label: isRu ? 'Психологический портрет' : 'Psixologik portret', icon: <BrainCircuitRegular fontSize={14} />, path: '/psychology' },
-                  ].map(item => {
-                    const active = location.pathname === item.path;
-                    return (
-                      <button key={item.id} onClick={() => { navigate(item.path); setMenuOpen(false); }}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 10,
-                          padding: '8px 14px 8px 24px', borderRadius: 8, border: 'none',
-                          background: active ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-                          color: active ? '#fff' : 'rgba(255, 255, 255, 0.6)',
-                          fontSize: 13.5, cursor: 'pointer', textAlign: 'left',
-                        }}
-                      >
-                        {item.icon}
-                        {item.label}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Users group if logged in */}
-            {isLoggedIn && (
-              <div style={{ marginTop: 10 }}>
-                <div style={{
-                  fontSize: 11, fontWeight: 700, color: 'rgba(255, 255, 255, 0.35)',
-                  textTransform: 'uppercase', letterSpacing: 0.8, padding: '0 14px 6px'
-                }}>
-                  {t('nav.users')}
+            {isLoggedIn && (() => {
+              const userItems = [
+                { id: 'usersAdmins', label: t('nav.usersAdmins'), icon: <ShieldRegular fontSize={14} />, path: '/users', perm: 'users' },
+                { id: 'usersStaff', label: t('nav.usersStaff'), icon: <PeopleRegular fontSize={14} />, path: '/users/staff', perm: 'staff' },
+                { id: 'usersStudents', label: t('nav.usersStudents'), icon: <HatGraduationRegular fontSize={14} />, path: '/users/students', perm: 'students' },
+              ].filter(item => isSuper || (currentUser?.menu_permissions || []).includes(item.perm));
+
+              if (currentUser && userItems.length === 0) return null;
+
+              return (
+                <div style={{ marginTop: 10 }}>
+                  <div style={{
+                    fontSize: 11, fontWeight: 700, color: 'rgba(255, 255, 255, 0.35)',
+                    textTransform: 'uppercase', letterSpacing: 0.8, padding: '0 14px 6px'
+                  }}>
+                    {t('nav.users')}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {userItems.map(item => {
+                      const active = location.pathname === item.path;
+                      return (
+                        <button key={item.id} onClick={() => { navigate(item.path); setMenuOpen(false); }}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 10,
+                            padding: '8px 14px 8px 24px', borderRadius: 8, border: 'none',
+                            background: active ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+                            color: active ? '#fff' : 'rgba(255, 255, 255, 0.6)',
+                            fontSize: 13.5, cursor: 'pointer', textAlign: 'left',
+                          }}
+                        >
+                          {item.icon}
+                          {item.label}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {[
-                    { id: 'usersAdmins', label: t('nav.usersAdmins'), icon: <ShieldRegular fontSize={14} />, path: '/users' },
-                    { id: 'usersStaff', label: t('nav.usersStaff'), icon: <PeopleRegular fontSize={14} />, path: '/users/staff' },
-                    { id: 'usersStudents', label: t('nav.usersStudents'), icon: <HatGraduationRegular fontSize={14} />, path: '/users/students' },
-                  ].filter(item => {
-                    const r = (currentUser?.role || '').toLowerCase().replace(/_/g, '')
-                    return r === 'superadmin' || item.id !== 'usersAdmins'
-                  })
-                   .map(item => {
-                    const active = location.pathname === item.path;
-                    return (
-                      <button key={item.id} onClick={() => { navigate(item.path); setMenuOpen(false); }}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 10,
-                          padding: '8px 14px 8px 24px', borderRadius: 8, border: 'none',
-                          background: active ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-                          color: active ? '#fff' : 'rgba(255, 255, 255, 0.6)',
-                          fontSize: 13.5, cursor: 'pointer', textAlign: 'left',
-                        }}
-                      >
-                        {item.icon}
-                        {item.label}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Organizations group if logged in */}
-            {isLoggedIn && (
-              <div style={{ marginTop: 10 }}>
-                <div style={{
-                  fontSize: 11, fontWeight: 700, color: 'rgba(255, 255, 255, 0.35)',
-                  textTransform: 'uppercase', letterSpacing: 0.8, padding: '0 14px 6px'
-                }}>
-                  {isRu ? 'Организации' : 'Tashkilotlar'}
+            {isLoggedIn && (() => {
+              const orgItems = [
+                { id: 'organizations', label: isRu ? 'Организации' : 'Tashkilotlar', icon: <BuildingRegular fontSize={14} />, path: '/organizations', perm: 'organizations' },
+                { id: 'shifts', label: isRu ? 'Смены' : 'Smenalar', icon: <CalendarClockRegular fontSize={14} />, path: '/shifts', perm: 'shifts' },
+              ].filter(item => isSuper || (currentUser?.menu_permissions || []).includes(item.perm));
+
+              if (currentUser && orgItems.length === 0) return null;
+
+              return (
+                <div style={{ marginTop: 10 }}>
+                  <div style={{
+                    fontSize: 11, fontWeight: 700, color: 'rgba(255, 255, 255, 0.35)',
+                    textTransform: 'uppercase', letterSpacing: 0.8, padding: '0 14px 6px'
+                  }}>
+                    {isRu ? 'Организации' : 'Tashkilotlar'}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {orgItems.map(item => {
+                      const active = location.pathname === item.path;
+                      return (
+                        <button key={item.id} onClick={() => { navigate(item.path); setMenuOpen(false); }}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 10,
+                            padding: '8px 14px 8px 24px', borderRadius: 8, border: 'none',
+                            background: active ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+                            color: active ? '#fff' : 'rgba(255, 255, 255, 0.6)',
+                            fontSize: 13.5, cursor: 'pointer', textAlign: 'left',
+                          }}
+                        >
+                          {item.icon}
+                          {item.label}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {[
-                    { id: 'organizations', label: isRu ? 'Организации' : 'Tashkilotlar', icon: <BuildingRegular fontSize={14} />, path: '/organizations' },
-                    { id: 'shifts', label: isRu ? 'Смены' : 'Smenalar', icon: <CalendarClockRegular fontSize={14} />, path: '/shifts' },
-                  ].map(item => {
-                    const active = location.pathname === item.path;
-                    return (
-                      <button key={item.id} onClick={() => { navigate(item.path); setMenuOpen(false); }}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 10,
-                          padding: '8px 14px 8px 24px', borderRadius: 8, border: 'none',
-                          background: active ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-                          color: active ? '#fff' : 'rgba(255, 255, 255, 0.6)',
-                          fontSize: 13.5, cursor: 'pointer', textAlign: 'left',
-                        }}
-                      >
-                        {item.icon}
-                        {item.label}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Finance group if logged in */}
             {isLoggedIn && (

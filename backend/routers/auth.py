@@ -4,7 +4,7 @@ from urllib.parse import urlencode
 
 import bcrypt
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, File, UploadFile
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy import func, or_
@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 import config.system_config as system_config  # noqa: F401  # loads .env values before OAuth settings are read
 from utils.access_control import resolve_user_menu_permissions
 from database import get_db
-from models import User, Organization, UserOrganizationLink, Device, RequestLog
+from models import User, Organization, UserOrganizationLink, Device, RequestLog, Employee, FaceEmbedding
 from utils.menu_utils import get_menu_data
 from utils.translations import get_translations
 
@@ -542,3 +542,119 @@ def profile_dashboard(request: Request, db: Session = Depends(get_db)):
         },
     }
 
+
+
+@router.post("/api/profile/update-avatar")
+async def update_profile_avatar(
+    request: Request,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    import shutil
+    import time
+    
+    # 1. Auth check
+    auth_user = request.session.get("auth_user")
+    if not auth_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    user = db.query(User).filter(User.id == auth_user["id"]).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    # 2. File saving
+    upload_dir = "/home/smartgate/BioFace/backend/static/uploads/avatars"
+    os.makedirs(upload_dir, exist_ok=True)
+
+    file_ext = os.path.splitext(file.filename)[1] if file.filename else ".jpg"
+    filename = f"{user.name}_{int(time.time())}{file_ext}"
+    dest_path = os.path.join(upload_dir, filename)
+
+    try:
+        with open(dest_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Faylni saqlashda xatolik: {str(e)}")
+
+    # 3. Call AI microservice to check if a face exists and generate embedding
+    AI_SERVICE_URL = "http://127.0.0.1:7690"
+    try:
+        async with httpx.AsyncClient() as client:
+            res = await client.post(
+                f"{AI_SERVICE_URL}/generate-embedding",
+                json={"image_path": dest_path},
+                timeout=15.0
+            )
+            
+        if res.status_code != 200:
+            if os.path.exists(dest_path):
+                os.remove(dest_path)
+            raise HTTPException(status_code=400, detail="Yuzni aniqlash xizmati xatolik qaytardi")
+
+        data = res.json()
+        if not data.get("ok"):
+            if os.path.exists(dest_path):
+                os.remove(dest_path)
+            raise HTTPException(status_code=400, detail=data.get("error", "Rasmda yuz aniqlanmadi. Iltimos, boshqa rasm yuklang."))
+
+        embedding_data = data["embedding"]
+        confidence = data["confidence"]
+
+    except httpx.RequestError as e:
+        if os.path.exists(dest_path):
+            os.remove(dest_path)
+        raise HTTPException(status_code=500, detail=f"AI xizmati bilan bog'lanib bo'lmadi: {str(e)}")
+
+    # 4. Save to Database
+    relative_url = f"/static/uploads/avatars/{filename}"
+    
+    # Update User image
+    user.image_url = relative_url
+    
+    # Update corresponding Employee (if exists by matching User.name == Employee.personal_id)
+    employee = db.query(Employee).filter(Employee.personal_id == user.name).first()
+    
+    if employee:
+        employee.image_url = relative_url
+        
+        # Save FaceEmbedding for Employee
+        existing_emb = db.query(FaceEmbedding).filter(FaceEmbedding.employee_id == employee.id).first()
+        if existing_emb:
+            existing_emb.embedding_data = embedding_data
+            existing_emb.confidence = confidence
+            existing_emb.model_version = "insightface_buffalo_l_service"
+        else:
+            new_emb = FaceEmbedding(
+                employee_id=employee.id,
+                embedding_data=embedding_data,
+                confidence=confidence,
+                model_version="insightface_buffalo_l_service"
+            )
+            db.add(new_emb)
+            
+    # Save FaceEmbedding for User (just in case)
+    existing_user_emb = db.query(FaceEmbedding).filter(FaceEmbedding.user_id == user.id).first()
+    if existing_user_emb:
+        existing_user_emb.embedding_data = embedding_data
+        existing_user_emb.confidence = confidence
+        existing_user_emb.model_version = "insightface_buffalo_l_service"
+    else:
+        new_user_emb = FaceEmbedding(
+            user_id=user.id,
+            embedding_data=embedding_data,
+            confidence=confidence,
+            model_version="insightface_buffalo_l_service"
+        )
+        db.add(new_user_emb)
+
+    db.commit()
+
+    # Update session cache
+    auth_user["image_url"] = relative_url
+    request.session["auth_user"] = auth_user
+
+    return {
+        "ok": True,
+        "message": "Profil rasmi va yuz embeddingi muvaffaqiyatli yangilandi",
+        "avatar_url": relative_url
+    }
