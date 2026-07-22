@@ -188,12 +188,12 @@ def get_tracking_data(
             else:
                 in_working_hours = now_time >= start_time or now_time <= end_time
                 
-        lat = emp.last_latitude if in_working_hours else None
-        lng = emp.last_longitude if in_working_hours else None
-        loc_time = emp.last_location_time.isoformat() if (emp.last_location_time and in_working_hours) else None
+        lat = emp.last_latitude
+        lng = emp.last_longitude
+        loc_time = emp.last_location_time.isoformat() if emp.last_location_time else None
         
         is_online = False
-        if in_working_hours and emp.last_location_time:
+        if emp.last_location_time:
             diff = datetime.now() - emp.last_location_time
             if diff.total_seconds() < 600:  # 10 minutes
                 is_online = True

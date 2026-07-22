@@ -172,7 +172,7 @@ export default function CameraDetail() {
   const [f, setF] = useState({
     name: '', location: '', model: '', mac_address: '', serial_number: '',
     isup_device_id: '', username: 'admin', isup_password: '', password: '',
-    max_memory: '', organization_id: '', direction: '',
+    max_memory: '', min_face_confidence: '0.40', organization_id: '', direction: '',
   })
 
   const backPath = cam?.organization_id ? `/devices?org=${cam.organization_id}` : '/devices'
@@ -212,6 +212,7 @@ export default function CameraDetail() {
         isup_password:  data.isup_password || '',
         password:       '',
         max_memory:     data.max_memory || '',
+        min_face_confidence: data.min_face_confidence != null ? String(data.min_face_confidence) : '0.40',
         organization_id: data.organization_id || '',
         direction:      data.direction || '',
         webhook_target_url: data.webhook_target_url || '',
@@ -252,6 +253,7 @@ export default function CameraDetail() {
       username: f.username.trim() || null,
       isup_password: f.isup_password.trim() || null,
       max_memory: parseInt(f.max_memory) || null,
+      min_face_confidence: parseFloat(f.min_face_confidence) || 0.40,
       organization_id: f.organization_id ? parseInt(f.organization_id) : null,
       direction: f.direction || '',
       webhook_target_url: f.webhook_target_url.trim() || null,
@@ -574,6 +576,12 @@ export default function CameraDetail() {
               </Field>
               <Field label={isRu ? "Максимальный лимит памяти (кол-во лиц)" : "Maksimal xotira limiti (yuzlar soni)"} span={2}>
                 <input style={inp} type="number" min="0" max="50000" value={f.max_memory} onChange={update('max_memory')} placeholder="1500" />
+              </Field>
+              <Field label={isRu ? "Минимальная уверенность Face ID" : "Minimal Face ID confidence"} span={2}>
+                <input style={inp} type="number" min="0.10" max="0.95" step="0.01" value={f.min_face_confidence} onChange={update('min_face_confidence')} placeholder="0.40" />
+                <div style={{ fontSize: 11, color: 'var(--text-4)', marginTop: 4 }}>
+                  {isRu ? 'Например: 0.40 = 40%. Ниже этого события попадут на подтверждение.' : 'Masalan: 0.40 = 40%. Bundan past eventlar tasdiqlashga tushadi.'}
+                </div>
               </Field>
             </div>
           </div>

@@ -6,9 +6,21 @@ export default function PrivacyPolicy() {
   const { i18n } = useTranslation()
   const isRu = i18n.language === 'ru'
   const [activeTab, setActiveTab] = useState('overview')
+  const [scrollProgress, setScrollProgress] = useState(0)
 
   useEffect(() => {
     window.scrollTo(0, 0)
+
+    const handleScroll = () => {
+      const totalHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight
+      if (totalHeight > 0) {
+        const progress = (window.scrollY / totalHeight) * 100
+        setScrollProgress(progress)
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
   const sections = [
@@ -189,7 +201,20 @@ export default function PrivacyPolicy() {
   }
 
   return (
-    <div style={{ minHeight: 'calc(100vh - 52px)', background: 'var(--bg)', color: 'var(--text-1)', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: 'calc(100vh - 52px)', background: 'var(--bg)', color: 'var(--text-1)', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+      
+      {/* Scroll Progress Bar */}
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: `${scrollProgress}%`,
+        height: '4px',
+        background: 'var(--accent)',
+        zIndex: 99999,
+        transition: 'width 0.08s ease'
+      }} />
+
       {/* Top Banner */}
       <div style={{
         background: 'linear-gradient(135deg, var(--accent) 0%, #1e1e38 100%)',
@@ -217,6 +242,61 @@ export default function PrivacyPolicy() {
               ? 'Как мы защищаем ваши персональные и биометрические данные в системе BioFace' 
               : 'BioFace tizimida shaxsiy va biometrik maʼlumotlaringizni qanday himoya qilishimiz haqida batafsil maʼlumot'}
           </p>
+        </div>
+      </div>
+
+      {/* Summary Cards Panel */}
+      <div style={{ maxWidth: 1200, width: '100%', margin: '30px auto 10px', padding: '0 24px', boxSizing: 'border-box' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+          
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px', display: 'flex', gap: '16px', alignItems: 'flex-start', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: 'rgba(99, 102, 241, 0.15)', display: 'flex', alignItems: 'center', justifySelf: 'center', justifyContent: 'center', color: '#818cf8', flexShrink: 0 }}>
+              <LockClosedRegular fontSize={20} />
+            </div>
+            <div>
+              <h4 style={{ margin: '0 0 6px 0', fontSize: '14px', fontWeight: 700, color: 'var(--white)' }}>
+                {isRu ? 'Шифрование данных' : 'Ma‘lumotlar shifrlanishi'}
+              </h4>
+              <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-3)', lineHeight: '1.5' }}>
+                {isRu 
+                  ? 'Все биометрические шаблоны лиц зашифрованы с помощью HTTPS/bcrypt, исходные изображения не сохраняются.' 
+                  : 'Barcha biometrik yuz andozalari HTTPS/bcrypt yordamida shifrlangan bo‘lib, asl rasmlar saqlanmaydi.'}
+              </p>
+            </div>
+          </div>
+
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px', display: 'flex', gap: '16px', alignItems: 'flex-start', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.15)', display: 'flex', alignItems: 'center', justifySelf: 'center', justifyContent: 'center', color: '#34d399', flexShrink: 0 }}>
+              <ShieldRegular fontSize={20} />
+            </div>
+            <div>
+              <h4 style={{ margin: '0 0 6px 0', fontSize: '14px', fontWeight: 700, color: 'var(--white)' }}>
+                {isRu ? 'Непередача третьим лицам' : 'Uchinchi shaxslarga berilmaslik'}
+              </h4>
+              <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-3)', lineHeight: '1.5' }}>
+                {isRu 
+                  ? 'BioFace никогда не передает ваши личные или биометрические данные рекламодателям или внешним коммерческим организациям.' 
+                  : 'BioFace ma‘lumotlarni reklama beruvchilar yoki tashqi tijoriy tashkilotlar bilan hech qachon ulashmaydi.'}
+              </p>
+            </div>
+          </div>
+
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px', display: 'flex', gap: '16px', alignItems: 'flex-start', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: 'rgba(168, 85, 247, 0.15)', display: 'flex', alignItems: 'center', justifySelf: 'center', justifyContent: 'center', color: '#c084fc', flexShrink: 0 }}>
+              <KeyRegular fontSize={20} />
+            </div>
+            <div>
+              <h4 style={{ margin: '0 0 6px 0', fontSize: '14px', fontWeight: 700, color: 'var(--white)' }}>
+                {isRu ? 'Контроль в ваших руках' : 'Nazorat sizning qo‘lingizda'}
+              </h4>
+              <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-3)', lineHeight: '1.5' }}>
+                {isRu 
+                  ? 'Вы можете в любой момент отключить GPS-трекинг в мобильном приложении и запросить удаление своего аккаунта.' 
+                  : 'Mobil ilovadagi GPS kuzatishni istalgan paytda to‘xtatishingiz va ma‘lumotlarni o‘chirishni so‘rashingiz mumkin.'}
+              </p>
+            </div>
+          </div>
+
         </div>
       </div>
 

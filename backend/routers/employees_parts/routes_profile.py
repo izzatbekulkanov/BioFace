@@ -1,11 +1,12 @@
 from datetime import datetime, timedelta
 from typing import Any, Optional
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from core.database import get_db
 from core.models import AttendanceLog, Device, Employee, EmployeeCameraLink, EmployeePsychologicalState, EmployeeWellbeingNote
+from routers.dashboard import _resolve_allowed_org_ids
 from routers.cameras_parts.psychology_utils import (
     EMOTION_DISPLAY_ORDER,
     build_psychological_profile,
@@ -85,13 +86,23 @@ def _build_lateness_period(
 
     late_days = 0
     late_seconds = 0
+    attendance_days = 0
     for day_key, first_seen in first_seen_by_day.items():
         try:
             base = datetime.strptime(day_key, "%Y-%m-%d")
         except Exception:
             continue
-        if is_holiday_for_org(db, base.date(), employee.organization_id):
+        
+        is_holiday = is_holiday_for_org(db, base.date(), employee.organization_id)
+        expected_end = get_expected_end_dt(employee, base.date())
+        if not is_holiday and first_seen >= expected_end:
             continue
+            
+        attendance_days += 1
+        
+        if is_holiday:
+            continue
+            
         delta = max(0, int(get_late_minutes(employee, base.date(), first_seen) * 60))
         if delta > 0:
             late_days += 1
@@ -101,7 +112,7 @@ def _build_lateness_period(
         "from": start_dt.strftime("%Y-%m-%d"),
         "to": (end_dt - timedelta(seconds=1)).strftime("%Y-%m-%d"),
         "event_count": len(logs),
-        "attendance_days": len(first_seen_by_day),
+        "attendance_days": int(attendance_days),
         "late_days": int(late_days),
         "late_seconds": int(late_seconds),
         "late_hours": round(float(late_seconds) / 3600.0, 2),
@@ -109,8 +120,15 @@ def _build_lateness_period(
     }
 
 
+def _check_emp_access(request: Request, employee: Employee, db: Session) -> None:
+    allowed_orgs = _resolve_allowed_org_ids(request, db)
+    if not allowed_orgs or (employee.organization_id and employee.organization_id not in allowed_orgs):
+        raise HTTPException(status_code=403, detail="Ruxsat berilmagan")
+
+
 @router.post("/api/employees/{emp_id}/wellbeing-note")
 def save_employee_wellbeing_note(
+    request: Request,
     emp_id: str,
     note_uz: str = Body(..., embed=True),
     note_ru: str = Body(..., embed=True),
@@ -123,6 +141,7 @@ def save_employee_wellbeing_note(
         employee = db.query(Employee).filter(Employee.uuid == emp_id).first()
     if not employee:
         raise HTTPException(status_code=404, detail="Xodim topilmadi")
+    _check_emp_access(request, employee, db)
 
     note_uz_clean = str(note_uz or "").strip()
     note_ru_clean = str(note_ru or "").strip()
@@ -156,13 +175,14 @@ def save_employee_wellbeing_note(
 
 
 @router.get("/api/employees/{emp_id}/wellbeing-note/latest")
-def get_latest_employee_wellbeing_note(emp_id: str, db: Session = Depends(get_db)):
+def get_latest_employee_wellbeing_note(request: Request, emp_id: str, db: Session = Depends(get_db)):
     if emp_id.isdigit():
         employee = db.query(Employee).filter(Employee.id == int(emp_id)).first()
     else:
         employee = db.query(Employee).filter(Employee.uuid == emp_id).first()
     if not employee:
         raise HTTPException(status_code=404, detail="Xodim topilmadi")
+    _check_emp_access(request, employee, db)
 
     row = (
         db.query(EmployeeWellbeingNote)
@@ -189,6 +209,7 @@ def get_latest_employee_wellbeing_note(emp_id: str, db: Session = Depends(get_db
 
 @router.post("/api/employees/{emp_id}/psychological-state")
 def save_employee_psychological_state(
+    request: Request,
     emp_id: str,
     state_uz: Optional[str] = Body(None, embed=True),
     state_ru: Optional[str] = Body(None, embed=True),
@@ -206,6 +227,7 @@ def save_employee_psychological_state(
         employee = db.query(Employee).filter(Employee.uuid == emp_id).first()
     if not employee:
         raise HTTPException(status_code=404, detail="Xodim topilmadi")
+    _check_emp_access(request, employee, db)
 
     state_uz_clean = str(state_uz or "").strip()
     state_ru_clean = str(state_ru or "").strip()
@@ -283,13 +305,14 @@ def save_employee_psychological_state(
 
 
 @router.get("/api/employees/{emp_id}/psychological-state/latest")
-def get_latest_employee_psychological_state(emp_id: str, db: Session = Depends(get_db)):
+def get_latest_employee_psychological_state(request: Request, emp_id: str, db: Session = Depends(get_db)):
     if emp_id.isdigit():
         employee = db.query(Employee).filter(Employee.id == int(emp_id)).first()
     else:
         employee = db.query(Employee).filter(Employee.uuid == emp_id).first()
     if not employee:
         raise HTTPException(status_code=404, detail="Xodim topilmadi")
+    _check_emp_access(request, employee, db)
 
     row = (
         db.query(EmployeePsychologicalState)
@@ -305,6 +328,7 @@ def get_latest_employee_psychological_state(emp_id: str, db: Session = Depends(g
 
 @router.get("/api/employees/{emp_id}/psychological-state/history")
 def get_employee_psychological_state_history(
+    request: Request,
     emp_id: str,
     limit: int = Query(30, ge=1, le=366),
     db: Session = Depends(get_db),
@@ -315,6 +339,7 @@ def get_employee_psychological_state_history(
         employee = db.query(Employee).filter(Employee.uuid == emp_id).first()
     if not employee:
         raise HTTPException(status_code=404, detail="Xodim topilmadi")
+    _check_emp_access(request, employee, db)
 
     rows = (
         db.query(EmployeePsychologicalState)
@@ -329,6 +354,7 @@ def get_employee_psychological_state_history(
 
 @router.get("/api/employees/{emp_id}/insights")
 def get_employee_insights(
+    request: Request,
     emp_id: str,
     psy_days: int = Query(90, ge=7, le=366),
     db: Session = Depends(get_db),
@@ -339,6 +365,8 @@ def get_employee_insights(
         employee = db.query(Employee).filter(Employee.uuid == emp_id).first()
     if employee is None:
         raise HTTPException(status_code=404, detail="Xodim topilmadi")
+    _check_emp_access(request, employee, db)
+
 
     now = datetime.utcnow()
     start_this_month, end_this_month = _month_bounds(now.year, now.month)

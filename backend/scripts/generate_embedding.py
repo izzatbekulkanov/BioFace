@@ -1,9 +1,10 @@
 import os
 import sys
 import argparse
+from pathlib import Path
 
-# Add BioFace backend path to python path
-sys.path.insert(0, '/home/smartgate/BioFace/backend')
+BASE_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(BASE_DIR))
 
 import cv2
 import numpy as np
@@ -67,7 +68,7 @@ def process_employee(db, emp_id: int):
     # Path is relative: /static/uploads/employees/...
     # Resolve absolute path on disk
     rel_path = emp.image_url.lstrip("/")
-    abs_path = os.path.join('/home/smartgate/BioFace/backend', rel_path)
+    abs_path = str(BASE_DIR / rel_path)
     
     print(f"Processing Employee {emp_id}: {emp.first_name} {emp.last_name} ({abs_path})")
     emb, conf = get_face_embedding(abs_path)
@@ -101,7 +102,7 @@ def process_user(db, user_id: int):
         return
     
     rel_path = user.image_url.lstrip("/")
-    abs_path = os.path.join('/home/smartgate/BioFace/backend', rel_path)
+    abs_path = str(BASE_DIR / rel_path)
     
     print(f"Processing User {user_id}: {user.name} ({abs_path})")
     emb, conf = get_face_embedding(abs_path)

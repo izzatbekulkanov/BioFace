@@ -18,6 +18,7 @@ class CameraCreate(BaseModel):
     webhook_enabled: Optional[bool] = None
     webhook_target_url: Optional[str] = None
     webhook_picture_sending: Optional[bool] = None
+    min_face_confidence: Optional[float] = 0.40
     max_memory: Optional[int] = 1500
     organization_id: Optional[int] = None
     branch_id: Optional[int] = None
@@ -40,6 +41,7 @@ class CameraUpdate(BaseModel):
     webhook_enabled: Optional[bool] = None
     webhook_target_url: Optional[str] = None
     webhook_picture_sending: Optional[bool] = None
+    min_face_confidence: Optional[float] = None
     max_memory: Optional[int] = None
     organization_id: Optional[int] = None
     branch_id: Optional[int] = None
@@ -53,6 +55,8 @@ class WebhookPayload(BaseModel):
     camera_mac: str
     person_id: Optional[str] = None
     person_name: Optional[str] = None
+    face_confidence: Optional[float] = None
+    confidence: Optional[float] = None
     snapshot_url: Optional[str] = None
     timestamp: Optional[str] = None
     wellbeing_note_uz: Optional[str] = None
@@ -63,4 +67,3 @@ class WebhookPayload(BaseModel):
 class CommandPayload(BaseModel):
     command: str
     params: Optional[dict] = {}
-

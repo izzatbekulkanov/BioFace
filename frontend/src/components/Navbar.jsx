@@ -12,15 +12,16 @@ import {
   PeopleRegular, ShieldRegular, HatGraduationRegular,
   ClipboardTaskListLtrRegular, BrainCircuitRegular, BuildingRegular, AlertRegular,
   ChatRegular, SendRegular, ArrowLeftRegular, CheckmarkRegular, DismissRegular,
-  MoneyRegular, WalletRegular, StarRegular, ArrowSwapRegular, TagRegular, CalendarRegular, BriefcaseRegular,
+  MoneyRegular, WalletRegular, StarRegular, ArrowSwapRegular, TagRegular, CalendarRegular, BriefcaseRegular, ShieldCheckmarkRegular,
 } from '@fluentui/react-icons'
 
-const PUBLIC_LINKS  = ['map', 'about', 'contact', 'privacyPolicy']
+const PUBLIC_LINKS  = ['map', 'about', 'pricing', 'contact', 'privacyPolicy']
 const PRIVATE_LINKS = ['dashboard', 'devices']
 
 const LINK_ICONS = {
   map:            <MapRegular  fontSize={17} />,
   about:          <InfoRegular fontSize={17} />,
+  pricing:        <TagRegular fontSize={17} />,
   contact:        <MailRegular fontSize={17} />,
   privacyPolicy:  <ShieldRegular fontSize={17} />,
   dashboard:      <GridRegular fontSize={17} />,
@@ -34,7 +35,7 @@ const LINK_ICONS = {
   finance:        <MoneyRegular fontSize={17} />,
 }
 const LINK_PATHS = {
-  map: '/map', about: '/about', contact: '/contact', privacyPolicy: '/privacy-policy', dashboard: '/dashboard', 
+  map: '/map', about: '/about', pricing: '/pricing', contact: '/contact', privacyPolicy: '/privacy-policy', dashboard: '/dashboard', 
   devices: '/devices', shifts: '/shifts', attendance: '/attendance', psychology: '/psychology', organizations: '/organizations', middlewareLogs: '/middleware-logs', settings: '/settings',
   finance: '/finance',
 }
@@ -84,6 +85,7 @@ function AttendanceDropdown({ currentUser, active }) {
   const items = [
     { id: 'attendance', label: isRu ? 'Журнал событий' : 'Voqealar jurnali', icon: <HistoryRegular fontSize={15} />, path: '/attendance', perm: 'attendance' },
     { id: 'attendanceEmployees', label: isRu ? 'В разрезе сотрудников' : 'Xodimlar kesimida', icon: <PeopleRegular fontSize={15} />, path: '/attendance/employees', perm: 'attendance' },
+    { id: 'faceIdControl', label: isRu ? 'Face ID контроль' : 'Face ID nazorat', icon: <ShieldRegular fontSize={15} />, path: '/attendance/control', perm: 'attendance' },
     { id: 'psychology', label: isRu ? 'Психологический портрет' : 'Psixologik portret', icon: <BrainCircuitRegular fontSize={15} />, path: '/psychology', perm: 'psychological_portrait' },
   ].filter(item => !currentUser || isSuper || (currentUser?.menu_permissions || []).includes(item.perm))
 
@@ -124,7 +126,11 @@ function UsersDropdown({ currentUser, active }) {
     { id: 'usersAdmins',  label: t('nav.usersAdmins'),  icon: <ShieldRegular fontSize={15} />,         path: '/users', perm: 'users' },
     { id: 'usersStaff',   label: t('nav.usersStaff'),   icon: <PeopleRegular fontSize={15} />,         path: '/users/staff', perm: 'staff' },
     { id: 'usersStudents',label: t('nav.usersStudents'),icon: <HatGraduationRegular fontSize={15} />,  path: '/users/students', perm: 'students' },
-  ].filter(item => !currentUser || isSuper || (currentUser?.menu_permissions || []).includes(item.perm))
+    { id: 'specialStatuses', label: t('nav.specialStatuses'), icon: <BriefcaseRegular fontSize={15} />, path: '/users/special-statuses', perm: 'staff' },
+  ].filter(item => {
+    if (role === 'buxgalter' && item.id === 'specialStatuses') return false
+    return !currentUser || isSuper || (currentUser?.menu_permissions || []).includes(item.perm)
+  })
 
   if (currentUser && items.length === 0) return null
 
@@ -250,6 +256,7 @@ function SettingsDropdown({ active }) {
     { id: 'messages', label: isRu ? 'Обращения' : 'Murojaatlar', icon: <MailRegular fontSize={15} />, path: '/settings/messages' },
     { id: 'feedbacks', label: isRu ? 'Отзывы' : 'Fikr-mulohazalar', icon: <ChatRegular fontSize={15} />, path: '/settings/feedbacks' },
     { id: 'middlewareLogs', label: isRu ? 'Логи API' : 'API Jurnali', icon: <HistoryRegular fontSize={15} />, path: '/middleware-logs' },
+    { id: 'auditLogs', label: isRu ? 'Audit журнал' : 'Audit jurnali', icon: <ShieldCheckmarkRegular fontSize={15} />, path: '/audit-logs' },
     { id: 'isup', label: 'ISUP Server', icon: <ServerRegular fontSize={15} />, path: '/settings/isup' },
     { id: 'redis', label: 'Redis', icon: <DatabaseRegular fontSize={15} />, path: '/settings/redis' },
     { id: 'api', label: 'API Helper', icon: <PlugConnectedRegular fontSize={15} />, path: '/settings/api' },

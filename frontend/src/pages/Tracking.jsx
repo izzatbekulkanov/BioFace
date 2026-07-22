@@ -56,13 +56,14 @@ const createEmployeeMarkerIcon = (emp) => {
   })
 }
 
-function MapController({ selectedCoords }) {
+function MapController({ selectedCoords, mapZoom }) {
   const map = useMap()
   useEffect(() => {
     if (selectedCoords && selectedCoords.latitude && selectedCoords.longitude) {
-      map.setView([selectedCoords.latitude, selectedCoords.longitude], 15, { animate: true })
+      const zoom = mapZoom || 15
+      map.setView([selectedCoords.latitude, selectedCoords.longitude], zoom, { animate: true })
     }
-  }, [selectedCoords, map])
+  }, [selectedCoords, map, mapZoom])
   return null
 }
 
@@ -79,6 +80,30 @@ export default function Tracking() {
   const [selectedEmp, setSelectedEmp] = useState(null)
   const [geoJsonData, setGeoJsonData] = useState(null)
   const [selectedEmpDetail, setSelectedEmpDetail] = useState(null)
+  const [onlyWorkingHours, setOnlyWorkingHours] = useState(false)
+  const [mapZoom, setMapZoom] = useState(15)
+  const [clickState, setClickState] = useState({ empId: null, count: 0 })
+  const [mapStyle, setMapStyle] = useState('streets')
+
+  const handleMarkerClick = (emp) => {
+    setSelectedEmp(emp)
+    setClickState(prev => {
+      const isSameEmp = prev.empId === emp.id
+      const currentCount = isSameEmp ? prev.count : 0
+      const nextCount = currentCount + 1
+
+      if (nextCount === 1) {
+        setMapZoom(12)
+        return { empId: emp.id, count: 1 }
+      } else if (nextCount === 2) {
+        setMapZoom(16)
+        return { empId: emp.id, count: 2 }
+      } else {
+        setSelectedEmpDetail(emp)
+        return { empId: null, count: 0 }
+      }
+    })
+  }
 
 
   const isRu = i18n.language === 'ru'
@@ -124,7 +149,7 @@ export default function Tracking() {
   const filteredEmployees = useMemo(() => {
     return employees
       .filter(emp => {
-        if (!emp.in_working_hours) return false
+        if (onlyWorkingHours && !emp.in_working_hours) return false
         const name = `${emp.first_name || ''} ${emp.last_name || ''}`.toLowerCase()
         return name.includes(searchQuery.toLowerCase()) || 
                (emp.personal_id || '').toLowerCase().includes(searchQuery.toLowerCase())
@@ -134,7 +159,7 @@ export default function Tracking() {
         if (!a.is_online && b.is_online) return 1
         return 0
       })
-  }, [employees, searchQuery])
+  }, [employees, searchQuery, onlyWorkingHours])
 
   const tileUrl = isDark 
     ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' 
@@ -144,10 +169,12 @@ export default function Tracking() {
     : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png'
 
   return (
-    <div style={{ display: 'flex', flex: 1, height: 'calc(100vh - 64px)', overflow: 'hidden', background: maskColor }}>
+    <div style={{ display: 'flex', flex: 1, height: 'calc(100vh - 52px)', minHeight: 0, overflow: 'hidden', background: maskColor }}>
       {/* Sidebar */}
       <div style={{
         width: 320,
+        height: '100%',
+        minHeight: 0,
         background: isDark ? '#141414' : '#ffffff',
         borderRight: '1px solid var(--border-2)',
         display: 'flex',
@@ -188,7 +215,15 @@ export default function Tracking() {
           />
 
           <div style={{ fontSize: 11.5, color: 'var(--text-3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>{isRu ? 'Только в рабочее время' : 'Faqat ish vaqtidagilar'}</span>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none' }}>
+              <input
+                type="checkbox"
+                checked={onlyWorkingHours}
+                onChange={(e) => setOnlyWorkingHours(e.target.checked)}
+                style={{ cursor: 'pointer', accentColor: 'var(--accent)' }}
+              />
+              {isRu ? 'Только в рабочее время' : 'Faqat ish vaqtidagilar'}
+            </label>
             <span style={{ fontWeight: 600, color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }}>
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', display: 'inline-block', boxShadow: '0 0 4px #10b981' }} />
               Online: {employees.filter(e => e.is_online).length}
@@ -197,7 +232,7 @@ export default function Tracking() {
         </div>
 
         {/* Sidebar Employee List */}
-        <div style={{ flex: 1, overflowY: 'auto' }}>
+        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
           {filteredEmployees.length === 0 ? (
             <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-4)' }}>
               {isRu ? 'Сотрудники не найдены' : 'Xodimlar topilmadi'}
@@ -212,10 +247,12 @@ export default function Tracking() {
                   onClick={() => {
                     if (hasLoc) {
                       setSelectedEmp(emp)
+                      setMapZoom(15)
+                      setClickState({ empId: emp.id, count: 2 })
                     }
                   }}
                   style={{
-                    padding: 12,
+                    padding: '6px 12px',
                     borderBottom: '1px solid var(--border-2)',
                     cursor: hasLoc ? 'pointer' : 'default',
                     background: selectedEmp?.id === emp.id ? 'var(--surface-2)' : 'transparent',
@@ -228,20 +265,20 @@ export default function Tracking() {
                     if (hasLoc && selectedEmp?.id !== emp.id) e.currentTarget.style.background = 'transparent'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span style={{ fontWeight: 600, color: 'var(--text-1)', fontSize: 13 }}>{name}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                    <span style={{ fontWeight: 600, color: 'var(--text-1)', fontSize: 12.5 }}>{name}</span>
                     <span style={{
-                      width: 8,
-                      height: 8,
+                      width: 7,
+                      height: 7,
                       borderRadius: '50%',
                       background: emp.is_online ? '#10b981' : '#9ca3af',
-                      boxShadow: emp.is_online ? '0 0 6px #10b981' : 'none'
+                      boxShadow: emp.is_online ? '0 0 5px #10b981' : 'none'
                     }} />
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-3)' }}>
+                  <div style={{ fontSize: 10.5, color: 'var(--text-3)', lineHeight: 1.2 }}>
                     {emp.department} • {emp.position}
                   </div>
-                  <div style={{ fontSize: 10, color: 'var(--text-4)', marginTop: 4, display: 'flex', justifyContent: 'space-between' }}>
+                  <div style={{ fontSize: 9.5, color: 'var(--text-4)', marginTop: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span>{isRu ? 'Время:' : 'Ish vaqti:'} {emp.work_time}</span>
                     {hasLoc ? (
                       <span style={{ color: '#10b981', fontWeight: 600 }}>{isRu ? 'На xарте' : 'Xaritada'}</span>
@@ -259,20 +296,95 @@ export default function Tracking() {
       </div>
 
       {/* Map */}
-      <div style={{ flex: 1, position: 'relative', zIndex: 1 }}>
+      <div style={{ flex: 1, position: 'relative', zIndex: 1, minHeight: 0 }}>
+        {/* Map Style Switcher */}
+        <div style={{
+          position: 'absolute', top: 12, right: 12, zIndex: 1000,
+          background: isDark ? '#141414' : '#ffffff',
+          border: '1px solid var(--border-2)',
+          borderRadius: 8, padding: 4, display: 'flex', gap: 4,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.25)'
+        }}>
+          <button 
+            onClick={() => setMapStyle('streets')}
+            style={{
+              padding: '6px 12px', borderRadius: 6, border: 'none', fontSize: 11, fontWeight: 600,
+              background: mapStyle === 'streets' ? 'var(--accent)' : 'transparent',
+              color: mapStyle === 'streets' ? '#fff' : 'var(--text-2)',
+              cursor: 'pointer', transition: 'all 0.15s'
+            }}
+          >
+            {isRu ? 'Карта' : 'Xarita (OSM)'}
+          </button>
+          <button 
+            onClick={() => setMapStyle('satellite')}
+            style={{
+              padding: '6px 12px', borderRadius: 6, border: 'none', fontSize: 11, fontWeight: 600,
+              background: mapStyle === 'satellite' ? 'var(--accent)' : 'transparent',
+              color: mapStyle === 'satellite' ? '#fff' : 'var(--text-2)',
+              cursor: 'pointer', transition: 'all 0.15s'
+            }}
+          >
+            {isRu ? 'Спутник' : 'Sputnik'}
+          </button>
+          <button 
+            onClick={() => setMapStyle('dark')}
+            style={{
+              padding: '6px 12px', borderRadius: 6, border: 'none', fontSize: 11, fontWeight: 600,
+              background: mapStyle === 'dark' ? 'var(--accent)' : 'transparent',
+              color: mapStyle === 'dark' ? '#fff' : 'var(--text-2)',
+              cursor: 'pointer', transition: 'all 0.15s'
+            }}
+          >
+            {isRu ? 'Темная' : 'Qorong\'i'}
+          </button>
+        </div>
+
         <MapContainer 
           center={[41.3005, 69.2455]} 
           zoom={6} 
           style={{ width: '100%', height: '100%' }}
           zoomControl={true}
         >
-          <TileLayer key={`base-${isDark ? 'dark' : 'light'}`} attribution='&copy; CARTO' url={tileUrl} />
+          {mapStyle === 'streets' && (
+            <TileLayer
+              key="streets"
+              attribution='&copy; OpenStreetMap contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+          )}
+          {mapStyle === 'satellite' && (
+            <>
+              <TileLayer
+                key="satellite"
+                attribution='&copy; Esri World Imagery'
+                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+              />
+              <TileLayer
+                key="satellite-labels"
+                url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png"
+              />
+            </>
+          )}
+          {mapStyle === 'dark' && (
+            <>
+              <TileLayer
+                key="dark"
+                attribution='&copy; CARTO'
+                url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+              />
+              <TileLayer
+                key="dark-labels"
+                url="https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png"
+              />
+            </>
+          )}
           
-          <MapController selectedCoords={selectedEmp} />
+          <MapController selectedCoords={selectedEmp} mapZoom={mapZoom} />
 
           {geoJsonData && (
             <GeoJSON
-              key={`border-${isDark ? 'dark' : 'light'}`}
+              key={`border-${mapStyle}`}
               data={geoJsonData}
               pathOptions={{
                 color: '#00d2ff',
@@ -283,12 +395,7 @@ export default function Tracking() {
             />
           )}
 
-          <TileLayer 
-            key={`labels-${isDark ? 'dark' : 'light'}`} 
-            url={labelsUrl} 
-          />
-
-          {employees.map(emp => {
+          {filteredEmployees.map(emp => {
             if (emp.latitude === null || emp.longitude === null) return null
             const name = `${emp.first_name || ''} ${emp.last_name || ''}`
             const empIcon = createEmployeeMarkerIcon(emp)
@@ -299,7 +406,7 @@ export default function Tracking() {
                 icon={empIcon}
                 eventHandlers={{
                   click: () => {
-                    setSelectedEmpDetail(emp)
+                    handleMarkerClick(emp)
                   }
                 }}
               />

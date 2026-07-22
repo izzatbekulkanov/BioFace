@@ -14,6 +14,7 @@ import {
 import PageHero from '../components/PageHero'
 import { useToast } from '../components/Toaster'
 import CustomSelect from '../components/CustomSelect'
+import Skeleton from '../components/Skeleton'
 
 export default function Salary() {
   const { i18n } = useTranslation()
@@ -22,6 +23,7 @@ export default function Salary() {
   const navigate = useNavigate()
 
   const [salaries, setSalaries] = useState([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [refreshing, setRefreshing] = useState(false)
@@ -34,6 +36,7 @@ export default function Salary() {
   const [payModal, setPayModal] = useState({ open: false, id: null, name: null, finalAmount: 0, status: null })
 
   const loadSalaries = async () => {
+    setLoading(true)
     try {
       const params = new URLSearchParams()
       if (orgFilter !== 'all') params.set('organization_id', orgFilter)
@@ -46,6 +49,8 @@ export default function Salary() {
       }
     } catch (err) {
       console.error('Failed to load salaries:', err)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -240,240 +245,286 @@ export default function Salary() {
           from { opacity: 0; }
           to { opacity: 1; }
         }
-        @keyframes scaleInModal {
-          from { transform: scale(0.95); opacity: 0; }
-          to { transform: scale(1); opacity: 1; }
-        }
       `}</style>
 
       <div className="salary-container">
-        {/* Salary Stats Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-          <div style={cardStyle}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <span style={{ fontSize: 13, color: 'var(--text-4)', fontWeight: 500 }}>{isRu ? 'ОБЩИЙ ФОНД ОПЛАТЫ' : 'JAMI ISH HAQI FONDI'}</span>
-              <div style={{ padding: 6, borderRadius: 8, background: 'rgba(59,130,246,0.1)', color: '#3b82f6' }}>
-                <MoneyRegular fontSize={20} />
-              </div>
-            </div>
-            <div style={{ fontSize: 24, fontWeight: 800 }}>{formatMoney(stats.totalFinal)}</div>
-            <div style={{ fontSize: 12, color: 'var(--text-4)', marginTop: 4 }}>
-              {isRu ? 'Базовый:' : 'Asosiy:'} {formatMoney(stats.totalBase)}
-            </div>
-          </div>
-
-          <div style={cardStyle}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <span style={{ fontSize: 13, color: 'var(--text-4)', fontWeight: 500 }}>{isRu ? 'ВЫПЛАЧЕНО' : 'TO\'LANGAN ISH HAQI'}</span>
-              <div style={{ padding: 6, borderRadius: 8, background: 'rgba(16,185,129,0.1)', color: '#10b981' }}>
-                <CheckmarkCircleRegular fontSize={20} />
-              </div>
-            </div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: '#10b981' }}>{formatMoney(stats.paidSum)}</div>
-            <div style={{ fontSize: 12, color: 'var(--text-4)', marginTop: 4 }}>
-              {((stats.paidSum / (stats.totalFinal || 1)) * 100).toFixed(1)}% {isRu ? 'выплачено' : 'to\'lab berildi'}
-            </div>
-          </div>
-
-          <div style={cardStyle}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <span style={{ fontSize: 13, color: 'var(--text-4)', fontWeight: 500 }}>{isRu ? 'К ВЫПЛАТЕ' : 'TO\'LANISHI KERAK'}</span>
-              <div style={{ padding: 6, borderRadius: 8, background: 'rgba(239,68,68,0.1)', color: '#ef4444' }}>
-                <WarningRegular fontSize={20} />
-              </div>
-            </div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: '#ef4444' }}>{formatMoney(stats.unpaidSum)}</div>
-            <div style={{ fontSize: 12, color: 'var(--text-4)', marginTop: 4 }}>
-              {((stats.unpaidSum / (stats.totalFinal || 1)) * 100).toFixed(1)}% {isRu ? 'ожидает перевода' : 'to\'lov kutilmoqda'}
-            </div>
-          </div>
-
-          <div style={cardStyle}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <span style={{ fontSize: 13, color: 'var(--text-4)', fontWeight: 500 }}>{isRu ? 'ШТРАФЫ И ВЫЧЕТЫ' : 'JARIMALAR VA CHEGIRMALAR'}</span>
-              <div style={{ padding: 6, borderRadius: 8, background: 'rgba(245,158,11,0.1)', color: '#f59e0b' }}>
-                <ClockRegular fontSize={20} />
-              </div>
-            </div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: '#f59e0b' }}>{formatMoney(stats.totalDeductions)}</div>
-            <div style={{ fontSize: 12, color: 'var(--text-4)', marginTop: 4 }}>
-              {isRu ? 'На основе опозданий и пропусков' : 'Kechikishlar va kelmagan kunlar uchun'}
-            </div>
-          </div>
-        </div>
-
-        {/* Filter Toolbar & Table */}
-        <div style={cardStyle}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginBottom: 20 }}>
-            {/* Organization filter */}
-            {(isSuperAdmin || orgs.length > 1) && (
-              <div style={{ minWidth: 220, flex: 1 }}>
-                <CustomSelect
-                  value={orgFilter}
-                  onChange={val => {
-                    setOrgFilter(val || 'all')
-                    setBranchFilter('all')
-                  }}
-                  options={orgOptions}
-                  placeholder={isRu ? 'Все организации' : 'Barcha tashkilotlar'}
-                />
-              </div>
-            )}
-
-            {/* Branch filter */}
-            {(isSuperAdmin || filteredBranches.length > 0) && (
-              <div style={{ minWidth: 220, flex: 1 }}>
-                <CustomSelect
-                  value={branchFilter}
-                  onChange={val => setBranchFilter(val || 'all')}
-                  options={branchOptions}
-                  placeholder={isRu ? 'Все филиалы' : 'Barcha filiallar'}
-                />
-              </div>
-            )}
-
-            {/* Search */}
-            <div style={{ position: 'relative', flex: 1, minWidth: 260 }}>
-              <SearchRegular fontSize={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-4)' }} />
-              <input
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder={isRu ? 'Поиск по имени или должности...' : 'Ism yoki lavozim bo\'yicha qidirish...'}
-                style={{
-                  width: '100%', padding: '9px 12px 9px 36px', borderRadius: 8,
-                  border: '1px solid var(--border)', background: 'var(--bg)',
-                  color: 'var(--text-1)', fontSize: 13, outline: 'none', boxSizing: 'border-box'
-                }}
-              />
-            </div>
-
-            {/* Filter */}
-            <div style={{ display: 'flex', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 3 }}>
-              {[
-                { id: 'all', label: isRu ? 'Все' : 'Barchasi' },
-                { id: 'paid', label: isRu ? 'Выплачено' : 'To\'langan' },
-                { id: 'unpaid', label: isRu ? 'Ожидается' : 'To\'lanmagan' },
-              ].map(item => (
-                <button
-                  key={item.id}
-                  onClick={() => setStatusFilter(item.id)}
-                  style={{
-                    padding: '6px 14px', borderRadius: 6, border: 'none',
-                    background: statusFilter === item.id ? 'var(--accent)' : 'transparent',
-                    color: statusFilter === item.id ? '#fff' : 'var(--text-3)',
-                    fontSize: 12.5, fontWeight: statusFilter === item.id ? 600 : 400, cursor: 'pointer',
-                  }}
-                >
-                  {item.label}
-                </button>
+        {loading ? (
+          <>
+            {/* Salary Stats Grid Skeleton */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} style={{ ...cardStyle, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Skeleton width={120} height={12} />
+                    <Skeleton width={32} height={32} radius={8} />
+                  </div>
+                  <Skeleton width={80} height={24} />
+                  <Skeleton width={140} height={12} />
+                </div>
               ))}
             </div>
-          </div>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-4)', fontSize: 12.5 }}>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, width: 40 }}>#</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>{isRu ? 'Сотрудник' : 'Xodim'}</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>{isRu ? 'Должность' : 'Lavozim'}</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>{isRu ? 'Оклад' : 'Asosiy oylik'}</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>{isRu ? 'Опоздания / Штраф' : 'Kechikish / Jarima'}</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>{isRu ? 'Итого к выплате' : 'Sof oylik'}</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>{isRu ? 'Статус' : 'Holat'}</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600 }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredSalaries.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--text-4)', fontSize: 13.5 }}>
-                      {isRu ? 'Сотрудники не найдены' : 'Xodimlar topilmadi'}
-                    </td>
-                  </tr>
-                ) : (
-                  filteredSalaries.map((s, idx) => {
-                    const lateDeduction = s.lateDeduction !== undefined ? s.lateDeduction : (s.lateCount * 50000)
-                    const absentDeduction = s.absentDeduction || 0
-                    const deduction = lateDeduction + absentDeduction
-                    const finalAmount = s.finalAmount !== undefined ? s.finalAmount : (s.base - deduction)
-                    return (
-                      <tr key={s.id} style={{ borderBottom: '1px solid var(--border-2)', fontSize: 13, color: 'var(--text-2)' }}>
-                        <td style={{ padding: '14px 16px', color: 'var(--text-4)' }}>{idx + 1}</td>
-                        <td style={{ padding: '14px 16px', fontWeight: 600, color: 'var(--text-1)' }}>{s.name}</td>
-                        <td style={{ padding: '14px 16px' }}>{s.role}</td>
-                        <td style={{ padding: '14px 16px', fontWeight: 600 }}>{formatMoney(s.base)}</td>
-                        <td style={{ padding: '14px 16px' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                            {lateDeduction > 0 && (
-                              <span style={{ fontSize: 11.5, color: '#f59e0b', fontWeight: 600 }}>
-                                ⏰ {s.lateCount} {isRu ? 'опозд.' : 'marta kechikkan'} (-{formatMoney(lateDeduction)})
-                              </span>
-                            )}
-                            {absentDeduction > 0 && (
-                              <span style={{ fontSize: 11.5, color: '#ef4444', fontWeight: 600 }}>
-                                ❌ {s.absentCount} {isRu ? 'дн. отсут.' : 'kun kelmagan'} (-{formatMoney(absentDeduction)})
-                              </span>
-                            )}
-                            {lateDeduction === 0 && absentDeduction === 0 && (
-                              <span style={{ color: 'var(--text-4)' }}>—</span>
-                            )}
-                          </div>
-                        </td>
-                        <td style={{ padding: '14px 16px', fontWeight: 700, color: 'var(--text-1)' }}>{formatMoney(finalAmount)}</td>
-                        <td style={{ padding: '14px 16px' }}>
-                          {s.status === 'paid' && (
-                            <span style={statusPaid}>
-                              {isRu ? 'Выплачено' : 'To\'langan'}
-                            </span>
-                          )}
-                          {s.status === 'advance' && (
-                            <span style={statusAdvance}>
-                              {isRu ? 'Аванс (50%)' : 'Avans (50%)'}
-                            </span>
-                          )}
-                          {s.status === 'unpaid' && (
-                            <span style={statusPending}>
-                              {isRu ? 'Ожидается' : 'To\'lanmagan'}
-                            </span>
-                          )}
-                        </td>
-                        <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
-                            <button
-                              onClick={() => handleView(s)}
-                              style={{
-                                background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border)', color: 'var(--text-2)',
-                                padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                                transition: 'all 0.15s ease', display: 'flex', alignItems: 'center', gap: 6
-                              }}
-                            >
-                              <EyeRegular fontSize={14} />
-                              {isRu ? 'Просмотр' : 'Ko\'rish'}
-                            </button>
-                            {s.status !== 'paid' && (
-                              <button
-                                onClick={() => handlePayClick(s)}
-                                style={{
-                                  background: 'var(--accent)', border: 'none', color: '#fff',
-                                  padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer'
-                                }}
-                              >
-                                {isRu ? 'Выплатить' : 'To\'lash'}
-                              </button>
-                            )}
-                          </div>
+            {/* Table Container Skeleton */}
+            <div style={cardStyle}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, marginBottom: 20 }}>
+                <Skeleton width={260} height={36} radius={8} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'flex', gap: 16, padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+                  <Skeleton width={30} height={12} />
+                  <Skeleton width={120} height={12} />
+                  <Skeleton width={80} height={12} />
+                  <Skeleton width={100} height={12} />
+                  <Skeleton width={120} height={12} />
+                  <Skeleton width={80} height={12} style={{ marginLeft: 'auto' }} />
+                </div>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 16, padding: '14px 16px', borderBottom: '1px solid var(--border-2)', alignItems: 'center' }}>
+                    <Skeleton width={20} height={12} />
+                    <Skeleton width={150} height={12} />
+                    <Skeleton width={90} height={12} />
+                    <Skeleton width={100} height={12} />
+                    <Skeleton width={110} height={12} />
+                    <Skeleton width={110} height={28} radius={6} style={{ marginLeft: 'auto' }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Salary Stats Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+              <div style={cardStyle}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <span style={{ fontSize: 13, color: 'var(--text-4)', fontWeight: 500 }}>{isRu ? 'ОБЩИЙ ФОНД ОПЛАТЫ' : 'JAMI ISH HAQI FONDI'}</span>
+                  <div style={{ padding: 6, borderRadius: 8, background: 'rgba(59,130,246,0.1)', color: '#3b82f6' }}>
+                    <MoneyRegular fontSize={20} />
+                  </div>
+                </div>
+                <div style={{ fontSize: 24, fontWeight: 800 }}>{formatMoney(stats.totalFinal)}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-4)', marginTop: 4 }}>
+                  {isRu ? 'Базовый:' : 'Asosiy:'} {formatMoney(stats.totalBase)}
+                </div>
+              </div>
+
+              <div style={cardStyle}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <span style={{ fontSize: 13, color: 'var(--text-4)', fontWeight: 500 }}>{isRu ? 'ВЫПЛАЧЕНО' : 'TO\'LANGAN ISH HAQI'}</span>
+                  <div style={{ padding: 6, borderRadius: 8, background: 'rgba(16,185,129,0.1)', color: '#10b981' }}>
+                    <CheckmarkCircleRegular fontSize={20} />
+                  </div>
+                </div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: '#10b981' }}>{formatMoney(stats.paidSum)}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-4)', marginTop: 4 }}>
+                  {((stats.paidSum / (stats.totalFinal || 1)) * 100).toFixed(1)}% {isRu ? 'выплачено' : 'to\'lab berildi'}
+                </div>
+              </div>
+
+              <div style={cardStyle}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <span style={{ fontSize: 13, color: 'var(--text-4)', fontWeight: 500 }}>{isRu ? 'К ВЫПЛАТЕ' : 'TO\'LANISHI KERAK'}</span>
+                  <div style={{ padding: 6, borderRadius: 8, background: 'rgba(239,68,68,0.1)', color: '#ef4444' }}>
+                    <WarningRegular fontSize={20} />
+                  </div>
+                </div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: '#ef4444' }}>{formatMoney(stats.unpaidSum)}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-4)', marginTop: 4 }}>
+                  {((stats.unpaidSum / (stats.totalFinal || 1)) * 100).toFixed(1)}% {isRu ? 'ожидает перевода' : 'to\'lov kutilmoqda'}
+                </div>
+              </div>
+
+              <div style={cardStyle}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <span style={{ fontSize: 13, color: 'var(--text-4)', fontWeight: 500 }}>{isRu ? 'ШТРАФЫ И ВЫЧЕТЫ' : 'JARIMALAR VA CHEGIRMALAR'}</span>
+                  <div style={{ padding: 6, borderRadius: 8, background: 'rgba(245,158,11,0.1)', color: '#f59e0b' }}>
+                    <ClockRegular fontSize={20} />
+                  </div>
+                </div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: '#f59e0b' }}>{formatMoney(stats.totalDeductions)}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-4)', marginTop: 4 }}>
+                  {isRu ? 'На основе опозданий и пропусков' : 'Kechikishlar va kelmagan kunlar uchun'}
+                </div>
+              </div>
+            </div>
+
+            {/* Filter Toolbar & Table */}
+            <div style={cardStyle}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginBottom: 20 }}>
+                {/* Organization filter */}
+                {(isSuperAdmin || orgs.length > 1) && (
+                  <div style={{ minWidth: 220, flex: 1 }}>
+                    <CustomSelect
+                      value={orgFilter}
+                      onChange={val => {
+                        setOrgFilter(val || 'all')
+                        setBranchFilter('all')
+                      }}
+                      options={orgOptions}
+                      placeholder={isRu ? 'Все организации' : 'Barcha tashkilotlar'}
+                    />
+                  </div>
+                )}
+
+                {/* Branch filter */}
+                {(isSuperAdmin || filteredBranches.length > 0) && (
+                  <div style={{ minWidth: 220, flex: 1 }}>
+                    <CustomSelect
+                      value={branchFilter}
+                      onChange={val => setBranchFilter(val || 'all')}
+                      options={branchOptions}
+                      placeholder={isRu ? 'Все филиалы' : 'Barcha filiallar'}
+                    />
+                  </div>
+                )}
+
+                {/* Search */}
+                <div style={{ position: 'relative', flex: 1, minWidth: 260 }}>
+                  <SearchRegular fontSize={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-4)' }} />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    placeholder={isRu ? 'Поиск по имени или должности...' : 'Ism yoki lavozim bo\'yicha qidirish...'}
+                    style={{
+                      width: '100%', padding: '9px 12px 9px 36px', borderRadius: 8,
+                      border: '1px solid var(--border)', background: 'var(--bg)',
+                      color: 'var(--text-1)', fontSize: 13, outline: 'none', boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+
+                {/* Filter */}
+                <div style={{ display: 'flex', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 3 }}>
+                  {[
+                    { id: 'all', label: isRu ? 'Все' : 'Barchasi' },
+                    { id: 'paid', label: isRu ? 'Выплачено' : 'To\'langan' },
+                    { id: 'unpaid', label: isRu ? 'Ожидается' : 'To\'lanmagan' },
+                  ].map(item => (
+                    <button
+                      key={item.id}
+                      onClick={() => setStatusFilter(item.id)}
+                      style={{
+                        padding: '6px 14px', borderRadius: 6, border: 'none',
+                        background: statusFilter === item.id ? 'var(--accent)' : 'transparent',
+                        color: statusFilter === item.id ? '#fff' : 'var(--text-3)',
+                        fontSize: 12.5, fontWeight: statusFilter === item.id ? 600 : 400, cursor: 'pointer',
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-4)', fontSize: 12.5 }}>
+                      <th style={{ padding: '12px 16px', fontWeight: 600, width: 40 }}>#</th>
+                      <th style={{ padding: '12px 16px', fontWeight: 600 }}>{isRu ? 'Сотрудник' : 'Xodim'}</th>
+                      <th style={{ padding: '12px 16px', fontWeight: 600 }}>{isRu ? 'Должность' : 'Lavozim'}</th>
+                      <th style={{ padding: '12px 16px', fontWeight: 600 }}>{isRu ? 'Оклад' : 'Asosiy oylik'}</th>
+                      <th style={{ padding: '12px 16px', fontWeight: 600 }}>{isRu ? 'Опоздания / Штраф' : 'Kechikish / Jarima'}</th>
+                      <th style={{ padding: '12px 16px', fontWeight: 600 }}>{isRu ? 'Итого к выплате' : 'Sof oylik'}</th>
+                      <th style={{ padding: '12px 16px', fontWeight: 600 }}>{isRu ? 'Статус' : 'Holat'}</th>
+                      <th style={{ padding: '12px 16px', fontWeight: 600 }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredSalaries.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--text-4)', fontSize: 13.5 }}>
+                          {isRu ? 'Сотрудники не найдены' : 'Xodimlar topilmadi'}
                         </td>
                       </tr>
-                    )
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
+                    ) : (
+                      filteredSalaries.map((s, idx) => {
+                        const lateDeduction = s.lateDeduction !== undefined ? s.lateDeduction : (s.lateCount * 50000)
+                        const absentDeduction = s.absentDeduction || 0
+                        const deduction = lateDeduction + absentDeduction
+                        const finalAmount = s.finalAmount !== undefined ? s.finalAmount : (s.base - deduction)
+                        return (
+                          <tr key={s.id} style={{ borderBottom: '1px solid var(--border-2)', fontSize: 13, color: 'var(--text-2)' }}>
+                            <td style={{ padding: '14px 16px', color: 'var(--text-4)' }}>{idx + 1}</td>
+                            <td style={{ padding: '14px 16px', fontWeight: 600, color: 'var(--text-1)' }}>{s.name}</td>
+                            <td style={{ padding: '14px 16px' }}>{s.role}</td>
+                            <td style={{ padding: '14px 16px', fontWeight: 600 }}>{formatMoney(s.base)}</td>
+                            <td style={{ padding: '14px 16px' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                {lateDeduction > 0 && (
+                                  <span style={{ fontSize: 11.5, color: '#f59e0b', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                    <ClockRegular fontSize={13} />
+                                    {s.lateCount} {isRu ? 'опозд.' : 'marta kechikkan'} (-{formatMoney(lateDeduction)})
+                                  </span>
+                                )}
+                                {absentDeduction > 0 && (
+                                  <span style={{ fontSize: 11.5, color: '#ef4444', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                    <DismissRegular fontSize={13} />
+                                    {s.absentCount} {isRu ? 'дн. отсут.' : 'kun kelmagan'} (-{formatMoney(absentDeduction)})
+                                  </span>
+                                )}
+                                {lateDeduction === 0 && absentDeduction === 0 && (
+                                  <span style={{ color: 'var(--text-4)' }}>—</span>
+                                )}
+                              </div>
+                            </td>
+                            <td style={{ padding: '14px 16px', fontWeight: 700, color: 'var(--text-1)' }}>{formatMoney(finalAmount)}</td>
+                            <td style={{ padding: '14px 16px' }}>
+                              {s.status === 'paid' && (
+                                <span style={statusPaid}>
+                                  {isRu ? 'Выплачено' : 'To\'langan'}
+                                </span>
+                              )}
+                              {s.status === 'advance' && (
+                                <span style={statusAdvance}>
+                                  {isRu ? 'Аванс (50%)' : 'Avans (50%)'}
+                                </span>
+                              )}
+                              {s.status === 'unpaid' && (
+                                <span style={statusPending}>
+                                  {isRu ? 'Ожидается' : 'To\'lanmagan'}
+                                </span>
+                              )}
+                            </td>
+                            <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
+                                <button
+                                  onClick={() => handleView(s)}
+                                  style={{
+                                    background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border)', color: 'var(--text-2)',
+                                    padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                                    transition: 'all 0.15s ease', display: 'flex', alignItems: 'center', gap: 6
+                                  }}
+                                >
+                                  <EyeRegular fontSize={14} />
+                                  {isRu ? 'Просмотр' : 'Ko\'rish'}
+                                </button>
+                                {s.status !== 'paid' && (
+                                  <button
+                                    onClick={() => handlePayClick(s)}
+                                    style={{
+                                      background: 'var(--accent)', border: 'none', color: '#fff',
+                                      padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                                      display: 'inline-flex', alignItems: 'center', gap: 6
+                                    }}
+                                  >
+                                    <MoneyRegular fontSize={14} />
+                                    {isRu ? 'Выплатить' : 'To\'lash'}
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {payModal.open && (
@@ -528,16 +579,18 @@ export default function Salary() {
               {payModal.status !== 'advance' && (
                 <button
                   onClick={() => handlePayConfirm(payModal.id, payModal.name, 'advance')}
-                  style={payAdvanceBtnStyle}
+                  style={{ ...payAdvanceBtnStyle, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
                 >
-                  💸 {isRu ? 'Выплатить аванс (50%)' : 'Avans to\'lash (50%)'}
+                  <MoneyRegular fontSize={18} />
+                  {isRu ? 'Выплатить аванс (50%)' : 'Avans to\'lash (50%)'}
                 </button>
               )}
               <button
                 onClick={() => handlePayConfirm(payModal.id, payModal.name, 'full')}
-                style={payFullBtnStyle}
+                style={{ ...payFullBtnStyle, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
               >
-                💰 {payModal.status === 'advance' 
+                <CheckmarkCircleRegular fontSize={18} />
+                {payModal.status === 'advance' 
                   ? (isRu ? 'Выплатить остаток (50%)' : 'Qolgan qismini to\'lash (50%)') 
                   : (isRu ? 'Выплатить полностью (100%)' : 'To\'liq to\'lash (100%)')
                 }

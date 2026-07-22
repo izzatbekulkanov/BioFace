@@ -580,6 +580,11 @@ function Field({ label, hint, required, children }) {
 
 function RolePill({ role }) {
   if (!role) return <span style={{ color: 'var(--text-4)' }}>—</span>
+  const rawRoleStr = String(role || '').toLowerCase().replace(/_/g, '')
+  const foundRole = ROLES.find(r => r.value.toLowerCase().replace(/_/g, '') === rawRoleStr)
+  const roleKey = foundRole ? foundRole.value : role
+  const displayLabel = foundRole ? foundRole.label_uz : role
+
   const colorMap = {
     SuperAdmin: '#a855f7',
     MahallaAdmin: '#3b82f6',
@@ -591,13 +596,13 @@ function RolePill({ role }) {
     Buxgalter: '#f97316',
     Psixolog: '#8b5cf6',
   }
-  const color = colorMap[role] || '#64748b'
+  const color = colorMap[roleKey] || '#64748b'
   return (
     <span style={{
       display: 'inline-block', padding: '3px 10px', borderRadius: 999,
       fontSize: 11, fontWeight: 600,
       background: color + '22', color, border: `1px solid ${color}55`,
-    }}>{role}</span>
+    }}>{displayLabel}</span>
   )
 }
 

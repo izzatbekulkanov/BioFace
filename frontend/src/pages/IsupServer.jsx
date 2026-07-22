@@ -769,6 +769,7 @@ function AddDeviceModal({ target, onClose, onSaved, isRu }) {
     password: '',
     isup_password: 'facex2024',
     max_memory: 1500,
+    min_face_confidence: 0.40,
     direction: 'in',
   })
 
@@ -868,6 +869,7 @@ function AddDeviceModal({ target, onClose, onSaved, isRu }) {
         username: form.username.trim() || null,
         isup_password: form.isup_password.trim() || null,
         max_memory: Number(form.max_memory) || 1500,
+        min_face_confidence: Number(form.min_face_confidence) || 0.40,
         direction: form.direction || 'in',
       }
       if (form.password.trim()) body.password = form.password.trim()
@@ -1010,6 +1012,9 @@ function AddDeviceModal({ target, onClose, onSaved, isRu }) {
               </Field>
               <Field label={isRu ? 'Лимит лиц' : 'Yuzlar limiti'}>
                 <input type="number" value={form.max_memory} onChange={setField('max_memory')} style={inp} />
+              </Field>
+              <Field label={isRu ? 'Минимальная уверенность' : 'Minimal confidence'}>
+                <input type="number" min="0.10" max="0.95" step="0.01" value={form.min_face_confidence} onChange={setField('min_face_confidence')} style={inp} />
               </Field>
 
               <Field label={isRu ? 'Направление' : 'Yo\'nalish'}>

@@ -285,3 +285,9 @@ def get_middleware_logs(
         "pages": (total + limit - 1) // limit,
         "data": data,
     }
+
+
+@router.get("/api/system-monitor/notification-status")
+async def get_notification_status(request: Request):
+    from services.notification_service import get_notification_monitor_status
+    return get_notification_monitor_status()

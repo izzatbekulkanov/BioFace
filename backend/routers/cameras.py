@@ -31,8 +31,8 @@ from utils.attendance_utils import ATTENDANCE_FLOOD_GUARD_SECONDS, build_attenda
 from database import SessionLocal, get_db
 from services.hikvision_sdk import get_sdk_status
 from services.isup_manager import get_process_status
-from models import Device, AttendanceLog, Employee, EmployeeWellbeingNote, Organization, EmployeeCameraLink, UserOrganizationLink, Schedule, Branch
-from utils.schedule_utils import get_late_minutes, is_holiday_for_org, resolve_employee_schedule
+from models import Device, AttendanceLog, Employee, EmployeeWellbeingNote, Organization, EmployeeCameraLink, UserOrganizationLink, Schedule, Branch, AttendanceReviewAudit
+from utils.schedule_utils import get_late_minutes, is_holiday_for_org, resolve_employee_schedule, get_expected_end_dt
 from utils.time_utils import now_tashkent, normalize_timestamp_tashkent, today_tashkent_range
 from config.system_config import (
     ISUP_API_URL,
@@ -123,6 +123,13 @@ MAX_FACE_ASPECT = 1.67
 CAMERA_EVENT_PUSH_PATH = "/api/v1/httppost/"
 
 
+class AttendanceReviewPayload(BaseModel):
+    action: str = "approve"
+    employee_id: Optional[int] = None
+    note: Optional[str] = None
+    learn: bool = True
+
+
 def _today_local_range() -> tuple[datetime, datetime]:
     return today_tashkent_range()
 
@@ -137,6 +144,84 @@ _CAMERA_EVENT_DEBUG = os.getenv("CAMERA_EVENT_DEBUG", "0").strip().lower() in {"
 def _camera_event_debug(message: str) -> None:
     if _CAMERA_EVENT_DEBUG:
         print(message)
+
+
+def _employee_allowed_for_event_device(db: Session, employee: Employee | None, device: Device | None) -> bool:
+    if employee is None:
+        return False
+    if device is None:
+        return True
+
+    if employee.organization_id is not None and device.organization_id is not None:
+        if int(employee.organization_id) != int(device.organization_id):
+            return False
+
+    linked_camera_ids = {
+        int(row[0])
+        for row in db.query(EmployeeCameraLink.camera_id)
+        .filter(EmployeeCameraLink.employee_id == int(employee.id))
+        .all()
+        if row[0] is not None
+    }
+    if linked_camera_ids and int(device.id) not in linked_camera_ids:
+        return False
+
+    return True
+
+
+def _device_identifier_candidates(*values: Optional[str]) -> list[str]:
+    candidates: list[str] = []
+    for value in values:
+        raw = str(value or "").strip()
+        if not raw:
+            continue
+        for item in (raw, _normalize_mac_address(raw)):
+            if item and item not in candidates:
+                candidates.append(item)
+    return candidates
+
+
+def _normalize_confidence(value: Any) -> Optional[float]:
+    if value is None:
+        return None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    if parsed < 0:
+        return None
+    if parsed > 1:
+        parsed = parsed / 100.0
+    return max(0.0, min(parsed, 1.0))
+
+
+def _camera_min_face_confidence(device: Device | None) -> float:
+    value = _normalize_confidence(getattr(device, "min_face_confidence", None))
+    if value is None or value <= 0:
+        return 0.40
+    return value
+
+
+def _resolve_attendance_review_state(
+    *,
+    employee: Employee | None,
+    device: Device | None,
+    face_confidence: Optional[float],
+) -> tuple[str, Optional[str]]:
+    if employee is None:
+        return "pending", "unknown_person"
+    threshold = _camera_min_face_confidence(device)
+    if face_confidence is not None and face_confidence < threshold:
+        return "pending", f"low_confidence:{face_confidence:.2f}<min:{threshold:.2f}"
+    return "auto", None
+
+
+def _get_auth_user_id(request: Request) -> Optional[int]:
+    auth_user = request.session.get("auth_user") or {}
+    try:
+        return int(auth_user.get("id")) if auth_user.get("id") is not None else None
+    except (TypeError, ValueError):
+        return None
 
 
 def _build_camera_event_push_target(request: Request) -> dict[str, str]:
@@ -1119,6 +1204,7 @@ def list_cameras(request: Request, db: Session = Depends(get_db)):
             "webhook_enabled": bool(c.webhook_enabled),
             "webhook_target_url": c.webhook_target_url,
             "webhook_picture_sending": bool(c.webhook_picture_sending),
+            "min_face_confidence": _camera_min_face_confidence(c),
             "max_memory": c.max_memory,
             "used_faces": c.used_faces,
             "organization_id": c.organization_id,
@@ -1252,6 +1338,7 @@ def get_camera(request: Request, cam_id: int, db: Session = Depends(get_db)):
         "webhook_enabled": bool(cam.webhook_enabled),
         "webhook_target_url": cam.webhook_target_url,
         "webhook_picture_sending": bool(cam.webhook_picture_sending),
+        "min_face_confidence": _camera_min_face_confidence(cam),
         "max_memory": cam.max_memory,
         "used_faces": cam.used_faces,
         "organization_id": cam.organization_id,
@@ -1306,6 +1393,11 @@ def add_camera(request: Request, data: CameraCreate, db: Session = Depends(get_d
     webhook_enabled_val = bool(data.webhook_enabled) if data.webhook_enabled is not None else False
     webhook_target_url_val = _resolve_camera_webhook_target_url(request, _strip_or_none(data.webhook_target_url))
     webhook_picture_sending_val = bool(data.webhook_picture_sending) if data.webhook_picture_sending is not None else False
+    min_face_confidence_val = _normalize_confidence(data.min_face_confidence)
+    if min_face_confidence_val is None:
+        min_face_confidence_val = 0.40
+    if min_face_confidence_val < 0.10 or min_face_confidence_val > 0.95:
+        raise HTTPException(status_code=422, detail="Minimal confidence 10% va 95% oralig'ida bo'lishi kerak")
     max_memory_val = data.max_memory or 1500
 
     if isup_device_id:
@@ -1383,6 +1475,7 @@ def add_camera(request: Request, data: CameraCreate, db: Session = Depends(get_d
         webhook_enabled=webhook_enabled_val,
         webhook_target_url=webhook_target_url_val,
         webhook_picture_sending=webhook_picture_sending_val,
+        min_face_confidence=min_face_confidence_val,
         max_memory=max_memory_val,
         organization_id=data.organization_id,
         branch_id=data.branch_id,
@@ -1490,6 +1583,11 @@ def update_camera(request: Request, cam_id: int, data: CameraUpdate, db: Session
         cam.webhook_target_url = _resolve_camera_webhook_target_url(request, _strip_or_none(data.webhook_target_url))
     if data.webhook_picture_sending is not None:
         cam.webhook_picture_sending = bool(data.webhook_picture_sending)
+    if data.min_face_confidence is not None:
+        min_face_confidence = _normalize_confidence(data.min_face_confidence)
+        if min_face_confidence is None or min_face_confidence < 0.10 or min_face_confidence > 0.95:
+            raise HTTPException(status_code=422, detail="Minimal confidence 10% va 95% oralig'ida bo'lishi kerak")
+        cam.min_face_confidence = min_face_confidence
     if data.max_memory is not None:
         cam.max_memory = data.max_memory
     if data.organization_id is not None:
@@ -1545,13 +1643,16 @@ def camera_webhook(payload: WebhookPayload, db: Session = Depends(get_db)):
     Tizim kamerani MAC manzil bo'yicha topadi.
     Agar TOPILMASA, xabarni qabul qilmaydi (403 xavfsizlik).
     """
-    device = db.query(Device).filter(
-        or_(
-            Device.mac_address == payload.camera_mac,
-            Device.serial_number == payload.camera_mac,
-            Device.isup_device_id == payload.camera_mac,
-        )
-    ).first()
+    identifiers = _device_identifier_candidates(payload.camera_mac)
+    device = None
+    if identifiers:
+        device = db.query(Device).filter(
+            or_(
+                Device.mac_address.in_(identifiers),
+                Device.serial_number.in_(identifiers),
+                Device.isup_device_id.in_(identifiers),
+            )
+        ).first()
     if not device:
         raise HTTPException(status_code=403, detail="Ruxsat etilmagan kamera (MAC manzil ro'yxatda yo'q)")
 
@@ -1562,10 +1663,22 @@ def camera_webhook(payload: WebhookPayload, db: Session = Depends(get_db)):
     employee = None
     if person_id:
         employee = db.query(Employee).filter(Employee.personal_id == person_id).first()
-    if employee is None and person_id.isdigit():
-        employee = db.query(Employee).filter(Employee.id == int(person_id)).first()
+    if employee is not None and not _employee_allowed_for_event_device(db, employee, device):
+        _camera_event_debug(
+            f"[WEBHOOK] Rejected employee match: employee_id={employee.id}, personal_id={person_id}, device_id={device.id}"
+        )
+        employee = None
+        person_name = None
     if employee is not None:
         person_name = f"{employee.first_name or ''} {employee.last_name or ''}".strip() or None
+
+    face_confidence = _normalize_confidence(payload.face_confidence if payload.face_confidence is not None else payload.confidence)
+    review_status, review_reason = _resolve_attendance_review_state(
+        employee=employee,
+        device=device,
+        face_confidence=face_confidence,
+    )
+    log_status = "tasdiqlash_kerak" if employee is not None and review_status == "pending" else ("aniqlandi" if employee else "noma'lum")
 
     note_uz, note_ru, note_source = _resolve_event_wellbeing_snapshot(
         db,
@@ -1589,6 +1702,10 @@ def camera_webhook(payload: WebhookPayload, db: Session = Depends(get_db)):
     stress_status_ru = psychological_profile.get("stress_status_ru", "Нормальный")
 
     liveness_score, liveness_status = check_liveness(photo_path)
+    if employee is not None and liveness_status == "spoof":
+        review_status = "pending"
+        review_reason = "spoof_detected"
+        log_status = "tasdiqlash_kerak"
 
     if employee is not None:
         upsert_daily_psychological_state(
@@ -1617,9 +1734,13 @@ def camera_webhook(payload: WebhookPayload, db: Session = Depends(get_db)):
         wellbeing_note_source=note_source or None,
         liveness_score=liveness_score,
         liveness_status=liveness_status,
+        face_confidence=face_confidence,
+        attendance_source="camera",
         direction=device.direction if device else None,
         timestamp=ts,
-        status="aniqlandi" if employee else "noma'lum",
+        status=log_status,
+        review_status=review_status,
+        review_reason=review_reason,
     )
     db.add(log)
     db.flush()
@@ -1655,10 +1776,42 @@ def camera_webhook(payload: WebhookPayload, db: Session = Depends(get_db)):
         stress_status_ru=stress_status_ru,
     )
 
+    # WebSocket orqali real-time xabar yuborish
+    try:
+        from services.websocket_manager import manager as _ws_manager
+        _org_id = int(device.organization_id) if device is not None and device.organization_id is not None else None
+        _emp_name = None
+        if employee is not None:
+            _emp_name = " ".join(
+                filter(None, [
+                    str(employee.last_name or "").strip(),
+                    str(employee.first_name or "").strip(),
+                ])
+            ) or None
+        asyncio.create_task(_ws_manager.broadcast_event(
+            "attendance",
+            {
+                "id": log.id,
+                "employee_id": int(employee.id) if employee else None,
+                "employee_name": _emp_name,
+                "timestamp": log.timestamp.isoformat() if log.timestamp else None,
+                "status": log.status,
+                "direction": log.direction,
+                "camera_name": device.name if device else None,
+                "snapshot_url": log.snapshot_url,
+            },
+            organization_id=_org_id,
+        ))
+    except Exception:
+        pass
+
     return {
         "ok": True,
         "camera_name": device.name,
         "employee_found": employee is not None,
+        "review_status": log.review_status,
+        "review_reason": log.review_reason,
+        "face_confidence": face_confidence,
         "log_id": log.id,
         "psychological_state_key": psychological_state_key,
         "psychological_state_confidence": psychological_state_confidence,
@@ -3449,10 +3602,20 @@ def get_attendance(
                 "snapshot_url": l.snapshot_url,
                 "liveness_score": l.liveness_score,
                 "liveness_status": l.liveness_status,
+                "face_confidence": l.face_confidence,
+                "attendance_source": l.attendance_source,
+                "mobile_device_id": l.mobile_device_id,
+                "mobile_distance_m": l.mobile_distance_m,
+                "mobile_similarity": l.mobile_similarity,
+                "review_status": l.review_status or "auto",
+                "review_reason": l.review_reason,
+                "reviewed_by_id": l.reviewed_by_id,
+                "reviewed_at": l.reviewed_at.isoformat() if l.reviewed_at else None,
+                "review_note": l.review_note,
                 "stress_score": stress_data["stress_score"],
                 "stress_status_uz": stress_data["stress_status_uz"],
                 "stress_status_ru": stress_data["stress_status_ru"],
-                "direction": "mobile" if not l.device_id else (l.direction or (l.device.direction if l.device else None)),
+                "direction": l.direction or (l.device.direction if l.device else ("in" if not l.device_id else None)),
                 "latitude": l.latitude,
                 "longitude": l.longitude,
             }
@@ -3475,6 +3638,247 @@ def get_attendance(
         "last_id": last_id,
         "today_stats": today_stats
     }
+
+
+def _attendance_log_in_scope(log: AttendanceLog, allowed_org_ids: list[int], is_super: bool) -> bool:
+    if is_super:
+        return True
+    if not allowed_org_ids:
+        return False
+    device_org_id = log.device.organization_id if log.device else None
+    employee_org_id = log.employee.organization_id if log.employee else None
+    return (
+        (device_org_id is not None and int(device_org_id) in allowed_org_ids)
+        or (employee_org_id is not None and int(employee_org_id) in allowed_org_ids)
+    )
+
+
+def _employee_full_name(employee: Employee) -> str:
+    return " ".join(
+        part for part in [employee.first_name, employee.last_name, employee.middle_name] if part and str(part).strip()
+    ).strip()
+
+
+def _serialize_review_log(log: AttendanceLog) -> dict[str, Any]:
+    organization = log.device.organization if log.device and log.device.organization else (log.employee.organization if log.employee else None)
+    employee_name = _employee_full_name(log.employee) if log.employee else (log.person_name or "Noma'lum")
+    return {
+        "id": int(log.id),
+        "timestamp": log.timestamp.isoformat() if log.timestamp else None,
+        "status": log.status,
+        "review_status": log.review_status or "auto",
+        "review_reason": log.review_reason,
+        "employee_id": int(log.employee_id) if log.employee_id is not None else None,
+        "employee_uuid": log.employee.uuid if log.employee else None,
+        "employee_name": employee_name,
+        "person_id": log.person_id,
+        "person_name": log.person_name,
+        "camera_id": int(log.device_id) if log.device_id is not None else None,
+        "camera_name": log.device.name if log.device else None,
+        "camera_mac": log.camera_mac,
+        "camera_min_face_confidence": _camera_min_face_confidence(log.device),
+        "organization_id": int(organization.id) if organization else None,
+        "organization_name": organization.name if organization else None,
+        "snapshot_url": log.snapshot_url,
+        "face_confidence": log.face_confidence,
+        "attendance_source": log.attendance_source,
+        "mobile_device_id": log.mobile_device_id,
+        "mobile_distance_m": log.mobile_distance_m,
+        "mobile_similarity": log.mobile_similarity,
+        "direction": log.direction,
+        "latitude": log.latitude,
+        "longitude": log.longitude,
+        "reviewed_by_id": log.reviewed_by_id,
+        "reviewed_at": log.reviewed_at.isoformat() if log.reviewed_at else None,
+        "review_note": log.review_note,
+    }
+
+
+@router.get("/api/attendance/review-queue")
+def get_attendance_review_queue(
+    request: Request,
+    limit: int = 100,
+    organization_id: Optional[int] = None,
+    camera_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+):
+    scope = _resolve_camera_org_scope(request, db)
+    allowed_org_ids = list(scope.get("allowed_org_ids") or [])
+    is_super = bool(scope.get("is_super_admin"))
+    if not is_super and not allowed_org_ids:
+        return {"ok": True, "items": [], "count": 0, "pending": 0}
+
+    query = (
+        db.query(AttendanceLog)
+        .outerjoin(Device, Device.id == AttendanceLog.device_id)
+        .outerjoin(Employee, Employee.id == AttendanceLog.employee_id)
+        .filter(AttendanceLog.review_status == "pending")
+    )
+    if not is_super:
+        query = query.filter(or_(Device.organization_id.in_(allowed_org_ids), Employee.organization_id.in_(allowed_org_ids)))
+    if organization_id is not None:
+        query = query.filter(or_(Device.organization_id == organization_id, Employee.organization_id == organization_id))
+    if camera_id is not None:
+        query = query.filter(AttendanceLog.device_id == camera_id)
+
+    safe_limit = max(1, min(int(limit), 500))
+    total = int(query.count() or 0)
+    logs = query.order_by(AttendanceLog.id.desc()).limit(safe_limit).all()
+    return {
+        "ok": True,
+        "count": len(logs),
+        "pending": total,
+        "items": [_serialize_review_log(log) for log in logs],
+    }
+
+
+@router.get("/api/attendance/review-employees")
+def get_attendance_review_employees(
+    request: Request,
+    q: Optional[str] = None,
+    camera_id: Optional[int] = None,
+    organization_id: Optional[int] = None,
+    limit: int = 40,
+    db: Session = Depends(get_db),
+):
+    scope = _resolve_camera_org_scope(request, db)
+    allowed_org_ids = list(scope.get("allowed_org_ids") or [])
+    is_super = bool(scope.get("is_super_admin"))
+    if not is_super and not allowed_org_ids:
+        return {"ok": True, "items": []}
+
+    query = db.query(Employee)
+    if not is_super:
+        query = query.filter(Employee.organization_id.in_(allowed_org_ids))
+    if organization_id is not None:
+        query = query.filter(Employee.organization_id == organization_id)
+    if camera_id is not None:
+        query = query.join(EmployeeCameraLink, EmployeeCameraLink.employee_id == Employee.id).filter(EmployeeCameraLink.camera_id == camera_id)
+
+    search = str(q or "").strip()
+    if search:
+        term = f"%{search}%"
+        query = query.filter(
+            or_(
+                Employee.first_name.ilike(term),
+                Employee.last_name.ilike(term),
+                Employee.middle_name.ilike(term),
+                Employee.personal_id.ilike(term),
+                Employee.phone.ilike(term),
+            )
+        )
+
+    employees = query.order_by(Employee.last_name.asc(), Employee.first_name.asc()).limit(max(1, min(int(limit), 100))).all()
+    return {
+        "ok": True,
+        "items": [
+            {
+                "id": int(emp.id),
+                "uuid": emp.uuid,
+                "name": _employee_full_name(emp),
+                "personal_id": emp.personal_id,
+                "organization_id": emp.organization_id,
+                "organization_name": emp.organization.name if emp.organization else None,
+                "branch_id": emp.branch_id,
+                "branch_name": emp.branch.name if emp.branch else None,
+            }
+            for emp in employees
+        ],
+    }
+
+
+@router.post("/api/attendance/{log_id}/review")
+def review_attendance_log(
+    request: Request,
+    log_id: int,
+    payload: AttendanceReviewPayload,
+    db: Session = Depends(get_db),
+):
+    scope = _resolve_camera_org_scope(request, db)
+    allowed_org_ids = list(scope.get("allowed_org_ids") or [])
+    is_super = bool(scope.get("is_super_admin"))
+
+    log = db.query(AttendanceLog).filter(AttendanceLog.id == int(log_id)).first()
+    if not log:
+        raise HTTPException(status_code=404, detail="Davomat yozuvi topilmadi")
+    if not _attendance_log_in_scope(log, allowed_org_ids, is_super):
+        raise HTTPException(status_code=403, detail="Bu yozuvni tasdiqlashga ruxsat yo'q")
+
+    action = str(payload.action or "approve").strip().lower()
+    if action not in {"approve", "mark_unknown", "reject"}:
+        raise HTTPException(status_code=422, detail="Noto'g'ri tasdiqlash amali")
+
+    old_employee_id = int(log.employee_id) if log.employee_id is not None else None
+    old_status = log.status
+    old_review_status = log.review_status
+    reviewer_id = _get_auth_user_id(request)
+    note = str(payload.note or "").strip() or None
+
+    target_employee = None
+    if action == "approve":
+        target_employee_id = payload.employee_id if payload.employee_id is not None else log.employee_id
+        if target_employee_id is None:
+            raise HTTPException(status_code=422, detail="Tasdiqlash uchun xodim tanlang")
+        target_employee = db.query(Employee).filter(Employee.id == int(target_employee_id)).first()
+        if not target_employee:
+            raise HTTPException(status_code=404, detail="Xodim topilmadi")
+        if not is_super and target_employee.organization_id not in allowed_org_ids:
+            raise HTTPException(status_code=403, detail="Bu xodimga ruxsat yo'q")
+        if (
+            log.device is not None
+            and target_employee.organization_id is not None
+            and log.device.organization_id is not None
+            and int(target_employee.organization_id) != int(log.device.organization_id)
+        ):
+            raise HTTPException(status_code=409, detail="Xodim bu kamera tashkilotiga tegishli emas")
+
+        log.employee_id = int(target_employee.id)
+        log.person_id = str(target_employee.personal_id or log.person_id or "").strip() or None
+        log.person_name = _employee_full_name(target_employee) or log.person_name
+        log.status = "aniqlandi"
+        log.review_status = "approved"
+        log.review_reason = None
+
+        if payload.learn and log.device_id is not None:
+            existing_link = (
+                db.query(EmployeeCameraLink)
+                .filter(
+                    EmployeeCameraLink.employee_id == int(target_employee.id),
+                    EmployeeCameraLink.camera_id == int(log.device_id),
+                )
+                .first()
+            )
+            if existing_link is None:
+                db.add(EmployeeCameraLink(employee_id=int(target_employee.id), camera_id=int(log.device_id)))
+    else:
+        log.employee_id = None
+        log.person_name = None
+        log.status = "noma'lum"
+        log.review_status = "rejected" if action == "reject" else "approved"
+        log.review_reason = "operator_marked_unknown"
+
+    log.reviewed_by_id = reviewer_id
+    log.reviewed_at = now_tashkent()
+    log.review_note = note
+
+    db.add(
+        AttendanceReviewAudit(
+            attendance_log_id=int(log.id),
+            action=action,
+            old_employee_id=old_employee_id,
+            new_employee_id=int(log.employee_id) if log.employee_id is not None else None,
+            old_status=old_status,
+            new_status=log.status,
+            old_review_status=old_review_status,
+            new_review_status=log.review_status,
+            note=note,
+            created_by_id=reviewer_id,
+            created_at=now_tashkent(),
+        )
+    )
+    db.commit()
+    db.refresh(log)
+    return {"ok": True, "item": _serialize_review_log(log)}
 
 
 def _attendance_group_identity_expr():
@@ -3963,16 +4367,24 @@ def _build_today_status_items(
         schedule_payload = resolve_employee_schedule(emp) or {}
         expected_start_time = schedule_payload.get("start_time") or "09:00"
         expected_end_time = schedule_payload.get("end_time") or "18:00"
-        late_minutes = get_late_minutes(emp, target_day_start.date(), first_seen)
+        
+        expected_end = get_expected_end_dt(emp, target_day_start.date())
+        is_absent = False
+        if not first_seen:
+            is_absent = True
+        elif first_seen >= expected_end:
+            is_absent = True
+
+        late_minutes = 0 if is_absent else get_late_minutes(emp, target_day_start.date(), first_seen)
         is_late = late_minutes > 0
 
         include = False
         if today_status == "came":
-            include = len(emp_logs) > 0
+            include = len(emp_logs) > 0 and not is_absent
         elif today_status == "did_not_come":
-            include = len(emp_logs) == 0
+            include = len(emp_logs) == 0 or is_absent
         elif today_status == "came_late":
-            include = len(emp_logs) > 0 and is_late
+            include = len(emp_logs) > 0 and not is_absent and is_late
 
         if not include:
             continue
@@ -4105,6 +4517,9 @@ def _compute_employee_daily_summary(
         emp_id = int(emp.id)
         first_log = first_log_by_emp.get(emp_id)
         if not first_log or not first_log.timestamp:
+            continue
+        expected_end = get_expected_end_dt(emp, target_day_start.date())
+        if first_log.timestamp >= expected_end:
             continue
         came += 1
         if get_late_minutes(emp, target_day_start.date(), first_log.timestamp) > 0:
@@ -5161,6 +5576,10 @@ def _hik_process_log_ml_and_notify(
                 log.emotion_scores_json = psychological_profile.get("emotion_scores_json") or None
                 log.liveness_score = liveness_score
                 log.liveness_status = liveness_status
+                if log.employee_id is not None and liveness_status == "spoof":
+                    log.review_status = "pending"
+                    log.review_reason = "spoof_detected"
+                    log.status = "tasdiqlash_kerak"
 
                 # Daily psychological state update
                 if emp is not None:
@@ -5489,19 +5908,16 @@ async def hik_event_webhook(
 
     # Kamerani topamiz
     device: Optional[Device] = None
-    for candidate in (camera_serial, camera_mac):
-        if not candidate:
-            continue
+    identifiers = _device_identifier_candidates(camera_serial, camera_mac)
+    if identifiers:
         device = db.query(Device).filter(
             or_(
-                Device.isup_device_id == candidate,
-                Device.mac_address == candidate,
-                Device.serial_number == candidate,
-                Device.name == candidate,
+                Device.isup_device_id.in_(identifiers),
+                Device.mac_address.in_(identifiers),
+                Device.serial_number.in_(identifiers),
+                Device.name.in_(identifiers),
             )
         ).first()
-        if device is not None:
-            break
     if device is None:
         forwarded_for = (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
         real_ip = (request.headers.get("x-real-ip") or "").strip()
@@ -5542,8 +5958,13 @@ async def hik_event_webhook(
     emp: Optional[Employee] = None
     if person_id_val:
         emp = db.query(Employee).filter(Employee.personal_id == person_id_val).first()
-        if emp is None and person_id_val.isdigit():
-            emp = db.query(Employee).filter(Employee.id == int(person_id_val)).first()
+    if emp is not None and not _employee_allowed_for_event_device(db, emp, device):
+        _camera_event_debug(
+            f"[HIK-EVENT] Rejected employee match: employee_id={emp.id}, personal_id={person_id_val}, "
+            f"device_id={device.id if device else None}"
+        )
+        emp = None
+        person_name_val = None
     if emp:
         person_name_val = f"{emp.first_name or ''} {emp.last_name or ''}".strip()
 
@@ -5673,6 +6094,36 @@ async def hik_event_webhook(
             stress_status_uz="Normal",
             stress_status_ru="Нормальный",
         )
+
+        # WebSocket orqali real-time xabar yuborish (hik_event)
+        try:
+            from services.websocket_manager import manager as _ws_manager
+            _hik_org_id = int(device.organization_id) if device is not None and device.organization_id is not None else None
+            _hik_emp_name = None
+            if emp is not None:
+                _hik_emp_name = " ".join(
+                    filter(None, [
+                        str(emp.last_name or "").strip(),
+                        str(emp.first_name or "").strip(),
+                    ])
+                ) or None
+            asyncio.create_task(_ws_manager.broadcast_event(
+                "attendance",
+                {
+                    "id": log_id,
+                    "employee_id": int(emp.id) if emp else None,
+                    "employee_name": _hik_emp_name,
+                    "timestamp": ts_event.isoformat() if ts_event else None,
+                    "status": new_log.status,
+                    "direction": new_log.direction,
+                    "camera_name": device.name if device else None,
+                    "snapshot_url": snap_url,
+                },
+                organization_id=_hik_org_id,
+            ))
+        except Exception:
+            pass
+
         _camera_event_debug(f"[HIK-EVENT] Saved and queued for ML: log_id={log_id}, person={person_id_val}/{person_name_val}")
     else:
         log_id = existing_log_id

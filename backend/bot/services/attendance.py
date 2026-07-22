@@ -5,12 +5,12 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import cast
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import selectinload
 
 from database import SessionLocal, ensure_schema
-from models import AttendanceLog, Employee
-from utils.schedule_utils import get_late_minutes, is_holiday_for_org, resolve_employee_schedule
+from models import AttendanceLog, Employee, EmployeeStatusRecord
+from utils.schedule_utils import get_late_minutes, is_holiday_for_org, resolve_employee_schedule, get_expected_end_dt
 from utils.time_utils import now_tashkent
 
 
@@ -154,17 +154,60 @@ def get_employee_attendance_details(employee_id: int, target_date: date | None =
             cameras_seen.add(str(cam_name))
 
         days_in_month = (next_month.date() - timedelta(days=1)).day
-        present_days = len(day_map)
+        present_days = 0
         total_events = len(logs)
         late_days = 0
         total_late_seconds = 0
         total_late_minutes = 0
         calendar_days: list[MonthlyAttendanceDay] = []
 
+        # --- Load EmployeeStatusRecord for this month ---
+        status_records = (
+            db.execute(
+                select(EmployeeStatusRecord)
+                .where(
+                    EmployeeStatusRecord.employee_id == employee.id,
+                    EmployeeStatusRecord.start_date <= next_month.date(),
+                    or_(
+                        EmployeeStatusRecord.end_date == None,
+                        EmployeeStatusRecord.end_date >= month_start.date()
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+
         for day_num in range(1, days_in_month + 1):
             day_dt = datetime(target_date.year, target_date.month, day_num, 0, 0, 0)
             day_key = day_dt.strftime("%Y-%m-%d")
-            if is_holiday_for_org(db, day_dt.date(), employee.organization_id):
+            day_date_val = day_dt.date()
+
+            # 1. Check for active special status (vacation, sick_leave, business_trip, suspended, resigned)
+            active_status = None
+            for rec in status_records:
+                if rec.start_date <= day_date_val and (rec.end_date is None or rec.end_date >= day_date_val):
+                    active_status = rec.status_type
+                    break
+
+            if active_status:
+                calendar_days.append(
+                    MonthlyAttendanceDay(
+                        date_label=day_key,
+                        day=day_num,
+                        status=active_status,
+                        first_seen=None,
+                        last_seen=None,
+                        late_seconds=0,
+                        worked_seconds=0,
+                        event_count=0,
+                        camera_names=[],
+                    )
+                )
+                continue
+
+            # 2. Check holiday
+            if is_holiday_for_org(db, day_date_val, employee.organization_id):
                 calendar_days.append(
                     MonthlyAttendanceDay(
                         date_label=day_key,
@@ -196,14 +239,22 @@ def get_employee_attendance_details(employee_id: int, target_date: date | None =
                 )
                 continue
             expected_dt = day_dt.replace(hour=exp_h, minute=exp_m)
+            expected_end = get_expected_end_dt(employee, day_dt.date())
             first_seen = cast(datetime, found["first_seen"])
-            late_seconds = max(0, int(get_late_minutes(employee, day_dt.date(), first_seen) * 60))
+            
+            if first_seen >= expected_end:
+                status = "absent"
+                late_seconds = 0
+            else:
+                present_days += 1
+                late_seconds = max(0, int(get_late_minutes(employee, day_dt.date(), first_seen) * 60))
+                status = "late" if late_seconds > 0 else "present"
+                if late_seconds > 0:
+                    late_days += 1
+                    total_late_seconds += late_seconds
+                    total_late_minutes += late_seconds // 60
+            
             worked_seconds = max(0, int((cast(datetime, found["last_seen"]) - first_seen).total_seconds()))
-            status = "late" if late_seconds > 0 else "present"
-            if late_seconds > 0:
-                late_days += 1
-                total_late_seconds += late_seconds
-                total_late_minutes += late_seconds // 60
             calendar_days.append(
                 MonthlyAttendanceDay(
                     date_label=day_key,
@@ -224,14 +275,22 @@ def get_employee_attendance_details(employee_id: int, target_date: date | None =
             first_seen = cast(datetime, today_logs[0].timestamp)
             last_seen = cast(datetime, today_logs[-1].timestamp)
             expected_dt = datetime(target_date.year, target_date.month, target_date.day, exp_h, exp_m)
-            late_seconds = max(0, int(get_late_minutes(employee, target_date, first_seen) * 60))
+            expected_end = get_expected_end_dt(employee, target_date)
+            
+            if first_seen >= expected_end:
+                status = "absent"
+                late_seconds = 0
+            else:
+                late_seconds = max(0, int(get_late_minutes(employee, target_date, first_seen) * 60))
+                status = "late" if late_seconds > 0 else "present"
+                
             worked_seconds = max(0, int((last_seen - first_seen).total_seconds()))
             today_summary = DailyAttendanceSummary(
                 date_label=target_date.isoformat(),
                 total_events=len(today_logs),
                 first_seen=first_seen,
                 last_seen=last_seen,
-                status="late" if late_seconds > 0 else "present",
+                status=status,
                 late_seconds=late_seconds,
                 worked_seconds=worked_seconds,
                 camera_names=sorted(

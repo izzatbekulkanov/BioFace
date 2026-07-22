@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, WebAppInfo
 
 LANGUAGE_LABELS = {
     "uz": "O'zbekcha",
@@ -52,7 +52,7 @@ MESSAGES = {
         "status_present": "Kelgan",
         "status_late": "Kech kelgan",
         "status_absent": "Kelmagan",
-        "calendar_legend": "Legenda: yashil = kelgan, sariq = kech kelgan, qizil = kelmagan",
+        "calendar_legend": "Legenda: 🟩 kelgan, 🟨 kech kelgan, 🟥 kelmagan, 🟦 dam olish, ✈️ ta'til, 🏥 kasallik, 💼 safari",
         "weekday_mon": "D",
         "weekday_tue": "S",
         "weekday_wed": "C",
@@ -66,6 +66,7 @@ MESSAGES = {
         "menu_month": "Oy",
         "menu_language": "Til",
         "menu_logout": "Chiqish",
+        "menu_webapp": "Davomat (Mini App)",
         "menu_title": "Asosiy menyu",
         "switch_id_prompt": "Yangi ID ni kiriting.",
         "language_updated": "Til yangilandi.",
@@ -115,7 +116,7 @@ MESSAGES = {
         "status_present": "Присутствовал",
         "status_late": "Опоздал",
         "status_absent": "Отсутствовал",
-        "calendar_legend": "Легенда: зелёный = присутствовал, жёлтый = опоздал, красный = отсутствовал",
+        "calendar_legend": "Легенда: 🟩 присутств., 🟨 опоздал, 🟥 отсутств., 🟦 выходной, ✈️ отпуск, 🏥 больн., 💼 командир.",
         "weekday_mon": "Пн",
         "weekday_tue": "Вт",
         "weekday_wed": "Ср",
@@ -129,6 +130,7 @@ MESSAGES = {
         "menu_month": "Месяц",
         "menu_language": "Язык",
         "menu_logout": "Выйти",
+        "menu_webapp": "Отметка (Mini App)",
         "menu_title": "Главное меню",
         "switch_id_prompt": "Введите новый ID.",
         "language_updated": "Язык обновлён.",
@@ -160,10 +162,16 @@ def build_language_keyboard() -> InlineKeyboardMarkup:
 
 
 
-def build_main_menu_keyboard(language: str | None) -> ReplyKeyboardMarkup:
+def build_main_menu_keyboard(language: str | None, telegram_user_id: str | None = None) -> ReplyKeyboardMarkup:
+    import os
     lang = normalize_language(language)
+    public_url = os.getenv("PUBLIC_WEB_BASE_URL", "https://bioface.uz").rstrip('/')
+    webapp_url = f"{public_url}/static/telegram_webapp/index.html?v=2.2.1"
+    if telegram_user_id:
+        webapp_url += f"&tg_id={telegram_user_id}"
     return ReplyKeyboardMarkup(
         [
+            [KeyboardButton(get_message(lang, "menu_webapp"), web_app=WebAppInfo(url=webapp_url))],
             [KeyboardButton(get_message(lang, "menu_profile")), KeyboardButton(get_message(lang, "menu_today"))],
             [KeyboardButton(get_message(lang, "menu_month")), KeyboardButton(get_message(lang, "menu_language"))],
             [KeyboardButton(get_message(lang, "menu_logout"))],
@@ -173,3 +181,6 @@ def build_main_menu_keyboard(language: str | None) -> ReplyKeyboardMarkup:
     )
 
 
+def build_logout_keyboard() -> ReplyKeyboardRemove:
+    """Remove the reply keyboard completely after logout so no menu buttons are visible."""
+    return ReplyKeyboardRemove()

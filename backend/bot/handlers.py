@@ -12,7 +12,7 @@ from bot.formatters import (
     format_monthly_attendance_summary,
     build_month_calendar_keyboard,
 )
-from bot.i18n import build_language_keyboard, build_main_menu_keyboard, get_message, normalize_language
+from bot.i18n import build_language_keyboard, build_logout_keyboard, build_main_menu_keyboard, get_message, normalize_language
 from bot.services.attendance import get_employee_attendance_details, get_employee_today_summary
 from bot.services.bindings import delete_binding, get_binding, upsert_binding
 from bot.services.employee_lookup import find_employee_by_personal_id
@@ -41,8 +41,8 @@ def _looks_like_personal_id(value: str) -> bool:
     return clean.isdigit() and 4 <= len(clean) <= 12
 
 
-async def _send_profile_card(message_obj: Any, employee: Any, language: str) -> None:
-    await message_obj.reply_text(format_employee_profile(employee, language), reply_markup=build_main_menu_keyboard(language))
+async def _send_profile_card(message_obj: Any, employee: Any, language: str, telegram_user_id: str | None = None) -> None:
+    await message_obj.reply_text(format_employee_profile(employee, language), reply_markup=build_main_menu_keyboard(language, telegram_user_id))
 
 
 async def start(update: Any, context: Any) -> int:
@@ -59,9 +59,11 @@ async def start(update: Any, context: Any) -> int:
         context.user_data["personal_id"] = binding.employee.personal_id
         upsert_binding(user_id, chat_id, language, binding.employee.id)
         context.user_data["awaiting_id"] = False
-        await _send_profile_card(update.message, binding.employee, language)
+        await _send_profile_card(update.message, binding.employee, language, telegram_user_id=user_id)
         return AUTH_MENU
 
+    # No binding — show language selection
+    context.user_data["awaiting_id"] = False
     if update.message:
         await update.message.reply_text(
             get_message(language, "welcome"),
@@ -88,7 +90,7 @@ async def choose_language(update: Any, context: Any) -> int:
         context.user_data["awaiting_id"] = False
         await query.edit_message_text(get_message(language, "language_updated"))
         if query.message:
-            await _send_profile_card(query.message, existing.employee, language)
+            await _send_profile_card(query.message, existing.employee, language, telegram_user_id=user_id)
         return AUTH_MENU
 
     context.user_data["awaiting_id"] = True
@@ -129,8 +131,9 @@ async def handle_id(update: Any, context: Any) -> int:
 
     upsert_binding(user_id, chat_id, language, employee.id)
 
-    await _send_profile_card(update.message, employee, language)
+    await _send_profile_card(update.message, employee, language, telegram_user_id=user_id)
     return AUTH_MENU
+
 
 
 async def handle_action(update: Any, context: Any) -> int:
@@ -150,7 +153,11 @@ async def handle_action(update: Any, context: Any) -> int:
     if action == "logout":
         delete_binding(user_id)
         context.user_data.clear()
-        await query.edit_message_text(get_message(language, "logout_done"), reply_markup=build_language_keyboard())
+        # Edit the current message to show welcome + language keyboard (no duplicate messages)
+        await query.edit_message_text(
+            get_message(language, "logout_done") + "\n\n" + get_message(language, "welcome"),
+            reply_markup=build_language_keyboard()
+        )
         return SELECT_LANGUAGE
 
     return AUTH_MENU
@@ -186,20 +193,21 @@ async def show_today(update: Any, context: Any) -> int:
             await update.message.reply_photo(
                 photo=photo_file,
                 caption=caption_text,
-                reply_markup=build_main_menu_keyboard(language)
+                reply_markup=build_main_menu_keyboard(language, telegram_user_id=user_id)
             )
         except Exception:
             await update.message.reply_text(
                 caption_text,
-                reply_markup=build_main_menu_keyboard(language)
+                reply_markup=build_main_menu_keyboard(language, telegram_user_id=user_id)
             )
         finally:
             photo_file.close()
     else:
         await update.message.reply_text(
             caption_text,
-            reply_markup=build_main_menu_keyboard(language)
+            reply_markup=build_main_menu_keyboard(language, telegram_user_id=user_id)
         )
+
     return AUTH_MENU
 
 
@@ -249,19 +257,19 @@ async def show_profile(update: Any, context: Any) -> int:
             await update.message.reply_photo(
                 photo=photo_file,
                 caption=caption_text,
-                reply_markup=build_main_menu_keyboard(language)
+                reply_markup=build_main_menu_keyboard(language, telegram_user_id=user_id)
             )
         except Exception:
             await update.message.reply_text(
                 caption_text,
-                reply_markup=build_main_menu_keyboard(language)
+                reply_markup=build_main_menu_keyboard(language, telegram_user_id=user_id)
             )
         finally:
             photo_file.close()
     else:
         await update.message.reply_text(
             caption_text,
-            reply_markup=build_main_menu_keyboard(language)
+            reply_markup=build_main_menu_keyboard(language, telegram_user_id=user_id)
         )
     return AUTH_MENU
 
@@ -275,25 +283,47 @@ async def handle_menu_text(update: Any, context: Any) -> int:
     if not text:
         return AUTH_MENU
 
-    if text == get_message(language, "menu_profile"):
-        return await show_profile(update, context)
-    if text == get_message(language, "menu_today"):
-        return await show_today(update, context)
-    if text == get_message(language, "menu_month"):
-        return await show_month(update, context)
-    if text == get_message(language, "menu_language"):
-        return await _show_language_selection(update, context)
-    if text == get_message(language, "menu_logout"):
+    lower_text = text.lower()
+    
+    # Direct command checks
+    if lower_text in {"/start", "start"}:
+        return await start(update, context)
+    if lower_text in {"/logout", "logout", "chiqish", "выйти", get_message("uz", "menu_logout").lower(), get_message("ru", "menu_logout").lower()}:
         return await _do_logout(update, context)
+    if lower_text in {"profil", "профиль", get_message("uz", "menu_profile").lower(), get_message("ru", "menu_profile").lower()}:
+        return await show_profile(update, context)
+    if lower_text in {"bugun", "сегодня", get_message("uz", "menu_today").lower(), get_message("ru", "menu_today").lower()}:
+        return await show_today(update, context)
+    if lower_text in {"oy", "месяц", get_message("uz", "menu_month").lower(), get_message("ru", "menu_month").lower()}:
+        return await show_month(update, context)
+    if lower_text in {"til", "язык", get_message("uz", "menu_language").lower(), get_message("ru", "menu_language").lower()}:
+        return await _show_language_selection(update, context)
 
     user_id, _ = _telegram_ids(update)
     binding = get_binding(user_id)
-    if bool(context.user_data.get("awaiting_id")):
+
+    # Route to ID entry if:
+    # 1. awaiting_id is explicitly set (normal flow), OR
+    # 2. no binding AND text looks like a personal ID (robust fallback after bot restart / context loss)
+    if bool(context.user_data.get("awaiting_id")) or (
+        (binding is None or binding.employee_id is None) and _looks_like_personal_id(text)
+    ):
         return await handle_id(update, context)
+
     if binding is not None and binding.employee is not None:
         if update.message:
-            await update.message.reply_text(get_message(language, "menu_title"), reply_markup=build_main_menu_keyboard(language))
+            await update.message.reply_text(
+                get_message(language, "menu_title"),
+                reply_markup=build_main_menu_keyboard(language, telegram_user_id=user_id)
+            )
         return AUTH_MENU
+
+    # Not bound, not a personal ID — re-prompt language selection
+    if update.message:
+        await update.message.reply_text(
+            get_message(language, "welcome"),
+            reply_markup=build_language_keyboard()
+        )
     return SELECT_LANGUAGE
 
 
@@ -351,7 +381,16 @@ async def _do_logout(update: Any, context: Any) -> int:
     delete_binding(user_id)
     context.user_data.clear()
     if update.message:
-        await update.message.reply_text(get_message(language, "logout_done"), reply_markup=build_language_keyboard())
+        # Step 1: Remove the persistent reply keyboard so no menu buttons remain visible
+        await update.message.reply_text(
+            get_message(language, "logout_done"),
+            reply_markup=build_logout_keyboard()
+        )
+        # Step 2: Show the language selection inline keyboard so user can re-register
+        await update.message.reply_text(
+            get_message(language, "welcome"),
+            reply_markup=build_language_keyboard()
+        )
     return SELECT_LANGUAGE
 
 

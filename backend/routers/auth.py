@@ -1,6 +1,9 @@
 import os
 import secrets
+from pathlib import Path
+from typing import Optional
 from urllib.parse import urlencode
+
 
 import bcrypt
 import httpx
@@ -11,7 +14,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 import config.system_config as system_config  # noqa: F401  # loads .env values before OAuth settings are read
-from utils.access_control import resolve_user_menu_permissions
+from utils.access_control import normalize_role_value, resolve_user_menu_permissions
 from database import get_db
 from models import User, Organization, UserOrganizationLink, Device, RequestLog, Employee, FaceEmbedding
 from utils.menu_utils import get_menu_data
@@ -19,6 +22,7 @@ from utils.translations import get_translations
 
 
 router = APIRouter()
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 LOGIN_CAPTCHA_THRESHOLD = 3
 LOGIN_FAIL_COUNT_SESSION_KEY = "auth_login_fail_count"
@@ -95,7 +99,7 @@ def _build_auth_user(user: User, db: Session | None = None) -> dict:
         "phone": user.phone or "",
         "display_name": display_name,
         "email": user.email,
-        "role": str(user.role or ""),
+        "role": normalize_role_value(user.role),
         "menu_permissions": resolve_user_menu_permissions(
             role=user.role,
             stored_permissions=user.menu_permissions,
@@ -114,16 +118,28 @@ def _find_user_by_login_identifier(db: Session, identifier: str) -> User | None:
     normalized = str(identifier or "").strip().lower()
     if not normalized:
         return None
-    return (
+    
+    clean_digits = "".join([c for c in normalized if c.isdigit()])
+    
+    user = (
         db.query(User)
         .filter(
             or_(
                 func.lower(User.email) == normalized,
                 func.lower(User.name) == normalized,
+                func.lower(User.first_name) == normalized,
+                func.lower(User.phone) == normalized,
             )
         )
         .first()
     )
+    if not user and clean_digits and len(clean_digits) >= 7:
+        user = (
+            db.query(User)
+            .filter(func.replace(func.replace(func.replace(User.phone, "+", ""), "-", ""), " ", "").like(f"%{clean_digits}%"))
+            .first()
+        )
+    return user
 
 
 def _get_login_fail_count(request: Request) -> int:
@@ -386,13 +402,15 @@ def login(payload: LoginPayload, request: Request, db: Session = Depends(get_db)
 
     # Veb-brauzer orqali kirgan xodimlarni taqiqlash (faqat is_staff=True foydalanuvchilarga ruxsat beriladi)
     if not user.is_staff:
-        origin = request.headers.get("origin")
-        referer = request.headers.get("referer")
-        if origin or referer:
-            raise HTTPException(
-                status_code=403,
-                detail="Veb-panelga faqat tizim foydalanuvchilari (adminlar) kira oladi. Iltimos, mobil ilovadan foydalaning."
-            )
+        is_tg_webapp = request.headers.get("x-telegram-webapp") == "true"
+        if not is_tg_webapp:
+            origin = request.headers.get("origin")
+            referer = request.headers.get("referer")
+            if origin or referer:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Veb-panelga faqat tizim foydalanuvchilari (adminlar) kira oladi. Iltimos, mobil ilovadan foydalaning."
+                )
     user.last_login_provider = "password"
     db.commit()
     db.refresh(user)
@@ -401,7 +419,22 @@ def login(payload: LoginPayload, request: Request, db: Session = Depends(get_db)
     request.session["auth_user"] = auth_user
 
     from utils.jwt_utils import create_access_token
+    from utils.audit import write_audit
     token = create_access_token(data={"sub": user.name})
+    try:
+        write_audit(
+            db,
+            action="LOGIN",
+            description=f"{user.name} tizimga kirdi",
+            user_id=user.id,
+            user_name=user.name,
+            user_role=user.role,
+            ip_address=str(request.client.host) if request.client else None,
+            organization_id=user.organization_id,
+            commit=True,
+        )
+    except Exception:
+        pass
     return {"ok": True, "redirect": "/", "token": token, "user": auth_user}
 
 
@@ -421,6 +454,119 @@ def get_me(request: Request, db: Session = Depends(get_db)):
 def logout_api(request: Request):
     request.session.clear()
     return {"ok": True}
+
+
+import hmac
+import hashlib
+import json
+from urllib.parse import parse_qs
+
+
+def verify_telegram_init_data(init_data: str, bot_token: str) -> dict | None:
+    """Telegram Mini App initData HMAC-SHA256 tekshiruvi (Telegram rasmiy standarti)."""
+    if not init_data or not bot_token:
+        return None
+    try:
+        parsed = dict(parse_qs(init_data))
+        flat_params = {k: v[0] for k, v in parsed.items()}
+        hash_val = flat_params.pop("hash", None)
+        if not hash_val:
+            return None
+
+        data_check_string = "\n".join(f"{k}={v}" for k, v in sorted(flat_params.items()))
+        secret_key = hmac.new(b"WebAppData", bot_token.encode("utf-8"), hashlib.sha256).digest()
+        calc_hash = hmac.new(secret_key, data_check_string.encode("utf-8"), hashlib.sha256).hexdigest()
+
+        if hmac.compare_digest(calc_hash, hash_val):
+            user_json = flat_params.get("user")
+            if user_json:
+                return json.loads(user_json)
+            return flat_params
+    except Exception:
+        pass
+    return None
+
+
+@router.get("/api/auth/telegram-info")
+def get_telegram_info(
+    request: Request,
+    telegram_user_id: str,
+    init_data: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
+    from models import TelegramUserBinding
+
+    if not telegram_user_id:
+        raise HTTPException(status_code=400, detail="telegram_user_id is required")
+
+    # Auth check: Tizim foydalanuvchisi kirgan bo'lishi YOKI Telegram initData tasdiqlangan bo'lishi shart
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+    session_user = request.session.get("auth_user")
+
+    if not session_user and bot_token:
+        if not init_data:
+            raise HTTPException(status_code=401, detail="Telegram autentifikatsiya ma'lumoti (init_data) yetishmayapti")
+        tg_user = verify_telegram_init_data(init_data, bot_token)
+        if not tg_user or str(tg_user.get("id")) != str(telegram_user_id):
+            raise HTTPException(status_code=401, detail="Telegram initData yaroqsiz yoki soxtalashtirilgan")
+
+    binding = db.query(TelegramUserBinding).filter(TelegramUserBinding.telegram_user_id == str(telegram_user_id)).first()
+    if not binding or not binding.employee:
+        raise HTTPException(status_code=404, detail="Binding not found")
+    return {
+        "ok": True,
+        "personal_id": binding.employee.personal_id,
+        "employee_id": binding.employee.id
+    }
+
+
+@router.post("/api/auth/telegram-login")
+def telegram_login(payload: dict, request: Request, db: Session = Depends(get_db)):
+    telegram_user_id = payload.get("telegram_user_id")
+    init_data = payload.get("init_data")
+
+    if not telegram_user_id:
+        raise HTTPException(status_code=400, detail="telegram_user_id is required")
+
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+    if bot_token:
+        if not init_data:
+            raise HTTPException(
+                status_code=401,
+                detail="Telegram autentifikatsiya ma'lumoti (init_data) majburiy"
+            )
+        tg_user = verify_telegram_init_data(init_data, bot_token)
+        if not tg_user or str(tg_user.get("id")) != str(telegram_user_id):
+            raise HTTPException(
+                status_code=401,
+                detail="Telegram autentifikatsiyasi muvaffaqiyatsiz bo'ldi (HMAC mos kelmadi)"
+            )
+
+    from models import TelegramUserBinding, User
+    binding = db.query(TelegramUserBinding).filter(TelegramUserBinding.telegram_user_id == str(telegram_user_id)).first()
+    if not binding or not binding.employee:
+        raise HTTPException(status_code=404, detail="Telegram account not bound to any employee.")
+
+    personal_id = binding.employee.personal_id
+    user = db.query(User).filter(User.name == personal_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Associated user account not found.")
+
+    user_status = str(user.status or "active").strip().lower() or "active"
+    if user_status != "active":
+        raise HTTPException(status_code=403, detail="Hisob nofaol holatda")
+
+    user.last_login_provider = "telegram"
+    db.commit()
+    db.refresh(user)
+
+    auth_user = _build_auth_user(user, db=db)
+    request.session["auth_user"] = auth_user
+
+    from utils.jwt_utils import create_access_token
+    token = create_access_token(data={"sub": user.name})
+    return {"ok": True, "token": token, "user": auth_user}
+
 
 
 @router.get("/logout")
@@ -567,17 +713,42 @@ async def update_profile_avatar(
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
 
-    # 2. File saving
-    upload_dir = "/home/smartgate/BioFace/backend/static/uploads/avatars"
-    os.makedirs(upload_dir, exist_ok=True)
+    # 2. File extension va kontent tekshiruvi (XAVFSIZLIK)
+    ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
+    MAX_AVATAR_SIZE = 5 * 1024 * 1024  # 5MB
 
-    file_ext = os.path.splitext(file.filename)[1] if file.filename else ".jpg"
-    filename = f"{user.name}_{int(time.time())}{file_ext}"
-    dest_path = os.path.join(upload_dir, filename)
+    raw_ext = os.path.splitext(file.filename or "")[1].lower() if file.filename else ""
+    if raw_ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Rasm formati qabul qilinmaydi. Ruxsat etilganlar: {', '.join(ALLOWED_EXTENSIONS)}"
+        )
+
+    # Fayl tarkibini o'qib hajmini tekshirish
+    file_contents = await file.read()
+    if len(file_contents) > MAX_AVATAR_SIZE:
+        raise HTTPException(status_code=413, detail="Rasm hajmi 5MB dan oshmasligi kerak")
+
+    # Magic bytes tekshiruvi — haqiqiy rasm ekanligini tekshirish
+    from PIL import Image as PilImage
+    import io
+    try:
+        pil_img = PilImage.open(io.BytesIO(file_contents))
+        pil_img.verify()  # Fayl buzilmagan ekanligini tekshirish
+    except Exception:
+        raise HTTPException(status_code=400, detail="Yuklangan fayl yaroqsiz rasm")
+
+    # Xavfsiz fayl nomi yaratish (user.name o'z ichiga xavfli belgilar bo'lishi mumkin)
+    import time
+    import re as _re
+    safe_name = _re.sub(r"[^a-zA-Z0-9_-]", "_", str(user.name or "user"))[:30]
+    file_ext = raw_ext
+    filename = f"{safe_name}_{int(time.time())}{file_ext}"
+    dest_path = str(upload_dir / filename)
 
     try:
         with open(dest_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+            buffer.write(file_contents)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Faylni saqlashda xatolik: {str(e)}")
 

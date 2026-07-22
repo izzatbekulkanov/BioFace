@@ -128,14 +128,62 @@ def get_employee_attendance_calendar(
         "camera_count": len(cameras_seen),
     }
 
+    from models import EmployeeStatusRecord
+    from sqlalchemy import or_
+
+    status_records = (
+        db.query(EmployeeStatusRecord)
+        .filter(
+            EmployeeStatusRecord.employee_id == emp.id,
+            EmployeeStatusRecord.start_date <= month_end.date(),
+            or_(
+                EmployeeStatusRecord.end_date == None,
+                EmployeeStatusRecord.end_date >= month_start.date()
+            )
+        )
+        .all()
+    )
+
     days: list[dict] = []
     for day_num in range(1, days_in_month + 1):
         day_dt = datetime(target_year, target_month, day_num, 0, 0, 0)
         day_key = day_dt.strftime("%Y-%m-%d")
+        day_date_val = day_dt.date()
         is_weekend = day_dt.weekday() == 6
-        is_holiday = is_holiday_for_org(db, day_dt.date(), emp.organization_id) or is_weekend
+        is_holiday = is_holiday_for_org(db, day_date_val, emp.organization_id) or is_weekend
+
+        # Check for active status record
+        active_status = None
+        for r in status_records:
+            if r.start_date <= day_date_val and (r.end_date is None or r.end_date >= day_date_val):
+                active_status = r.status_type
+                break
 
         found = day_map.get(day_key)
+
+        if active_status:
+            days.append(
+                {
+                    "day": day_num,
+                    "date": day_key,
+                    "present": False,
+                    "status": active_status,
+                    "event_count": 0,
+                    "first_seen": None,
+                    "last_seen": None,
+                    "expected_time": None,
+                    "expected_end_time": None,
+                    "late_seconds": 0,
+                    "late_minutes": 0,
+                    "late_human": "0 daqiqa",
+                    "late_human_full": "0 daqiqa",
+                    "worked_seconds": 0,
+                    "worked_human": "0 daqiqa",
+                    "camera_names": [],
+                    "is_holiday": is_holiday,
+                }
+            )
+            continue
 
         if is_holiday and not found:
             days.append(
@@ -220,18 +268,27 @@ def get_employee_attendance_calendar(
         else:
             expected_time_val = get_expected_start_dt(emp, day_dt.date()).isoformat()
             expected_end_time_val = get_expected_end_dt(emp, day_dt.date()).isoformat()
-            late_minutes = get_late_minutes(emp, day_dt.date(), first_seen)
-            late_seconds = late_minutes * 60
-            late_minutes = late_seconds // 60
-            status = "late" if late_minutes > 0 else "present"
+            expected_end = get_expected_end_dt(emp, day_dt.date())
+            if first_seen >= expected_end:
+                status = "absent"
+                late_minutes = 0
+                late_seconds = 0
+            else:
+                late_minutes = get_late_minutes(emp, day_dt.date(), first_seen)
+                late_seconds = late_minutes * 60
+                late_minutes = late_seconds // 60
+                status = "late" if late_minutes > 0 else "present"
 
         worked_seconds = max(0, int((last_seen - first_seen).total_seconds()))
 
-        summary["present_days"] += 1
-        if late_minutes > 0:
-            summary["late_days"] += 1
-            summary["total_late_minutes"] += late_minutes
-            summary["total_late_seconds"] += late_seconds
+        if status == "absent":
+            summary["absent_days"] += 1
+        else:
+            summary["present_days"] += 1
+            if late_minutes > 0:
+                summary["late_days"] += 1
+                summary["total_late_minutes"] += late_minutes
+                summary["total_late_seconds"] += late_seconds
 
         days.append(
             {
@@ -340,7 +397,10 @@ def get_employee_logs(
             AttendanceLog.device_id,
             AttendanceLog.latitude,
             AttendanceLog.longitude,
+            AttendanceLog.liveness_score,
+            AttendanceLog.liveness_status,
             Device.name.label("device_name"),
+            Device.direction.label("device_direction"),
         )
         .outerjoin(Device, Device.id == AttendanceLog.device_id)
         .filter(AttendanceLog.employee_id == emp.id)
@@ -356,12 +416,47 @@ def get_employee_logs(
             "timestamp": row.timestamp.isoformat() if row.timestamp else None,
             "status": str(row.status or ""),
             "camera_name": str(row.device_name or (emp.branch.name if emp.branch else None) or row.camera_mac or "-"),
-            "direction": "mobile" if row.device_id is None else str(row.direction or ""),
+            "direction": str(row.direction or row.device_direction or "in"),
             "latitude": row.latitude,
             "longitude": row.longitude,
+            "liveness_score": row.liveness_score,
+            "liveness_status": row.liveness_status,
         }
         for row in rows
     ]
+
+
+    # --- Excuse / special-case records for this employee ---
+    from models import EmployeeStatusRecord
+    _excuse_lbl = {
+        "vacation":      {"uz": "Ta'til",         "ru": "Otpusk"},
+        "sick_leave":    {"uz": "Kasallik",        "ru": "Bolnichnyy"},
+        "business_trip": {"uz": "Xizmat safari",  "ru": "Komandirovka"},
+        "suspended":     {"uz": "To'xtatilgan",   "ru": "Otstranyon"},
+        "resigned":      {"uz": "Ishdan ketgan",  "ru": "Uvolen"},
+        "excuse":        {"uz": "Sababli",        "ru": "Uvazh. prichina"},
+        "remote_work":   {"uz": "Masofaviy ish",  "ru": "Udalyonnaya rabota"},
+        "day_off":       {"uz": "Dam olish kuni", "ru": "Otgul"},
+    }
+    _excuse_rows = (
+        db.query(EmployeeStatusRecord)
+        .filter(EmployeeStatusRecord.employee_id == emp.id)
+        .order_by(EmployeeStatusRecord.start_date.desc())
+        .all()
+    )
+    excuse_items = []
+    for _er in _excuse_rows:
+        _lbl = _excuse_lbl.get(_er.status_type, {"uz": _er.status_type, "ru": _er.status_type})
+        excuse_items.append({
+            "id":           _er.id,
+            "status_type":  _er.status_type,
+            "label_uz":     _lbl["uz"],
+            "label_ru":     _lbl["ru"],
+            "start_date":   _er.start_date.isoformat() if _er.start_date else None,
+            "end_date":     _er.end_date.isoformat()   if _er.end_date   else None,
+            "comment":      _er.comment or "",
+            "document_url": _er.document_url or "",
+        })
 
     return {
         "ok": True,
@@ -371,4 +466,170 @@ def get_employee_logs(
         "total": total,
         "total_pages": total_pages,
         "items": items,
+        "excuse_records": excuse_items,
     }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# EXCUSE / SPECIAL-CASE RECORDS  (Sababli va maxsus holatlar)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_EXCUSE_LABELS = {
+    "vacation":      {"uz": "Ta'til",         "ru": "Otpusk"},
+    "sick_leave":    {"uz": "Kasallik",        "ru": "Bolnichnyy"},
+    "business_trip": {"uz": "Xizmat safari",  "ru": "Komandirovka"},
+    "suspended":     {"uz": "To'xtatilgan",   "ru": "Otstranyon"},
+    "resigned":      {"uz": "Ishdan ketgan",  "ru": "Uvolen"},
+    "excuse":        {"uz": "Sababli",        "ru": "Uvazh. prichina"},
+    "remote_work":   {"uz": "Masofaviy ish",  "ru": "Udalyonnaya rabota"},
+    "day_off":       {"uz": "Dam olish kuni", "ru": "Otgul"},
+}
+
+
+@router.get("/api/employees/{emp_id}/excuse-records")
+def get_excuse_records(
+    emp_id: str,
+    year: Optional[int] = Query(None),
+    month: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+):
+    from models import EmployeeStatusRecord
+    from sqlalchemy import or_
+
+    if emp_id.isdigit():
+        emp = db.query(Employee).filter(Employee.id == int(emp_id)).first()
+    else:
+        emp = db.query(Employee).filter(Employee.uuid == emp_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Xodim topilmadi")
+
+    q = db.query(EmployeeStatusRecord).filter(EmployeeStatusRecord.employee_id == emp.id)
+    if year and month:
+        from datetime import date as date_cls
+        from calendar import monthrange as _mr
+        _, days_in = _mr(year, month)
+        p_start = date_cls(year, month, 1)
+        p_end = date_cls(year, month, days_in)
+        q = q.filter(
+            EmployeeStatusRecord.start_date <= p_end,
+            or_(
+                EmployeeStatusRecord.end_date == None,
+                EmployeeStatusRecord.end_date >= p_start
+            )
+        )
+
+    records = q.order_by(EmployeeStatusRecord.start_date.desc()).all()
+    items = []
+    for r in records:
+        lbl = _EXCUSE_LABELS.get(r.status_type, {"uz": r.status_type, "ru": r.status_type})
+        items.append({
+            "id":           r.id,
+            "uuid":         r.uuid,
+            "status_type":  r.status_type,
+            "label_uz":     lbl["uz"],
+            "label_ru":     lbl["ru"],
+            "start_date":   r.start_date.isoformat() if r.start_date else None,
+            "end_date":     r.end_date.isoformat()   if r.end_date   else None,
+            "comment":      r.comment or "",
+            "document_url": r.document_url or "",
+            "created_at":   r.created_at.isoformat() if r.created_at else None,
+        })
+
+    return {"ok": True, "total": len(items), "items": items}
+
+
+@router.post("/api/employees/{emp_id}/excuse-records")
+def create_excuse_record(
+    emp_id: str,
+    payload: dict,
+    db: Session = Depends(get_db),
+):
+    from models import EmployeeStatusRecord
+    from datetime import date as date_cls
+
+    if emp_id.isdigit():
+        emp = db.query(Employee).filter(Employee.id == int(emp_id)).first()
+    else:
+        emp = db.query(Employee).filter(Employee.uuid == emp_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Xodim topilmadi")
+
+    status_type = payload.get("status_type")
+    start_date_str = payload.get("start_date")
+    if not status_type or not start_date_str:
+        raise HTTPException(status_code=400, detail="status_type va start_date majburiy")
+
+    if status_type not in _EXCUSE_LABELS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Notogri status_type. Mumkin: {list(_EXCUSE_LABELS.keys())}"
+        )
+
+    try:
+        start_date = date_cls.fromisoformat(start_date_str)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="start_date formati: YYYY-MM-DD")
+
+    end_date = None
+    if payload.get("end_date"):
+        try:
+            end_date = date_cls.fromisoformat(payload["end_date"])
+        except ValueError:
+            raise HTTPException(status_code=400, detail="end_date formati: YYYY-MM-DD")
+
+    record = EmployeeStatusRecord(
+        employee_id=emp.id,
+        status_type=status_type,
+        start_date=start_date,
+        end_date=end_date,
+        comment=payload.get("comment"),
+        document_url=payload.get("document_url"),
+    )
+    db.add(record)
+    db.commit()
+    db.refresh(record)
+
+    lbl = _EXCUSE_LABELS.get(status_type, {"uz": status_type, "ru": status_type})
+    return {
+        "ok": True,
+        "message": "Yozuv muvaffaqiyatli qoshildi",
+        "record": {
+            "id":           record.id,
+            "uuid":         record.uuid,
+            "status_type":  record.status_type,
+            "label_uz":     lbl["uz"],
+            "label_ru":     lbl["ru"],
+            "start_date":   record.start_date.isoformat(),
+            "end_date":     record.end_date.isoformat() if record.end_date else None,
+            "comment":      record.comment or "",
+            "document_url": record.document_url or "",
+            "created_at":   record.created_at.isoformat() if record.created_at else None,
+        }
+    }
+
+
+@router.delete("/api/employees/{emp_id}/excuse-records/{record_id}")
+def delete_excuse_record(
+    emp_id: str,
+    record_id: int,
+    db: Session = Depends(get_db),
+):
+    from models import EmployeeStatusRecord
+
+    if emp_id.isdigit():
+        emp = db.query(Employee).filter(Employee.id == int(emp_id)).first()
+    else:
+        emp = db.query(Employee).filter(Employee.uuid == emp_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Xodim topilmadi")
+
+    record = db.query(EmployeeStatusRecord).filter(
+        EmployeeStatusRecord.id == record_id,
+        EmployeeStatusRecord.employee_id == emp.id,
+    ).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="Yozuv topilmadi")
+
+    db.delete(record)
+    db.commit()
+    return {"ok": True, "message": "Yozuv ochirildi"}

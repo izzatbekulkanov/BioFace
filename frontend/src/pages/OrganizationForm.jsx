@@ -149,7 +149,8 @@ export default function OrganizationForm() {
 
       if (meRes?.ok) {
         const meData = await meRes.json()
-        setCurrentUser(meData)
+        // /api/auth/me returns { user: {...}, organizations: [...], ... }
+        setCurrentUser(meData?.user || meData)
       }
 
       if (isEdit && orgRes?.ok) {
@@ -2077,6 +2078,36 @@ function BranchDeleteButton({ orgId, branchId, branchName, onDeleted, toast, isR
 }
 
 
+function parseGoogleMapsCoords(url) {
+  if (!url) return null
+  try {
+    const decoded = decodeURIComponent(url)
+    const m3d4d = decoded.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/)
+    if (m3d4d) return { lat: parseFloat(m3d4d[1]), lng: parseFloat(m3d4d[2]) }
+
+    const mAt = decoded.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)
+    if (mAt) return { lat: parseFloat(mAt[1]), lng: parseFloat(mAt[2]) }
+
+    const mQuery = decoded.match(/(?:q|ll|destination|query|center)=(-?\d+\.\d+)[,\s]+(-?\d+\.\d+)/)
+    if (mQuery) return { lat: parseFloat(mQuery[1]), lng: parseFloat(mQuery[2]) }
+
+    const mDms = decoded.match(/(\d+)°(\d+)'([\d.]+)"([NS])[\s+]+(\d+)°(\d+)'([\d.]+)"([EW])/)
+    if (mDms) {
+      let lat = parseFloat(mDms[1]) + parseFloat(mDms[2]) / 60 + parseFloat(mDms[3]) / 3600
+      if (mDms[4] === 'S') lat = -lat
+      let lng = parseFloat(mDms[5]) + parseFloat(mDms[6]) / 60 + parseFloat(mDms[7]) / 3600
+      if (mDms[8] === 'W') lng = -lng
+      return { lat, lng }
+    }
+
+    const mRaw = decoded.match(/(-?\d+\.\d{4,})[,\s]+(-?\d+\.\d{4,})/)
+    if (mRaw) return { lat: parseFloat(mRaw[1]), lng: parseFloat(mRaw[2]) }
+  } catch (e) {
+    console.error("Parse gmaps error", e)
+  }
+  return null
+}
+
 // ─── BranchModal ─────────────────────────────────────────────────────────────
 function BranchModal({ orgId, branch, onClose, onSaved, isRu, toast }) {
   const isNew = !branch
@@ -2087,10 +2118,23 @@ function BranchModal({ orgId, branch, onClose, onSaved, isRu, toast }) {
     longitude: branch?.longitude ?? '',
     radius: branch?.radius ?? 100,
   })
+  const [gmapsUrl, setGmapsUrl] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
   const setF = (key) => (e) => setForm(p => ({ ...p, [key]: e.target.value }))
+
+  const handleGmapsUrlChange = (e) => {
+    const url = e.target.value
+    setGmapsUrl(url)
+    const coords = parseGoogleMapsCoords(url)
+    if (coords) {
+      setForm(p => ({ ...p, latitude: coords.lat.toFixed(6), longitude: coords.lng.toFixed(6) }))
+      if (toast && toast.success) {
+        toast.success(isRu ? '📍 Joylashuv koordinatalari aniqlandi!' : '📍 Joylashuv koordinatalari aniqlandi!')
+      }
+    }
+  }
 
   const inp = {
     width: '100%', padding: '10px 13px', borderRadius: 8,
@@ -2177,6 +2221,18 @@ function BranchModal({ orgId, branch, onClose, onSaved, isRu, toast }) {
               {isRu ? 'Manzil' : 'Manzil'}
             </span>
             <input value={form.address} onChange={setF('address')} style={inp} placeholder="Ko'cha, bino, hudud..." />
+          </label>
+
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: 0.4, display: 'flex', alignItems: 'center', gap: 6 }}>
+              📍 Google Maps Havolasi (Link orqali joylashuvni aniqlash)
+            </span>
+            <input
+              value={gmapsUrl}
+              onChange={handleGmapsUrlChange}
+              style={{ ...inp, border: '1.5px solid rgba(56,189,248,0.4)', background: 'rgba(56,189,248,0.05)' }}
+              placeholder="https://www.google.com/maps/place/..."
+            />
           </label>
 
           <div style={{ borderRadius: 10, overflow: 'hidden', border: '1.5px solid var(--border-2)', height: 340 }}>

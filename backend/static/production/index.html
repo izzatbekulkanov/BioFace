@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BioFace Portal - Release & Deployment Guide</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --container-bg: rgba(17, 24, 39, 0.7);
+            --card-bg: rgba(255, 255, 255, 0.03);
+            --card-bg-hover: rgba(255, 255, 255, 0.05);
+            --card-border: rgba(255, 255, 255, 0.06);
+            --card-border-hover: rgba(99, 102, 241, 0.35);
+            
+            --primary: #6366f1;
+            --primary-glow: rgba(99, 102, 241, 0.15);
+            --primary-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            --secondary: #10b981;
+            --secondary-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            --warning: #f59e0b;
+            --warning-gradient: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            --info: #0ea5e9;
+            --danger: #ef4444;
+            
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --text-dark: #6b7280;
+            
+            --font-display: 'Outfit', sans-serif;
+            --font-sans: 'Plus Jakarta Sans', sans-serif;
+            
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+            --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.4);
+            
+            --transition-fast: 0.2s ease;
+            --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(168, 85, 247, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.03) 0%, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            font-family: var(--font-sans);
+            line-height: 1.6;
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: var(--container-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 32px;
+            padding: 40px;
+            backdrop-filter: blur(24px);
+            box-shadow: var(--shadow-lg);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Decorative glowing circles */
+        .container::before {
+            content: '';
+            position: absolute;
+            top: -150px;
+            left: -150px;
+            width: 300px;
+            height: 300px;
+            background: var(--primary);
+            filter: blur(120px);
+            opacity: 0.15;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            position: relative;
+            z-index: 1;
+            border-bottom: 1px solid var(--card-border);
+            padding-bottom: 35px;
+        }
+
+        .logo-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        header h1 {
+            font-family: var(--font-display);
+            font-size: 2.8rem;
+            font-weight: 800;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -1px;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 1.15rem;
+            font-weight: 400;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* Tabs System Layout */
+        .tabs-layout {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 40px;
+            margin-top: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        @media (max-width: 992px) {
+            .tabs-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Sidebar Navigation */
+        .tab-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            position: sticky;
+            top: 40px;
+            height: fit-content;
+        }
+
+        @media (max-width: 992px) {
+            .tab-menu {
+                flex-direction: row;
+                overflow-x: auto;
+                padding-bottom: 10px;
+                position: static;
+                border-bottom: 1px solid var(--card-border);
+            }
+        }
+
+        .tab-btn {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 16px 20px;
+            color: var(--text-muted);
+            font-family: var(--font-display);
+            font-size: 1rem;
+            font-weight: 600;
+            text-align: left;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            outline: none;
+        }
+
+        @media (max-width: 992px) {
+            .tab-btn {
+                white-space: nowrap;
+                flex-shrink: 0;
+            }
+        }
+
+        .tab-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+            transition: transform var(--transition-fast);
+        }
+
+        .tab-btn:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(99, 102, 241, 0.2);
+            transform: translateX(4px);
+        }
+
+        @media (max-width: 992px) {
+            .tab-btn:hover {
+                transform: translateY(-2px);
+            }
+        }
+
+        .tab-btn.active {
+            color: white;
+            background: var(--primary-gradient);
+            border-color: transparent;
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.25);
+            transform: translateX(8px);
+        }
+
+        @media (max-width: 992px) {
+            .tab-btn.active {
+                transform: translateY(-4px);
+            }
+        }
+
+        .tab-btn.active svg {
+            transform: scale(1.1);
+        }
+
+        /* Tab Content panels */
+        .tab-content-wrapper {
+            min-height: 450px;
+        }
+
+        .tab-panel {
+            display: none;
+            animation: fadeIn 0.4s ease forwards;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Section Titles inside tabs */
+        .panel-header {
+            margin-bottom: 25px;
+        }
+
+        .panel-title {
+            font-family: var(--font-display);
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--text-main);
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+        }
+
+        .panel-subtitle {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+        }
+
+        /* Download Card Grid styling */
+        .download-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        @media (min-width: 768px) {
+            .download-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .download-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 28px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+            transition: all var(--transition-normal);
+        }
+
+        .download-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, transparent 100%);
+            pointer-events: none;
+        }
+
+        .download-card:hover {
+            transform: translateY(-6px);
+            border-color: var(--card-border-hover);
+            box-shadow: 0 12px 30px rgba(99, 102, 241, 0.12);
+            background: var(--card-bg-hover);
+        }
+
+        .card-badge {
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 5px 12px;
+            border-radius: 30px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            display: inline-block;
+            margin-bottom: 15px;
+        }
+
+        .badge-aab { background: rgba(99, 102, 241, 0.12); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.2); }
+        .badge-apk { background: rgba(16, 185, 129, 0.12); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.2); }
+        .badge-key { background: rgba(245, 158, 11, 0.12); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.2); }
+        .badge-config { background: rgba(14, 165, 233, 0.12); color: #38bdf8; border: 1px solid rgba(14, 165, 233, 0.2); }
+
+        .card-title {
+            font-family: var(--font-display);
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 8px;
+        }
+
+        .card-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .meta-item svg {
+            width: 14px;
+            height: 14px;
+            fill: currentColor;
+        }
+
+        .card-desc {
+            font-size: 0.88rem;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+            line-height: 1.6;
+            flex-grow: 1;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            border-radius: 16px;
+            padding: 14px 24px;
+            font-family: var(--font-display);
+            font-size: 0.95rem;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            border: none;
+            outline: none;
+            width: 100%;
+        }
+
+        .btn-primary {
+            background: var(--primary-gradient);
+            color: white;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.25);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.45);
+            transform: translateY(-2px);
+            filter: brightness(1.08);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-main);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .btn-secondary:hover {
+            background: var(--text-main);
+            color: var(--bg-color);
+            transform: translateY(-2px);
+        }
+
+        /* Callout Box */
+        .callout {
+            background: rgba(99, 102, 241, 0.03);
+            border: 1px solid rgba(99, 102, 241, 0.15);
+            border-left: 4px solid var(--primary);
+            border-radius: 16px;
+            padding: 20px;
+            margin: 20px 0;
+            position: relative;
+        }
+
+        .callout-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: var(--text-main);
+            margin-bottom: 8px;
+        }
+
+        .callout-header svg {
+            width: 20px;
+            height: 20px;
+            fill: var(--primary);
+        }
+
+        .callout p {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        .callout-warning {
+            background: rgba(245, 158, 11, 0.03);
+            border-color: rgba(245, 158, 11, 0.15);
+            border-left-color: var(--warning);
+        }
+
+        .callout-warning .callout-header {
+            color: var(--warning);
+        }
+
+        .callout-warning .callout-header svg {
+            fill: var(--warning);
+        }
+
+        /* Table Design */
+        .table-container {
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            overflow: hidden;
+            background: rgba(17, 24, 39, 0.3);
+            margin-bottom: 25px;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            background: rgba(99, 102, 241, 0.06);
+            color: var(--text-main);
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 0.95rem;
+            padding: 18px 24px;
+            border-bottom: 1px solid var(--card-border);
+            letter-spacing: -0.2px;
+        }
+
+        td {
+            padding: 20px 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            vertical-align: top;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.01);
+        }
+
+        /* Copy Box */
+        .copy-box {
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 14px 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 15px;
+            margin-top: 5px;
+        }
+
+        .copy-content {
+            font-family: var(--font-sans);
+            white-space: pre-wrap;
+            word-break: break-all;
+            color: var(--text-main);
+            font-size: 0.9rem;
+        }
+
+        .btn-copy {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--text-muted);
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-family: var(--font-display);
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .btn-copy:hover {
+            background: var(--text-main);
+            color: var(--bg-color);
+            border-color: var(--text-main);
+        }
+
+        /* Step Timeline Styling */
+        .timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            position: relative;
+            padding-left: 20px;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            top: 10px;
+            left: 31px;
+            bottom: 10px;
+            width: 2px;
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .timeline-step {
+            display: flex;
+            gap: 25px;
+            position: relative;
+        }
+
+        .step-number {
+            width: 24px;
+            height: 24px;
+            background: var(--primary-gradient);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 0.85rem;
+            flex-shrink: 0;
+            z-index: 1;
+            margin-left: 0px;
+            box-shadow: 0 4px 10px rgba(99, 102, 241, 0.2);
+            position: relative;
+            top: 6px;
+        }
+
+        .step-body {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 24px;
+            flex-grow: 1;
+            transition: all var(--transition-fast);
+        }
+
+        .timeline-step:hover .step-body {
+            border-color: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .step-title {
+            font-family: var(--font-display);
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 8px;
+        }
+
+        .step-desc {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+
+        /* Checklists */
+        .checklist {
+            list-style: none;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .checklist-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: 0.88rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        .checklist-item::before {
+            content: "✓";
+            color: var(--secondary);
+            font-weight: 800;
+            flex-shrink: 0;
+            background: rgba(16, 185, 129, 0.1);
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            margin-top: 2px;
+        }
+
+        /* Code snippets box */
+        .code-box {
+            background: #060913;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 12px;
+            padding: 15px 18px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 0.85rem;
+            color: #34d399;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .code-content {
+            white-space: nowrap;
+            overflow-x: auto;
+        }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: var(--primary-gradient);
+            color: white;
+            padding: 14px 28px;
+            border-radius: 16px;
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 0.9rem;
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.35);
+            transform: translateY(100px) scale(0.9);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toast.show {
+            transform: translateY(0) scale(1);
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .sub-steps {
+            margin-top: 15px;
+            padding-left: 10px;
+            border-left: 2px dashed rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .sub-step-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #818cf8;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        
+        <!-- Header -->
+        <header>
+            <div class="logo-area">
+                <div style="font-size: 40px; margin-bottom: 10px;">🌟</div>
+            </div>
+            <h1>BioFace Release Portal</h1>
+            <p>Ilovaning production (yangi 1.0.2+3 versiya) fayllarini yuklab olish, Google Play Store (Android) hamda Apple App Store (iOS) do'konlariga yuklash bo'yicha to'liq "PRO" ko'rsatmalar tizimi.</p>
+        </header>
+
+        <!-- Navigation & Content Layout -->
+        <div class="tabs-layout">
+            
+            <!-- Sidebar Tab Menu -->
+            <nav class="tab-menu">
+                <button class="tab-btn active" onclick="switchTab(event, 'tab-downloads')">
+                    <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+                    1. Resurslarni yuklab olish
+                </button>
+                <button class="tab-btn" onclick="switchTab(event, 'tab-metadata')">
+                    <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                    2. Do'kon Matnlari
+                </button>
+                <button class="tab-btn" onclick="switchTab(event, 'tab-android-deploy')">
+                    <svg viewBox="0 0 24 24"><path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z"/></svg>
+                    3. Android Play Market
+                </button>
+                <button class="tab-btn" onclick="switchTab(event, 'tab-ios-deploy')">
+                    <svg viewBox="0 0 24 24"><path d="M18.71 19.5C17.88 20.74 17 21.95 15.66 21.97C14.32 22 13.89 21.18 12.37 21.18C10.84 21.18 10.37 21.95 9.1 22C7.79 22.05 6.8 20.68 5.96 19.48C4.25 17 2.94 12.45 4.7 9.39C5.57 7.87 7.13 6.91 8.82 6.88C10.1 6.86 11.32 7.75 12.11 7.75C12.89 7.75 14.37 6.68 15.92 6.84C16.57 6.87 18.39 7.1 19.56 8.82C19.47 8.88 17.39 10.1 17.41 12.63C17.44 15.65 20.06 16.66 20.1 16.67C20.08 16.74 19.67 18.11 18.71 19.5M15.97 4.17C16.63 3.37 17.07 2.28 16.95 1C16 1.04 14.9 1.6 14.24 2.38C13.68 3.04 13.19 4.14 13.34 5.39C14.39 5.47 15.4 4.88 15.97 4.17Z"/></svg>
+                    4. iOS App Store
+                </button>
+                <button class="tab-btn" onclick="switchTab(event, 'tab-safety')">
+                    <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+                    5. Maxfiylik & Savollar
+                </button>
+                <button class="tab-btn" onclick="switchTab(event, 'tab-upgrades')">
+                    <svg viewBox="0 0 24 24"><path d="M12 6v3l4-4-4-4v3c-4.42 0-8 3.58-8 8 0 1.57.46 3.03 1.24 4.26L6.7 14.8c-.45-.83-.7-1.79-.7-2.8 0-3.31 2.69-6 6-6zm6.76 1.74L17.3 9.2c.44.84.7 1.79.7 2.8 0 3.31-2.69 6-6 6v-3l-4 4 4 4v-3c4.42 0 8-3.58 8-8 0-1.57-.46-3.03-1.24-4.26z"/></svg>
+                    6. Versiya Yangilash
+                </button>
+            </nav>
+
+            <!-- Content Area panels -->
+            <main class="tab-content-wrapper">
+                
+                <!-- TAB 1: DOWNLOADS -->
+                <div id="tab-downloads" class="tab-panel active">
+                    <div class="panel-header">
+                        <h2 class="panel-title">Fayllar va Kalitlarni yuklab olish</h2>
+                        <p class="panel-subtitle">Yangi versiya bo'yicha yig'ilgan (build qilingan) tayyor fayllarni shu yerdan yuklab oling.</p>
+                    </div>
+
+                    <div class="download-grid">
+                        
+                        <!-- AAB File Card -->
+                        <div class="download-card">
+                            <div>
+                                <span class="card-badge badge-aab">Play Console uchun (AAB)</span>
+                                <h3 class="card-title">Android App Bundle (.aab)</h3>
+                                <div class="card-meta">
+                                    <div class="meta-item">Release AAB</div>
+                                    <div class="meta-item">v1.0.2+3</div>
+                                    <div class="meta-item">~64.6 MB</div>
+                                </div>
+                                <p class="card-desc">Google Play Console portaliga yuklanadigan asosiy ishlab chiqarish paketi. Google Play har bir telefon uchun hajmni shu fayl orqali optimallashtiradi.</p>
+                            </div>
+                            <a href="./app-release.aab" download="app-release.aab" class="btn btn-primary">
+                                AAB Faylini yuklab olish
+                            </a>
+                        </div>
+
+                        <!-- APK File Card -->
+                        <div class="download-card">
+                            <div>
+                                <span class="card-badge badge-apk">Telefonda test qilish (APK)</span>
+                                <h3 class="card-title">Production APK (.apk)</h3>
+                                <div class="card-meta">
+                                    <div class="meta-item">Release APK</div>
+                                    <div class="meta-item">v1.0.2+3</div>
+                                    <div class="meta-item">~45.2 MB</div>
+                                </div>
+                                <p class="card-desc">Smartfonlarga yuklab o'rnatish va bevosita test qilish uchun imzolangan universal APK fayl.</p>
+                            </div>
+                            <a href="./app-release.apk" download="app-release.apk" class="btn btn-secondary">
+                                APK Faylini yuklab olish
+                            </a>
+                        </div>
+
+                        <!-- Keystore Key Card -->
+                        <div class="download-card">
+                            <div>
+                                <span class="card-badge badge-key">O'TA MUHIM KALIT (JKS)</span>
+                                <h3 class="card-title">upload-keystore.jks</h3>
+                                <div class="card-meta">
+                                    <div class="meta-item">Keystore</div>
+                                    <div class="meta-item">~2.7 KB</div>
+                                </div>
+                                <p class="card-desc">BioFace ilovasining rasmiy imzolash kaliti. Play Console ilova yangilanganda ushbu kalitga qarab tekshiradi. <strong>Uni aslo yo'qotmang!</strong></p>
+                            </div>
+                            <a href="./upload-keystore.jks" download="upload-keystore.jks" class="btn btn-secondary">
+                                Keystore faylini yuklash
+                            </a>
+                        </div>
+
+                        <!-- key.properties File Card -->
+                        <div class="download-card">
+                            <div>
+                                <span class="card-badge badge-config">Kalit Sozlamasi (properties)</span>
+                                <h3 class="card-title">key.properties</h3>
+                                <div class="card-meta">
+                                    <div class="meta-item">Config File</div>
+                                    <div class="meta-item">~100 B</div>
+                                </div>
+                                <p class="card-desc">Imzolash jarayonida parollarni ko'rsatuvchi sozlash fayli. Loyihaning <code>[root]/android/</code> papkasiga joylashtiriladi.</p>
+                            </div>
+                            <a href="./key.properties" download="key.properties" class="btn btn-secondary">
+                                key.properties yuklash
+                            </a>
+                        </div>
+
+                    </div>
+
+                    <div class="callout">
+                        <div class="callout-header">
+                            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                            Local manzil ma'lumotlari
+                        </div>
+                        <p>
+                            Fayllar local diskda mana bu manzillarga muvaffaqiyatli saqlandi va nusxalandi:<br>
+                            • AAB & APK: <span style="font-family: monospace; color: #818cf8;">D:\android\production\</span><br>
+                            • Kalitlar: <span style="font-family: monospace; color: #818cf8;">D:\android\production\upload-keystore.jks</span> va <span style="font-family: monospace; color: #818cf8;">key.properties</span>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- TAB 2: STORE METADATA -->
+                <div id="tab-metadata" class="tab-panel">
+                    <div class="panel-header">
+                        <h2 class="panel-title">Do'kon Sozlamalari & Matnlari</h2>
+                        <p class="panel-subtitle">Google Play Console va Apple App Store Connect uchun zarur bo'lgan matnlarni shu yerdan nusxalab oling.</p>
+                    </div>
+
+                    <div class="table-container">
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th style="width: 25%;">Maydon Nomi</th>
+                                        <th>Kiritiladigan Qiymat (Tayyor nusxa olish uchun)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>App Name</strong><br><small style="color: var(--text-dark)">Dastur nomi (Android/iOS)</small></td>
+                                        <td>
+                                            <div class="copy-box">
+                                                <div class="copy-content" id="field-appname">BioFace Portal</div>
+                                                <button class="btn-copy" onclick="copyText('field-appname')">Nusxa olish</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Short Description / Subtitle</strong><br><small style="color: var(--text-dark)">Qisqa tavsif / Kichik sarlavha</small></td>
+                                        <td>
+                                            <div class="copy-box">
+                                                <div class="copy-content" id="field-shortdesc">BioFace tizimi xodimlari uchun davomat va ish vaqtini qayd etish mobil ilovasi.</div>
+                                                <button class="btn-copy" onclick="copyText('field-shortdesc')">Nusxa olish</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Full Description</strong><br><small style="color: var(--text-dark)">To'liq tavsif (Android/iOS)</small></td>
+                                        <td>
+                                            <div class="copy-box">
+                                                <div class="copy-content" id="field-fulldesc">BioFace Portal - bu tashkilot xodimlari uchun ish vaqtini va kelib-ketish davomatini masofadan turib geolokatsiya va yuz biometriyasi orqali qayd etuvchi zamonaviy mobil dastur.
+
+Asosiy imkoniyatlar:
+- Ish joyiga kelish va ketish vaqtlarini yuzni aniqlash (Face Recognition) hamda geolokatsiya (GPS) orqali tasdiqlash.
+- Kunlik, haftalik va oylik ish soatlari va davomat jurnali (tarixi) bilan tanishish.
+- Tizimni yaxshilash bo'yicha takliflar, xatoliklar yoki fikr-mulohazalarni to'g'ridan-to'g'ri yuborish.
+
+Joylashuv ma'lumotlari:
+Ilova faqat belgilangan ish vaqtlarida xodimning koordinatasini geozona doirasida tekshiradi, dam olish kunlari va ishdan tashqari soatlarda joylashuvni uzatish butunlay o'chiriladi. Joylashuv ma'lumotlari uchinchi shaxslarga ulashilmaydi va faqat ish soatlarini to'g'ri hisoblash hamda xodimning ish joyida ekanligini tasdiqlash uchun ishlatiladi.</div>
+                                                <button class="btn-copy" onclick="copyText('field-fulldesc')">Nusxa olish</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Privacy Policy URL</strong><br><small style="color: var(--text-dark)">Maxfiylik siyosati</small></td>
+                                        <td>
+                                            <div class="copy-box">
+                                                <div class="copy-content" id="field-privacy">https://bioface.uz/privacy-policy</div>
+                                                <button class="btn-copy" onclick="copyText('field-privacy')">Nusxa olish</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Support & Contact Info</strong><br><small style="color: var(--text-dark)">Qo'llab-quvvatlash</small></td>
+                                        <td>
+                                            E-mail: <strong style="color: var(--text-main);">bioface.uz@gmail.com</strong><br>
+                                            Tel: <strong style="color: var(--text-main);">+998947040010</strong><br>
+                                            Telegram: <strong style="color: var(--text-main);">t.me/bioface_info</strong>
+                                        </td>
+                                    </tr>
+                                    <tr style="background: rgba(245, 158, 11, 0.02);">
+                                        <td>
+                                            <strong style="color: var(--warning)">App Access (Test Acc)</strong><br>
+                                            <small style="color: var(--text-dark)">Tekshiruvchilar kirishi uchun beriladigan maxsus hisob.</small>
+                                        </td>
+                                        <td>
+                                            <div class="copy-box" style="border-color: rgba(245, 158, 11, 0.2);">
+                                                <div class="copy-content" id="field-testacc" style="color: #fbbf24;"><strong>Login (Employee ID):</strong> 2359717
+<strong>Parol (Password):</strong> Qwerty@12
+<strong>Yo'riqnoma:</strong> Ilovani tekshirish (yuzni aniqlash va GPS geozonani o'tish) uchun ushbu test xodim profilidan foydalaning. Tekshiruv vaqtida mock-GPS koordinatalariga ruxsat beriladi.</div>
+                                                <button class="btn-copy" onclick="copyText('field-testacc')">Nusxa olish</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 3: ANDROID DEPLOY -->
+                <div id="tab-android-deploy" class="tab-panel">
+                    <div class="panel-header">
+                        <h2 class="panel-title">Google Play Marketga yuklash qadamlari</h2>
+                        <p class="panel-subtitle">Yig'ilgan yangi AAB faylini do'konga joylashtirish tartibi.</p>
+                    </div>
+
+                    <div class="timeline">
+                        <div class="timeline-step">
+                            <div class="step-number">1</div>
+                            <div class="step-body">
+                                <h3 class="step-title">Play Console dashboardiga kiring</h3>
+                                <p class="step-desc">Google Play Console portalida o'z hisobingizga kiring va <strong>BioFace Portal</strong> ilovasini tanlang.</p>
+                            </div>
+                        </div>
+                        <div class="timeline-step">
+                            <div class="step-number">2</div>
+                            <div class="step-body">
+                                <h3 class="step-title">Yangi Nashr Yaratish (Create Release)</h3>
+                                <p class="step-desc">Chap tomondagi menyudan <strong>Production</strong> bo'limiga o'ting va o'ng yuqoridagi <strong>Create new release</strong> tugmasini bosing.</p>
+                            </div>
+                        </div>
+                        <div class="timeline-step">
+                            <div class="step-number">3</div>
+                            <div class="step-body">
+                                <h3 class="step-title">AAB faylni yuklang</h3>
+                                <p class="step-desc">Yuklab olingan yangi <code>app-release.aab</code> faylini sudrab olib kelib yoki yuklash orqali "App bundles" bo'limiga qo'shing. Google avtomatik tarzda versiya kodini <code>1.0.2 (3)</code> deb aniqlaydi.</p>
+                            </div>
+                        </div>
+                        <div class="timeline-step">
+                            <div class="step-number">4</div>
+                            <div class="step-body">
+                                <h3 class="step-title">Release Notes va Rollout</h3>
+                                <p class="step-desc"><strong>Release notes</strong> qismiga ilovadagi o'zgarishlar (masalan: <code>Yangi tezkor interfeys, sozlamalar sahifasi va optimallashtirishlar</code>) deb yozing. So'ngra <strong>Next -> Save -> Start rollout to Production</strong> tugmasini bosing. Ilova tekshiruvga yuboriladi.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 4: iOS DEPLOY -->
+                <div id="tab-ios-deploy" class="tab-panel">
+                    <div class="panel-header">
+                        <h2 class="panel-title">Apple App Store (iPhone) ga chiqarish qadamlari</h2>
+                        <p class="panel-subtitle">iOS ilovasini yig'ish va App Store Connect-ga joylash tartibi (macOS tizimida bajariladi).</p>
+                    </div>
+
+                    <div class="callout callout-warning">
+                        <div class="callout-header">
+                            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                            Muhim ma'lumot (Windows cheklovi)
+                        </div>
+                        <p>
+                            Apple kompaniyasi qoidalariga ko'ra, iOS ilovalarini build qilish va imzolash uchun <strong>macOS tizimi (MacBook/Mac mini)</strong> va Xcode dasturi bo'lishi shart. Agar sizda Mac bo'lmasa, **Codemagic.io** yoki **GitHub Actions** kabi bulutli xizmatlar orqali build qilish mumkin.
+                        </p>
+                    </div>
+
+                    <div class="timeline">
+                        <div class="timeline-step">
+                            <div class="step-number">1</div>
+                            <div class="step-body">
+                                <h3 class="step-title">App Store Connect-da ilova ochish</h3>
+                                <p class="step-desc">App Store Connect portaliga kiring, <strong>My Apps -> + (New App)</strong> tugmasini bosing va ma'lumotlarni to'ldiring:</p>
+                                <ul class="checklist">
+                                    <li class="checklist-item">Platforma: <strong>iOS</strong>. Nomi: <strong>BioFace Portal</strong>.</li>
+                                    <li class="checklist-item">Bundle ID: Loyihangiz Bundle identifikatorini tanlang (masalan, <code>com.bioface.portal</code>).</li>
+                                    <li class="checklist-item">SKU: Ixtiyoriy noyob satr kiritiladi (masalan: <code>bioface-portal-sku</code>).</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="timeline-step">
+                            <div class="step-number">2</div>
+                            <div class="step-body">
+                                <h3 class="step-title">Loyihani Xcode-da ochish (Mac-da)</h3>
+                                <p class="step-desc">Loyiha ichidagi <code>ios/Runner.xcworkspace</code> faylini Xcode-da oching:</p>
+                                <ul class="checklist">
+                                    <li class="checklist-item"><strong>Signing & Capabilities</strong> bo'limiga kiring va o'z Apple Developer profilingizni tanlang ("Automatically manage signing" yoqing).</li>
+                                    <li class="checklist-item">Versiya va Build raqamlarini moslang (Version: <code>1.0.2</code>, Build: <code>3</code>).</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="timeline-step">
+                            <div class="step-number">3</div>
+                            <div class="step-body">
+                                <h3 class="step-title">iOS build yig'ish va yuklash</h3>
+                                <p class="step-desc">Loyihangiz terminalida build buyrug'ini bering, so'ng Xcode orqali arxivlang:</p>
+                                <div class="code-box">
+                                    <div class="code-content" id="cmd-ios-build">flutter build ipa --release</div>
+                                    <button class="btn-copy" onclick="copySnippet('cmd-ios-build')">Nusxalash</button>
+                                </div>
+                                <p class="step-desc" style="margin-top: 10px;">Build tugagach, Xcode-ning <strong>Product -> Archive -> Distribute App -> App Store Connect -> Upload</strong> ketma-ketligi orqali ilovani to'g'ridan-to'g'ri Apple serverlariga yuklang.</p>
+                            </div>
+                        </div>
+                        <div class="timeline-step">
+                            <div class="step-number">4</div>
+                            <div class="step-body">
+                                <h3 class="step-title">Test va Tekshiruvga yuborish</h3>
+                                <p class="step-desc">Ilova yuklangach, App Store Connect-da **iOS App** bo'limida yangi yuklangan buildni tanlang, test hisob ma'lumotlarini to'ldiring va **Submit for Review** (Tekshiruvga yuborish) tugmasini bosing.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 5: DATA SAFETY / PRIVACY -->
+                <div id="tab-safety" class="tab-panel">
+                    <div class="panel-header">
+                        <h2 class="panel-title">Maxfiylik Savolnomalari</h2>
+                        <p class="panel-subtitle">Har ikkala do'kon so'raydigan maxfiylik va ma'lumotlar xavfsizligi bo'yicha to'g'ri javoblar ko'rsatmasi.</p>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 25px;">
+                        <div class="step-body" style="border-left: 4px solid var(--primary);">
+                            <h3 class="step-title" style="color: #818cf8;">A) Google Play - Data Safety</h3>
+                            <ul class="checklist">
+                                <li class="checklist-item"><strong>Joylashuv (Location):</strong> Precision & Approximate coordinates to'planadi (ish vaqtida monitoring uchun). Boshqalarga ulashilmaydi.</li>
+                                <li class="checklist-item"><strong>Shaxsiy ma'lumotlar (Personal Info):</strong> Xodim ID va ismi to'planadi (identifikatsiya uchun).</li>
+                                <li class="checklist-item"><strong>Rasm (Photos):</strong> Kirish-chiqish yuz tekshiruvi uchun kamera orqali rasm olinadi va shifrlangan tarzda serverga yuboriladi.</li>
+                            </ul>
+                        </div>
+
+                        <div class="step-body" style="border-left: 4px solid var(--secondary);">
+                            <h3 class="step-title" style="color: #34d399;">B) Apple App Store - App Privacy</h3>
+                            <p class="step-desc">App Store Connect-da **App Privacy** bo'limini to'ldirganda quyidagi toifadagi ma'lumotlar yig'ilishini belgilang:</p>
+                            <ul class="checklist">
+                                <li class="checklist-item"><strong>Location (Precise Location):</strong> Ha. Foydalanish maqsadi: App Functionality (ish soatlarini hisoblash).</li>
+                                <li class="checklist-item"><strong>Contact Info (Name):</strong> Ha. Foydalanish maqsadi: Account Setup / App Functionality.</li>
+                                <li class="checklist-item"><strong>User Content (Photos):</strong> Ha. Foydalanish maqsadi: App Functionality (biometrik davomat).</li>
+                                <li class="checklist-item"><strong>Identifiers (Device ID):</strong> Ha. Foydalanish maqsadi: Security / App Access (akkauntni qurilmaga bog'lash).</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 6: UPGRADES -->
+                <div id="tab-upgrades" class="tab-panel">
+                    <div class="panel-header">
+                        <h2 class="panel-title">Versiyani Yangilash Qoidalari</h2>
+                        <p class="panel-subtitle">Ilova yangilanganda versiyalarni hisoblash va to'g'ri yangilash tartib-qoidalari.</p>
+                    </div>
+
+                    <div class="timeline">
+                        <div class="timeline-step">
+                            <div class="step-number">i</div>
+                            <div class="step-body" style="border-color: rgba(14, 165, 233, 0.2);">
+                                <h3 class="step-title" style="color: var(--info);">Versiya raqami tuzilishi (pubspec.yaml)</h3>
+                                <p class="step-desc">Flutterda versiya raqami <code>version: 1.0.2+3</code> ko'rinishida yoziladi:</p>
+                                <ul class="checklist">
+                                    <li class="checklist-item"><strong>1.0.2 (Version Name):</strong> Foydalanuvchilarga do'konda ko'rinadigan chiroyli matnli versiya raqami.</li>
+                                    <li class="checklist-item"><strong>3 (Version Code):</strong> Ichki butun sonli raqam. Do'konga har safar yangilanish yuklanganda, ushbu kod strictly <strong>oldingisidan kattaroq bo'lishi shart</strong> (masalan, keyingi safar 4, keyin 5 va h.k.). Aks holda, do'konlar uni qabul qilmaydi.</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="timeline-step">
+                            <div class="step-number">1</div>
+                            <div class="step-body">
+                                <h3 class="step-title">Kodni build qilish buyruqlari</h3>
+                                <p class="step-desc">Yangi versiyani yig'ish uchun quyidagi buyruqlardan foydalaning:</p>
+                                <ul class="checklist">
+                                    <li class="checklist-item"><strong>Android:</strong> <code>flutter build appbundle --release</code> (AAB yaratadi)</li>
+                                    <li class="checklist-item"><strong>iOS (Mac-da):</strong> <code>flutter build ipa --release</code> (IPA yaratadi)</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+
+        </div>
+
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <span id="toast-text">Matn nusxalandi!</span>
+    </div>
+
+    <script>
+        // Tab Switcher
+        function switchTab(event, tabId) {
+            const buttons = document.querySelectorAll('.tab-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+
+            event.currentTarget.classList.add('active');
+
+            const panels = document.querySelectorAll('.tab-panel');
+            panels.forEach(panel => panel.classList.remove('active'));
+
+            const activePanel = document.getElementById(tabId);
+            activePanel.classList.add('active');
+            
+            if (window.innerWidth <= 992) {
+                activePanel.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+
+        // Copy Text
+        function copyText(elementId) {
+            const textContent = document.getElementById(elementId).innerText;
+            navigator.clipboard.writeText(textContent).then(() => {
+                showToast("Matn nusxalandi!");
+            }).catch(err => {
+                showToast("Xatolik yuz berdi");
+            });
+        }
+
+        // Copy Snippet
+        function copySnippet(elementId) {
+            const textContent = document.getElementById(elementId).innerText;
+            navigator.clipboard.writeText(textContent).then(() => {
+                showToast("Buyruq nusxalandi!");
+            }).catch(err => {
+                showToast("Xatolik yuz berdi");
+            });
+        }
+
+        // Toast Helper
+        function showToast(message) {
+            const toast = document.getElementById("toast");
+            const toastText = document.getElementById("toast-text");
+            toastText.innerText = message;
+            toast.classList.add("show");
+            
+            setTimeout(() => {
+                toast.classList.remove("show");
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

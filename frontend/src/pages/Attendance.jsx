@@ -592,31 +592,39 @@ export default function Attendance() {
                           <DirectionPill direction={it.direction} isRu={isRu} />
                         </td>
                         <td style={tdStyle}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-                            {it.direction === 'mobile' ? (
-                              <PhoneRegular fontSize={13} style={{ color: '#3b82f6' }} />
-                            ) : (
-                              <CameraRegular fontSize={13} style={{ color: 'var(--text-4)' }} />
-                            )}
-                            {it.camera_name || it.camera_isup_device_id || '—'}
-                            {it.direction === 'mobile' && it.latitude && it.longitude && (
-                              <a
-                                href={`https://www.google.com/maps/search/?api=1&query=${it.latitude},${it.longitude}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{
-                                  color: '#3b82f6',
-                                  marginLeft: 6,
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  cursor: 'pointer',
-                                }}
-                                title={isRu ? 'Показать на карте' : "Xaritada ko'rsatish"}
-                              >
-                                <LocationRegular fontSize={13} />
-                              </a>
-                            )}
-                          </div>
+                          {(() => {
+                            const hasGeo = it.latitude !== null && it.latitude !== undefined && Number(it.latitude) !== 0;
+                            const direction = String(it.direction || '').toLowerCase();
+                            const isMobile = direction === 'mobile' || direction === 'mobile_in' || direction === 'mobile_out' || hasGeo;
+                            const cameraLabel = it.camera_name || it.camera_isup_device_id || (isMobile ? 'Mobile' : (it.camera_mac ? 'Kamera' : '—'));
+                            return (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                                {isMobile ? (
+                                  <PhoneRegular fontSize={13} style={{ color: '#3b82f6' }} />
+                                ) : (
+                                  <CameraRegular fontSize={13} style={{ color: 'var(--text-4)' }} />
+                                )}
+                                {cameraLabel}
+                                {isMobile && it.latitude && it.longitude && (
+                                  <a
+                                    href={`https://www.google.com/maps/search/?api=1&query=${it.latitude},${it.longitude}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                      color: '#3b82f6',
+                                      marginLeft: 6,
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      cursor: 'pointer',
+                                    }}
+                                    title={isRu ? 'Показать на карте' : "Xaritada ko'rsatish"}
+                                  >
+                                    <LocationRegular fontSize={13} />
+                                  </a>
+                                )}
+                              </div>
+                            );
+                          })()}
                           {it.camera_mac && (
                             <div style={{ fontSize: 11, color: 'var(--text-4)', marginTop: 2, fontFamily: 'monospace' }}>{it.camera_mac}</div>
                           )}
@@ -630,7 +638,12 @@ export default function Attendance() {
                           ) : <span style={{ color: 'var(--text-4)' }}>—</span>}
                         </td>
                         <td style={tdStyle}>
-                          <StatusPill status={it.status} hasEmployee={it.employee_id != null} isRu={isRu} />
+                          <StatusPill status={it.status} reviewStatus={it.review_status} hasEmployee={it.employee_id != null} isRu={isRu} />
+                          {it.face_confidence != null && (
+                            <div style={{ fontSize: 11, color: 'var(--text-4)', marginTop: 4 }}>
+                              Face ID: {Math.round(Number(it.face_confidence) * 100)}%
+                            </div>
+                          )}
                         </td>
 
                         <td style={tdStyle}>
@@ -788,10 +801,19 @@ function StatCard({ icon, label, value, color, bg, border }) {
   )
 }
 
-function StatusPill({ status, hasEmployee, isRu }) {
+function StatusPill({ status, reviewStatus, hasEmployee, isRu }) {
   const statusStr = String(status || '').toLowerCase()
+  const reviewStr = String(reviewStatus || '').toLowerCase()
   let tone
-  if (statusStr === 'kech') {
+  if (reviewStr === 'pending' || statusStr === 'tasdiqlash_kerak') {
+    tone = {
+      bg: 'var(--yellow-bg)',
+      color: 'var(--yellow)',
+      border: 'var(--yellow-bd)',
+      icon: <QuestionCircleRegular fontSize={12} />,
+      text: isRu ? 'Нужно подтвердить' : 'Tasdiqlash kerak'
+    }
+  } else if (statusStr === 'kech') {
     tone = {
       bg: 'rgba(247, 108, 12, 0.1)',
       color: '#f76c0c',
@@ -833,24 +855,18 @@ function DirectionPill({ direction, isRu }) {
   let text = isRu ? 'Неизвестно' : "Noma'lum"
   let icon = <ArrowSyncRegular fontSize={12} />
 
-  if (dir === 'in') {
+  if (dir === 'in' || dir === 'mobile_in' || dir === 'keldi' || dir === 'kirish') {
     bg = 'var(--green-bg)'
     color = 'var(--green)'
     border = 'var(--green-bd)'
     text = isRu ? 'Вход (Keldi)' : 'Kirish (Keldi)'
     icon = <ArrowDownRegular fontSize={12} />
-  } else if (dir === 'out') {
+  } else if (dir === 'out' || dir === 'mobile_out' || dir === 'ketdi' || dir === 'chiqish') {
     bg = 'var(--red-bg)'
     color = 'var(--red)'
     border = 'var(--red-bd)'
     text = isRu ? 'Выход (Ketdi)' : 'Chiqish (Ketdi)'
     icon = <ArrowUpRegular fontSize={12} />
-  } else if (dir === 'mobile') {
-    bg = 'rgba(59, 130, 246, 0.1)'
-    color = '#3b82f6'
-    border = 'rgba(59, 130, 246, 0.2)'
-    text = 'Mobile'
-    icon = <PhoneRegular fontSize={12} />
   }
 
   return (

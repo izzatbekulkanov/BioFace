@@ -15,7 +15,7 @@ from models import (
     UserOrganizationLink,
 )
 from utils.time_utils import now_tashkent, today_tashkent_range
-from utils.schedule_utils import get_attendance_deadline, get_late_minutes, load_holiday_dates, resolve_employee_schedule, combine_day_and_hhmm
+from utils.schedule_utils import get_attendance_deadline, get_late_minutes, load_holiday_dates, resolve_employee_schedule, combine_day_and_hhmm, get_expected_end_dt
 
 router = APIRouter()
 
@@ -192,9 +192,13 @@ def _build_dashboard_metrics(request: Request, db: Session) -> dict:
 
         first_log = first_logs_by_employee.get(int(emp.id))
         if first_log and first_log.timestamp:
-            attendance_by_org[org_id]["present"] += 1
-            if get_late_minutes(emp, today_start, first_log.timestamp) > 0:
-                attendance_by_org[org_id]["late"] += 1
+            expected_end = get_expected_end_dt(emp, today_start)
+            if first_log.timestamp >= expected_end:
+                attendance_by_org[org_id]["absent"] += 1
+            else:
+                attendance_by_org[org_id]["present"] += 1
+                if get_late_minutes(emp, today_start, first_log.timestamp) > 0:
+                    attendance_by_org[org_id]["late"] += 1
             continue
 
         if now_local >= get_attendance_deadline(emp, today_start.date()):
@@ -490,6 +494,9 @@ def dashboard_analytics_heatmap(request: Request, db: Session = Depends(get_db))
         emp = log.employee
         if emp is None:
             continue
+        expected_end = get_expected_end_dt(emp, day_key)
+        if log.timestamp >= expected_end:
+            continue
         late_mins = get_late_minutes(emp, day_key, log.timestamp)
         if late_mins > 0:
             weekday = day_key.weekday()  # Monday=0 … Sunday=6
@@ -614,6 +621,9 @@ def dashboard_analytics_anomaly(request: Request, db: Session = Depends(get_db))
     for (emp_id, day_key), log in first_logs_by_day.items():
         emp = emp_map.get(emp_id)
         if emp is None:
+            continue
+        expected_end = get_expected_end_dt(emp, day_key)
+        if log.timestamp >= expected_end:
             continue
         late_mins = get_late_minutes(emp, day_key, log.timestamp)
         if late_mins > 0:

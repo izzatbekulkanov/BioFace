@@ -11,6 +11,7 @@ import {
 } from '@fluentui/react-icons'
 import PageHero from '../components/PageHero'
 import { useToast } from '../components/Toaster'
+import Skeleton from '../components/Skeleton'
 
 export default function Kpi() {
   const { i18n } = useTranslation()
@@ -179,16 +180,48 @@ export default function Kpi() {
 
       <div className="kpi-container">
         {loading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '100px 0', gap: 16 }}>
-            <div style={{
-              width: 40, height: 40, border: '3px solid var(--border)',
-              borderTopColor: 'var(--accent)', borderRadius: '50%',
-              animation: 'spin 1s linear infinite'
-            }} />
-            <span style={{ fontSize: 13, color: 'var(--text-3)' }}>
-              {isRu ? 'Загрузка показателей KPI...' : 'KPI ko\'rsatkichlari yuklanmoqda...'}
-            </span>
-          </div>
+          <>
+            {/* KPI Stats Grid Skeleton */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} style={{ ...cardStyle, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Skeleton width={120} height={12} />
+                    <Skeleton width={32} height={32} radius={8} />
+                  </div>
+                  <Skeleton width={80} height={24} />
+                  <Skeleton width={140} height={12} />
+                </div>
+              ))}
+            </div>
+
+            {/* Table Container Skeleton */}
+            <div style={cardStyle}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, marginBottom: 20 }}>
+                <Skeleton width={260} height={36} radius={8} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'flex', gap: 16, padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+                  <Skeleton width={30} height={12} />
+                  <Skeleton width={120} height={12} />
+                  <Skeleton width={80} height={12} />
+                  <Skeleton width={100} height={12} />
+                  <Skeleton width={60} height={12} />
+                  <Skeleton width={120} height={12} style={{ marginLeft: 'auto' }} />
+                </div>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 16, padding: '14px 16px', borderBottom: '1px solid var(--border-2)', alignItems: 'center' }}>
+                    <Skeleton width={20} height={12} />
+                    <Skeleton width={150} height={12} />
+                    <Skeleton width={90} height={12} />
+                    <Skeleton width={70} height={12} />
+                    <Skeleton width={80} height={12} />
+                    <Skeleton width={110} height={28} radius={6} style={{ marginLeft: 'auto' }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
         ) : (
           <>
             {/* KPI Stats Grid */}

@@ -149,6 +149,9 @@ def get_late_minutes(employee: Employee, target_day: date | datetime, first_seen
     if schedule_payload["is_flexible"]:
         return 0
     expected_dt = combine_day_and_hhmm(target_day, schedule_payload["start_time"], DEFAULT_START_TIME)
+    expected_end_dt = combine_day_and_hhmm(target_day, schedule_payload["end_time"], DEFAULT_END_TIME)
+    if first_seen >= expected_end_dt:
+        return 0
     return max(0, int((first_seen - expected_dt).total_seconds() // 60))
 
 
@@ -210,3 +213,70 @@ def load_holiday_dates(
         key = int(row.organization_id) if row.organization_id is not None else None
         payload.setdefault(key, set()).add(row.date.isoformat())
     return payload
+
+
+def load_holiday_details(
+    db: Session,
+    *,
+    start_date: date,
+    end_date: date,
+    organization_ids: Optional[list[int]] = None,
+) -> dict[int | None, dict[str, dict[str, Any]]]:
+    """
+    /shifts sahifasidan kiritilgan dam olish kunlari va bayramlarni batafsil yuklaydi.
+    Qaytaradi: {org_id: {date_iso: {"is_weekend": bool, "title": str}}}
+    """
+    query = db.query(Holiday).filter(
+        and_(
+            Holiday.date >= start_date,
+            Holiday.date <= end_date,
+        )
+    )
+    if organization_ids:
+        query = query.filter(
+            or_(
+                Holiday.organization_id.is_(None),
+                Holiday.organization_id.in_(organization_ids),
+            )
+        )
+    rows = query.all()
+    payload: dict[int | None, dict[str, dict[str, Any]]] = {}
+    for row in rows:
+        key = int(row.organization_id) if row.organization_id is not None else None
+        payload.setdefault(key, {})[row.date.isoformat()] = {
+            "is_weekend": bool(row.is_weekend),
+            "title": str(row.title or ""),
+        }
+    return payload
+
+
+def is_day_off_for_emp(
+    target_day: date,
+    organization_id: Optional[int],
+    holiday_details: dict[int | None, dict[str, dict[str, Any]]],
+) -> tuple[bool, str]:
+    """
+    Kunning dam olish yoki bayram kuni ekanligini DINAMIK aniqlaydi.
+    1. /shifts sahifasida kiritilgan tashkilot yoki global dam olish/bayram kunlari
+    2. Odatiy yakshanba kunlari (Standart dam olish kuni)
+    Qaytaradi: (is_day_off: bool, reason: 'weekend' | 'holiday' | 'work')
+    """
+    if target_day is None:
+        return False, "work"
+    day_str = target_day.isoformat()
+
+    org_holidays = holiday_details.get(organization_id, {})
+    global_holidays = holiday_details.get(None, {})
+
+    h_entry = org_holidays.get(day_str) or global_holidays.get(day_str)
+    if h_entry is not None:
+        if h_entry["is_weekend"]:
+            return True, "weekend"
+        return True, "holiday"
+
+    # Standart yakshanba (6) dam olish kuni
+    if target_day.weekday() == 6:
+        return True, "weekend"
+
+    return False, "work"
+

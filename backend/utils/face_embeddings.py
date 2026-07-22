@@ -1,11 +1,16 @@
-import os
 import threading
 import httpx
+from pathlib import Path
 from typing import Optional
 from database import SessionLocal
 from models import Employee, User, FaceEmbedding
 
 AI_SERVICE_URL = "http://127.0.0.1:7690"
+BACKEND_DIR = Path(__file__).resolve().parent.parent
+
+
+def _resolve_static_path(image_url: str) -> str:
+    return str(BACKEND_DIR / str(image_url or "").lstrip("/"))
 
 def _run_embedding_generation(employee_id: Optional[int], user_id: Optional[int]):
     db = SessionLocal()
@@ -19,8 +24,7 @@ def _run_embedding_generation(employee_id: Optional[int], user_id: Optional[int]
                     db.delete(existing)
                     db.commit()
                 return
-            rel_path = emp.image_url.lstrip("/")
-            abs_path = os.path.join('/home/smartgate/BioFace/backend', rel_path)
+            abs_path = _resolve_static_path(emp.image_url)
             
             # Call AI microservice
             try:
@@ -60,8 +64,7 @@ def _run_embedding_generation(employee_id: Optional[int], user_id: Optional[int]
                     db.delete(existing)
                     db.commit()
                 return
-            rel_path = usr.image_url.lstrip("/")
-            abs_path = os.path.join('/home/smartgate/BioFace/backend', rel_path)
+            abs_path = _resolve_static_path(usr.image_url)
             
             # Call AI microservice
             try:
@@ -87,7 +90,7 @@ def _run_embedding_generation(employee_id: Optional[int], user_id: Optional[int]
                                 confidence=conf,
                                 model_version="insightface_buffalo_l_service"
                             )
-                            db.add(new_user_emb)
+                            db.add(new_emb)
                         db.commit()
             except Exception as e:
                 print(f"[AI SERVICE EMBEDDING] Error for user {user_id}: {e}")

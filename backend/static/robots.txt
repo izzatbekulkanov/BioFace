@@ -1,0 +1,26 @@
+User-agent: *
+Allow: /
+
+# Ichki sahifalar (login kerak) indekslanmasin
+Disallow: /dashboard
+Disallow: /employees
+Disallow: /settings
+Disallow: /devices
+Disallow: /cameras
+Disallow: /finance
+Disallow: /salary
+Disallow: /users
+Disallow: /audit
+Disallow: /redis
+Disallow: /isup
+
+# Ommaviy sahifalar indekslansin
+Allow: /about
+Allow: /pricing
+Allow: /contact
+Allow: /map
+Allow: /privacy-policy
+Allow: /login
+
+# Sitemap
+Sitemap: https://bioface.uz/sitemap.xml

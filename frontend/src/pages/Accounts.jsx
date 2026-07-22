@@ -15,6 +15,7 @@ import {
 import PageHero from '../components/PageHero'
 import { useToast } from '../components/Toaster'
 import CustomSelect from '../components/CustomSelect'
+import Skeleton from '../components/Skeleton'
 
 export default function Accounts() {
   const { i18n } = useTranslation()
@@ -344,224 +345,275 @@ export default function Accounts() {
       `}</style>
 
       <div className="accounts-container">
-        {/* Total Balance Card */}
-        <div style={{
-          background: 'var(--surface)',
-          border: '1px solid var(--border)',
-          borderRadius: 12,
-          padding: '24px 28px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16
-        }}>
-          <div>
-            <div style={{ fontSize: 12.5, color: 'var(--text-4)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              {isRu ? 'ОБЩИЙ БАЛАНС ВСЕХ СЧЕТОВ' : 'BARCHA HISOBLARDAGI UMUMIY QOLDIQ'}
+        {loading ? (
+          <>
+            {/* Total Balance Card Skeleton */}
+            <div style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 12,
+              padding: '24px 28px',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: 280 }}>
+                <Skeleton width={180} height={12} />
+                <Skeleton width={220} height={32} />
+              </div>
+              <Skeleton width={48} height={48} radius={10} />
             </div>
-            <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--accent)', marginTop: 8 }}>{formatMoney(totalBalance)}</div>
-          </div>
-          <div style={{ padding: 12, borderRadius: 10, background: 'var(--accent-bg)', color: 'var(--accent)', border: '1px solid var(--accent-bd)' }}>
-            <WalletRegular fontSize={28} />
-          </div>
-        </div>
 
-        {/* Accounts List & Recent Transfers Row */}
-        <div className="accounts-grid">
-          {/* Accounts list */}
-          {/* Accounts list */}
-          <div style={cardStyle}>
-            <h3 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 20px 0' }}>{isRu ? 'Список счетов' : 'Hisob raqamlar ro\'yxati'}</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {loading ? (
-                <div style={{ padding: '30px 0', textAlign: 'center', color: 'var(--text-4)' }}>
-                  <div style={{
-                    display: 'inline-block', width: 24, height: 24,
-                    border: '2px solid var(--border)', borderTopColor: 'var(--accent)',
-                    borderRadius: '50%', animation: 'spin 1s linear infinite', marginBottom: 8
-                  }} />
-                  <div>{isRu ? 'Загрузка...' : 'Yuklanmoqda...'}</div>
-                </div>
-              ) : accounts.length === 0 ? (
-                <div style={{ padding: 30, textAlign: 'center', color: 'var(--text-4)', fontSize: 13 }}>
-                  {isRu ? 'Счета не найдены' : 'Hisoblar topilmadi'}
-                </div>
-              ) : (
-                accounts.map(acc => {
-                  const typeLabel = acc.type === 'card' 
-                    ? (isRu ? 'Карта' : 'Plastik karta')
-                    : acc.type === 'bank' 
-                      ? (isRu ? 'Банковский счет' : 'Bank hisobi')
-                      : acc.type === 'cash' 
-                        ? (isRu ? 'Касса (Наличные)' : 'Kassa (Naqd pul)')
-                        : (isRu ? 'Резерв' : 'Zaxira jamg\'armasi')
-
-                  const typeColor = acc.type === 'card' ? '#a78bfa' 
-                    : acc.type === 'bank' ? '#60a5fa' 
-                    : acc.type === 'cash' ? '#34d399' 
-                    : '#fbbf24'
-
-                  const typeBg = acc.type === 'card' ? 'rgba(139, 92, 246, 0.15)'
-                    : acc.type === 'bank' ? 'rgba(59, 130, 246, 0.15)'
-                    : acc.type === 'cash' ? 'rgba(16, 185, 129, 0.15)'
-                    : 'rgba(245, 158, 11, 0.15)'
-
-                  return (
-                    <div key={acc.id} className="account-card" style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 12,
-                      padding: '18px 20px',
-                      background: 'var(--bg)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 14,
-                      position: 'relative',
-                      transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                    }}>
+            {/* Grid Skeleton */}
+            <div className="accounts-grid">
+              {/* Accounts List Skeleton */}
+              <div style={cardStyle}>
+                <Skeleton width={180} height={16} style={{ marginBottom: 20 }} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '18px 20px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 14 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{
-                          fontSize: 10.5,
-                          fontWeight: 700,
-                          textTransform: 'uppercase',
-                          letterSpacing: 0.8,
-                          padding: '4px 10px',
-                          borderRadius: 20,
-                          background: typeBg,
-                          color: typeColor,
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 5
-                        }}>
-                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: typeColor }}></span>
-                          {typeLabel}
-                        </span>
-
+                        <Skeleton width={100} height={20} radius={10} />
                         <div style={{ display: 'flex', gap: 6 }}>
-                          <button
-                            onClick={() => handleEditClick(acc)}
-                            style={{
-                              background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border)',
-                              color: 'var(--text-3)', padding: '6px 8px', borderRadius: 6, cursor: 'pointer',
-                              display: 'flex', alignItems: 'center', transition: 'all 0.15s ease'
-                            }}
-                            title={isRu ? 'Редактировать' : 'Tahrirlash'}
-                          >
-                            <EditRegular fontSize={14} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteClick(acc)}
-                            style={{
-                              background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)',
-                              color: '#ef4444', padding: '6px 8px', borderRadius: 6, cursor: 'pointer',
-                              display: 'flex', alignItems: 'center', transition: 'all 0.15s ease'
-                            }}
-                            title={isRu ? 'Удалить' : 'O\'chirish'}
-                          >
-                            <DeleteRegular fontSize={14} />
-                          </button>
+                          <Skeleton width={28} height={28} radius={6} />
+                          <Skeleton width={28} height={28} radius={6} />
                         </div>
                       </div>
+                      <Skeleton width={150} height={14} />
+                      <div style={{ marginTop: 4, paddingTop: 12, borderTop: '1px dashed var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Skeleton width={60} height={10} />
+                        <Skeleton width={120} height={18} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-                      <div>
-                        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)' }}>
-                          {isRu ? acc.nameRu : acc.nameUz}
+              {/* Transfers List Skeleton */}
+              <div style={cardStyle}>
+                <Skeleton width={180} height={16} style={{ marginBottom: 20 }} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} style={{ padding: 14, borderBottom: '1px solid var(--border-2)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <Skeleton width={80} height={12} />
+                          <Skeleton width={12} height={12} />
+                          <Skeleton width={80} height={12} />
                         </div>
-                        {acc.accountNumber && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
-                            <span style={{ 
-                              fontSize: 12.5, 
-                              fontFamily: 'monospace', 
-                              letterSpacing: 1.2, 
-                              color: 'var(--text-3)', 
-                              background: 'var(--surface-2)',
-                              padding: '2px 8px',
-                              borderRadius: 6,
-                              border: '1px solid var(--border)'
+                        <Skeleton width={90} height={14} />
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Skeleton width={120} height={10} />
+                        <Skeleton width={70} height={10} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Total Balance Card */}
+            <div style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 12,
+              padding: '24px 28px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16
+            }}>
+              <div>
+                <div style={{ fontSize: 12.5, color: 'var(--text-4)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  {isRu ? 'ОБЩИЙ БАЛАНС ВСЕХ СЧЕТОВ' : 'BARCHA HISOBLARDAGI UMUMIY QOLDIQ'}
+                </div>
+                <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--accent)', marginTop: 8 }}>{formatMoney(totalBalance)}</div>
+              </div>
+              <div style={{ padding: 12, borderRadius: 10, background: 'var(--accent-bg)', color: 'var(--accent)', border: '1px solid var(--accent-bd)' }}>
+                <WalletRegular fontSize={28} />
+              </div>
+            </div>
+
+            {/* Accounts List & Recent Transfers Row */}
+            <div className="accounts-grid">
+              {/* Accounts list */}
+              <div style={cardStyle}>
+                <h3 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 20px 0' }}>{isRu ? 'Список счетов' : 'Hisob raqamlar ro\'yxati'}</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {accounts.length === 0 ? (
+                    <div style={{ padding: 30, textAlign: 'center', color: 'var(--text-4)', fontSize: 13 }}>
+                      {isRu ? 'Счета не найдены' : 'Hisoblar topilmadi'}
+                    </div>
+                  ) : (
+                    accounts.map(acc => {
+                      const typeLabel = acc.type === 'card' 
+                        ? (isRu ? 'Карта' : 'Plastik karta')
+                        : acc.type === 'bank' 
+                          ? (isRu ? 'Банковский счет' : 'Bank hisobi')
+                          : acc.type === 'cash' 
+                            ? (isRu ? 'Касса (Наличные)' : 'Kassa (Naqd pul)')
+                            : (isRu ? 'Резерв' : 'Zaxira jamg\'armasi')
+
+                      const typeColor = acc.type === 'card' ? '#a78bfa' 
+                        : acc.type === 'bank' ? '#60a5fa' 
+                        : acc.type === 'cash' ? '#34d399' 
+                        : '#fbbf24'
+
+                      const typeBg = acc.type === 'card' ? 'rgba(139, 92, 246, 0.15)'
+                        : acc.type === 'bank' ? 'rgba(59, 130, 246, 0.15)'
+                        : acc.type === 'cash' ? 'rgba(16, 185, 129, 0.15)'
+                        : 'rgba(245, 158, 11, 0.15)'
+
+                      return (
+                        <div key={acc.id} className="account-card" style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 12,
+                          padding: '18px 20px',
+                          background: 'var(--bg)',
+                          border: '1px solid var(--border)',
+                          borderRadius: 14,
+                          position: 'relative',
+                          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{
+                              fontSize: 10.5,
+                              fontWeight: 700,
+                              textTransform: 'uppercase',
+                              letterSpacing: 0.8,
+                              padding: '4px 10px',
+                              borderRadius: 20,
+                              background: typeBg,
+                              color: typeColor,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 5
                             }}>
-                              {formatAccountNumber(acc.accountNumber, acc.type)}
+                              <span style={{ width: 6, height: 6, borderRadius: '50%', background: typeColor }}></span>
+                              {typeLabel}
                             </span>
-                            <button
-                              onClick={() => handleCopy(acc.accountNumber)}
-                              style={{
-                                background: 'transparent',
-                                border: 'none',
-                                color: 'var(--text-4)',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                padding: 4,
-                                borderRadius: 4,
-                                transition: 'color 0.15s'
-                              }}
-                              title={isRu ? 'Копировать номер' : 'Raqamni nusxalash'}
-                            >
-                              <DocumentCopyRegular fontSize={13} />
-                            </button>
+
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              <button
+                                onClick={() => handleEditClick(acc)}
+                                style={{
+                                  background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border)',
+                                  color: 'var(--text-3)', padding: '6px 8px', borderRadius: 6, cursor: 'pointer',
+                                  display: 'flex', alignItems: 'center', transition: 'all 0.15s ease'
+                                }}
+                                title={isRu ? 'Редактировать' : 'Tahrirlash'}
+                              >
+                                <EditRegular fontSize={14} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteClick(acc)}
+                                style={{
+                                  background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)',
+                                  color: '#ef4444', padding: '6px 8px', borderRadius: 6, cursor: 'pointer',
+                                  display: 'flex', alignItems: 'center', transition: 'all 0.15s ease'
+                                }}
+                                title={isRu ? 'Удалить' : 'O\'chirish'}
+                              >
+                                <DeleteRegular fontSize={14} />
+                              </button>
+                            </div>
                           </div>
-                        )}
-                      </div>
 
-                      <div style={{ 
-                        marginTop: 4,
-                        paddingTop: 12,
-                        borderTop: '1px dashed var(--border)',
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
-                        alignItems: 'baseline' 
+                          <div>
+                            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)' }}>
+                              {isRu ? acc.nameRu : acc.nameUz}
+                            </div>
+                            {acc.accountNumber && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                                <span style={{ 
+                                  fontSize: 12.5, 
+                                  fontFamily: 'monospace', 
+                                  letterSpacing: 1.2, 
+                                  color: 'var(--text-3)', 
+                                  background: 'var(--surface-2)',
+                                  padding: '2px 8px',
+                                  borderRadius: 6,
+                                  border: '1px solid var(--border)'
+                                }}>
+                                  {formatAccountNumber(acc.accountNumber, acc.type)}
+                                </span>
+                                <button
+                                  onClick={() => handleCopy(acc.accountNumber)}
+                                  style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: 'var(--text-4)',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    padding: 4,
+                                    borderRadius: 4,
+                                    transition: 'color 0.15s'
+                                  }}
+                                  title={isRu ? 'Копировать номер' : 'Raqamni nusxalash'}
+                                >
+                                  <DocumentCopyRegular fontSize={13} />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          <div style={{ 
+                            marginTop: 4,
+                            paddingTop: 12,
+                            borderTop: '1px dashed var(--border)',
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'baseline' 
+                          }}>
+                            <span style={{ fontSize: 11, color: 'var(--text-4)', fontWeight: 500 }}>
+                              {isRu ? 'Баланс:' : 'Balans:'}
+                            </span>
+                            <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--accent)' }}>
+                              {formatMoney(acc.balance)}
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Transfers list */}
+              <div style={cardStyle}>
+                <h3 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 20px 0' }}>{isRu ? 'Последние переводы' : 'So\'nggi ichki o\'tkazmalar'}</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {transfers.length === 0 ? (
+                    <div style={{ padding: 30, textAlign: 'center', color: 'var(--text-4)', fontSize: 13 }}>
+                      {isRu ? 'Переводов пока не было' : 'O\'tkazmalar tarixi bo\'sh'}
+                    </div>
+                  ) : (
+                    transfers.map(tx => (
+                      <div key={tx.id} style={{
+                        padding: 14, borderBottom: '1px solid var(--border-2)',
+                        display: 'flex', flexDirection: 'column', gap: 8
                       }}>
-                        <span style={{ fontSize: 11, color: 'var(--text-4)', fontWeight: 500 }}>
-                          {isRu ? 'Баланс:' : 'Balans:'}
-                        </span>
-                        <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--accent)' }}>
-                          {formatMoney(acc.balance)}
-                        </span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, color: 'var(--text-1)' }}>
+                            <span>{tx.from}</span>
+                            <ArrowSwapRegular fontSize={12} style={{ color: 'var(--text-4)' }} />
+                            <span>{tx.to}</span>
+                          </div>
+                          <span style={{ fontWeight: 700, color: 'var(--accent)' }}>{formatMoney(tx.amount)}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-4)' }}>
+                          <span>{tx.desc}</span>
+                          <span>{tx.date}</span>
+                        </div>
                       </div>
-                    </div>
-                  )
-                })
-              )}
-            </div>
-          </div>
-
-          {/* Transfers list */}
-          <div style={cardStyle}>
-            <h3 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 20px 0' }}>{isRu ? 'Последние переводы' : 'So\'nggi ichki o\'tkazmalar'}</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {loading ? (
-                <div style={{ padding: '30px 0', textAlign: 'center', color: 'var(--text-4)' }}>
-                  <div style={{
-                    display: 'inline-block', width: 24, height: 24,
-                    border: '2px solid var(--border)', borderTopColor: 'var(--accent)',
-                    borderRadius: '50%', animation: 'spin 1s linear infinite', marginBottom: 8
-                  }} />
-                  <div>{isRu ? 'Загрузка...' : 'Yuklanmoqda...'}</div>
+                    ))
+                  )}
                 </div>
-              ) : transfers.length === 0 ? (
-                <div style={{ padding: 30, textAlign: 'center', color: 'var(--text-4)', fontSize: 13 }}>
-                  {isRu ? 'Переводов пока не было' : 'O\'tkazmalar tarixi bo\'sh'}
-                </div>
-              ) : (
-                transfers.map(tx => (
-                  <div key={tx.id} style={{
-                    padding: 14, borderBottom: '1px solid var(--border-2)',
-                    display: 'flex', flexDirection: 'column', gap: 8
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, color: 'var(--text-1)' }}>
-                        <span>{tx.from}</span>
-                        <ArrowSwapRegular fontSize={12} style={{ color: 'var(--text-4)' }} />
-                        <span>{tx.to}</span>
-                      </div>
-                      <span style={{ fontWeight: 700, color: 'var(--accent)' }}>{formatMoney(tx.amount)}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-4)' }}>
-                      <span>{tx.desc}</span>
-                      <span>{tx.date}</span>
-                    </div>
-                  </div>
-                ))
-              )}
+              </div>
             </div>
-          </div>
-        </div>
+          </>
+        )}
       </div>
 
       {/* Transfer Modal */}

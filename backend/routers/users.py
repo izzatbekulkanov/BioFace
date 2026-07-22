@@ -219,7 +219,7 @@ def _serialize_user(user: User) -> Dict[str, Any]:
         "email": user.email,
         "phone": user.phone or "",
         "image_url": (user.image_url or "") if (user.image_url or "").startswith(("/static/", "http://", "https://")) else "",
-        "role": str(user.role or ""),
+        "role": _parse_role(user.role).value,
         "status": user.status or "active",
         "menu_permissions": user.menu_permissions or "",
         "google_oauth_enabled": bool(user.google_oauth_enabled),
@@ -626,7 +626,7 @@ async def create_user(
         phone=phone_val or None,
         image_url=uploaded_image or image_url_val or None,
         hashed_password=hashed,
-        role=role_val,
+        role=role_val.value,
         status=status_val,
         menu_permissions=menu_permissions_val,
         google_oauth_enabled=google_oauth_enabled_val,
@@ -725,22 +725,26 @@ async def update_user(
         user.phone = _as_clean_str(payload.get("phone")) or None
 
     if (is_json and "role" in payload) or (not is_json and role is not None):
-        new_role = _parse_role(payload.get("role"), default=user.role or UserRole.tashkilot_admin)
-        if user.role != new_role:
-            user.role = new_role
+        new_role = _parse_role(payload.get("role"), default=_parse_role(user.role))
+        user.role = new_role.value
+        if new_role == UserRole.super_admin:
             user.menu_permissions = serialize_menu_permissions(resolve_user_menu_permissions(role=new_role))
-        else:
-            user.role = new_role
+        elif user.role != new_role.value:
+            user.menu_permissions = serialize_menu_permissions(resolve_user_menu_permissions(role=new_role))
 
     if (is_json and "status" in payload) or (not is_json and status is not None):
         user.status = _as_clean_str(payload.get("status")) or "active"
 
     if (is_json and "menu_permissions" in payload) or (not is_json and menu_permissions is not None):
-        menu_permissions_val = _parse_menu_permission_list(
-            payload.get("menu_permissions"),
-            user.role or UserRole.tashkilot_admin,
-        )
-        user.menu_permissions = serialize_menu_permissions(menu_permissions_val)
+        current_role = _parse_role(user.role)
+        if current_role == UserRole.super_admin:
+            user.menu_permissions = serialize_menu_permissions(resolve_user_menu_permissions(role=current_role))
+        else:
+            menu_permissions_val = _parse_menu_permission_list(
+                payload.get("menu_permissions"),
+                current_role,
+            )
+            user.menu_permissions = serialize_menu_permissions(menu_permissions_val)
 
     if (is_json and "google_oauth_enabled" in payload) or (not is_json and google_oauth_enabled is not None):
         user.google_oauth_enabled = str(payload.get("google_oauth_enabled") or "").strip().lower() in {"1", "true", "yes", "on"}

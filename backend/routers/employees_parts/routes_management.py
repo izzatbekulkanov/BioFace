@@ -1,9 +1,17 @@
+from datetime import datetime
+import base64
 import os
 import shutil
+import time
 import uuid
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from threading import Lock
 from typing import Any, Optional
 from urllib.parse import urljoin
+
+import cv2
+import numpy as np
 
 from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Query, Request, UploadFile, BackgroundTasks
 from sqlalchemy import String, and_, cast, exists, false, func, or_, true
@@ -45,6 +53,27 @@ from utils.schedule_utils import resolve_employee_schedule
 from utils.face_embeddings import trigger_embedding_generation_bg
 
 router = APIRouter()
+
+# ─── Mobile Check-in Rate Limiting ───────────────────────────────────────────
+# Bir xodim 60 soniya ichida max 5 marta urinishi mumkin
+_CHECKIN_RATE_LIMIT: dict[int, list[float]] = defaultdict(list)
+_CHECKIN_RATE_LOCK = Lock()
+_CHECKIN_RATE_WINDOW = 60.0   # sekund
+_CHECKIN_RATE_MAX = 5         # maksimal urinish soni
+
+def _check_checkin_rate_limit(employee_id: int) -> None:
+    """Rate limit tekshiruvchi — oshib ketsa HTTPException ko'taradi."""
+    now = time.monotonic()
+    with _CHECKIN_RATE_LOCK:
+        timestamps = _CHECKIN_RATE_LIMIT[employee_id]
+        # Oynadan tashqarida qolgan vaqtlarni o'chirish
+        _CHECKIN_RATE_LIMIT[employee_id] = [t for t in timestamps if now - t < _CHECKIN_RATE_WINDOW]
+        if len(_CHECKIN_RATE_LIMIT[employee_id]) >= _CHECKIN_RATE_MAX:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Juda ko'p urinish. {int(_CHECKIN_RATE_WINDOW)} soniya kutib qayta urinib ko'ring."
+            )
+        _CHECKIN_RATE_LIMIT[employee_id].append(now)
 
 def clean_salary_options(val):
     if not val:
@@ -130,9 +159,9 @@ def _serialize_employee_record(
         "last_name": employee.last_name,
         "middle_name": employee.middle_name,
         "department_id": employee.department_id,
-        "department": employee.department,
+        "department": employee.department_ref.name if employee.department_ref else (employee.department or ""),
         "position_id": employee.position_id,
-        "position": employee.position,
+        "position": employee.position_ref.name if employee.position_ref else (employee.position or ""),
         "employee_type": employee.employee_type,
         "status": "Faol" if employee.has_access else "Ruxsat yo'q",
         "added_date": employee.created_at.strftime("%Y-%m-%d") if employee.created_at else "",
@@ -1450,6 +1479,51 @@ def generate_personal_id(db: Session = Depends(get_db)):
     return {"personal_id": generate_unique_personal_id(db)}
 
 
+# ─── Employee Status Records Endpoints ─────────────────────────────────────
+from models import EmployeeStatusRecord
+from pydantic import BaseModel
+from datetime import date as date_type
+
+class StatusRecordCreate(BaseModel):
+    employee_id: int
+    status_type: str  # "vacation", "business_trip", "sick_leave", "resigned", "suspended"
+    start_date: date_type
+    end_date: Optional[date_type] = None
+    comment: Optional[str] = None
+
+@router.get("/api/employees/status-records")
+def get_status_records(
+    employee_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db)
+):
+    query = db.query(EmployeeStatusRecord)
+    if employee_id is not None:
+        query = query.filter(EmployeeStatusRecord.employee_id == employee_id)
+    records = query.order_by(EmployeeStatusRecord.start_date.desc()).all()
+    
+    res = []
+    for r in records:
+        emp_name = ""
+        emp_pos = ""
+        if r.employee:
+            emp_name = f"{r.employee.last_name or ''} {r.employee.first_name or ''} {r.employee.middle_name or ''}".strip()
+            emp_pos = r.employee.position_ref.name if r.employee.position_ref else (r.employee.position or "")
+        res.append({
+            "id": r.id,
+            "uuid": r.uuid,
+            "employee_id": r.employee_id,
+            "employee_name": emp_name,
+            "employee_position": emp_pos,
+            "status_type": r.status_type,
+            "start_date": r.start_date.isoformat(),
+            "end_date": r.end_date.isoformat() if r.end_date else None,
+            "comment": r.comment,
+            "document_url": r.document_url if hasattr(r, "document_url") else None,
+            "created_at": r.created_at.isoformat() if r.created_at else None
+        })
+    return res
+
+
 @router.get("/api/employees/{emp_id}")
 def get_employee(emp_id: str, request: Request, db: Session = Depends(get_db)):
     """Bitta xodim ma'lumotlari (form uchun)."""
@@ -2438,7 +2512,7 @@ def get_face_analysis_app():
         # Locate site-packages of the virtual environment to find NVIDIA library paths
         import os
         import sys
-        venv_path = "/home/smartgate/BioFace/backend/.venv"
+        venv_path = sys.prefix
         site_packages = os.path.join(venv_path, "lib", "python3.12", "site-packages")
         nvidia_dir = os.path.join(site_packages, "nvidia")
 
@@ -2491,39 +2565,69 @@ def calculate_haversine_distance(lat1: float, lon1: float, lat2: float, lon2: fl
 
 @router.post("/api/employees/mobile-checkin")
 async def mobile_checkin(
+    request: Request,
     employee_id: int = Form(...),
     latitude: float = Form(...),
     longitude: float = Form(...),
+    check_type: str = Form("in"),
+    mobile_device_id: str = Form(None),
+    device_uuid: str = Form(None),
     image: UploadFile = File(None),
     image_base64: str = Form(None),
     db: Session = Depends(get_db),
 ):
-    import cv2
-    import numpy as np
     from models import FaceEmbedding, AttendanceLog
     from utils.time_utils import now_tashkent
+
+    # 0. Rate Limiting — brute-force himoya
+    _check_checkin_rate_limit(employee_id)
 
     # 1. Fetch Employee
     emp = db.query(Employee).filter(Employee.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Xodim topilmadi")
 
-    # 2. Verify Geofence (Branch Location)
-    if not emp.branch_id:
-        raise HTTPException(status_code=422, detail="Xodimga filial biriktirilmagan")
+    mobile_device = (
+        str(mobile_device_id or "").strip()
+        or str(device_uuid or "").strip()
+        or str(request.headers.get("X-Device-ID") or "").strip()
+        or str(request.headers.get("X-Mobile-Device-ID") or "").strip()
+    )
+    if not mobile_device:
+        # Avtomatik fallback: Mobil ilova yoki Web-dan qurilma ID kelmaganda ham xodim ID-sidan foydalanib o'tkazadi
+        mobile_device = f"device_emp_{emp.personal_id or emp.id}"
 
-    branch = db.query(Branch).filter(Branch.id == emp.branch_id).first()
-    if not branch or branch.latitude is None or branch.longitude is None:
-        raise HTTPException(status_code=422, detail="Filial koordinatalari topilmadi")
+    # 2. Verify Geofence (Branch / Organization Location)
+    if latitude == 0.0 and longitude == 0.0:
+        raise HTTPException(status_code=400, detail="Qurilmadan GPS koordinatalari olinmadi. GPS-ni yoqing va qayta urinib ko'ring.")
 
-    distance = calculate_haversine_distance(latitude, longitude, float(branch.latitude), float(branch.longitude))
-    radius = float(branch.radius or 100.0)
+    branch = db.query(Branch).filter(Branch.id == emp.branch_id).first() if emp.branch_id else None
+    org = db.query(Organization).filter(Organization.id == emp.organization_id).first() if emp.organization_id else None
 
-    if distance > radius:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Siz belgilangan geo-hududda emassiz. Filialgacha masofa: {distance:.1f} metr. Ruxsat etilgan radius: {radius:.0f} metr."
-        )
+    target_lat = None
+    target_lng = None
+    base_radius = 100.0
+
+    if branch and branch.latitude is not None and branch.longitude is not None:
+        target_lat = float(branch.latitude)
+        target_lng = float(branch.longitude)
+        base_radius = float(branch.radius or 100.0)
+    elif org and org.latitude is not None and org.longitude is not None:
+        target_lat = float(org.latitude)
+        target_lng = float(org.longitude)
+        base_radius = float(org.radius or 100.0)
+
+    if target_lat is not None and target_lng is not None:
+        distance = calculate_haversine_distance(latitude, longitude, target_lat, target_lng)
+        radius = base_radius  # Bazada kiritilgan aniq radius
+
+        if distance > radius:
+            raise HTTPException(
+                status_code=403,
+                detail=f"⚠️ Siz belgilangan geo-hududda emassiz! Filialgacha masofa: {int(distance)} metr. Ruxsat etilgan radius: {int(radius)} metr."
+            )
+
+
 
     # 3. Verify Face Embedding
     existing_emb = db.query(FaceEmbedding).filter(FaceEmbedding.employee_id == employee_id).first()
@@ -2531,15 +2635,23 @@ async def mobile_checkin(
         raise HTTPException(status_code=400, detail="Xodimning yuz embedding ma'lumotlari ro'yxatdan o'tmagan")
 
     # Read uploaded image bytes
-    import base64
     if image_base64:
         if "," in image_base64:
             image_base64 = image_base64.split(",", 1)[1]
-        contents = base64.b64decode(image_base64)
+        try:
+            contents = base64.b64decode(image_base64)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Base64 rasm formati noto'g'ri")
     elif image:
         contents = await image.read()
     else:
         raise HTTPException(status_code=400, detail="Rasm yuborilmadi")
+
+    # Rasm hajmini cheklash (max 10MB)
+    MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB
+    if len(contents) > MAX_IMAGE_SIZE:
+        raise HTTPException(status_code=413, detail="Rasm hajmi 10MB dan oshmasligi kerak")
+
     nparr = np.frombuffer(contents, np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     if img is None:
@@ -2563,10 +2675,15 @@ async def mobile_checkin(
     norm_up = np.linalg.norm(uploaded_emb)
     similarity = float(dot_product / (norm_reg * norm_up))
 
-    # Threshold for buffalo_l similarity is typically around 0.40
-    THRESHOLD = 0.40
+    # Threshold for buffalo_l similarity.
+    # 0.40 — juda past, xavfsizroq chegara: 0.45
+    # Yuqori chegara yaxshiroq himoya beradi.
+    THRESHOLD = 0.45
     if similarity < THRESHOLD:
-        raise HTTPException(status_code=401, detail=f"Yuz mos kelmadi (o'xshashlik: {similarity:.2f})")
+        raise HTTPException(
+            status_code=401,
+            detail=f"Yuz mos kelmadi (o'xshashlik: {similarity:.2f}, minimal: {THRESHOLD})"
+        )
 
     # 4. Save Snapshot & Run Psychology Analysis
     snapshot_url = None
@@ -2576,6 +2693,8 @@ async def mobile_checkin(
     wellbeing_note_uz = None
     wellbeing_note_ru = None
     wellbeing_note_source = None
+    liveness_score = None
+    liveness_status = None
 
     if contents:
         import uuid
@@ -2590,6 +2709,22 @@ async def mobile_checkin(
         with open(file_path, "wb") as file_object:
             file_object.write(webp_bytes)
         snapshot_url = f"/static/uploads/{file_name}"
+
+        # Check liveness (anti-spoofing)
+        try:
+            from utils.liveness_utils import check_liveness
+            liveness_score, liveness_status = check_liveness(file_path)
+            if liveness_status == "spoof":
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Yuz haqiqiyligi (Liveness) tasdiqlanmadi ({liveness_score * 100:.0f}%). Iltimos, ekrandan yoki qog'ozdan suratga tushirmang!"
+                )
+        except HTTPException:
+            raise
+        except Exception as e:
+            print("Liveness check error in mobile checkin:", e)
 
         # Run psychological state / emotion analysis
         try:
@@ -2617,7 +2752,7 @@ async def mobile_checkin(
         person_name=person_name,
         timestamp=now_tashkent(),
         status="aniqlandi",
-        direction="mobile",
+        direction="mobile_out" if str(check_type or "").lower().strip() == "out" else "mobile_in",
         snapshot_url=snapshot_url,
         psychological_state_key=psychological_state_key,
         psychological_state_confidence=psychological_state_confidence,
@@ -2627,8 +2762,22 @@ async def mobile_checkin(
         wellbeing_note_source=wellbeing_note_source,
         latitude=latitude,
         longitude=longitude,
+        attendance_source="mobile",
+        mobile_device_id=mobile_device,
+        mobile_distance_m=round(distance, 2),
+        mobile_similarity=similarity,
+        face_confidence=similarity,
+        review_status="auto",
+        liveness_score=liveness_score,
+        liveness_status=liveness_status,
     )
     db.add(log)
+    
+    # Update employee's last known location on checkin
+    emp.last_latitude = latitude
+    emp.last_longitude = longitude
+    emp.last_location_time = datetime.now()
+    
     db.commit()
 
     return {
@@ -2639,3 +2788,76 @@ async def mobile_checkin(
         "timestamp": log.timestamp.isoformat()
     }
 
+
+# ─── Employee Status Records Endpoints ─── (GET moved to prevent route conflicts)
+
+@router.post("/api/employees/status-records")
+def create_status_record(
+    employee_id: int = Form(...),
+    status_type: str = Form(...),
+    start_date: str = Form(...),
+    end_date: Optional[str] = Form(None),
+    comment: Optional[str] = Form(None),
+    document: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db)
+):
+    import os
+    import shutil
+    import uuid as uuid_lib
+    from datetime import datetime as datetime_type
+
+    emp = db.query(Employee).filter(Employee.id == employee_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Xodim topilmadi")
+        
+    try:
+        start_date_parsed = datetime_type.strptime(start_date, "%Y-%m-%d").date()
+        end_date_parsed = None
+        if end_date and end_date.strip():
+            end_date_parsed = datetime_type.strptime(end_date.strip(), "%Y-%m-%d").date()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Sana formati noto'g'ri (YYYY-MM-DD bo'lishi kerak)")
+
+    document_url = None
+    if document and document.filename:
+        os.makedirs("static/status_documents", exist_ok=True)
+        ext = os.path.splitext(document.filename)[1]
+        unique_filename = f"{uuid_lib.uuid4()}{ext}"
+        file_path = f"static/status_documents/{unique_filename}"
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(document.file, buffer)
+        document_url = f"/static/status_documents/{unique_filename}"
+
+    rec = EmployeeStatusRecord(
+        employee_id=employee_id,
+        status_type=status_type,
+        start_date=start_date_parsed,
+        end_date=end_date_parsed,
+        comment=comment,
+        document_url=document_url
+    )
+    db.add(rec)
+    
+    if status_type == "resigned":
+        emp.has_access = False
+        
+    db.commit()
+    return {"ok": True, "id": rec.id, "uuid": rec.uuid, "document_url": document_url}
+
+@router.delete("/api/employees/status-records/{record_id}")
+def delete_status_record(
+    record_id: int,
+    db: Session = Depends(get_db)
+):
+    rec = db.query(EmployeeStatusRecord).filter(EmployeeStatusRecord.id == record_id).first()
+    if not rec:
+        raise HTTPException(status_code=404, detail="Ma'lumot topilmadi")
+    
+    if rec.status_type == "resigned":
+        emp = db.query(Employee).filter(Employee.id == rec.employee_id).first()
+        if emp:
+            emp.has_access = True
+            
+    db.delete(rec)
+    db.commit()
+    return {"ok": True}

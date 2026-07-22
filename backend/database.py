@@ -40,8 +40,10 @@ is_debug = os.getenv("BIOFACE_DEBUG", "true").strip().lower() in {"1", "true", "
 if is_debug:
     SQLALCHEMY_DATABASE_URL = f"sqlite:///{os.path.join(DATA_DIR, 'bioface.db')}"
 else:
-    # Use PostgreSQL in production
-    SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://biofaceuser:bioface1231@127.0.0.1:5432/biofacedb")
+    _db_url = os.getenv("DATABASE_URL", "").strip()
+    if not _db_url:
+        _db_url = "postgresql://biofaceuser:bioface1231@127.0.0.1:5432/biofacedb"
+    SQLALCHEMY_DATABASE_URL = _db_url
 
 # Engine setup
 is_sqlite = SQLALCHEMY_DATABASE_URL.startswith("sqlite")
@@ -124,13 +126,16 @@ def ensure_schema() -> bool:
                     "webhook_enabled": "ALTER TABLE devices ADD COLUMN webhook_enabled BOOLEAN DEFAULT 0",
                     "webhook_target_url": "ALTER TABLE devices ADD COLUMN webhook_target_url VARCHAR",
                     "webhook_picture_sending": "ALTER TABLE devices ADD COLUMN webhook_picture_sending BOOLEAN DEFAULT 0",
+                    "min_face_confidence": "ALTER TABLE devices ADD COLUMN min_face_confidence FLOAT DEFAULT 0.40",
                     "direction": "ALTER TABLE devices ADD COLUMN direction VARCHAR",
+                    "branch_id": "ALTER TABLE devices ADD COLUMN branch_id INTEGER",
                 }
                 for col_name, sql in device_alters.items():
                     if col_name not in cols:
                         conn.execute(text(sql))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_devices_serial_number ON devices (serial_number)"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_devices_organization_id ON devices (organization_id)"))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_devices_branch_id ON devices (branch_id)"))
                 default_bool = "false" if conn.dialect.name == "postgresql" else "0"
                 conn.execute(
                     text(
@@ -269,6 +274,7 @@ def ensure_schema() -> bool:
                     "google_sub": "ALTER TABLE users ADD COLUMN google_sub VARCHAR",
                     "last_login_provider": "ALTER TABLE users ADD COLUMN last_login_provider VARCHAR",
                     "branch_id": "ALTER TABLE users ADD COLUMN branch_id INTEGER",
+                    "is_staff": "ALTER TABLE users ADD COLUMN is_staff BOOLEAN DEFAULT 1",
                 }
                 for col_name, sql in user_alters.items():
                     if col_name not in user_cols:
@@ -321,7 +327,26 @@ def ensure_schema() -> bool:
                 if auto_create_default and int(users_total) == 0:
                     default_name = os.getenv("DEFAULT_ADMIN_NAME", "Admin User").strip() or "Admin User"
                     default_email = os.getenv("DEFAULT_ADMIN_EMAIL", "admin@bioface.local").strip().lower() or "admin@bioface.local"
-                    default_password = os.getenv("DEFAULT_ADMIN_PASSWORD", "admin123").strip() or "admin123"
+
+                    # XAVFSIZLIK FIX: Agar DEFAULT_ADMIN_PASSWORD berilmagan bo'lsa,
+                    # xavfsiz tasodifiy parol yaratamiz va uni konsol'ga chiqaramiz.
+                    _env_password = os.getenv("DEFAULT_ADMIN_PASSWORD", "").strip()
+                    if not _env_password or _env_password in {"admin123", "admin", "password", "123456"}:
+                        import secrets as _secrets
+                        import string as _string
+                        _alphabet = _string.ascii_letters + _string.digits + "!@#$%"
+                        _env_password = "".join(_secrets.choice(_alphabet) for _ in range(16))
+                        print(
+                            f"\n{'=' * 60}\n"
+                            f"[BIOFACE] Birinchi marta ishga tushirilmoqda.\n"
+                            f"Admin hisobi yaratildi:\n"
+                            f"  Email   : {default_email}\n"
+                            f"  Parol   : {_env_password}\n"
+                            f"  ESLATMA : Ushbu parolni darhol o'zgartiring!\n"
+                            f"{'=' * 60}\n"
+                        )
+                    default_password = _env_password
+
                     hashed_password = bcrypt.hashpw(
                         default_password.encode("utf-8")[:71],
                         bcrypt.gensalt(),
@@ -411,6 +436,9 @@ def ensure_schema() -> bool:
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_employees_schedule_id ON employees (schedule_id)"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_employees_organization_id ON employees (organization_id)"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_employees_org_access ON employees (organization_id, has_access)"))
+                if "branch_id" not in emp_cols:
+                    conn.execute(text("ALTER TABLE employees ADD COLUMN branch_id INTEGER"))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_employees_branch_id ON employees (branch_id)"))
                 if "schedule_type" not in emp_cols:
                     conn.execute(text("ALTER TABLE employees ADD COLUMN schedule_type VARCHAR DEFAULT 'organization'"))
                     conn.execute(text("UPDATE employees SET schedule_type = 'shift' WHERE schedule_id IS NOT NULL"))
@@ -703,16 +731,64 @@ def ensure_schema() -> bool:
                     conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN liveness_score FLOAT"))
                 if "liveness_status" not in attendance_cols:
                     conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN liveness_status VARCHAR"))
+                if "face_confidence" not in attendance_cols:
+                    conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN face_confidence FLOAT"))
+                if "attendance_source" not in attendance_cols:
+                    conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN attendance_source VARCHAR"))
+                if "mobile_device_id" not in attendance_cols:
+                    conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN mobile_device_id VARCHAR"))
+                if "mobile_distance_m" not in attendance_cols:
+                    conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN mobile_distance_m FLOAT"))
+                if "mobile_similarity" not in attendance_cols:
+                    conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN mobile_similarity FLOAT"))
                 if "direction" not in attendance_cols:
                     conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN direction VARCHAR"))
                 if "latitude" not in attendance_cols:
                     conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN latitude FLOAT"))
                 if "longitude" not in attendance_cols:
                     conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN longitude FLOAT"))
+                if "review_status" not in attendance_cols:
+                    conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN review_status VARCHAR DEFAULT 'auto'"))
+                if "review_reason" not in attendance_cols:
+                    conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN review_reason VARCHAR"))
+                if "reviewed_by_id" not in attendance_cols:
+                    conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN reviewed_by_id INTEGER"))
+                if "reviewed_at" not in attendance_cols:
+                    conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN reviewed_at TIMESTAMP"))
+                if "review_note" not in attendance_cols:
+                    conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN review_note VARCHAR"))
+                conn.execute(text("UPDATE attendance_logs SET review_status = COALESCE(review_status, 'auto')"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_attendance_logs_timestamp ON attendance_logs (timestamp)"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_attendance_logs_status_timestamp ON attendance_logs (status, timestamp)"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_attendance_logs_employee_timestamp ON attendance_logs (employee_id, timestamp)"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_attendance_logs_device_timestamp ON attendance_logs (device_id, timestamp)"))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_attendance_logs_review_status ON attendance_logs (review_status)"))
+
+            if "attendance_review_audits" not in inspector.get_table_names():
+                conn.execute(
+                    text(
+                        """
+                        CREATE TABLE IF NOT EXISTS attendance_review_audits (
+                            id INTEGER PRIMARY KEY,
+                            attendance_log_id INTEGER NOT NULL,
+                            action VARCHAR NOT NULL,
+                            old_employee_id INTEGER,
+                            new_employee_id INTEGER,
+                            old_status VARCHAR,
+                            new_status VARCHAR,
+                            old_review_status VARCHAR,
+                            new_review_status VARCHAR,
+                            note VARCHAR,
+                            created_by_id INTEGER,
+                            created_at TIMESTAMP,
+                            FOREIGN KEY(attendance_log_id) REFERENCES attendance_logs(id) ON DELETE CASCADE,
+                            FOREIGN KEY(created_by_id) REFERENCES users(id)
+                        )
+                        """
+                    )
+                )
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_attendance_review_audits_log_id ON attendance_review_audits (attendance_log_id)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_attendance_review_audits_created_at ON attendance_review_audits (created_at)"))
 
             if "employee_camera_links" not in inspector.get_table_names():
                 conn.execute(

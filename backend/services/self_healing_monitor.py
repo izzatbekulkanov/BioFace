@@ -111,7 +111,19 @@ class SelfHealingMonitor:
                                 LOGGER.warning("Redis connection offline. Cannot send self-healing command.")
                         except Exception as e:
                             LOGGER.exception(f"Failed to send self-healing reboot command for camera '{device.name}': {e}")
-                            
+
+            # --- Telegram Bot Self-Healing Check ---
+            try:
+                from services.bot_process_manager import get_bot_process_status, start_bot_process
+                bot_status = get_bot_process_status()
+                if not bot_status.get("running"):
+                    LOGGER.warning("Telegram Bot process is not running. Self-healing triggering bot start...")
+                    start_bot_process()
+                    with self._lock:
+                        self._state["healed_count"] += 1
+            except Exception as bot_err:
+                LOGGER.exception(f"Telegram Bot self-healing check failed: {bot_err}")
+
             with self._lock:
                 self._state["last_success_at"] = now_local.isoformat()
                 

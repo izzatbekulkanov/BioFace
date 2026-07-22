@@ -293,7 +293,11 @@ def resolve_user_menu_permissions(*, role: Any, stored_permissions: Any = None, 
     if normalize_role_value(role) == UserRole.super_admin.value:
         return list(ALL_MENU_PERMISSIONS)
         
-    permissions = get_role_default_menu_permissions(role)
+    deserialized = deserialize_menu_permissions(stored_permissions)
+    if deserialized:
+        permissions = deserialized
+    else:
+        permissions = get_role_default_menu_permissions(role)
     
     if user_id is not None and db is not None:
         try:

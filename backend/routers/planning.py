@@ -453,6 +453,65 @@ def delete_holiday(
     return {"ok": True, "message": "Bayram o'chirildi"}
 
 
+@router.post("/api/planning/holidays/sync-google-calendar")
+async def sync_google_calendar_holidays(
+    request: Request,
+    db: Session = Depends(get_db),
+    year: Optional[int] = Query(None),
+    organization_id: Optional[int] = Query(None),
+    api_key: Optional[str] = Query(None, description="Google Calendar API key (ixtiyoriy)"),
+):
+    """Google Calendar dan O'zbekiston bayram kunlarini import qilish."""
+    from utils.google_calendar import fetch_uzbekistan_holidays
+
+    auth_user = request.session.get("auth_user") or {}
+    role = str(auth_user.get("role") or "").strip().lower()
+    is_super = role in {"superadmin", "super_admin"}
+
+    # Organization ID aniqlash
+    if not is_super:
+        org_id = auth_user.get("organization_id")
+        if not org_id:
+            raise HTTPException(status_code=403, detail="Tashkilot aniqlanmadi")
+        organization_id = int(org_id)
+    elif organization_id is None:
+        raise HTTPException(status_code=422, detail="organization_id majburiy")
+
+    current_year = year or date.today().year
+    holidays = fetch_uzbekistan_holidays(current_year, api_key=api_key)
+
+    imported = 0
+    skipped = 0
+    for h in holidays:
+        existing = db.query(Holiday).filter(
+            Holiday.date == h["date"],
+            Holiday.organization_id == organization_id,
+        ).first()
+        if existing:
+            skipped += 1
+            continue
+        new_holiday = Holiday(
+            title=h["title"],
+            date=h["date"],
+            organization_id=organization_id,
+            is_weekend=h["is_weekend"],
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+        db.add(new_holiday)
+        imported += 1
+
+    db.commit()
+    return {
+        "year": current_year,
+        "organization_id": organization_id,
+        "imported": imported,
+        "skipped": skipped,
+        "total": len(holidays),
+        "message": f"{imported} ta bayram import qilindi, {skipped} ta mavjud edi.",
+    }
+
+
 @router.get("/api/employees/{employee_id}/telegram-contacts")
 def list_employee_telegram_contacts(
     employee_id: str,

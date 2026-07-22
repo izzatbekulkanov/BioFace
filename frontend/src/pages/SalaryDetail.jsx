@@ -408,6 +408,18 @@ export default function SalaryDetail() {
                         badge = <span style={badgeRedStyle}>{isRu ? 'Не пришел' : 'Kelmagan'}</span>
                       } else if (day.status === 'pending') {
                         badge = <span style={badgePendingStyle}>{isRu ? 'Ожидается' : 'Kutilmoqda'}</span>
+                      } else if (day.status === 'vacation') {
+                        badge = <span style={badgeBlueStyle}>{isRu ? 'Отпуск' : "Ta'til"}</span>
+                      } else if (day.status === 'business_trip') {
+                        badge = <span style={badgeSkyStyle}>{isRu ? 'Командировка' : 'Xizmat safari'}</span>
+                      } else if (day.status === 'sick_leave') {
+                        badge = <span style={badgeRedStyle}>{isRu ? 'Больничный' : 'Kasallik'}</span>
+                      } else if (day.status === 'suspended') {
+                        badge = <span style={badgeGrayStyle}>{isRu ? 'Отстранен' : 'Chetlashtirilgan'}</span>
+                      } else if (day.status === 'other') {
+                        badge = <span style={badgeSkyStyle}>{isRu ? 'Другое (Уваж.)' : 'Boshqa (Sababli)'}</span>
+                      } else if (day.status === 'resigned') {
+                        badge = <span style={badgeRedStyle}>{isRu ? 'Уволен' : 'Bo\'shatilgan'}</span>
                       }
 
                       const diffSec = day.worked_seconds - expSec
@@ -555,11 +567,37 @@ const badgePurpleStyle = {
   whiteSpace: 'nowrap'
 }
 
+const badgeBlueStyle = {
+  padding: '3px 8px',
+  borderRadius: 6,
+  fontSize: 11.5,
+  fontWeight: 600,
+  background: 'rgba(59, 130, 246, 0.12)',
+  color: '#3b82f6',
+  whiteSpace: 'nowrap'
+}
+
+const badgeSkyStyle = {
+  padding: '3px 8px',
+  borderRadius: 6,
+  fontSize: 11.5,
+  fontWeight: 600,
+  background: 'rgba(14, 165, 233, 0.12)',
+  color: '#0ea5e9',
+  whiteSpace: 'nowrap'
+}
+
 const getRowBg = (status) => {
   if (status === 'present') return 'rgba(16, 185, 129, 0.04)'
   if (status === 'late') return 'rgba(245, 158, 11, 0.04)'
   if (status === 'absent') return 'rgba(239, 68, 68, 0.05)'
   if (status === 'holiday') return 'rgba(139, 92, 246, 0.04)'
+  if (status === 'vacation') return 'rgba(129, 140, 248, 0.04)'
+  if (status === 'business_trip') return 'rgba(6, 182, 212, 0.04)'
+  if (status === 'sick_leave') return 'rgba(236, 72, 153, 0.04)'
+  if (status === 'suspended') return 'rgba(107, 114, 128, 0.04)'
+  if (status === 'other') return 'rgba(14, 165, 233, 0.04)'
+  if (status === 'resigned') return 'rgba(239, 68, 68, 0.04)'
   return 'transparent'
 }
 
@@ -568,6 +606,12 @@ const getRowBoxShadow = (status) => {
   if (status === 'late') return 'inset 3px 0 0 #f59e0b'
   if (status === 'absent') return 'inset 3px 0 0 #ef4444'
   if (status === 'holiday') return 'inset 3px 0 0 #8b5cf6'
+  if (status === 'vacation') return 'inset 3px 0 0 #818cf8'
+  if (status === 'business_trip') return 'inset 3px 0 0 #06b6d4'
+  if (status === 'sick_leave') return 'inset 3px 0 0 #ec4899'
+  if (status === 'suspended') return 'inset 3px 0 0 #9ca3af'
+  if (status === 'other') return 'inset 3px 0 0 #0ea5e9'
+  if (status === 'resigned') return 'inset 3px 0 0 #f87171'
   return 'none'
 }
 

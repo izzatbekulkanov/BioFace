@@ -136,6 +136,7 @@ class Device(Base):
     webhook_enabled = Column(Boolean, default=False)
     webhook_target_url = Column(String, nullable=True)
     webhook_picture_sending = Column(Boolean, default=False)
+    min_face_confidence = Column(Float, nullable=True, default=0.40)
     username = Column(String, nullable=True, default="admin")
     password = Column(String, nullable=True)
     isup_password = Column(String, nullable=True, default="facex2024")
@@ -197,6 +198,7 @@ class Employee(Base):
     wellbeing_notes = relationship("EmployeeWellbeingNote", back_populates="employee", cascade="all, delete")
     psychological_states = relationship("EmployeePsychologicalState", back_populates="employee", cascade="all, delete")
     telegram_contacts = relationship("TelegramContact", back_populates="employee", cascade="all, delete")
+    status_records = relationship("EmployeeStatusRecord", back_populates="employee", cascade="all, delete")
 
 
 class Department(Base):
@@ -270,13 +272,43 @@ class AttendanceLog(Base):
     wellbeing_note_source = Column(String, nullable=True)
     liveness_score = Column(Float, nullable=True)
     liveness_status = Column(String, nullable=True)
+    face_confidence = Column(Float, nullable=True)
+    attendance_source = Column(String, nullable=True)
+    mobile_device_id = Column(String, nullable=True)
+    mobile_distance_m = Column(Float, nullable=True)
+    mobile_similarity = Column(Float, nullable=True)
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
     direction = Column(String, nullable=True)
     timestamp = Column(DateTime, default=utc_now)
     status = Column(String, nullable=False, default="aniqlandi")  # "aniqlandi", "noma'lum"
+    review_status = Column(String, nullable=True, default="auto")  # auto, pending, approved, rejected
+    review_reason = Column(String, nullable=True)
+    reviewed_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
+    review_note = Column(String, nullable=True)
     employee = relationship("Employee", back_populates="attendance_logs")
     device = relationship("Device", back_populates="attendance_logs")
+    reviewed_by = relationship("User")
+
+
+class AttendanceReviewAudit(Base):
+    __tablename__ = "attendance_review_audits"
+    id = Column(Integer, primary_key=True, index=True)
+    attendance_log_id = Column(Integer, ForeignKey("attendance_logs.id"), nullable=False, index=True)
+    action = Column(String, nullable=False)
+    old_employee_id = Column(Integer, nullable=True)
+    new_employee_id = Column(Integer, nullable=True)
+    old_status = Column(String, nullable=True)
+    new_status = Column(String, nullable=True)
+    old_review_status = Column(String, nullable=True)
+    new_review_status = Column(String, nullable=True)
+    note = Column(String, nullable=True)
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+
+    attendance_log = relationship("AttendanceLog", backref=backref("review_audits", cascade="all, delete"))
+    created_by = relationship("User")
 
 
 class EmployeeCameraLink(Base):
@@ -498,3 +530,57 @@ class Feedback(Base):
     created_at = Column(DateTime, default=now_tashkent)
 
     employee = relationship("Employee")
+
+
+class EmployeeStatusRecord(Base):
+    __tablename__ = "employee_status_records"
+    id = Column(Integer, primary_key=True, index=True)
+    uuid = Column(String(36), unique=True, index=True, default=lambda: str(uuid_lib.uuid4()))
+    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False, index=True)
+    status_type = Column(String, nullable=False)  # "vacation", "business_trip", "sick_leave", "resigned", "suspended"
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=True)  # Null for permanent status like resigned
+    comment = Column(String, nullable=True)
+    document_url = Column(String, nullable=True)
+    created_at = Column(DateTime, default=now_tashkent)
+
+    employee = relationship("Employee", back_populates="status_records")
+
+
+class AuditLog(Base):
+    """Kim nima o'zgartirdi — to'liq audit tarix"""
+    __tablename__ = "audit_logs"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    user_name = Column(String, nullable=True)          # snapshot (user o'chirilsa ham qolsin)
+    user_role = Column(String, nullable=True)
+    action = Column(String, nullable=False, index=True) # CREATE, UPDATE, DELETE, LOGIN, LOGOUT, EXPORT
+    entity_type = Column(String, nullable=True, index=True)  # employee, device, organization, user...
+    entity_id = Column(String, nullable=True, index=True)    # affected record ID
+    entity_name = Column(String, nullable=True)              # snapshot name
+    old_values = Column(String, nullable=True)               # JSON string
+    new_values = Column(String, nullable=True)               # JSON string
+    ip_address = Column(String, nullable=True)
+    user_agent = Column(String, nullable=True)
+    description = Column(String, nullable=True)              # human-readable summary
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True, index=True)
+    created_at = Column(DateTime, default=utc_now, nullable=False, index=True)
+
+    user = relationship("User")
+    organization = relationship("Organization")
+
+
+class UserSession(Base):
+    """Foydalanuvchi sessiyalari — bir vaqtda bir sessiya"""
+    __tablename__ = "user_sessions"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    session_token = Column(String(64), unique=True, index=True, nullable=False)
+    ip_address = Column(String, nullable=True)
+    user_agent = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True)
+    last_seen_at = Column(DateTime, default=utc_now)
+    expires_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=utc_now)
+
+    user = relationship("User")

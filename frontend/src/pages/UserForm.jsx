@@ -325,9 +325,9 @@ export default function UserForm() {
             const list = await uRes.json()
             const u = (Array.isArray(list) ? list : []).find(x => String(x.id) === String(id))
             if (u && alive) {
-              const uRole = ROLES.find(r => r.label_uz.includes(u.role) || r.value.toLowerCase() === String(u.role || '').toLowerCase())?.value
-                || u.role
-                || 'TashkilotAdmin';
+              const rawRoleStr = String(u.role || '').toLowerCase().replace(/_/g, '');
+              const uRole = ROLES.find(r => r.value.toLowerCase().replace(/_/g, '') === rawRoleStr || r.label_uz.toLowerCase().includes(rawRoleStr))?.value
+                || (rawRoleStr === 'superadmin' ? 'SuperAdmin' : 'TashkilotAdmin');
               
               let parsedPerms = [];
               if (u.menu_permissions) {
@@ -338,7 +338,7 @@ export default function UserForm() {
                   parsedPerms = u.menu_permissions.split(',').map(x => x.trim()).filter(Boolean);
                 }
               }
-              if (parsedPerms.length === 0) {
+              if (parsedPerms.length === 0 || uRole === 'SuperAdmin') {
                 parsedPerms = uRole === 'SuperAdmin' ? currentAllKeys : currentLimitedDefaults;
               }
 
@@ -517,14 +517,26 @@ export default function UserForm() {
     }
   }
 
+  const ROLE_PERMISSIONS_MAP = {
+    SuperAdmin: null,
+    Kadr: ["dashboard", "staff", "students", "shifts", "attendance", "reports", "about", "devices", "commands", "tracking"],
+    Buxgalter: ["dashboard", "staff", "students", "attendance", "reports", "about", "devices", "commands"],
+    Psixolog: ["dashboard", "staff", "students", "psychological_portrait", "attendance", "reports", "about"],
+  }
+
   const onRoleChange = (e) => {
     const nextRole = e.target.value
     setForm(prev => {
-      const isSuper = nextRole === 'SuperAdmin'
+      let nextPerms = limitedAdminDefaults;
+      if (nextRole === 'SuperAdmin') {
+        nextPerms = allPermissionKeys;
+      } else if (ROLE_PERMISSIONS_MAP[nextRole]) {
+        nextPerms = ROLE_PERMISSIONS_MAP[nextRole];
+      }
       return {
         ...prev,
         role: nextRole,
-        menu_permissions: isSuper ? allPermissionKeys : limitedAdminDefaults
+        menu_permissions: nextPerms
       }
     })
   }

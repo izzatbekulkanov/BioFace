@@ -6,6 +6,7 @@ from utils.access_control import resolve_menu_key_for_path, resolve_user_menu_pe
 from services.attendance_monitor import start_attendance_monitor, stop_attendance_monitor
 from services.self_healing_monitor import start_self_healing_monitor, stop_self_healing_monitor
 from services.ai_process_manager import start_ai_process, stop_ai_process
+from services.notification_service import start_notification_monitor, stop_notification_monitor, get_notification_monitor_status
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
@@ -16,7 +17,7 @@ from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 import models
 from database import engine, ensure_schema, SessionLocal
 from models import RequestLog
-from routers import auth, dashboard, webhook, cameras, employees, settings, organizations, users, system_monitor, planning, chat, versions, finance, feedbacks
+from routers import auth, dashboard, webhook, cameras, employees, settings, organizations, users, system_monitor, planning, chat, versions, finance, feedbacks, system_tools, audit
 from utils.time_utils import now_tashkent
 
 # Jadvallarni yaratish
@@ -26,6 +27,19 @@ ensure_schema()
 # --- FastAPI Ilovasi ---
 app = FastAPI(title="BioFace Admin Dashboard", version="1.0.0")
 app.add_middleware(GZipMiddleware, minimum_size=1024)
+
+@app.middleware("http")
+async def add_permissions_policy_header(request, call_next):
+    response = await call_next(request)
+    # Kamera va joylashuvga ruxsat
+    response.headers["Permissions-Policy"] = "camera=*, geolocation=*"
+    # Xavfsizlik headerlari
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    # HTTPS majburiy (Nginx orqali deploy qilingan)
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
 
 # --- Statik fayllar ---
 os.makedirs("static/uploads", exist_ok=True)
@@ -41,6 +55,8 @@ PUBLIC_PATH_PREFIXES = (
     "/api/auth/login",
     "/api/auth/logout",
     "/api/auth/google-status",  # React frontend checks Google OAuth without auth
+    "/api/auth/telegram-login",
+    "/api/auth/telegram-info",
     "/auth/google/",
     "/auth/callback",
     "/api/set_language",
@@ -48,9 +64,8 @@ PUBLIC_PATH_PREFIXES = (
     "/api/organizations/geo/",  # Public geocoding proxy endpoints
     "/api/versions",     # Public version info (shown on login page)
     "/api/employees/mobile-checkin",
-    "/docs",
-    "/redoc",
-    "/openapi.json",
+    # ESLATMA: /docs, /redoc, /openapi.json production'da ochiq bo'lmasligi kerak!
+    # Debug rejimida ochiq qoldirilmoqda:
     "/api/settings",      # Public branding settings (app name, logo)
     "/api/menu_settings", # Public branding settings
     "/api/feedbacks/submit", # Public feedback submission from mobile app
@@ -60,12 +75,17 @@ PUBLIC_PATHS = frozenset({
     "/login",
     "/logout",
     "/favicon.ico",
+    "/favicon.svg",
     "/uzbekistan.json",
     "/pending-approval",
     "/contact",
     "/about",
     "/map",
     "/privacy-policy",
+    # SEO fayllar — Google bot uchun
+    "/sitemap.xml",
+    "/robots.txt",
+    "/og-image.png",
 })
 
 AUTH_PERMISSION_EXEMPT_PATHS = frozenset({
@@ -79,6 +99,10 @@ AUTH_PERMISSION_EXEMPT_PREFIXES = (
     "/api/auth/",           # Auth endpointlari
     "/api/profile/",        # Profil endpointlari
 )
+
+
+def _background_autostart_enabled() -> bool:
+    return os.getenv("BIOFACE_DISABLE_AUTOSTART", "").strip().lower() not in {"1", "true", "yes", "on"}
 
 
 # ─── LOG YOZISH YORDAMCHISI (background thread'da) ──────────────────────────
@@ -154,7 +178,7 @@ async def log_requests(request, call_next):
     if should_log:
         elapsed_ms = int((time.time() - start_time) * 1000)
         # Background threadda yozish — so'rovni to'xtatmaydi
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         loop.run_in_executor(
             None,
             _write_log_entry,
@@ -287,14 +311,19 @@ app.add_middleware(
     SessionMiddleware,  # type: ignore[arg-type]
     secret_key=os.getenv("SESSION_SECRET", "bioface-dev-session-key-change-this"),
     same_site="lax",
-    https_only=False,
+    https_only=True,   # FIX: Cookie faqat HTTPS orqali yuboriladi (session hijacking himoyasi)
 )
 
-app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
+# FIX: Faqat lokal Nginx proxysiga ishon — ixtiyoriy X-Forwarded-For spoofingdan himoya
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="127.0.0.1")
 
 
 @app.on_event("startup")
 async def startup_background_services():
+    if not _background_autostart_enabled():
+        print("[STARTUP] Background services autostart disabled.")
+        return
+
     # Clean up stale face embeddings on startup
     from database import SessionLocal
     from utils.face_embeddings import cleanup_stale_embeddings
@@ -311,13 +340,17 @@ async def startup_background_services():
     start_attendance_monitor()
     start_self_healing_monitor()
     start_ai_process()
+    start_notification_monitor()
 
 
 @app.on_event("shutdown")
 async def shutdown_background_services():
+    if not _background_autostart_enabled():
+        return
     stop_attendance_monitor()
     stop_self_healing_monitor()
     stop_ai_process()
+    stop_notification_monitor()
 
 # --- Real-time WebSocket Endpoint ---
 from fastapi import WebSocket
@@ -380,8 +413,36 @@ app.include_router(chat.router, tags=["Chat API"])
 app.include_router(versions.router, tags=["Versions API"])
 app.include_router(finance.router, tags=["Finance API"])
 app.include_router(feedbacks.router, tags=["Feedbacks API"])
+app.include_router(system_tools.router, tags=["System Tools API"])
+app.include_router(audit.router, tags=["Audit API"])
+
+# --- SEO fayllar (Google bot, ijtimoiy tarmoqlar uchun — auth kerak emas) ---
+_BACKEND_STATIC = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
+_FRONTEND_DIST  = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'frontend', 'dist')
+
+def _serve_seo_file(filename: str, media_type: str):
+    """static/ yoki frontend/dist/ dan SEO faylni qaytaradi."""
+    for folder in [_BACKEND_STATIC, _FRONTEND_DIST]:
+        path = os.path.join(folder, filename)
+        if os.path.exists(path):
+            return FileResponse(path, media_type=media_type)
+    from fastapi.responses import PlainTextResponse
+    return PlainTextResponse("Not Found", status_code=404)
+
+@app.get("/sitemap.xml", include_in_schema=False)
+async def serve_sitemap():
+    return _serve_seo_file("sitemap.xml", "application/xml")
+
+@app.get("/robots.txt", include_in_schema=False)
+async def serve_robots():
+    return _serve_seo_file("robots.txt", "text/plain")
+
+@app.get("/og-image.png", include_in_schema=False)
+async def serve_og_image():
+    return _serve_seo_file("og-image.png", "image/png")
 
 # --- Frontend SPA Integration ---
+
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import os

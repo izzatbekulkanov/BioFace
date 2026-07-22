@@ -128,6 +128,9 @@ def get_late_minutes(employee: Employee, target_day: date | datetime, first_seen
     if schedule_payload["is_flexible"]:
         return 0
     expected_dt = combine_day_and_hhmm(target_day, schedule_payload["start_time"], DEFAULT_START_TIME)
+    expected_end_dt = combine_day_and_hhmm(target_day, schedule_payload["end_time"], DEFAULT_END_TIME)
+    if first_seen >= expected_end_dt:
+        return 0
     return max(0, int((first_seen - expected_dt).total_seconds() // 60))
 
 

@@ -60,4 +60,7 @@ Thumbs.db
 *.bak
 *.backup
 *~
+*.jks
+key.properties
+
 

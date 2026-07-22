@@ -229,6 +229,22 @@ class AttendanceMonitor:
                     skipped += 1
                     continue
 
+                # Maxsus statuslar (Kasallik ta'tili, Xizmat safari, Mehnat ta'tili va h.k.) ni tekshirish
+                from models import EmployeeStatusRecord
+                from sqlalchemy import or_
+                has_special_status = db.query(EmployeeStatusRecord).filter(
+                    EmployeeStatusRecord.employee_id == employee.id,
+                    EmployeeStatusRecord.start_date <= today,
+                    or_(
+                        EmployeeStatusRecord.end_date == None,
+                        EmployeeStatusRecord.end_date >= today
+                    )
+                ).first() is not None
+
+                if has_special_status:
+                    skipped += 1
+                    continue
+
                 schedule_payload = resolve_employee_schedule(employee)
                 is_student = employee.employee_type in ["oquvchi", "talaba"]
                 is_present = int(employee.id) in present_employee_ids

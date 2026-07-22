@@ -35,3 +35,14 @@ psutil==7.2.2
 fpdf2==2.8.3
 hsemotion==0.3.0
 openpyxl==3.1.5
+
+# ── JWT (Mobile auth) ───────────────────
+PyJWT>=2.8.0,<3.0.0
+
+# ── Computer Vision / Face AI ───────────
+opencv-python-headless>=4.9.0
+numpy>=1.24.0
+insightface>=0.7.3
+
+# ── Environment Variables ────────────────
+python-dotenv>=1.0.0

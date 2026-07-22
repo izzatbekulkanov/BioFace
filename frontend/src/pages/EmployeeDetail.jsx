@@ -19,11 +19,13 @@ import {
   WarningRegular,
   PhoneRegular,
   LocationRegular,
+  OpenRegular,
 } from '@fluentui/react-icons'
 import PageHero from '../components/PageHero'
 import Skeleton from '../components/Skeleton'
 import { useToast } from '../components/Toaster'
 import { useConfirm } from '../components/ConfirmDialog'
+import CustomSelect from '../components/CustomSelect'
 
 /**
  * Xodim/o'quvchi detail sahifasi.
@@ -43,10 +45,20 @@ export default function EmployeeDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
+
   const { i18n } = useTranslation()
   const isRu = i18n.language === 'ru'
   const toast = useToast()
   const confirm = useConfirm()
+
+  const statusOptions = useMemo(() => [
+    { value: 'vacation', label: isRu ? 'Отпуск' : "Ta'til" },
+    { value: 'business_trip', label: isRu ? 'Командировка' : 'Xizmat safari' },
+    { value: 'sick_leave', label: isRu ? 'Больничный' : 'Kasallik' },
+    { value: 'suspended', label: isRu ? 'Отстранение (Временное)' : 'Chetlashtirish (Vaqtincha)' },
+    { value: 'other', label: isRu ? 'Другое (Справка/Рапорт)' : 'Boshqa (Spravka/Hujjat)' },
+    { value: 'resigned', label: isRu ? 'Увольнение (Постоянное)' : 'Ishdan boʻshash (Doimiy)' }
+  ], [isRu])
 
   const [currentUser, setCurrentUser] = useState(null)
   useEffect(() => {
@@ -153,13 +165,117 @@ export default function EmployeeDetail() {
     }
   }, [id, calMonth.year, calMonth.month])
 
+  const [statusRecords, setStatusRecords] = useState([])
+  const [statusLoading, setStatusLoading] = useState(false)
+  const [showStatusForm, setShowStatusForm] = useState(false)
+  const [newStatusType, setNewStatusType] = useState('vacation')
+  const [newStartDate, setNewStartDate] = useState('')
+  const [newEndDate, setNewEndDate] = useState('')
+  const [newComment, setNewComment] = useState('')
+  const [newDocumentFile, setNewDocumentFile] = useState(null)
+
+  const loadStatusRecords = useCallback(async () => {
+    setStatusLoading(true)
+    try {
+      const r = await fetch(`/api/employees/status-records?employee_id=${id}`, { credentials: 'include' })
+      if (r.ok) {
+        const data = await r.json()
+        if (aliveRef.current) setStatusRecords(data)
+      }
+    } catch (e) {
+      console.error(e)
+    } finally {
+      if (aliveRef.current) setStatusLoading(false)
+    }
+  }, [id])
+
+  const handleAddStatusRecord = async (e) => {
+    e.preventDefault()
+    if (!newStartDate) {
+      toast.error(isRu ? 'Выберите дату начала' : 'Boshlanish sanasini tanlang')
+      return
+    }
+    try {
+      const formData = new FormData()
+      formData.append('employee_id', Number(id))
+      formData.append('status_type', newStatusType)
+      formData.append('start_date', newStartDate)
+      if (newStatusType !== 'resigned' && newEndDate) {
+        formData.append('end_date', newEndDate)
+      }
+      if (newComment) {
+        formData.append('comment', newComment)
+      }
+      if (newDocumentFile) {
+        formData.append('document', newDocumentFile)
+      }
+
+      const r = await fetch('/api/employees/status-records', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      })
+      if (r.ok) {
+        toast.success(isRu ? 'Статус добавлен' : 'Holat muvaffaqiyatli qo\'shildi')
+        setShowStatusForm(false)
+        setNewStartDate('')
+        setNewEndDate('')
+        setNewComment('')
+        setNewDocumentFile(null)
+        loadStatusRecords()
+        loadEmployee()
+      } else {
+        const err = await r.json()
+        toast.error(err.detail || 'Error')
+      }
+    } catch (err) {
+      toast.error(String(err))
+    }
+  }
+
+  const handleDeleteStatusRecord = async (recId) => {
+    const ok = await confirm({
+      title: isRu ? 'Удалить?' : "O'chirish?",
+      message: isRu ? 'Вы уверены, что хотите удалить эту запись о статусе?' : 'Ushbu holat yozuvini o\'chirishni xohlaysizmi?',
+      confirmText: isRu ? 'Удалить' : "O'chirish",
+      cancelText: isRu ? 'Отмена' : 'Bekor qilish',
+      danger: true
+    })
+    if (!ok) return
+    try {
+      const r = await fetch(`/api/employees/status-records/${recId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      })
+      if (r.ok) {
+        toast.success(isRu ? 'Удалено' : 'Muvaffaqiyatli o\'chirildi')
+        loadStatusRecords()
+        loadEmployee()
+      } else {
+        toast.error('Error')
+      }
+    } catch (err) {
+      toast.error(String(err))
+    }
+  }
+
+  const STATUS_LABELS = useMemo(() => ({
+    vacation: { uz: "Ta'til", ru: "Отпуск", color: '#818cf8', bg: 'rgba(99, 102, 241, 0.15)' },
+    business_trip: { uz: "Xizmat safari", ru: "Командировка", color: '#06b6d4', bg: 'rgba(6, 182, 212, 0.15)' },
+    sick_leave: { uz: "Kasallik", ru: "Больничный", color: '#ec4899', bg: 'rgba(236, 72, 153, 0.15)' },
+    resigned: { uz: "Bo'shatilgan", ru: "Уволен", color: '#ef4444', bg: 'rgba(239, 68, 68, 0.15)' },
+    suspended: { uz: "Vaqtincha to'xtatilgan", ru: "Отстранен", color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.15)' },
+    other: { uz: "Boshqa", ru: "Другое", color: '#38bdf8', bg: 'rgba(14, 165, 233, 0.15)' }
+  }), [])
+
   useEffect(() => {
     aliveRef.current = true
     loadEmployee()
     loadLogs(1)
     loadPsy()
+    loadStatusRecords()
     return () => { aliveRef.current = false }
-  }, [loadEmployee, loadLogs, loadPsy])
+  }, [loadEmployee, loadLogs, loadPsy, loadStatusRecords])
 
   useEffect(() => { loadCalendar() }, [loadCalendar])
 
@@ -561,6 +677,271 @@ export default function EmployeeDetail() {
           )}
         </div>
 
+        {/* Maxsus holatlar (Ta'tillar, Safarlar va h.k.) */}
+        <div style={{ ...cardStyle, marginBottom: 18 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <h3 style={cardTitle}>
+              <CalendarRegular style={{ color: '#f59e0b' }} />
+              {isRu ? 'Особые статусы (Отпуска, Командировки и др.)' : "Maxsus holatlar (Ta'til, Safar va h.k.)"}
+            </h3>
+            {canEdit && (
+              <button
+                onClick={() => setShowStatusForm(!showStatusForm)}
+                style={{
+                  background: 'var(--accent)', color: '#fff', border: 'none',
+                  padding: '4px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                {showStatusForm ? (isRu ? 'Отмена' : 'Bekor qilish') : (isRu ? '+ Добавить' : '+ Qo\'shish')}
+              </button>
+            )}
+          </div>
+
+          {showStatusForm && (
+            <form onSubmit={handleAddStatusRecord} style={{
+              background: 'var(--surface-2)', border: '1px solid var(--border-2)',
+              borderRadius: 8, padding: 14, marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 12
+            }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                <div style={{ flex: 1, minWidth: 140, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <label style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 2 }}>{isRu ? 'Тип статуса' : 'Holat turi'}</label>
+                  <CustomSelect
+                    options={statusOptions}
+                    value={newStatusType}
+                    onChange={val => setNewStatusType(val || 'vacation')}
+                    placeholder={isRu ? 'Выберите статус' : 'Holatni tanlang'}
+                  />
+                </div>
+
+                <div style={{ flex: 1, minWidth: 120, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <label style={{ fontSize: 11, color: 'var(--text-3)' }}>{isRu ? 'Дата начала' : 'Boshlanish sanasi'}</label>
+                  <input
+                    type="date"
+                    value={newStartDate}
+                    onChange={e => setNewStartDate(e.target.value)}
+                    required
+                    style={{
+                      background: 'var(--surface-1)', color: 'var(--text-1)', border: '1px solid var(--border-3)',
+                      padding: 5, borderRadius: 6, fontSize: 13, outline: 'none'
+                    }}
+                  />
+                </div>
+
+                <div style={{ flex: 1, minWidth: 120, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <label style={{ fontSize: 11, color: 'var(--text-3)' }}>{isRu ? 'Дата окончания' : 'Tugash sanasi'}</label>
+                  <input
+                    type="date"
+                    value={newEndDate}
+                    onChange={e => setNewEndDate(e.target.value)}
+                    disabled={newStatusType === 'resigned'}
+                    placeholder={newStatusType === 'resigned' ? 'N/A' : ''}
+                    style={{
+                      background: 'var(--surface-1)', color: 'var(--text-1)', border: '1px solid var(--border-3)',
+                      padding: 5, borderRadius: 6, fontSize: 13, outline: 'none',
+                      opacity: newStatusType === 'resigned' ? 0.5 : 1
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <label style={{ fontSize: 11, color: 'var(--text-3)' }}>{isRu ? 'Комментарий' : 'Izoh'}</label>
+                <input
+                  type="text"
+                  placeholder={isRu ? 'Причина, номер приказа...' : 'Sabab, buyruq raqami...'}
+                  value={newComment}
+                  onChange={e => setNewComment(e.target.value)}
+                  style={{
+                    background: 'var(--surface-1)', color: 'var(--text-1)', border: '1px solid var(--border-3)',
+                    padding: '6px 10px', borderRadius: 6, fontSize: 13, outline: 'none'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <label style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 4 }}>
+                  {isRu ? 'Документ (Справка / Рапорт / другое - Необязательно)' : 'Hujjat (Spravka / Hujjat / boshqa - Ixtiyoriy)'}
+                </label>
+                <div
+                  style={{
+                    position: 'relative',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '16px',
+                    borderRadius: 9,
+                    border: '2px dashed var(--border-3)',
+                    background: 'var(--bg)',
+                    cursor: 'pointer',
+                    transition: 'border-color 0.2s, background-color 0.2s',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.borderColor = 'var(--accent)';
+                    e.currentTarget.style.backgroundColor = 'var(--surface-2)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.borderColor = 'var(--border-3)';
+                    e.currentTarget.style.backgroundColor = 'var(--bg)';
+                  }}
+                  onClick={() => document.getElementById('new-status-file-input').click()}
+                >
+                  <input
+                    id="new-status-file-input"
+                    type="file"
+                    onChange={e => setNewDocumentFile(e.target.files[0] || null)}
+                    style={{ display: 'none' }}
+                  />
+                  {newDocumentFile ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 32,
+                        height: 32,
+                        borderRadius: 6,
+                        background: 'rgba(16, 185, 129, 0.12)',
+                        color: '#10b981',
+                        fontSize: 16,
+                        flexShrink: 0
+                      }}>
+                        📄
+                      </div>
+                      <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, color: 'var(--text-1)' }} title={newDocumentFile.name}>
+                        {newDocumentFile.name}
+                        <div style={{ fontSize: 10, color: 'var(--text-4)', marginTop: 2 }}>
+                          {Math.round(newDocumentFile.size / 1024)} KB
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setNewDocumentFile(null);
+                          document.getElementById('new-status-file-input').value = '';
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#ef4444',
+                          cursor: 'pointer',
+                          padding: 4,
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'}
+                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'none'}
+                      >
+                        <DismissCircleRegular fontSize={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: 24, marginBottom: 4 }}>📤</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>
+                        {isRu ? 'Выберите файл' : 'Faylni tanlash'}
+                      </div>
+                      <div style={{ fontSize: 10, color: 'var(--text-4)', marginTop: 2 }}>
+                        {isRu ? 'PDF, JPG, PNG или другие форматы' : 'PDF, JPG, PNG yoki boshqa formatlar'}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                style={{
+                  alignSelf: 'flex-end', background: 'var(--accent)', color: '#fff', border: 'none',
+                  padding: '6px 16px', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer'
+                }}
+              >
+                {isRu ? 'Сохранить' : 'Saqlash'}
+              </button>
+            </form>
+          )}
+
+          {statusLoading && statusRecords.length === 0 ? (
+            <Skeleton.Row />
+          ) : statusRecords.length === 0 ? (
+            <div style={emptyStyle}>
+              {isRu ? 'Особые статусы не зарегистрированы.' : 'Maxsus holatlar belgilanmagan.'}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {statusRecords.map(rec => {
+                const cfg = STATUS_LABELS[rec.status_type] || { uz: rec.status_type, ru: rec.status_type, color: 'var(--text-2)', bg: 'var(--surface-2)' }
+                return (
+                  <div key={rec.id} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '8px 12px', borderRadius: 8, background: 'var(--bg)', border: '1px solid var(--border-2)',
+                    fontSize: 13
+                  }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{
+                          padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                          background: cfg.bg, color: cfg.color
+                        }}>
+                          {isRu ? cfg.ru : cfg.uz}
+                        </span>
+                        <span style={{ fontWeight: 600, color: 'var(--text-1)' }}>
+                          {rec.start_date} {rec.end_date ? ` — ${rec.end_date}` : (rec.status_type === 'resigned' ? '' : ' (muddatsiz)')}
+                        </span>
+                      </div>
+                      {rec.comment && (
+                        <div style={{ fontSize: 12, color: 'var(--text-3)', fontStyle: 'italic', paddingLeft: 4 }}>
+                          {rec.comment}
+                        </div>
+                      )}
+                      {rec.document_url && (
+                        <div style={{ paddingLeft: 4, marginTop: 2 }}>
+                          <a
+                            href={rec.document_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              color: 'var(--accent)',
+                              textDecoration: 'none',
+                              fontWeight: 600,
+                              fontSize: 11
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
+                            onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}
+                          >
+                            <OpenRegular fontSize={12} />
+                            {isRu ? 'Открыть документ' : 'Hujjatni koʻrish'}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                    {canEdit && (
+                      <button
+                        onClick={() => handleDeleteStatusRecord(rec.id)}
+                        style={{
+                          background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer',
+                          display: 'flex', padding: 4, borderRadius: '50%'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.1)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                      >
+                        <DeleteRegular fontSize={16} />
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
         {/* Psixologik holat tarixi */}
         <div style={cardStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
@@ -598,13 +979,19 @@ export default function EmployeeDetail() {
 // ────────────────────────────────────────────────────────────────────────────
 
 const STATUS_TONES = {
-  present:    { bg: 'rgba(16,185,129,0.15)',  bd: 'rgba(16,185,129,0.40)',  fg: '#10b981' },
-  late:       { bg: 'rgba(245,158,11,0.15)',  bd: 'rgba(245,158,11,0.40)',  fg: '#f59e0b' },
-  absent:     { bg: 'rgba(244,63,94,0.10)',   bd: 'rgba(244,63,94,0.25)',   fg: '#f43f5e' },
-  weekend:    { bg: 'var(--surface-2)',        bd: 'var(--border-2)',        fg: 'var(--text-4)' },
-  holiday:    { bg: 'rgba(168,85,247,0.10)',  bd: 'rgba(168,85,247,0.30)',  fg: '#a855f7' },
-  future:     { bg: 'var(--bg)',               bd: 'var(--border-2)',        fg: 'var(--text-4)' },
-  no_data:    { bg: 'var(--bg)',               bd: 'var(--border-2)',        fg: 'var(--text-4)' },
+  present:       { bg: 'rgba(16,185,129,0.15)',  bd: 'rgba(16,185,129,0.40)',  fg: '#10b981' },
+  late:          { bg: 'rgba(245,158,11,0.15)',  bd: 'rgba(245,158,11,0.40)',  fg: '#f59e0b' },
+  absent:        { bg: 'rgba(244,63,94,0.10)',   bd: 'rgba(244,63,94,0.25)',   fg: '#f43f5e' },
+  weekend:       { bg: 'var(--surface-2)',        bd: 'var(--border-2)',        fg: 'var(--text-4)' },
+  holiday:       { bg: 'rgba(168,85,247,0.10)',  bd: 'rgba(168,85,247,0.30)',  fg: '#a855f7' },
+  vacation:      { bg: 'rgba(129,140,248,0.15)', bd: 'rgba(129,140,248,0.40)', fg: '#818cf8' },
+  business_trip: { bg: 'rgba(6,182,212,0.15)',  bd: 'rgba(6,182,212,0.40)',  fg: '#06b6d4' },
+  sick_leave:    { bg: 'rgba(236,72,153,0.15)',  bd: 'rgba(236,72,153,0.40)',  fg: '#ec4899' },
+  suspended:     { bg: 'rgba(107,114,128,0.15)', bd: 'rgba(107,114,128,0.40)', fg: '#9ca3af' },
+  other:         { bg: 'rgba(14,165,233,0.15)',  bd: 'rgba(14,165,233,0.40)',  fg: '#0ea5e9' },
+  resigned:      { bg: 'rgba(239,68,68,0.12)',   bd: 'rgba(239,68,68,0.30)',   fg: '#f87171' },
+  future:        { bg: 'var(--bg)',               bd: 'var(--border-2)',        fg: 'var(--text-4)' },
+  no_data:       { bg: 'var(--bg)',               bd: 'var(--border-2)',        fg: 'var(--text-4)' },
 }
 
 function CalendarPanel({ data, loading, month, onMonthChange, isRu }) {
@@ -723,6 +1110,12 @@ function CalendarPanel({ data, loading, month, onMonthChange, isRu }) {
                   {d.status === 'absent' && <span style={{ fontSize: 10, fontWeight: 600 }}>✕</span>}
                   {d.status === 'weekend' && <span style={{ fontSize: 10 }}>{isRu ? 'вых.' : 'dam'}</span>}
                   {d.status === 'holiday' && <span style={{ fontSize: 10 }}>{isRu ? 'празд.' : 'bayram'}</span>}
+                  {d.status === 'vacation' && <span style={{ fontSize: 9, fontWeight: 600 }}>{isRu ? 'отпуск' : "ta'til"}</span>}
+                  {d.status === 'business_trip' && <span style={{ fontSize: 9, fontWeight: 600 }}>{isRu ? 'команд.' : 'safar'}</span>}
+                  {d.status === 'sick_leave' && <span style={{ fontSize: 9, fontWeight: 600 }}>{isRu ? 'больн.' : 'kasal'}</span>}
+                  {d.status === 'suspended' && <span style={{ fontSize: 9, fontWeight: 600 }}>{isRu ? 'отстр.' : 'vaqt.'}</span>}
+                  {d.status === 'other' && <span style={{ fontSize: 9, fontWeight: 600 }}>{isRu ? 'уваж.' : 'sabab'}</span>}
+                  {d.status === 'resigned' && <span style={{ fontSize: 9, fontWeight: 600 }}>{isRu ? 'увол.' : 'bo\'sh'}</span>}
                 </button>
               )
             })}
@@ -811,13 +1204,19 @@ function SummaryPill({ label, value, color }) {
 
 function DayStatusPill({ status, isRu }) {
   const map = {
-    present:  { bg: 'rgba(16,185,129,0.15)',  fg: '#10b981', text: isRu ? 'Присутствовал' : 'Kelgan' },
-    late:     { bg: 'rgba(245,158,11,0.15)',  fg: '#f59e0b', text: isRu ? 'Опоздание' : 'Kechikkan' },
-    absent:   { bg: 'rgba(244,63,94,0.10)',   fg: '#f43f5e', text: isRu ? 'Отсутствовал' : "Yo'q" },
-    weekend:  { bg: 'var(--surface-2)',        fg: 'var(--text-3)', text: isRu ? 'Выходной' : 'Dam olish' },
-    holiday:  { bg: 'rgba(168,85,247,0.10)',  fg: '#a855f7', text: isRu ? 'Праздник' : 'Bayram' },
-    future:   { bg: 'var(--bg)',               fg: 'var(--text-4)', text: isRu ? 'В будущем' : 'Kelajakda' },
-    no_data:  { bg: 'var(--bg)',               fg: 'var(--text-4)', text: isRu ? 'Нет данных' : "Ma'lumot yo'q" },
+    present:       { bg: 'rgba(16,185,129,0.15)',  fg: '#10b981', text: isRu ? 'Присутствовал' : 'Kelgan' },
+    late:          { bg: 'rgba(245,158,11,0.15)',  fg: '#f59e0b', text: isRu ? 'Опоздание' : 'Kechikkan' },
+    absent:        { bg: 'rgba(244,63,94,0.10)',   fg: '#f43f5e', text: isRu ? 'Отсутствовал' : "Yo'q" },
+    weekend:       { bg: 'var(--surface-2)',        fg: 'var(--text-3)', text: isRu ? 'Выходной' : 'Dam olish' },
+    holiday:       { bg: 'rgba(168,85,247,0.10)',  fg: '#a855f7', text: isRu ? 'Праздник' : 'Bayram' },
+    vacation:      { bg: 'rgba(129,140,248,0.15)', fg: '#818cf8', text: isRu ? 'Отпуск' : "Ta'til" },
+    business_trip: { bg: 'rgba(6,182,212,0.15)',  fg: '#06b6d4', text: isRu ? 'Командировка' : 'Xizmat safari' },
+    sick_leave:    { bg: 'rgba(236,72,153,0.15)',  fg: '#ec4899', text: isRu ? 'Больничный' : 'Kasallik' },
+    suspended:     { bg: 'rgba(107,114,128,0.15)', fg: '#9ca3af', text: isRu ? 'Отстранен' : 'Chetlashtirilgan' },
+    other:         { bg: 'rgba(14,165,233,0.15)',  fg: '#0ea5e9', text: isRu ? 'Другое (Уваж.)' : 'Boshqa (Sababli)' },
+    resigned:      { bg: 'rgba(239,68,68,0.12)',   fg: '#f87171', text: isRu ? 'Уволен' : 'Ishdan boʻshagan' },
+    future:        { bg: 'var(--bg)',               fg: 'var(--text-4)', text: isRu ? 'В будущем' : 'Kelajakda' },
+    no_data:       { bg: 'var(--bg)',               fg: 'var(--text-4)', text: isRu ? 'Нет данных' : "Ma'lumot yo'q" },
   }
   const t = map[status] || map.no_data
   return (

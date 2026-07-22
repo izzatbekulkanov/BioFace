@@ -18,6 +18,7 @@ from routers.cameras_parts.psychology_utils import (
     state_labels,
     upsert_daily_psychological_state,
 )
+from routers.cameras_parts.text_utils import _normalize_mac_address
 
 
 router = APIRouter()
@@ -38,6 +39,76 @@ def _resolve_event_timestamp(value: Any) -> Any:
     return parsed if parsed is not None else now_tashkent()
 
 
+def _employee_allowed_for_device(db: Session, employee: models.Employee | None, device: models.Device | None) -> bool:
+    if employee is None:
+        return False
+    if device is None:
+        return True
+
+    if employee.organization_id is not None and device.organization_id is not None:
+        if int(employee.organization_id) != int(device.organization_id):
+            return False
+
+    linked_camera_ids = {
+        int(row[0])
+        for row in db.query(models.EmployeeCameraLink.camera_id)
+        .filter(models.EmployeeCameraLink.employee_id == int(employee.id))
+        .all()
+        if row[0] is not None
+    }
+    if linked_camera_ids and int(device.id) not in linked_camera_ids:
+        return False
+
+    return True
+
+
+def _device_identifier_candidates(*values: str | None) -> list[str]:
+    candidates: list[str] = []
+    for value in values:
+        raw = str(value or "").strip()
+        if not raw:
+            continue
+        for item in (raw, _normalize_mac_address(raw)):
+            if item and item not in candidates:
+                candidates.append(item)
+    return candidates
+
+
+def _normalize_confidence(value: Any) -> Optional[float]:
+    if value is None:
+        return None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    if parsed < 0:
+        return None
+    if parsed > 1:
+        parsed = parsed / 100.0
+    return max(0.0, min(parsed, 1.0))
+
+
+def _device_min_face_confidence(device: models.Device | None) -> float:
+    value = _normalize_confidence(getattr(device, "min_face_confidence", None))
+    if value is None or value <= 0:
+        return 0.40
+    return value
+
+
+def _resolve_review_state(
+    *,
+    employee: models.Employee | None,
+    device: models.Device | None,
+    face_confidence: Optional[float],
+) -> tuple[str, Optional[str]]:
+    if employee is None:
+        return "pending", "unknown_person"
+    threshold = _device_min_face_confidence(device)
+    if face_confidence is not None and face_confidence < threshold:
+        return "pending", f"low_confidence:{face_confidence:.2f}<min:{threshold:.2f}"
+    return "auto", None
+
+
 @router.post("/api/webhook/events")
 @router.post("/api/events")
 async def camera_event_ingest(
@@ -56,11 +127,15 @@ async def camera_event_ingest(
     if not serial_no:
         raise HTTPException(status_code=422, detail="device_serial (yoki camera_mac/device_id) majburiy")
 
-    device = db.query(models.Device).filter(
-        (models.Device.mac_address == serial_no)
-        | (models.Device.isup_device_id == serial_no)
-        | (models.Device.name == serial_no)
-    ).first()
+    identifiers = _device_identifier_candidates(serial_no)
+    device = None
+    if identifiers:
+        device = db.query(models.Device).filter(
+            (models.Device.mac_address.in_(identifiers))
+            | (models.Device.serial_number.in_(identifiers))
+            | (models.Device.isup_device_id.in_(identifiers))
+            | (models.Device.name.in_(identifiers))
+        ).first()
     if not device:
         raise HTTPException(status_code=404, detail="Bunday serial/mak kamera bazada topilmadi")
 
@@ -76,8 +151,9 @@ async def camera_event_ingest(
             employee = None
     if employee is None and person_id:
         employee = db.query(models.Employee).filter(models.Employee.personal_id == person_id).first()
-    if employee is None and person_id and person_id.isdigit():
-        employee = db.query(models.Employee).filter(models.Employee.id == int(person_id)).first()
+    if employee is not None and not _employee_allowed_for_device(db, employee, device):
+        employee = None
+        person_name = None
 
     if employee is not None:
         if not person_id:
@@ -104,8 +180,16 @@ async def camera_event_ingest(
     elif snapshot_url:
         photo_path = resolve_snapshot_path(snapshot_url)
 
+    face_confidence = _normalize_confidence(
+        data.get("face_confidence", data.get("confidence", data.get("similarity")))
+    )
+    review_status, review_reason = _resolve_review_state(
+        employee=employee,
+        device=device,
+        face_confidence=face_confidence,
+    )
     event_ts = _resolve_event_timestamp(data.get("timestamp"))
-    status = "aniqlandi" if employee is not None else "noma'lum"
+    status = "tasdiqlash_kerak" if employee is not None and review_status == "pending" else ("aniqlandi" if employee is not None else "noma'lum")
     psychological_profile = detect_psychological_profile(photo_path)
     psychological_state_key = str(psychological_profile.get("state_key") or "")
     psychological_state_uz = str(psychological_profile.get("state_uz") or "")
@@ -126,7 +210,11 @@ async def camera_event_ingest(
         psychological_state_key=psychological_state_key or None,
         psychological_state_confidence=psychological_state_confidence,
         emotion_scores_json=psychological_profile.get("emotion_scores_json") or None,
+        face_confidence=face_confidence,
+        attendance_source="camera",
         status=status,
+        review_status=review_status,
+        review_reason=review_reason,
         direction=device.direction if device else None,
     )
 
@@ -162,6 +250,9 @@ async def camera_event_ingest(
             "person_id": str(person_id or ""),
             "person_name": str(person_name or ""),
             "status": status,
+            "review_status": review_status,
+            "review_reason": review_reason,
+            "face_confidence": face_confidence,
             "snapshot_url": str(snapshot_url or ""),
             "psychological_state_key": psychological_state_key,
             "psychological_state_confidence": psychological_state_confidence,
@@ -179,6 +270,9 @@ async def camera_event_ingest(
         "message": "Voqea saqlandi",
         "log_id": int(new_log.id),
         "employee_found": employee is not None,
+        "review_status": review_status,
+        "review_reason": review_reason,
+        "face_confidence": face_confidence,
         "published": bool(published),
         "psychological_state_key": psychological_state_key,
         "psychological_state_confidence": psychological_state_confidence,
@@ -188,4 +282,3 @@ async def camera_event_ingest(
         "psychological_profile_uz": psychological_profile_uz,
         "psychological_profile_ru": psychological_profile_ru,
     }
-

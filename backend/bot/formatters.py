@@ -59,6 +59,16 @@ def _status_label(language: str, status: str) -> str:
         return "Не пришел" if language == "ru" else "Kelmagan"
     if status == "holiday":
         return "Выходной" if language == "ru" else "Dam olish"
+    if status == "vacation":
+        return "Отпуск" if language == "ru" else "Ta'til"
+    if status == "sick_leave":
+        return "Больничный" if language == "ru" else "Kasallik ta'tili"
+    if status == "business_trip":
+        return "Командировка" if language == "ru" else "Xizmat safari"
+    if status == "suspended":
+        return "Отстранён" if language == "ru" else "To'xtatilgan"
+    if status == "resigned":
+        return "Уволен" if language == "ru" else "Bo'shatilgan"
     return get_message(language, "status_absent")
 
 
@@ -72,6 +82,16 @@ def _status_emoji(status: str) -> str:
         return "❌"
     if normalized == "holiday":
         return "🟦"
+    if normalized == "vacation":
+        return "✈️"
+    if normalized == "sick_leave":
+        return "🏥"
+    if normalized == "business_trip":
+        return "💼"
+    if normalized == "suspended":
+        return "⏸️"
+    if normalized == "resigned":
+        return "🚪"
     return "❌"
 
 
@@ -306,6 +326,16 @@ def build_month_calendar_keyboard(days: list[MonthlyAttendanceDay], year: int, m
                     label = f"🟨{day_num:02d}"
                 elif status_val == "holiday":
                     label = f"🟦{day_num:02d}"
+                elif status_val == "vacation":
+                    label = f"✈️{day_num:02d}"
+                elif status_val == "sick_leave":
+                    label = f"🏥{day_num:02d}"
+                elif status_val == "business_trip":
+                    label = f"💼{day_num:02d}"
+                elif status_val == "suspended":
+                    label = f"⏸️{day_num:02d}"
+                elif status_val == "resigned":
+                    label = f"🚪{day_num:02d}"
                 else:
                     label = f"🟥{day_num:02d}"
             row.append(InlineKeyboardButton(label, callback_data=f"cal:day:{item.date_label if item else f'{year:04d}-{month:02d}-{day_num:02d}'}"))

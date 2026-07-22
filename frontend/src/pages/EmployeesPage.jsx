@@ -31,6 +31,7 @@ import PageHero from '../components/PageHero'
 import Skeleton from '../components/Skeleton'
 import { useToast } from '../components/Toaster'
 import { useConfirm } from '../components/ConfirmDialog'
+import CustomSelect from '../components/CustomSelect'
 
 /**
  * Hodimlar yoki O'quvchilar / Talabalar sahifasi.
@@ -50,6 +51,7 @@ export default function EmployeesPage({ mode = 'staff' }) {
   const navigate = useNavigate()
   const toast = useToast()
   const confirm = useConfirm()
+
   const [importModalOpen, setImportModalOpen] = useState(false)
   const [clearImagesOpen, setClearImagesOpen] = useState(false)
 
@@ -169,6 +171,52 @@ export default function EmployeesPage({ mode = 'staff' }) {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
   const aliveRef = useRef(true)
+
+  const orgOptions = useMemo(() => {
+    return [
+      { value: '', label: isRu ? 'Все организации' : 'Barcha tashkilotlar' },
+      ...organizations.map(org => ({ value: String(org.id), label: org.name }))
+    ]
+  }, [organizations, isRu])
+
+  const deptOptions = useMemo(() => {
+    return [
+      {
+        value: '',
+        label: isStudents
+          ? (isRu ? 'Все классы / группы' : 'Barcha sinf / guruhlar')
+          : (isRu ? 'Все отделы' : "Barcha bo'limlar")
+      },
+      ...departments.map(dept => ({ value: String(dept.id), label: dept.name }))
+    ]
+  }, [departments, isStudents, isRu])
+
+  const posOptions = useMemo(() => {
+    const filtered = positions.filter(p => !deptFilter || String(p.department_id) === String(deptFilter))
+    return [
+      { value: '', label: isRu ? 'Все должности' : 'Barcha lavozimlar' },
+      ...filtered.map(pos => ({ value: String(pos.id), label: pos.name }))
+    ]
+  }, [positions, deptFilter, isRu])
+
+  const hasFaceOptions = useMemo(() => [
+    { value: '', label: isRu ? 'Все (лицо)' : "Barcha (yuz)" },
+    { value: 'yes', label: isRu ? 'Yuzi bor' : 'Yuzi bor' },
+    { value: 'no', label: isRu ? "Yuzi yo'q" : "Yuzi yo'q" }
+  ], [isRu])
+
+  const statusOptions = useMemo(() => [
+    { value: '', label: isRu ? 'Все статусы' : 'Barcha holatlar' },
+    { value: 'active', label: isRu ? 'Активен' : 'Faol' },
+    { value: 'inactive', label: isRu ? 'Нет доступа' : 'Ruxsat yo\'q' }
+  ], [isRu])
+
+  const pageSizeOptions = useMemo(() => [
+    { value: '20', label: isRu ? '20 / стр.' : '20 / sahifa' },
+    { value: '50', label: isRu ? '50 / стр.' : '50 / sahifa' },
+    { value: '100', label: isRu ? '100 / стр.' : '100 / sahifa' },
+    { value: '200', label: isRu ? '200 / стр.' : '200 / sahifa' }
+  ], [isRu])
 
   // Delete dialog state
   const [deleting, setDeleting] = useState(null)   // employee object or null
@@ -470,90 +518,88 @@ export default function EmployeesPage({ mode = 'staff' }) {
           )}
 
           <div className="employees-filters" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', paddingBottom: 8 }}>
-              <input
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder={isRu ? 'Поиск по ФИО, ID' : "F.I.SH, ID bo'yicha qidiruv"}
-                style={{ minWidth: 200, ...inpStyle }}
-              />
+              <div style={{ minWidth: 200, flex: 1 }}>
+                <input
+                  type="text"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder={isRu ? 'Поиск по ФИО, ID' : "F.I.SH, ID bo'yicha qidiruv"}
+                  style={inpStyle}
+                />
+              </div>
 
               {/* Tashkilot filtri */}
-              <select
-                value={orgFilter}
-                onChange={e => {
-                  setOrgFilter(e.target.value)
-                  setDeptFilter('')
-                  setPosFilter('')
-                }}
-                style={{ minWidth: 160, ...inpStyle }}
-              >
-                <option value="">{isRu ? 'Все организации' : 'Barcha tashkilotlar'}</option>
-                {organizations.map(org => (
-                  <option key={org.id} value={org.id}>{org.name}</option>
-                ))}
-              </select>
+              <div style={{ minWidth: 180, flex: 1 }}>
+                <CustomSelect
+                  options={orgOptions}
+                  value={orgFilter}
+                  onChange={val => {
+                    setOrgFilter(val || '')
+                    setDeptFilter('')
+                    setPosFilter('')
+                  }}
+                  placeholder={isRu ? 'Все организации' : 'Barcha tashkilotlar'}
+                />
+              </div>
 
               {/* Bo'lim filtri */}
-              <select
-                value={deptFilter}
-                onChange={e => { setDeptFilter(e.target.value); setPosFilter('') }}
-                disabled={!orgFilter}
-                style={{ minWidth: 150, ...inpStyle }}
-              >
-                <option value="">
-                  {isStudents
+              <div style={{ minWidth: 180, flex: 1 }}>
+                <CustomSelect
+                  options={deptOptions}
+                  value={deptFilter}
+                  onChange={val => {
+                    setDeptFilter(val || '')
+                    setPosFilter('')
+                  }}
+                  disabled={!orgFilter}
+                  placeholder={isStudents
                     ? (isRu ? 'Все классы / группы' : 'Barcha sinf / guruhlar')
                     : (isRu ? 'Все отделы' : "Barcha bo'limlar")}
-                </option>
-                {departments.map(dept => (
-                  <option key={dept.id} value={dept.id}>{dept.name}</option>
-                ))}
-              </select>
+                />
+              </div>
 
               {/* Lavozim filtri (faqat staff uchun) */}
               {!isStudents && (
-                <select
-                  value={posFilter}
-                  onChange={e => setPosFilter(e.target.value)}
-                  disabled={!orgFilter}
-                  style={{ minWidth: 150, ...inpStyle }}
-                >
-                  <option value="">{isRu ? 'Все должности' : 'Barcha lavozimlar'}</option>
-                  {positions
-                    .filter(p => !deptFilter || String(p.department_id) === String(deptFilter))
-                    .map(pos => (
-                      <option key={pos.id} value={pos.id}>{pos.name}</option>
-                    ))}
-                </select>
+                <div style={{ minWidth: 180, flex: 1 }}>
+                  <CustomSelect
+                    options={posOptions}
+                    value={posFilter}
+                    onChange={val => setPosFilter(val || '')}
+                    disabled={!orgFilter}
+                    placeholder={isRu ? 'Все должности' : 'Barcha lavozimlar'}
+                  />
+                </div>
               )}
 
               {/* Yuz bor/yo'q filtri */}
-              <select
-                value={hasFaceFilter}
-                onChange={e => setHasFaceFilter(e.target.value)}
-                style={{ minWidth: 130, ...inpStyle }}
-              >
-                <option value="">{isRu ? 'Все (лицо)' : "Barcha (yuz)"}</option>
-                <option value="yes">{isRu ? 'Yuzi bor' : 'Yuzi bor'}</option>
-                <option value="no">{isRu ? "Yuzi yo'q" : "Yuzi yo'q"}</option>
-              </select>
+              <div style={{ minWidth: 150, flex: 1 }}>
+                <CustomSelect
+                  options={hasFaceOptions}
+                  value={hasFaceFilter}
+                  onChange={val => setHasFaceFilter(val || '')}
+                  placeholder={isRu ? 'Все (лицо)' : "Barcha (yuz)"}
+                />
+              </div>
 
-              <select
-                value={statusFilter}
-                onChange={e => setStatusFilter(e.target.value)}
-                style={{ minWidth: 130, ...inpStyle }}
-              >
-                <option value="">{isRu ? 'Все статусы' : 'Barcha holatlar'}</option>
-                <option value="active">{isRu ? 'Активен' : 'Faol'}</option>
-                <option value="inactive">{isRu ? 'Нет доступа' : 'Ruxsat yo\'q'}</option>
-              </select>
+              {/* Status filtri */}
+              <div style={{ minWidth: 150, flex: 1 }}>
+                <CustomSelect
+                  options={statusOptions}
+                  value={statusFilter}
+                  onChange={val => setStatusFilter(val || '')}
+                  placeholder={isRu ? 'Все статусы' : 'Barcha holatlar'}
+                />
+              </div>
 
-              <select value={pageSize} onChange={e => setPageSize(Number(e.target.value))} style={inpStyle}>
-                {[20, 50, 100, 200].map(n => (
-                  <option key={n} value={n}>{n} {isRu ? '/ стр.' : '/ sahifa'}</option>
-                ))}
-              </select>
+              {/* Page Size select */}
+              <div style={{ minWidth: 120 }}>
+                <CustomSelect
+                  options={pageSizeOptions}
+                  value={String(pageSize)}
+                  onChange={val => setPageSize(Number(val || 20))}
+                  placeholder={isRu ? '20 / стр.' : '20 / sahifa'}
+                />
+              </div>
             </div>
 
           {showSkeleton ? (

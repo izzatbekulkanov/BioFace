@@ -6,6 +6,7 @@ import {
   SearchRegular,
   DismissCircleRegular,
   DocumentTableRegular,
+  DismissRegular,
 } from '@fluentui/react-icons'
 import PageHero from '../components/PageHero'
 import { useToast } from '../components/Toaster'
@@ -16,6 +17,14 @@ export default function Tabel() {
   const { i18n } = useTranslation()
   const isRu = i18n.language === 'ru'
   const toast = useToast()
+
+  const excuseOptions = useMemo(() => [
+    { value: 'sick_leave', label: isRu ? 'Болезнь (Больничный)' : 'Kasallik (Kasallik varaqasi)' },
+    { value: 'vacation', label: isRu ? 'Отпуск' : "Ta'til" },
+    { value: 'business_trip', label: isRu ? 'Командировка' : 'Xizmat safari' },
+    { value: 'suspended', label: isRu ? 'Отстранение (Временное)' : 'Vaqtincha chetlashtirilgan' },
+    { value: 'other', label: isRu ? 'Другая причина (Справка/Рапорт)' : 'Boshqa sabab (Spravka/Hujjat)' }
+  ], [isRu])
 
   const [tabelData, setTabelData] = useState([])
   const [daysInMonth, setDaysInMonth] = useState(30)
@@ -35,6 +44,81 @@ export default function Tabel() {
   const now = new Date()
   const [selectedMonth, setSelectedMonth] = useState(String(now.getMonth() + 1))
   const [selectedYear, setSelectedYear] = useState(String(now.getFullYear()))
+
+  // User role checking
+  const [currentUser, setCurrentUser] = useState(null)
+  useEffect(() => {
+    fetch('/api/auth/me', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setCurrentUser(d) })
+      .catch(() => {})
+  }, [])
+  const role = (currentUser?.role || '').toLowerCase().replace(/_/g, '')
+  const canEdit = role !== 'buxgalter' && role !== 'kadr'
+
+  // Excuse Absence Modal States
+  const [excuseModalOpen, setExcuseModalOpen] = useState(false)
+  const [targetEmp, setTargetEmp] = useState(null)
+  const [targetDay, setTargetDay] = useState(null)
+  const [excuseType, setExcuseType] = useState('sick_leave')
+  const [excuseComment, setExcuseComment] = useState('')
+  const [excuseDocument, setExcuseDocument] = useState(null)
+  const [savingExcuse, setSavingExcuse] = useState(false)
+
+  const handleCellClick = (emp, dayNum, currentStatus) => {
+    setTargetEmp(emp)
+    setTargetDay(dayNum)
+    setExcuseType('sick_leave')
+    setExcuseComment('')
+    setExcuseDocument(null)
+    setExcuseModalOpen(true)
+  }
+
+  const handleSaveExcuse = async (e) => {
+    e.preventDefault()
+    if (!canEdit) {
+      toast.error(isRu ? 'У вас нет прав для выполнения этого действия' : 'Ushbu amalni bajarish uchun sizda huquq yo\'q')
+      return
+    }
+    if (!targetEmp || !targetDay) return
+
+    const targetDateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`
+    
+    setSavingExcuse(true)
+    try {
+      const formData = new FormData()
+      formData.append('employee_id', targetEmp.id)
+      formData.append('status_type', excuseType)
+      formData.append('start_date', targetDateStr)
+      formData.append('end_date', targetDateStr)
+      if (excuseComment) formData.append('comment', excuseComment)
+      if (excuseDocument) formData.append('document', excuseDocument)
+
+      const res = await fetch('/api/employees/status-records', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      })
+
+      if (res.ok) {
+        toast.success(
+          isRu 
+            ? 'Статус успешно добавлен' 
+            : 'Status muvaffaqiyatli qoʻshildi'
+        )
+        setExcuseModalOpen(false)
+        loadTabel()
+      } else {
+        const err = await res.json()
+        toast.error(err.detail || (isRu ? 'Ошибка при сохранении' : 'Saqlashda xatolik yuz berdi'))
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error(isRu ? 'Aloqa xatoligi' : 'Aloqa xatoligi')
+    } finally {
+      setSavingExcuse(false)
+    }
+  }
 
   const monthsUz = [
     { value: '1', label: 'Yanvar' },
@@ -204,6 +288,11 @@ export default function Tabel() {
     let late = 0
     let absent = 0
     let holiday = 0
+    let vacation = 0
+    let sick = 0
+    let trip = 0
+    let resigned = 0
+    let suspended = 0
 
     days.forEach(d => {
       if (d.status === 'present') present++
@@ -212,69 +301,52 @@ export default function Tabel() {
         late++
       } else if (d.status === 'absent') absent++
       else if (d.status === 'holiday') holiday++
+      else if (d.status === 'vacation') vacation++
+      else if (d.status === 'sick_leave') sick++
+      else if (d.status === 'business_trip') trip++
+      else if (d.status === 'resigned') resigned++
+      else if (d.status === 'suspended') suspended++
     })
 
-    return { present, late, absent, holiday }
+    return { present, late, absent, holiday, vacation, sick, trip, resigned, suspended }
   }
 
-  const handleExportExcel = async () => {
-    if (tabelData.length === 0) {
-      toast.error(isRu ? 'Нет данных для экспорта' : 'Eksport qilish uchun ma\'lumot yo\'q')
+  const handleExportExcel = () => {
+    if (orgFilter === 'all') {
+      toast.error(isRu ? 'Выберите организацию' : 'Tashkilotni tanlang')
       return
     }
-    setExporting(true)
-    try {
-      const XLSX = await import('xlsx')
-      const excelRows = tabelData.map((emp, idx) => {
-        const stats = getEmployeeStats(emp.days)
-        const row = {
-          "№": idx + 1,
-          [isRu ? "ФИО сотрудника" : "Xodim F.I.SH"]: emp.name,
-          [isRu ? "Должность" : "Lavozimi"]: emp.position,
-        }
+    const params = new URLSearchParams({
+      year: selectedYear,
+      month: selectedMonth,
+      organization_id: orgFilter,
+    })
+    if (branchFilter !== 'all') params.set('branch_id', branchFilter)
+    if (deptFilter !== 'all') params.set('department_id', deptFilter)
+    if (posFilter !== 'all') params.set('position_id', posFilter)
+    if (search) params.set('search', search)
 
-        emp.days.forEach(d => {
-          let symbol = '-'
-          if (d.status === 'present') symbol = isRu ? 'Я' : 'K'
-          else if (d.status === 'late') symbol = isRu ? 'О' : 'Kch'
-          else if (d.status === 'absent') symbol = isRu ? 'Н' : 'Yo'
-          else if (d.status === 'holiday') symbol = isRu ? 'В' : 'D'
-          
-          row[String(d.day)] = symbol
-        })
+    window.open(`/api/finance/tabel/export-excel?${params.toString()}`, '_blank')
+    toast.success(isRu ? 'Началось скачивание Excel' : 'Excel yuklab olish boshlandi')
+  }
 
-        row[isRu ? "Отработано дней" : "Kelgan kunlari"] = stats.present
-        row[isRu ? "Опоздания" : "Kechikishlar"] = stats.late
-        row[isRu ? "Пропуски" : "Kelmagan kunlari"] = stats.absent
-        row[isRu ? "Выходные" : "Dam olish kunlari"] = stats.holiday
-
-        return row
-      })
-
-      const ws = XLSX.utils.json_to_sheet(excelRows)
-      const wb = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(wb, ws, isRu ? "Табель учета" : "Tabel")
-
-      const maxLens = {}
-      excelRows.forEach(row => {
-        Object.keys(row).forEach(key => {
-          const val = String(row[key] || '')
-          maxLens[key] = Math.max(maxLens[key] || key.length, val.length)
-        })
-      })
-      ws['!cols'] = Object.keys(maxLens).map(key => ({
-        wch: Math.min(Math.max(maxLens[key] + 3, 5), 40)
-      }))
-
-      const filename = `Tabel_${selectedYear}_${selectedMonth}.xlsx`
-      XLSX.writeFile(wb, filename)
-      toast.success(isRu ? 'Табель успешно экспортирован' : 'Tabel muvaffaqiyatli eksport qilindi')
-    } catch (err) {
-      console.error(err)
-      toast.error(isRu ? 'Ошибка при экспорте' : 'Eksport qilishda xatolik yuz berdi')
-    } finally {
-      setExporting(false)
+  const handleExportPdf = () => {
+    if (orgFilter === 'all') {
+      toast.error(isRu ? 'Выберите организацию' : 'Tashkilotni tanlang')
+      return
     }
+    const params = new URLSearchParams({
+      year: selectedYear,
+      month: selectedMonth,
+      organization_id: orgFilter,
+    })
+    if (branchFilter !== 'all') params.set('branch_id', branchFilter)
+    if (deptFilter !== 'all') params.set('department_id', deptFilter)
+    if (posFilter !== 'all') params.set('position_id', posFilter)
+    if (search) params.set('search', search)
+
+    window.open(`/api/finance/tabel/export-pdf?${params.toString()}`, '_blank')
+    toast.success(isRu ? 'Началось скачивание PDF' : 'PDF yuklab olish boshlandi')
   }
 
   return (
@@ -295,24 +367,37 @@ export default function Tabel() {
             </button>
             <button
               type="button"
-              disabled={exporting || loading}
+              disabled={loading}
               onClick={handleExportExcel}
               style={{
                 display: 'flex', alignItems: 'center', gap: 8,
                 padding: '8px 16px', borderRadius: 8,
                 background: '#217346', border: 'none', color: '#fff',
                 fontSize: 13, fontWeight: 600,
-                cursor: exporting || loading ? 'not-allowed' : 'pointer',
-                opacity: exporting || loading ? 0.7 : 1,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: loading ? 0.7 : 1,
                 transition: 'all 0.15s',
               }}
             >
-              {exporting ? (
-                <ArrowSyncRegular fontSize={14} style={{ animation: 'spin 1s linear infinite' }} />
-              ) : (
-                <DocumentTableRegular fontSize={15} />
-              )}
-              {isRu ? 'Экспорт в Excel' : 'Excelga eksport qilish'}
+              <DocumentTableRegular fontSize={15} />
+              {isRu ? 'Экспорт в Excel' : 'Excelga eksport'}
+            </button>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={handleExportPdf}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '8px 16px', borderRadius: 8,
+                background: '#c43c3c', border: 'none', color: '#fff',
+                fontSize: 13, fontWeight: 600,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: loading ? 0.7 : 1,
+                transition: 'all 0.15s',
+              }}
+            >
+              <DocumentTableRegular fontSize={15} />
+              {isRu ? 'Печать T-13 PDF' : 'T-13 PDF chop etish'}
             </button>
           </div>
         }
@@ -563,6 +648,36 @@ export default function Tabel() {
                               cellBg = 'var(--surface-2)'
                               textColor = 'var(--text-3)'
                               hoverTitle = isRu ? 'Выходной день / праздник' : 'Dam olish kuni'
+                            } else if (d.status === 'vacation') {
+                              displayChar = isRu ? 'ОТ' : 'Ta'
+                              cellBg = 'rgba(99, 102, 241, 0.18)'
+                              textColor = '#818cf8'
+                              hoverTitle = isRu ? 'Отпуск' : "Ta'til"
+                            } else if (d.status === 'sick_leave') {
+                              displayChar = isRu ? 'Б' : 'Ka'
+                              cellBg = 'rgba(236, 72, 153, 0.18)'
+                              textColor = '#ec4899'
+                              hoverTitle = isRu ? 'Больничный' : 'Kasallik'
+                            } else if (d.status === 'business_trip') {
+                              displayChar = isRu ? 'К' : 'Xs'
+                              cellBg = 'rgba(6, 182, 212, 0.18)'
+                              textColor = '#06b6d4'
+                              hoverTitle = isRu ? 'Командировка' : 'Xizmat safari'
+                            } else if (d.status === 'resigned') {
+                              displayChar = isRu ? 'УВ' : 'Bo'
+                              cellBg = 'rgba(107, 114, 128, 0.18)'
+                              textColor = '#9ca3af'
+                              hoverTitle = isRu ? 'Уволен' : "Bo'shatilgan"
+                            } else if (d.status === 'suspended') {
+                              displayChar = isRu ? 'ОС' : 'Vt'
+                              cellBg = 'rgba(156, 163, 175, 0.1)'
+                              textColor = '#6b7280'
+                              hoverTitle = isRu ? 'Отстранен' : 'Vaqtincha to\'xtatilgan'
+                            } else if (d.status === 'other') {
+                              displayChar = isRu ? 'УВ' : 'Sa'
+                              cellBg = 'rgba(14, 165, 233, 0.15)'
+                              textColor = '#0ea5e9'
+                              hoverTitle = isRu ? 'Другая уважительная причина' : 'Boshqa sababli kelmagan'
                             } else if (d.status === 'pending') {
                               displayChar = '•'
                               cellBg = 'transparent'
@@ -573,12 +688,21 @@ export default function Tabel() {
                               <td
                                 key={dIdx}
                                 title={hoverTitle}
+                                onClick={() => canEdit && handleCellClick(emp, d.day, d.status)}
                                 style={{
                                   padding: '4px 1px',
                                   borderRight: '1px solid var(--border-2)',
                                   borderBottom: '1px solid var(--border)',
                                   textAlign: 'center',
                                   userSelect: 'none',
+                                  cursor: canEdit ? 'pointer' : 'default',
+                                  transition: 'background-color 0.1s',
+                                }}
+                                onMouseEnter={e => {
+                                  if (canEdit) e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.06)'
+                                }}
+                                onMouseLeave={e => {
+                                  if (canEdit) e.currentTarget.style.backgroundColor = 'transparent'
                                 }}
                               >
                                 <div style={{
@@ -650,6 +774,42 @@ export default function Tabel() {
             </span>
             <span>{isRu ? 'Выходной / Праздник' : 'Dam olish / bayram'}</span>
           </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ display: 'inline-flex', width: 22, height: 22, borderRadius: 4, background: 'rgba(14, 165, 233, 0.15)', color: '#0ea5e9', fontWeight: 700, alignItems: 'center', justifyContent: 'center', fontSize: 10 }}>
+              {isRu ? 'УВ' : 'Sa'}
+            </span>
+            <span>{isRu ? 'Уважительная причина' : 'Sababli kelmagan'}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ display: 'inline-flex', width: 22, height: 22, borderRadius: 4, background: 'rgba(99, 102, 241, 0.18)', color: '#818cf8', fontWeight: 700, alignItems: 'center', justifyContent: 'center', fontSize: 10 }}>
+              {isRu ? 'ОТ' : 'Ta'}
+            </span>
+            <span>{isRu ? 'Отпуск' : "Ta'til"}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ display: 'inline-flex', width: 22, height: 22, borderRadius: 4, background: 'rgba(236, 72, 153, 0.18)', color: '#ec4899', fontWeight: 700, alignItems: 'center', justifyContent: 'center', fontSize: 10 }}>
+              {isRu ? 'Б' : 'Ka'}
+            </span>
+            <span>{isRu ? 'Больничный' : 'Kasallik'}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ display: 'inline-flex', width: 22, height: 22, borderRadius: 4, background: 'rgba(6, 182, 212, 0.18)', color: '#06b6d4', fontWeight: 700, alignItems: 'center', justifyContent: 'center', fontSize: 10 }}>
+              {isRu ? 'К' : 'Xs'}
+            </span>
+            <span>{isRu ? 'Командировка' : 'Xizmat safari'}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ display: 'inline-flex', width: 22, height: 22, borderRadius: 4, background: 'rgba(107, 114, 128, 0.18)', color: '#9ca3af', fontWeight: 700, alignItems: 'center', justifyContent: 'center', fontSize: 10 }}>
+              {isRu ? 'УВ' : 'Bo'}
+            </span>
+            <span>{isRu ? 'Уволен' : "Bo'shatilgan"}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ display: 'inline-flex', width: 22, height: 22, borderRadius: 4, background: 'rgba(156, 163, 175, 0.1)', color: '#6b7280', fontWeight: 700, alignItems: 'center', justifyContent: 'center', fontSize: 10 }}>
+              {isRu ? 'ОС' : 'Vt'}
+            </span>
+            <span>{isRu ? 'Отстранен' : "Vaqtincha to'xtatilgan"}</span>
+          </div>
         </div>
       </div>
       
@@ -679,6 +839,230 @@ export default function Tabel() {
         }
         tr:hover .sticky-col-cell {
           background-color: var(--surface-2) !important;
+        }
+      `}</style>
+
+      {/* Excuse Absence Modal */}
+      {excuseModalOpen && targetEmp && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.6)', zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          backdropFilter: 'blur(3px)', padding: 20
+        }}>
+          <div style={{
+            background: 'var(--surface)', border: '1px solid var(--border)',
+            borderRadius: 16, width: '100%', maxWidth: 450,
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)',
+            overflow: 'hidden', animation: 'bfModalIn 0.2s ease-out'
+          }}>
+            {/* Header */}
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '16px 20px', borderBottom: '1px solid var(--border)',
+              background: 'var(--bg)'
+            }}>
+              <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: 'var(--text-1)' }}>
+                {isRu ? 'Оправдать пропуск' : 'Kelmagan kunni sababli qilish'}
+              </h2>
+              <button
+                onClick={() => setExcuseModalOpen(false)}
+                style={{
+                  background: 'transparent', border: 'none', color: 'var(--text-3)',
+                  cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center'
+                }}
+                onMouseEnter={e => e.currentTarget.style.color = 'var(--text-1)'}
+                onMouseLeave={e => e.currentTarget.style.color = 'var(--text-3)'}
+              >
+                <DismissRegular fontSize={18} />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSaveExcuse} style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <span style={{ fontSize: 11, color: 'var(--text-4)', textTransform: 'uppercase', fontWeight: 700, display: 'block', marginBottom: 2 }}>
+                  {isRu ? 'Сотрудник' : 'Xodim'}
+                </span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)' }}>
+                  {targetEmp.name}
+                </span>
+              </div>
+
+              <div>
+                <span style={{ fontSize: 11, color: 'var(--text-4)', textTransform: 'uppercase', fontWeight: 700, display: 'block', marginBottom: 2 }}>
+                  {isRu ? 'Дата' : 'Sana'}
+                </span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-2)' }}>
+                  {selectedYear}-{String(selectedMonth).padStart(2, '0')}-{String(targetDay).padStart(2, '0')}
+                </span>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6, color: 'var(--text-2)' }}>
+                  {isRu ? 'Причина' : 'Sababi'} <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <CustomSelect
+                  options={excuseOptions}
+                  value={excuseType}
+                  onChange={val => setExcuseType(val || 'sick_leave')}
+                  placeholder={isRu ? 'Выберите причину' : 'Sababini tanlang'}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6, color: 'var(--text-2)' }}>
+                  {isRu ? 'Комментарий' : 'Izoh'}
+                </label>
+                <textarea
+                  rows="2"
+                  value={excuseComment}
+                  onChange={e => setExcuseComment(e.target.value)}
+                  placeholder={isRu ? 'Причина, приказ №...' : 'Sababi, buyruq raqami va h.k...'}
+                  style={{
+                    width: '100%', padding: '8px 12px', borderRadius: 9,
+                    border: '1px solid var(--border-3)', background: 'var(--bg)',
+                    color: 'var(--text-1)', fontSize: 13, outline: 'none', boxSizing: 'border-box',
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6, color: 'var(--text-2)' }}>
+                  {isRu ? 'Документ (Справка / Рапорт / другое - Необязательно)' : 'Hujjat (Spravka / Hujjat / boshqa - Ixtiyoriy)'}
+                </label>
+                <div
+                  style={{
+                    position: 'relative',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '16px',
+                    borderRadius: 9,
+                    border: '2px dashed var(--border-3)',
+                    background: 'var(--bg)',
+                    cursor: 'pointer',
+                    transition: 'border-color 0.2s, background-color 0.2s',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.borderColor = 'var(--accent)';
+                    e.currentTarget.style.backgroundColor = 'var(--surface-2)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.borderColor = 'var(--border-3)';
+                    e.currentTarget.style.backgroundColor = 'var(--bg)';
+                  }}
+                  onClick={() => document.getElementById('excuse-file-input').click()}
+                >
+                  <input
+                    id="excuse-file-input"
+                    type="file"
+                    onChange={e => setExcuseDocument(e.target.files[0] || null)}
+                    style={{ display: 'none' }}
+                  />
+                  {excuseDocument ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 32,
+                        height: 32,
+                        borderRadius: 6,
+                        background: 'rgba(16, 185, 129, 0.12)',
+                        color: '#10b981',
+                        fontSize: 16,
+                        flexShrink: 0
+                      }}>
+                        📄
+                      </div>
+                      <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, color: 'var(--text-1)' }} title={excuseDocument.name}>
+                        {excuseDocument.name}
+                        <div style={{ fontSize: 10, color: 'var(--text-4)', marginTop: 2 }}>
+                          {Math.round(excuseDocument.size / 1024)} KB
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExcuseDocument(null);
+                          document.getElementById('excuse-file-input').value = '';
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#ef4444',
+                          cursor: 'pointer',
+                          padding: 4,
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'}
+                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'none'}
+                      >
+                        <DismissRegular fontSize={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: 24, marginBottom: 4 }}>📤</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>
+                        {isRu ? 'Выберите файл' : 'Faylni tanlash'}
+                      </div>
+                      <div style={{ fontSize: 10, color: 'var(--text-4)', marginTop: 2 }}>
+                        {isRu ? 'PDF, JPG, PNG или другие форматы' : 'PDF, JPG, PNG yoki boshqa formatlar'}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div style={{
+                display: 'flex', justifyContent: 'flex-end', gap: 10,
+                marginTop: 10, paddingTop: 14, borderTop: '1px solid var(--border)'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setExcuseModalOpen(false)}
+                  style={{
+                    background: 'transparent', border: '1px solid var(--border-2)',
+                    color: 'var(--text-1)', padding: '8px 16px', borderRadius: 7,
+                    cursor: 'pointer', fontSize: 13, fontWeight: 600
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-2)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  {isRu ? 'Отмена' : 'Bekor qilish'}
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingExcuse}
+                  style={{
+                    background: 'var(--accent)',
+                    color: '#fff', border: 'none', padding: '8px 18px', borderRadius: 7,
+                    cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                    opacity: savingExcuse ? 0.7 : 1
+                  }}
+                >
+                  {savingExcuse ? (isRu ? 'Сохранение...' : 'Saqlanmoqda...') : (isRu ? 'Сохранить' : 'Saqlash')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Keyframe animations */}
+      <style>{`
+        @keyframes bfModalIn {
+          from { opacity: 0; transform: scale(0.96) translateY(5px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
         }
       `}</style>
     </div>
