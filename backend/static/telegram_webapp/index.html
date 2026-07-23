@@ -1750,7 +1750,7 @@
       width: 58px;
       height: 58px;
       border-radius: 50%;
-      background: rgba(30, 41, 59, 0.95) 100%);
+      background: rgba(30, 41, 59, 0.95);
       border: 1.5px solid rgba(6, 182, 212, 0.35);
       display: flex;
       align-items: center;
@@ -5863,7 +5863,7 @@
         }
       }, 3000);
 
-      // startStandardGeofenceScanning();
+      startStandardGeofenceScanning();
     }
 
     let _autoRefreshInterval = null;
@@ -5900,7 +5900,7 @@
           }
           status.onchange = () => {
             if (status.state === 'granted' && _geoWatchId === null) {
-              // startStandardGeofenceScanning();
+              startStandardGeofenceScanning();
             }
           };
         } catch (_) {}
@@ -6641,7 +6641,7 @@
           else if (dayData.status === 'vacation') { statusText = currentLang === 'UZ' ? "Ta'til" : "Отпуск"; statusColor = "#a855f7"; }
           
           dailyStatsHtml = `
-            <div class="glass-card history-item" style="margin-bottom: 16px; padding: 16px; border-radius: 20px; background: rgba(30, 41, 59, 0.95) 100%); border: 1px solid rgba(56, 189, 248, 0.15); box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+            <div class="glass-card history-item" style="margin-bottom: 16px; padding: 16px; border-radius: 20px; background: rgba(30, 41, 59, 0.95); border: 1px solid rgba(56, 189, 248, 0.15); box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px;">
                 <span style="color: var(--text-muted); font-size: 13px;">${currentLang === 'UZ' ? 'Kunlik natija' : 'Дневной результат'}</span>
                 <span style="background: ${statusColor}22; color: ${statusColor}; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; border: 1px solid ${statusColor}44;">${statusText}</span>
