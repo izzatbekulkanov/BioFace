@@ -76,16 +76,19 @@
       color: #0f172a !important;
     }
 
-    *, *::before, *::after {
+    * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
       -webkit-tap-highlight-color: transparent;
       user-select: none;
-      max-width: 100%;
     }
 
-    .glass-card, .action-grid, .stats-grid, .clock-grid, .geofence-card, .tab-view {
+    .tab-content-track {
+      max-width: none !important;
+    }
+
+    .glass-card, .action-grid, .stats-grid, .clock-grid, .geofence-card {
       max-width: 100%;
       word-break: break-word;
       overflow-wrap: break-word;
