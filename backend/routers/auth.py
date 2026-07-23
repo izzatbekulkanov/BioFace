@@ -715,10 +715,10 @@ async def update_profile_avatar(
 
     # 2. File extension va kontent tekshiruvi (XAVFSIZLIK)
     ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
-    MAX_AVATAR_SIZE = 5 * 1024 * 1024  # 5MB
+    MAX_AVATAR_SIZE = 20 * 1024 * 1024  # 20MB (mobil kameralarning yuqori sifatli rasmlari uchun)
 
     raw_ext = os.path.splitext(file.filename or "")[1].lower() if file.filename else ""
-    if raw_ext not in ALLOWED_EXTENSIONS:
+    if raw_ext and raw_ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=400,
             detail=f"Rasm formati qabul qilinmaydi. Ruxsat etilganlar: {', '.join(ALLOWED_EXTENSIONS)}"
@@ -727,30 +727,35 @@ async def update_profile_avatar(
     # Fayl tarkibini o'qib hajmini tekshirish
     file_contents = await file.read()
     if len(file_contents) > MAX_AVATAR_SIZE:
-        raise HTTPException(status_code=413, detail="Rasm hajmi 5MB dan oshmasligi kerak")
+        raise HTTPException(status_code=413, detail="Rasm hajmi 20MB dan oshmasligi kerak")
 
-    # Magic bytes tekshiruvi — haqiqiy rasm ekanligini tekshirish
-    from PIL import Image as PilImage
+    # Magic bytes & optimization (EXIF auto-rotate + downscale to max 1280px)
+    from PIL import Image as PilImage, ImageOps
+    from pathlib import Path
     import io
-    try:
-        pil_img = PilImage.open(io.BytesIO(file_contents))
-        pil_img.verify()  # Fayl buzilmagan ekanligini tekshirish
-    except Exception:
-        raise HTTPException(status_code=400, detail="Yuklangan fayl yaroqsiz rasm")
-
-    # Xavfsiz fayl nomi yaratish (user.name o'z ichiga xavfli belgilar bo'lishi mumkin)
     import time
     import re as _re
+
+    upload_dir = Path(__file__).resolve().parent.parent / "static" / "uploads" / "avatars"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+
     safe_name = _re.sub(r"[^a-zA-Z0-9_-]", "_", str(user.name or "user"))[:30]
-    file_ext = raw_ext
-    filename = f"{safe_name}_{int(time.time())}{file_ext}"
+    filename = f"{safe_name}_{int(time.time())}.jpg"
     dest_path = str(upload_dir / filename)
 
     try:
-        with open(dest_path, "wb") as buffer:
-            buffer.write(file_contents)
+        pil_img = PilImage.open(io.BytesIO(file_contents))
+        # EXIF bo'yicha to'g'ri burish
+        pil_img = ImageOps.exif_transpose(pil_img)
+        # RGBA yoki Palette bo'lsa RGB holatiga o'tkazish
+        if pil_img.mode in ("RGBA", "P", "LA"):
+            pil_img = pil_img.convert("RGB")
+        # Maksimal 1280x1280 o'lchamgacha kichraytirish (AI tezroq ishlashi va tarmoq yukini kamaytirish uchun)
+        pil_img.thumbnail((1280, 1280), PilImage.Resampling.LANCZOS)
+        # Sifatli JPEG qilib saqlash
+        pil_img.save(dest_path, format="JPEG", quality=85, optimize=True)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Faylni saqlashda xatolik: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Yuklangan rasm tayyorlashda xatolik: {str(e)}")
 
     # 3. Call AI microservice to check if a face exists and generate embedding
     AI_SERVICE_URL = "http://127.0.0.1:7690"
@@ -759,7 +764,7 @@ async def update_profile_avatar(
             res = await client.post(
                 f"{AI_SERVICE_URL}/generate-embedding",
                 json={"image_path": dest_path},
-                timeout=15.0
+                timeout=25.0
             )
             
         if res.status_code != 200:

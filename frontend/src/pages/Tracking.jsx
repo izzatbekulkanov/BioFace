@@ -5,7 +5,7 @@ import { MapContainer, TileLayer, Marker, Popup, GeoJSON, useMap } from 'react-l
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 import { Button } from '@fluentui/react-components'
-import { ArrowClockwiseRegular, PeopleRegular, DismissRegular } from '@fluentui/react-icons'
+import { ArrowClockwiseRegular, PeopleRegular, DismissRegular, CallRegular } from '@fluentui/react-icons'
 
 const createPulseIcon = (color = '#10b981') => {
   return L.divIcon({
@@ -60,11 +60,27 @@ function MapController({ selectedCoords, mapZoom }) {
   const map = useMap()
   useEffect(() => {
     if (selectedCoords && selectedCoords.latitude && selectedCoords.longitude) {
-      const zoom = mapZoom || 15
+      const zoom = mapZoom || 17
       map.setView([selectedCoords.latitude, selectedCoords.longitude], zoom, { animate: true })
     }
   }, [selectedCoords, map, mapZoom])
   return null
+}
+
+const formatLastActive = (timeStr) => {
+  if (!timeStr) return '-'
+  try {
+    const d = new Date(timeStr)
+    const day = String(d.getDate()).padStart(2, '0')
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const year = d.getFullYear()
+    const hours = String(d.getHours()).padStart(2, '0')
+    const mins = String(d.getMinutes()).padStart(2, '0')
+    const secs = String(d.getSeconds()).padStart(2, '0')
+    return `${day}.${month}.${year}, ${hours}:${mins}:${secs}`
+  } catch (e) {
+    return timeStr
+  }
 }
 
 export default function Tracking() {
@@ -81,28 +97,18 @@ export default function Tracking() {
   const [geoJsonData, setGeoJsonData] = useState(null)
   const [selectedEmpDetail, setSelectedEmpDetail] = useState(null)
   const [onlyWorkingHours, setOnlyWorkingHours] = useState(false)
-  const [mapZoom, setMapZoom] = useState(15)
-  const [clickState, setClickState] = useState({ empId: null, count: 0 })
+  const [mapZoom, setMapZoom] = useState(17)
   const [mapStyle, setMapStyle] = useState('streets')
 
   const handleMarkerClick = (emp) => {
-    setSelectedEmp(emp)
-    setClickState(prev => {
-      const isSameEmp = prev.empId === emp.id
-      const currentCount = isSameEmp ? prev.count : 0
-      const nextCount = currentCount + 1
-
-      if (nextCount === 1) {
-        setMapZoom(12)
-        return { empId: emp.id, count: 1 }
-      } else if (nextCount === 2) {
-        setMapZoom(16)
-        return { empId: emp.id, count: 2 }
-      } else {
-        setSelectedEmpDetail(emp)
-        return { empId: null, count: 0 }
-      }
-    })
+    if (selectedEmp?.id === emp.id) {
+      // 2-bosqich: ikkinchi marta bosilganda ma'lumotlar modali ochiladi
+      setSelectedEmpDetail(emp)
+    } else {
+      // 1-bosqich: birinchi marta bosilganda xaritada yaqinlashadi
+      setSelectedEmp(emp)
+      setMapZoom(17)
+    }
   }
 
 
@@ -244,15 +250,9 @@ export default function Tracking() {
               return (
                 <div
                   key={emp.id}
-                  onClick={() => {
-                    if (hasLoc) {
-                      setSelectedEmp(emp)
-                      setMapZoom(15)
-                      setClickState({ empId: emp.id, count: 2 })
-                    }
-                  }}
+                  onClick={() => handleMarkerClick(emp)}
                   style={{
-                    padding: '6px 12px',
+                    padding: '8px 12px',
                     borderBottom: '1px solid var(--border-2)',
                     cursor: hasLoc ? 'pointer' : 'default',
                     background: selectedEmp?.id === emp.id ? 'var(--surface-2)' : 'transparent',
@@ -425,13 +425,13 @@ export default function Tracking() {
             <div style={{
               background: isDark ? '#141414' : '#ffffff', 
               border: '1px solid var(--border-2)',
-              borderRadius: 16, width: '100%', maxWidth: 360, padding: 24,
-              boxShadow: '0 12px 40px rgba(0,0,0,0.5)', textAlign: 'center',
+              borderRadius: 20, width: '100%', maxWidth: 380, padding: 24,
+              boxShadow: '0 16px 48px rgba(0,0,0,0.5)', textAlign: 'center',
               position: 'relative'
             }} onClick={e => e.stopPropagation()}>
               <button onClick={() => setSelectedEmpDetail(null)} style={{
                 position: 'absolute', top: 16, right: 16, background: 'none', border: 'none',
-                color: 'var(--text-3)', cursor: 'pointer', display: 'flex'
+                color: 'var(--text-3)', cursor: 'pointer', display: 'flex', padding: 4
               }}>
                 <DismissRegular fontSize={20} />
               </button>
@@ -442,7 +442,7 @@ export default function Tracking() {
                   <img src={selectedEmpDetail.image_url} style={{
                     width: 90, height: 90, borderRadius: '50%', objectFit: 'cover',
                     border: `3px solid ${selectedEmpDetail.is_online ? '#10b981' : '#9ca3af'}`,
-                    boxShadow: selectedEmpDetail.is_online ? '0 0 15px #10b981' : 'none'
+                    boxShadow: selectedEmpDetail.is_online ? '0 0 15px rgba(16,185,129,0.5)' : 'none'
                   }} />
                 ) : (
                   <div style={{
@@ -456,41 +456,73 @@ export default function Tracking() {
                 )}
               </div>
 
-              <h3 style={{ margin: '0 0 4px', fontSize: 17, fontWeight: 700, color: 'var(--text-1)' }}>
-                {selectedEmpDetail.first_name} {selectedEmpDetail.last_name}
+              <h3 style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 700, color: 'var(--text-1)' }}>
+                {selectedEmpDetail.first_name} {selectedEmpDetail.last_name} {selectedEmpDetail.middle_name || ''}
               </h3>
-              <div style={{ fontSize: 12.5, color: 'var(--text-3)', marginBottom: 16 }}>
-                {selectedEmpDetail.department} • {selectedEmpDetail.position}
+              <div style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 20 }}>
+                {selectedEmpDetail.department || (isRu ? 'Отдел' : 'Bo\'lim')} • {selectedEmpDetail.position || (isRu ? 'Сотрудник' : 'Xodim')}
               </div>
 
-              <div style={{ borderTop: '1px solid var(--border-2)', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 10, textAlign: 'left' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                  <span style={{ color: 'var(--text-4)' }}>{isRu ? 'Статус:' : 'Holati:'}</span>
-                  <span style={{ fontWeight: 600, color: selectedEmpDetail.is_online ? '#10b981' : 'var(--text-3)' }}>
-                    {selectedEmpDetail.is_online ? (isRu ? '● Онлайн' : '● Online') : (isRu ? '○ Оффлайн' : '○ Offline')}
+              <div style={{ borderTop: '1px solid var(--border-2)', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 12, textAlign: 'left' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
+                  <span style={{ color: 'var(--text-4)', fontWeight: 500 }}>{isRu ? 'Статус:' : 'Holati:'}</span>
+                  <span style={{ fontWeight: 600, color: selectedEmpDetail.is_online ? '#10b981' : 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{
+                      width: 8, height: 8, borderRadius: '50%',
+                      background: selectedEmpDetail.is_online ? '#10b981' : '#9ca3af',
+                      boxShadow: selectedEmpDetail.is_online ? '0 0 6px #10b981' : 'none'
+                    }} />
+                    {selectedEmpDetail.is_online ? (isRu ? 'Онлайн' : 'Online') : (isRu ? 'Оффлайн' : 'Offline')}
                   </span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                  <span style={{ color: 'var(--text-4)' }}>{isRu ? 'Рабочее время:' : 'Ish vaqti:'}</span>
-                  <span style={{ color: 'var(--text-1)' }}>{selectedEmpDetail.work_time}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
+                  <span style={{ color: 'var(--text-4)', fontWeight: 500 }}>{isRu ? 'Рабочее время:' : 'Ish vaqti:'}</span>
+                  <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{selectedEmpDetail.work_time || '09:00 - 18:00'}</span>
                 </div>
-                {selectedEmpDetail.last_location_time && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                    <span style={{ color: 'var(--text-4)' }}>{isRu ? 'Активен:' : 'Oxirgi faollik:'}</span>
-                    <span style={{ color: 'var(--text-1)' }}>{new Date(selectedEmpDetail.last_location_time).toLocaleString()}</span>
-                  </div>
-                )}
-                {selectedEmpDetail.phone && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                    <span style={{ color: 'var(--text-4)' }}>{isRu ? 'Телефон:' : 'Telefon:'}</span>
-                    <span style={{ color: 'var(--text-1)' }}>{selectedEmpDetail.phone}</span>
-                  </div>
-                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
+                  <span style={{ color: 'var(--text-4)', fontWeight: 500 }}>{isRu ? 'Активен:' : 'Oxirgi faollik:'}</span>
+                  <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{formatLastActive(selectedEmpDetail.last_location_time)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
+                  <span style={{ color: 'var(--text-4)', fontWeight: 500 }}>{isRu ? 'Телефон:' : 'Telefon:'}</span>
+                  <span style={{ color: 'var(--text-1)', fontWeight: 600, fontFamily: 'monospace' }}>
+                    {selectedEmpDetail.phone || (isRu ? 'Не указан' : 'Kiritilmagan')}
+                  </span>
+                </div>
               </div>
 
+              {/* Qo'ng'iroq qilish tugmasi */}
+              {selectedEmpDetail.phone && (
+                <a
+                  href={`tel:${selectedEmpDetail.phone.replace(/[^\d+]/g, '')}`}
+                  style={{
+                    marginTop: 20,
+                    width: '100%',
+                    padding: '12px 16px',
+                    borderRadius: 10,
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    color: '#ffffff',
+                    fontWeight: 700,
+                    fontSize: 14,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    textDecoration: 'none',
+                    boxShadow: '0 4px 14px rgba(16, 185, 129, 0.4)',
+                    cursor: 'pointer',
+                    boxSizing: 'border-box',
+                    transition: 'transform 0.15s ease'
+                  }}
+                >
+                  <CallRegular fontSize={20} />
+                  {isRu ? 'Позвонить' : 'Qo\'ng\'iroq qilish'}
+                </a>
+              )}
+
               <button onClick={() => setSelectedEmpDetail(null)} style={{
-                marginTop: 20, width: '100%', padding: '10px', borderRadius: 8,
-                background: 'var(--accent)', border: 'none', color: '#fff',
+                marginTop: 10, width: '100%', padding: '10px', borderRadius: 10,
+                background: 'var(--surface-2)', border: '1px solid var(--border-2)', color: 'var(--text-2)',
                 fontWeight: 600, cursor: 'pointer'
               }}>
                 {isRu ? 'Закрыть' : 'Yopish'}
