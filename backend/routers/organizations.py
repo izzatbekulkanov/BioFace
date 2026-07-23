@@ -188,12 +188,12 @@ def get_tracking_data(
             else:
                 in_working_hours = now_time >= start_time or now_time <= end_time
                 
-        lat = emp.last_latitude
-        lng = emp.last_longitude
-        loc_time = emp.last_location_time.isoformat() if emp.last_location_time else None
+        lat = emp.last_latitude if in_working_hours else None
+        lng = emp.last_longitude if in_working_hours else None
+        loc_time = emp.last_location_time.isoformat() if (in_working_hours and emp.last_location_time) else None
         
         is_online = False
-        if emp.last_location_time:
+        if in_working_hours and emp.last_location_time:
             diff = datetime.now() - emp.last_location_time
             if diff.total_seconds() < 600:  # 10 minutes
                 is_online = True
@@ -778,7 +778,35 @@ def update_employee_location(
         employee = db.query(Employee).filter(Employee.personal_id == str(payload.employee_id)).first()
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
+
+    # Check if employee is within working hours
+    tz = ZoneInfo("Asia/Tashkent")
+    now_local = datetime.now(tz)
+    now_time = now_local.time()
+    is_weekend = now_local.weekday() >= 5
+    
+    from utils.schedule_utils import resolve_employee_schedule
+    sched = resolve_employee_schedule(employee)
+    start_str = sched.get("start_time", "09:00")
+    end_str = sched.get("end_time", "18:00")
+    try:
+        sh, sm = map(int, start_str.split(":"))
+        eh, em = map(int, end_str.split(":"))
+        start_time = time(sh, sm)
+        end_time = time(eh, em)
+    except Exception:
+        start_time, end_time = time(9, 0), time(18, 0)
         
+    in_working_hours = False
+    if not is_weekend:
+        if start_time <= end_time:
+            in_working_hours = start_time <= now_time <= end_time
+        else:
+            in_working_hours = now_time >= start_time or now_time <= end_time
+
+    if not in_working_hours:
+        return {"ok": False, "message": "Ish vaqtida emassiz. Joylashuv saqlanmadi."}
+
     employee.last_latitude = payload.latitude
     employee.last_longitude = payload.longitude
     employee.last_location_time = datetime.now()

@@ -96,7 +96,7 @@ export default function Tracking() {
   const [selectedEmp, setSelectedEmp] = useState(null)
   const [geoJsonData, setGeoJsonData] = useState(null)
   const [selectedEmpDetail, setSelectedEmpDetail] = useState(null)
-  const [onlyWorkingHours, setOnlyWorkingHours] = useState(false)
+  const [onlyWorkingHours, setOnlyWorkingHours] = useState(true)
   const [mapZoom, setMapZoom] = useState(17)
   const [mapStyle, setMapStyle] = useState('streets')
 
@@ -396,7 +396,7 @@ export default function Tracking() {
           )}
 
           {filteredEmployees.map(emp => {
-            if (emp.latitude === null || emp.longitude === null) return null
+            if (!emp.in_working_hours || emp.latitude === null || emp.longitude === null) return null
             const name = `${emp.first_name || ''} ${emp.last_name || ''}`
             const empIcon = createEmployeeMarkerIcon(emp)
             return (
