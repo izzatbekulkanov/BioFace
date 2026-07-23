@@ -157,7 +157,7 @@
     .neon-blob {
       position: absolute;
       border-radius: 50%;
-      filter: blur(60px);
+      display: none; /* removed for performance */
       z-index: 1;
       pointer-events: none;
       will-change: transform, opacity;
@@ -190,8 +190,8 @@
     /* Glassmorphic Container */
     .glass-card {
       background: rgba(15, 23, 42, 0.65);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
       border: 1px solid var(--border-color);
       border-radius: 24px;
       padding: 24px;
@@ -223,7 +223,7 @@
     }
 
     .btn-premium:disabled {
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(255, 255, 255, 0.08);
       color: var(--text-muted);
       box-shadow: none;
       cursor: not-allowed;
@@ -238,7 +238,7 @@
       width: 90%;
       max-width: 400px;
       background: rgba(15, 23, 42, 0.9);
-      backdrop-filter: blur(12px);
+      backdrop-filter: blur(4px);
       border-radius: 12px;
       padding: 12px 16px;
       display: flex;
@@ -248,7 +248,7 @@
       opacity: 0;
       transition: opacity 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
       border-left: 4px solid var(--accent);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
 
     .toast-container.show {
@@ -416,7 +416,7 @@
     }
 
     .lang-toggle {
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(255, 255, 255, 0.08);
       border: 1px solid var(--border-color);
       color: var(--text-main);
       padding: 6px 12px;
@@ -473,8 +473,8 @@
       height: 64px;
       /* Deep dark glass with warm charcoal tint */
       background: rgba(12, 17, 29, 0.72);
-      backdrop-filter: blur(28px) saturate(160%);
-      -webkit-backdrop-filter: blur(28px) saturate(160%);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
       border-top: 1px solid rgba(255, 255, 255, 0.06);
       border-left: 1px solid rgba(255, 255, 255, 0.04);
       border-right: 1px solid rgba(255, 255, 255, 0.04);
@@ -715,7 +715,7 @@
     }
     .stat-card:active {
       transform: scale(0.98);
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(255, 255, 255, 0.08);
     }
     .stat-icon {
       font-size: 20px;
@@ -759,8 +759,8 @@
       right: 24px;
       width: 300px;
       background: rgba(15, 23, 42, 0.9);
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
       border: 1px solid rgba(255, 255, 255, 0.12);
       border-radius: 16px;
       box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
@@ -904,7 +904,7 @@
     }
 
     .dropdown-btn:hover {
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(255, 255, 255, 0.08);
     }
 
     .dropdown-btn.danger {
@@ -1118,8 +1118,8 @@
       position: relative;
       background: linear-gradient(135deg, rgba(2, 132, 199, 0.12), rgba(2, 132, 199, 0.04));
       border: 1.5px solid rgba(56, 189, 248, 0.2);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
       color: #f8fafc;
       border-radius: 20px;
       padding: 24px 12px;
@@ -1616,8 +1616,8 @@
       width: 100%;
       height: 100%;
       background: rgba(2, 6, 23, 0.92);
-      backdrop-filter: blur(14px) saturate(140%);
-      -webkit-backdrop-filter: blur(14px) saturate(140%);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
       z-index: 2000;
       display: flex;
       flex-direction: column;
@@ -1675,7 +1675,7 @@
       justify-content: center;
       padding: 36px 28px 28px;
       background: rgba(12, 17, 29, 0.7);
-      backdrop-filter: blur(20px);
+      backdrop-filter: blur(4px);
       border: 1px solid rgba(6, 182, 212, 0.15);
       border-radius: 28px;
       box-shadow:
@@ -1750,7 +1750,7 @@
       width: 58px;
       height: 58px;
       border-radius: 50%;
-      background: linear-gradient(145deg, rgba(6, 182, 212, 0.2) 0%, rgba(20, 184, 166, 0.15) 100%);
+      background: rgba(30, 41, 59, 0.95) 100%);
       border: 1.5px solid rgba(6, 182, 212, 0.35);
       display: flex;
       align-items: center;
@@ -1868,7 +1868,7 @@
     .rec-progress-wrap {
       width: 100%;
       height: 2px;
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(255, 255, 255, 0.08);
       border-radius: 2px;
       margin-top: 20px;
       overflow: hidden;
@@ -1899,8 +1899,8 @@
     /* Calendar styles */
     .calendar-card {
       background: rgba(15, 23, 42, 0.4) !important;
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
       border: 1px solid rgba(255, 255, 255, 0.05) !important;
     }
     .calendar-day-cell {
@@ -1945,7 +1945,7 @@
       width: 24px;
       height: 24px;
       border-radius: 50%;
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(255, 255, 255, 0.08);
       border: 1px solid rgba(255, 255, 255, 0.1);
       color: var(--text-muted);
       font-size: 10px;
@@ -2148,7 +2148,7 @@
       cursor: pointer;
       transition: background 0.18s ease, transform 0.15s ease, border-color 0.18s ease;
       text-align: left;
-      backdrop-filter: blur(10px);
+      backdrop-filter: blur(4px);
     }
     .avatar-action-card:active {
       transform: scale(0.97);
@@ -2284,8 +2284,8 @@
     /* Enhanced Glassmorphism for Cards */
     .glass-card {
       background: rgba(15, 23, 42, 0.45) !important;
-      backdrop-filter: blur(28px) saturate(190%) !important;
-      -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
       border: 1px solid rgba(255, 255, 255, 0.08) !important;
       box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
       border-radius: 24px !important;
@@ -2361,8 +2361,8 @@
     /* Floating Navigation Bar Premium */
     .nav-bar {
       background: rgba(15, 23, 42, 0.7) !important;
-      backdrop-filter: blur(40px) saturate(200%) !important;
-      -webkit-backdrop-filter: blur(40px) saturate(200%) !important;
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
       border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
       box-shadow: 0 -15px 50px rgba(0, 0, 0, 0.4) !important;
       border-radius: 30px 30px 0 0 !important;
@@ -2462,8 +2462,8 @@
 
     /* Smooth Modal Enhancements */
     .modal-overlay {
-      backdrop-filter: blur(12px) !important;
-      -webkit-backdrop-filter: blur(12px) !important;
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
       transition: opacity 0.4s ease, backdrop-filter 0.4s ease !important;
     }
     .modal-content {
@@ -2499,8 +2499,8 @@
     .profile-dropdown {
       border-radius: 24px !important;
       box-shadow: 0 15px 50px rgba(0,0,0,0.5) !important;
-      backdrop-filter: blur(32px) saturate(200%) !important;
-      -webkit-backdrop-filter: blur(32px) saturate(200%) !important;
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
       border: 1px solid rgba(255, 255, 255, 0.1) !important;
     }
     body.light-theme .profile-dropdown {
@@ -3066,17 +3066,17 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding: 0 4px;">
             <h2 style="font-size: 28px; font-weight: 800; color: #fff; margin: 0; letter-spacing: -0.5px;">Profil</h2>
             <div class="glass-card" style="padding: 8px 16px; border-radius: 20px; display: flex; align-items: center; gap: 8px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.2);">
-                <div style="width: 8px; height: 8px; border-radius: 50%; background: #38bdf8; box-shadow: 0 0 10px #38bdf8; animation: pulse 2s infinite;"></div>
+                <div style="width: 8px; height: 8px; border-radius: 50%; background: #38bdf8; box-shadow: 0 0 10px #38bdf8; /* animation removed */"></div>
                 <span style="font-size: 13px; font-weight: 600; color: #38bdf8;">Faol</span>
             </div>
         </div>
 
         <!-- Hero Card (Avatar & Main Info) -->
-        <div class="glass-card profile-hero-card" style="position: relative; padding: 30px 20px; border-radius: 28px; text-align: center; margin-bottom: 24px; background: linear-gradient(145deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.95) 100%); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.4); overflow: hidden;">
+        <div class="glass-card profile-hero-card" style="position: relative; padding: 30px 20px; border-radius: 28px; text-align: center; margin-bottom: 24px; background: linear-gradient(145deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.95) 100%); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 4px 12px rgba(0,0,0,0.15); overflow: hidden;">
             
             <!-- Abstract background decorations -->
-            <div style="position: absolute; top: -50px; right: -50px; width: 150px; height: 150px; background: var(--accent); opacity: 0.15; filter: blur(40px); border-radius: 50%;"></div>
-            <div style="position: absolute; bottom: -30px; left: -30px; width: 100px; height: 100px; background: #a855f7; opacity: 0.15; filter: blur(40px); border-radius: 50%;"></div>
+            <div style="position: absolute; top: -50px; right: -50px; width: 150px; height: 150px; background: var(--accent); opacity: 0.15; display: none; /* removed for performance */ border-radius: 50%;"></div>
+            <div style="position: absolute; bottom: -30px; left: -30px; width: 100px; height: 100px; background: #a855f7; opacity: 0.15; display: none; /* removed for performance */ border-radius: 50%;"></div>
 
             <!-- Avatar -->
             <div style="position: relative; width: 110px; height: 110px; margin: 0 auto 20px auto; z-index: 2;">
@@ -3123,7 +3123,7 @@
 
         <!-- Detailed List Items -->
         <h3 style="font-size: 16px; font-weight: 700; color: #fff; margin: 0 0 12px 4px;">Shaxsiy Ma'lumotlar</h3>
-        <div class="glass-card" style="padding: 0; border-radius: 24px; background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255,255,255,0.05); overflow: hidden; margin-bottom: 24px;">
+        <div class="glass-card" style="padding: 0; border-radius: 24px; background: rgba(30, 41, 59, 0.85); border: 1px solid rgba(255,255,255,0.05); overflow: hidden; margin-bottom: 24px;">
             
             <div style="display: flex; align-items: center; padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.03);">
                 <div style="width: 36px; height: 36px; border-radius: 12px; background: rgba(251, 146, 60, 0.15); display: flex; align-items: center; justify-content: center; margin-right: 16px;">
@@ -3178,7 +3178,7 @@
 
         <!-- System Settings Section -->
         <h3 style="font-size: 16px; font-weight: 700; color: #fff; margin: 0 0 12px 4px;">Tizim sozlamalari</h3>
-        <div class="glass-card" style="padding: 0; border-radius: 24px; background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255,255,255,0.05); overflow: hidden; margin-bottom: 24px;">
+        <div class="glass-card" style="padding: 0; border-radius: 24px; background: rgba(30, 41, 59, 0.85); border: 1px solid rgba(255,255,255,0.05); overflow: hidden; margin-bottom: 24px;">
             
             <div class="list-item-action" onclick="switchLanguage(currentLang === 'UZ' ? 'RU' : 'UZ')" style="display: flex; align-items: center; padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.03); cursor: pointer; transition: background 0.2s;">
                 <div style="width: 36px; height: 36px; border-radius: 12px; background: rgba(148, 163, 184, 0.15); display: flex; align-items: center; justify-content: center; margin-right: 16px;">
@@ -3341,7 +3341,7 @@
     
     <!-- Header -->
     <div style="display: flex; align-items: center; justify-content: space-between; padding: 20px 20px 0 20px; width: 100%; box-sizing: border-box;">
-      <button id="btn-close-avatar-editor" style="width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: center; cursor: pointer; backdrop-filter: blur(10px); transition: all 0.2s;">
+      <button id="btn-close-avatar-editor" style="width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: center; cursor: pointer; backdrop-filter: blur(4px); transition: all 0.2s;">
         <svg style="width: 20px; height: 20px; fill: white;" viewBox="0 0 24 24">
           <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
         </svg>
@@ -6641,7 +6641,7 @@
           else if (dayData.status === 'vacation') { statusText = currentLang === 'UZ' ? "Ta'til" : "Отпуск"; statusColor = "#a855f7"; }
           
           dailyStatsHtml = `
-            <div class="glass-card history-item" style="margin-bottom: 16px; padding: 16px; border-radius: 20px; background: linear-gradient(135deg, rgba(15, 23, 42, 0.6) 0%, rgba(30, 41, 59, 0.4) 100%); border: 1px solid rgba(56, 189, 248, 0.15); box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+            <div class="glass-card history-item" style="margin-bottom: 16px; padding: 16px; border-radius: 20px; background: rgba(30, 41, 59, 0.95) 100%); border: 1px solid rgba(56, 189, 248, 0.15); box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px;">
                 <span style="color: var(--text-muted); font-size: 13px;">${currentLang === 'UZ' ? 'Kunlik natija' : 'Дневной результат'}</span>
                 <span style="background: ${statusColor}22; color: ${statusColor}; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; border: 1px solid ${statusColor}44;">${statusText}</span>
