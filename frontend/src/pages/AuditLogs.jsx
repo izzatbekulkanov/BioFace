@@ -171,7 +171,29 @@ export default function AuditLogs() {
   const [entityFilter, setEntityFilter] = useState('all')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const [selectedUserId, setSelectedUserId] = useState(null)
+  const [auditUsers, setAuditUsers] = useState([])
   const [selectedLog, setSelectedLog] = useState(null)
+
+  const loadAuditUsers = useCallback(async () => {
+    try {
+      const params = new URLSearchParams()
+      if (actionFilter && actionFilter !== 'all') params.set('action', actionFilter)
+      if (entityFilter && entityFilter !== 'all') params.set('entity_type', entityFilter)
+      if (dateFrom) params.set('date_from', dateFrom)
+      if (dateTo) params.set('date_to', dateTo + 'T23:59:59')
+
+      const res = await fetch(`/api/audit-logs/users?${params}`, { credentials: 'include' })
+      if (res.ok) {
+        const data = await res.json()
+        setAuditUsers(Array.isArray(data.users) ? data.users : [])
+      }
+    } catch (_) {}
+  }, [actionFilter, entityFilter, dateFrom, dateTo])
+
+  useEffect(() => {
+    loadAuditUsers()
+  }, [loadAuditUsers])
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -179,6 +201,7 @@ export default function AuditLogs() {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) })
       if (actionFilter && actionFilter !== 'all') params.set('action', actionFilter)
       if (entityFilter && entityFilter !== 'all') params.set('entity_type', entityFilter)
+      if (selectedUserId) params.set('user_id', String(selectedUserId))
       if (dateFrom) params.set('date_from', dateFrom)
       if (dateTo) params.set('date_to', dateTo + 'T23:59:59')
       if (search.trim()) params.set('search', search.trim())
@@ -186,7 +209,6 @@ export default function AuditLogs() {
       const res = await fetch(`/api/audit-logs?${params}`, { credentials: 'include' })
       if (!res.ok) {
         if (res.status === 404) {
-          // API hali tayyor emas
           setLogs([])
           setTotal(0)
           return
@@ -201,11 +223,11 @@ export default function AuditLogs() {
     } finally {
       setLoading(false)
     }
-  }, [page, actionFilter, entityFilter, dateFrom, dateTo, search, toast])
+  }, [page, actionFilter, entityFilter, selectedUserId, dateFrom, dateTo, search, toast])
 
   useEffect(() => {
     setPage(1)
-  }, [actionFilter, entityFilter, dateFrom, dateTo, search])
+  }, [actionFilter, entityFilter, selectedUserId, dateFrom, dateTo, search])
 
   useEffect(() => {
     loadData()
@@ -245,7 +267,7 @@ export default function AuditLogs() {
         title={isRu ? 'Audit jurnali' : 'Audit jurnali'}
         sub={isRu ? 'Kim nima o\'zgartirdi — to\'liq tarix' : "Kim nima o'zgartirdi — to'liq tarix"}
         right={
-          <button onClick={loadData} disabled={loading} style={heroBtn}>
+          <button onClick={() => { loadAuditUsers(); loadData(); }} disabled={loading} style={heroBtn}>
             <ArrowSyncRegular fontSize={16} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
             {isRu ? 'Yangilash' : 'Yangilash'}
           </button>
@@ -269,6 +291,7 @@ export default function AuditLogs() {
           {[
             { label: isRu ? 'Jami yozuvlar' : 'Jami yozuvlar', value: total, color: 'var(--accent)', bg: 'var(--accent-bg)', border: 'var(--accent-bd)' },
             { label: isRu ? 'Ko\'rsatilmoqda' : "Ko'rsatilmoqda", value: logs.length, color: 'var(--green)', bg: 'var(--green-bg)', border: 'var(--green-bd)' },
+            { label: isRu ? 'Foydalanuvchilar' : 'Foydalanuvchilar', value: auditUsers.length, color: 'var(--purple)', bg: 'var(--purple-bg)', border: 'var(--purple-bd)' },
             { label: isRu ? 'Sahifa' : 'Sahifa', value: `${page}/${totalPages}`, color: 'var(--text-2)', bg: 'var(--surface-2)', border: 'var(--border)' },
           ].map((s, i) => (
             <div key={i} style={{
@@ -279,6 +302,104 @@ export default function AuditLogs() {
               <div style={{ fontSize: 20, fontWeight: 900, color: s.color, marginTop: 2 }}>{s.value}</div>
             </div>
           ))}
+        </div>
+
+        {/* ── User Selector Cards (Audited Users by Category) ─────────────── */}
+        <div style={{ ...cardStyle, marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 13, color: 'var(--text-2)' }}>
+              <PersonRegular fontSize={15} style={{ color: 'var(--accent)' }} />
+              {isRu ? 'Kategoriya bo\'yicha audit qilgan foydalanuvchilar' : "Kategoriya bo'yicha audit qilgan foydalanuvchilar"}
+            </div>
+            {selectedUserId && (
+              <button
+                onClick={() => setSelectedUserId(null)}
+                style={{ ...secondaryBtn, padding: '3px 8px', fontSize: 11 }}
+              >
+                <DismissCircleRegular fontSize={12} />
+                {isRu ? 'Filtrni bekor qilish' : 'Filtrni bekor qilish'}
+              </button>
+            )}
+          </div>
+
+          {auditUsers.length === 0 ? (
+            <div style={{ fontSize: 12, color: 'var(--text-4)', fontStyle: 'italic', padding: '6px 0' }}>
+              {isRu ? "Ushbu toifa bo'yicha foydalanuvchilar topilmadi" : "Ushbu toifa bo'yicha foydalanuvchilar topilmadi"}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 6, scrollbarWidth: 'thin' }}>
+              <div
+                onClick={() => setSelectedUserId(null)}
+                style={{
+                  cursor: 'pointer',
+                  padding: '8px 14px',
+                  borderRadius: 10,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  background: selectedUserId === null ? 'var(--accent)' : 'var(--surface-2)',
+                  color: selectedUserId === null ? '#fff' : 'var(--text-2)',
+                  border: `1px solid ${selectedUserId === null ? 'var(--accent)' : 'var(--border)'}`,
+                  transition: 'all 0.15s ease',
+                  flexShrink: 0,
+                }}
+              >
+                <span>{isRu ? 'Barchasi' : 'Barchasi'}</span>
+                <span style={{
+                  padding: '2px 7px',
+                  borderRadius: 999,
+                  fontSize: 10,
+                  fontWeight: 800,
+                  background: selectedUserId === null ? 'rgba(255,255,255,0.25)' : 'var(--border)',
+                  color: selectedUserId === null ? '#fff' : 'var(--text-2)',
+                }}>
+                  {auditUsers.reduce((sum, u) => sum + (u.audit_count || 0), 0)}
+                </span>
+              </div>
+
+              {auditUsers.map(u => {
+                const isSelected = selectedUserId === u.user_id
+                return (
+                  <div
+                    key={u.user_id || u.user_name}
+                    onClick={() => setSelectedUserId(isSelected ? null : u.user_id)}
+                    style={{
+                      cursor: 'pointer',
+                      padding: '8px 14px',
+                      borderRadius: 10,
+                      fontSize: 12,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      background: isSelected ? 'var(--accent-bg)' : 'var(--surface-2)',
+                      color: isSelected ? 'var(--accent-tx)' : 'var(--text-1)',
+                      border: `1.5px solid ${isSelected ? 'var(--accent)' : 'var(--border)'}`,
+                      transition: 'all 0.15s ease',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <PersonRegular fontSize={14} style={{ color: isSelected ? 'var(--accent)' : 'var(--text-3)' }} />
+                    <div>
+                      <span style={{ fontWeight: 700 }}>{u.user_name}</span>
+                      <span style={{ fontSize: 10, opacity: 0.7, marginLeft: 6 }}>({u.user_role})</span>
+                    </div>
+                    <span style={{
+                      padding: '2px 7px',
+                      borderRadius: 999,
+                      fontSize: 10,
+                      fontWeight: 800,
+                      background: isSelected ? 'var(--accent)' : 'var(--border)',
+                      color: isSelected ? '#fff' : 'var(--text-2)',
+                    }}>
+                      {u.audit_count}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         {/* ── Filters ─────────────────────────────────────────────────── */}
@@ -315,10 +436,10 @@ export default function AuditLogs() {
                 />
               </div>
             </div>
-            {(actionFilter !== 'all' || entityFilter !== 'all' || dateFrom || dateTo || search) && (
+            {(actionFilter !== 'all' || entityFilter !== 'all' || dateFrom || dateTo || search || selectedUserId) && (
               <div style={{ display: 'flex', alignItems: 'flex-end' }}>
                 <button
-                  onClick={() => { setActionFilter('all'); setEntityFilter('all'); setDateFrom(''); setDateTo(''); setSearch('') }}
+                  onClick={() => { setActionFilter('all'); setEntityFilter('all'); setDateFrom(''); setDateTo(''); setSearch(''); setSelectedUserId(null); }}
                   style={secondaryBtn}
                 >
                   <DismissCircleRegular fontSize={14} />

@@ -106,3 +106,66 @@ async def get_audit_actions():
             "attendance", "subscription",
         ]
     }
+
+
+from sqlalchemy import func
+
+@router.get("/api/audit-logs/users")
+async def get_audit_users(
+    request: Request,
+    db: Session = Depends(get_db),
+    action: Optional[str] = Query(None),
+    entity_type: Optional[str] = Query(None),
+    organization_id: Optional[int] = Query(None),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
+):
+    """Tanlangan kategoriya va filterlar bo'yicha audit qilgan foydalanuvchilar ro'yxati"""
+    auth_user = request.session.get("auth_user") or {}
+    role = str(auth_user.get("role") or "").strip().lower()
+    is_super = role in {"superadmin", "super_admin"}
+
+    q = db.query(
+        AuditLog.user_id,
+        AuditLog.user_name,
+        AuditLog.user_role,
+        func.count(AuditLog.id).label("audit_count")
+    )
+
+    if not is_super:
+        user_org_id = auth_user.get("organization_id")
+        if user_org_id:
+            q = q.filter(AuditLog.organization_id == int(user_org_id))
+        else:
+            return {"users": []}
+
+    if organization_id and is_super:
+        q = q.filter(AuditLog.organization_id == organization_id)
+    if action and action != "all":
+        q = q.filter(AuditLog.action == action.upper())
+    if entity_type and entity_type != "all":
+        q = q.filter(AuditLog.entity_type == entity_type)
+    if date_from:
+        try:
+            q = q.filter(AuditLog.created_at >= datetime.fromisoformat(date_from))
+        except Exception:
+            pass
+    if date_to:
+        try:
+            q = q.filter(AuditLog.created_at <= datetime.fromisoformat(date_to))
+        except Exception:
+            pass
+
+    q = q.group_by(AuditLog.user_id, AuditLog.user_name, AuditLog.user_role).order_by(desc("audit_count"))
+    rows = q.all()
+
+    users = [
+        {
+            "user_id": r.user_id,
+            "user_name": r.user_name or "Tizim",
+            "user_role": r.user_role or "—",
+            "audit_count": r.audit_count,
+        }
+        for r in rows
+    ]
+    return {"users": users}

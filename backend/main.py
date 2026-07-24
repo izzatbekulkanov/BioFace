@@ -99,6 +99,7 @@ AUTH_PERMISSION_EXEMPT_PREFIXES = (
     "/api/organizations",   # Barcha rollar uchun tashkilot ro'yxati (filter uchun kerak)
     "/api/auth/",           # Auth endpointlari
     "/api/profile/",        # Profil endpointlari
+    "/api/audit-logs",      # Audit endpointlari
 )
 
 
