@@ -1453,8 +1453,15 @@
         </div>
         <div style="display: flex; flex-direction: column; gap: 2px;">
           <span style="font-size: 12px; font-weight: 800; color: var(--white);" id="liveness-guide-title">Liveness AI Tekshiruvi:</span>
-          <span style="font-size: 11px; font-weight: 600; color: var(--text-2); line-height: 1.4;" id="liveness-guide-desc">Suratga olish uchun avval yuzingizni o'ngga, so'ngra chapga sekin buring.</span>
+          <span style="font-size: 11px; font-weight: 600; color: var(--text-2); line-height: 1.4;" id="liveness-guide-desc">Yuzingizni o'ngga buring va tugmani bosing, so'ngra chapga buring.</span>
         </div>
+      </div>
+
+      <!-- Interactive Step Action Button -->
+      <div style="width: 100%; max-width: 320px;">
+        <button id="btn-liveness-action" class="btn-checkin btn-in" style="width: 100%; padding: 14px; border-radius: 14px; background: linear-gradient(135deg, #0078d4, #106ebe); color: #fff; border: 1px solid #38bdf8; font-size: 13px; font-weight: 800; box-shadow: 0 4px 16px rgba(0,120,212,0.4);" onclick="nextLivenessStep()">
+          <span id="lbl-liveness-action-text">O'NGGA BURILDIM</span>
+        </button>
       </div>
     </div>
   </div>
@@ -1591,43 +1598,54 @@
       document.getElementById('liveness-modal').classList.remove('active');
     }
 
+    let currentLivenessStep = 1;
+
     function runLivenessStateMachine() {
+      currentLivenessStep = 1;
+      updateLivenessStepUI();
+    }
+
+    function updateLivenessStepUI() {
       const stepText = document.getElementById('liveness-step-text');
       const ring = document.getElementById('liveness-oval-ring');
       const arrowRight = document.getElementById('arrow-right-indicator');
       const arrowLeft = document.getElementById('arrow-left-indicator');
+      const btnText = document.getElementById('lbl-liveness-action-text');
+      if (!stepText || !ring || !btnText) return;
 
-      // STEP 1: Center Face
-      stepText.innerText = "1-BOSQICH: Yuzingizni o'rtada tuting";
-      ring.style.borderColor = "#38bdf8";
-      arrowRight.style.display = 'none';
-      arrowLeft.style.display = 'none';
-
-      livenessTimer = setTimeout(() => {
-        // STEP 2: Turn Face Right
-        stepText.innerText = "2-BOSQICH: Yuzingizni O'NGGA buring";
+      if (currentLivenessStep === 1) {
+        stepText.innerText = "1-BOSQICH: Yuzingizni O'NGGA buring";
+        btnText.innerText = "O'NGGA BURILDIM";
         ring.style.borderColor = "#fbbf24";
-        arrowRight.style.display = 'flex';
-        arrowLeft.style.display = 'none';
+        if (arrowRight) arrowRight.style.display = 'flex';
+        if (arrowLeft) arrowLeft.style.display = 'none';
+      } else if (currentLivenessStep === 2) {
+        stepText.innerText = "2-BOSQICH: Yuzingizni CHAPGA buring";
+        btnText.innerText = "CHAPGA BURILDIM";
+        ring.style.borderColor = "#fbbf24";
+        if (arrowRight) arrowRight.style.display = 'none';
+        if (arrowLeft) arrowLeft.style.display = 'flex';
+      } else if (currentLivenessStep === 3) {
+        stepText.innerText = "3-BOSQICH: Yuzingizni markazga to'g'rilang";
+        btnText.innerText = "DAVOMATNI TASDIQLASH";
+        ring.style.borderColor = "#4ade80";
+        if (arrowRight) arrowRight.style.display = 'none';
+        if (arrowLeft) arrowLeft.style.display = 'none';
+      }
+    }
 
-        livenessTimer = setTimeout(() => {
-          // STEP 3: Turn Face Left
-          stepText.innerText = "3-BOSQICH: Yuzingizni CHAPGA buring";
-          ring.style.borderColor = "#fbbf24";
-          arrowRight.style.display = 'none';
-          arrowLeft.style.display = 'flex';
-
-          livenessTimer = setTimeout(() => {
-            // STEP 4: Processing Liveness & Checkin
-            stepText.innerText = "4-BOSQICH: Liveness AI tasdiqlanmoqda...";
-            ring.style.borderColor = "#4ade80";
-            arrowRight.style.display = 'none';
-            arrowLeft.style.display = 'none';
-
-            captureAndPostCheckIn();
-          }, 1400);
-        }, 1400);
-      }, 1200);
+    function nextLivenessStep() {
+      if (currentLivenessStep === 1) {
+        currentLivenessStep = 2;
+        updateLivenessStepUI();
+      } else if (currentLivenessStep === 2) {
+        currentLivenessStep = 3;
+        updateLivenessStepUI();
+      } else if (currentLivenessStep === 3) {
+        document.getElementById('liveness-step-text').innerText = "4-BOSQICH: Liveness AI tasdiqlanmoqda...";
+        document.getElementById('lbl-liveness-action-text').innerText = "YUKLANMOQDA...";
+        captureAndPostCheckIn();
+      }
     }
 
     async function captureAndPostCheckIn() {
