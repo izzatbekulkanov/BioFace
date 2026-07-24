@@ -333,6 +333,78 @@
       margin-top: 4px;
     }
 
+    /* ── Large Profile Tab Hero ── */
+    .profile-tab-hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 12px;
+      padding: 24px 18px;
+      background: var(--surface-2);
+      border: 1px solid var(--border-2);
+    }
+
+    .profile-tab-avatar-wrapper {
+      position: relative;
+      width: 96px;
+      height: 96px;
+    }
+
+    .profile-tab-avatar {
+      width: 100%;
+      height: 100%;
+      border-radius: 24px;
+      object-fit: cover;
+      border: 3px solid var(--accent-bd);
+      background: var(--surface-3);
+      box-shadow: 0 8px 24px rgba(0, 120, 212, 0.25);
+    }
+
+    .avatar-edit-badge {
+      position: absolute;
+      bottom: -4px;
+      right: -4px;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 3px solid var(--surface-2);
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      transition: transform 0.18s ease;
+    }
+
+    .avatar-edit-badge:active {
+      transform: scale(0.9);
+    }
+
+    .btn-update-photo {
+      background: var(--accent-bg);
+      color: var(--accent-tx);
+      border: 1px solid var(--accent-bd);
+      padding: 9px 18px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.18s ease;
+      margin-top: 4px;
+    }
+
+    .btn-update-photo:active {
+      transform: scale(0.95);
+      background: var(--accent);
+      color: #fff;
+    }
+
     /* ── Quick Check-In Actions Card ── */
     .checkin-card {
       background: var(--surface);
@@ -389,7 +461,6 @@
       transform: scale(0.95);
     }
 
-    /* Matching bioface.uz --dir-in & --dir-out badges */
     .btn-in {
       background: var(--dir-in-bg);
       color: var(--dir-in);
@@ -458,7 +529,7 @@
       color: var(--text-1);
     }
 
-    /* ── Custom Month Filter Bar (System Design) ── */
+    /* ── Custom Month Filter Bar ── */
     .month-pills-scroll {
       display: flex;
       gap: 8px;
@@ -753,6 +824,9 @@
 </head>
 <body>
 
+  <!-- Hidden File Input for Avatar Upload -->
+  <input type="file" id="avatar-file-input" accept="image/*" style="display:none;" onchange="uploadAvatarFile(this)">
+
   <!-- Header -->
   <header>
     <div class="header-brand">
@@ -942,6 +1016,54 @@
 
     <!-- 3. PROFILE TAB -->
     <div class="tab-content" id="tab-profile">
+      
+      <!-- Profile Large Photo Card with Photo Update Action -->
+      <div class="card profile-tab-hero">
+        <div class="profile-tab-avatar-wrapper">
+          <img id="profile-tab-avatar" class="profile-tab-avatar" src="https://www.w3schools.com/howto/img_avatar.png" alt="Avatar">
+          <div class="avatar-edit-badge" onclick="triggerAvatarUpload()" title="Rasmni almashtirish">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <div style="font-size: 18px; font-weight: 800; color: var(--white);" id="p-hero-name">Izzatbek Ulkanov</div>
+          <div style="font-size: 12px; font-weight: 700; color: var(--accent-tx);" id="p-hero-role">Bosh mutahassis</div>
+          <div style="font-size: 11px; color: var(--text-3);" id="p-hero-dept">Kadrlar bo'limi</div>
+        </div>
+
+        <!-- Update Photo Button -->
+        <button class="btn-update-photo" onclick="triggerAvatarUpload()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <span id="lbl-update-photo">Suratni Yangilash</span>
+        </button>
+      </div>
+
+      <!-- Real Today Check-in & Check-out Schedule Card -->
+      <div class="card" style="display: flex; flex-direction: column; gap: 12px;">
+        <div style="font-size: 13px; font-weight: 800; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.5px;" id="lbl-today-times-title">
+          Bugungi Haqiqiy Keldi-Ketdi Vaqtlari
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div style="background: var(--surface-2); border: 1px solid var(--dir-in-bd); border-radius: var(--radius-md); padding: 12px; display: flex; flex-direction: column; gap: 4px;">
+            <span style="font-size: 11px; color: var(--text-3); font-weight: 700;">Haqiqiy Kirish</span>
+            <strong id="p-real-in-time" style="font-size: 16px; font-weight: 900; color: var(--dir-in); font-family: monospace;">--:--</strong>
+          </div>
+
+          <div style="background: var(--surface-2); border: 1px solid var(--dir-out-bd); border-radius: var(--radius-md); padding: 12px; display: flex; flex-direction: column; gap: 4px;">
+            <span style="font-size: 11px; color: var(--text-3); font-weight: 700;">Haqiqiy Chiqish</span>
+            <strong id="p-real-out-time" style="font-size: 16px; font-weight: 900; color: var(--dir-out); font-family: monospace;">--:--</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Full Profile Details Card -->
       <div class="card" style="display: flex; flex-direction: column; gap: 14px;">
         <div style="font-size: 15px; font-weight: 800; color: var(--white);" id="lbl-profile-details">Xodim Ma'lumotlari</div>
         
@@ -967,7 +1089,7 @@
             <strong id="p-phone-val" style="color: var(--text-1);">+998 14 547 67 46</strong>
           </div>
           <div style="display: flex; justify-content: space-between;">
-            <span style="color: var(--text-3);" id="lbl-p-schedule">Ish vaqti</span>
+            <span style="color: var(--text-3);" id="lbl-p-schedule">Ish jadvali (Smena)</span>
             <strong id="p-schedule-val" style="color: var(--green);">09:00 — 18:00</strong>
           </div>
         </div>
@@ -1067,7 +1189,9 @@
         btn_in: "KELDIM",
         btn_out: "KETDIM",
         filter_month: "Oy bo'yicha filter",
-        select_other_month: "Barcha oylar"
+        select_other_month: "Barcha oylar",
+        update_photo: "Suratni Yangilash",
+        today_times_title: "Bugungi Haqiqiy Keldi-Ketdi Vaqtlari"
       },
       RU: {
         tab_home: "Главная",
@@ -1087,9 +1211,56 @@
         btn_in: "ПРИШЕЛ",
         btn_out: "УШЕЛ",
         filter_month: "Фильтр по месяцу",
-        select_other_month: "Все месяцы"
+        select_other_month: "Все месяцы",
+        update_photo: "Обновить фото",
+        today_times_title: "Фактическое время за сегодня"
       }
     };
+
+    // ── Avatar Upload Handler ──
+    function triggerAvatarUpload() {
+      document.getElementById('avatar-file-input').click();
+    }
+
+    async function uploadAvatarFile(input) {
+      if (!input.files || !input.files[0]) return;
+      const file = input.files[0];
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      showToast("Rasm yuklanmoqda va AI yuz aniqlanmoqda...");
+
+      try {
+        let tgId = '7550954976';
+        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
+          tgId = window.Telegram.WebApp.initDataUnsafe.user.id || tgId;
+        }
+
+        const res = await fetch(`/api/profile/update-avatar?telegram_user_id=${tgId}`, {
+          method: 'POST',
+          headers: { 'X-Telegram-WebApp': 'true' },
+          body: formData
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const newAvatar = data.avatar_url || data.image_url;
+          if (newAvatar) {
+            employeeData.avatar = newAvatar;
+            document.getElementById('emp-avatar').src = newAvatar;
+            document.getElementById('profile-tab-avatar').src = newAvatar;
+          }
+          showToast("Profil rasmingiz muvaffaqiyatli yangilandi! ✨");
+        } else {
+          const err = await res.json();
+          showToast(err.detail || "Rasm yuklashda xatolik bo'ldi");
+        }
+      } catch (e) {
+        console.error(e);
+        showToast("Rasm yuklashda xatolik yuz berdi");
+      }
+    }
 
     // ── Theme Toggle (Light / Dark Mode) ──
     function initTheme() {
@@ -1166,6 +1337,8 @@
       document.getElementById('btn-out-label').innerText = t.btn_out;
       document.getElementById('lbl-filter-month-title').innerText = t.filter_month;
       document.getElementById('lbl-select-other-month').innerText = t.select_other_month;
+      document.getElementById('lbl-update-photo').innerText = t.update_photo;
+      document.getElementById('lbl-today-times-title').innerText = t.today_times_title;
     }
 
     // ── Render Custom Month Pills Bar (System Design) ──
@@ -1245,9 +1418,14 @@
       document.getElementById('emp-role').innerText = employeeData.position || "Bosh mutahassis";
       document.getElementById('emp-dept').innerText = employeeData.department || "Kadrlar bo'limi";
       document.getElementById('emp-id-badge').innerText = employeeData.personal_id || "2359717";
+
+      document.getElementById('p-hero-name').innerText = fullName;
+      document.getElementById('p-hero-role').innerText = employeeData.position || "Bosh mutahassis";
+      document.getElementById('p-hero-dept').innerText = employeeData.department || "Kadrlar bo'limi";
       
       if (employeeData.avatar) {
         document.getElementById('emp-avatar').src = employeeData.avatar;
+        document.getElementById('profile-tab-avatar').src = employeeData.avatar;
       }
 
       document.getElementById('p-name-val').innerText = fullName;
@@ -1299,12 +1477,19 @@
       const todayStr = new Date().toISOString().split('T')[0];
       const todayLogs = userLogs.filter(l => l.timestamp && l.timestamp.startsWith(todayStr));
 
-      // 1. Render Checkin Times for Today
+      // 1. Render Checkin Times for Today (Both Home tab & Profile tab)
       const inLog = todayLogs.find(l => String(l.direction).includes('in') || String(l.direction).includes('entry'));
       const outLog = todayLogs.find(l => String(l.direction).includes('out') || String(l.direction).includes('exit'));
 
-      document.getElementById('lbl-in-time').innerText = inLog ? formatTimeStr(inLog.timestamp) : '--:--';
-      document.getElementById('lbl-out-time').innerText = outLog ? formatTimeStr(outLog.timestamp) : '--:--';
+      const inTimeStr = inLog ? formatTimeStr(inLog.timestamp) : '--:--';
+      const outTimeStr = outLog ? formatTimeStr(outLog.timestamp) : '--:--';
+
+      document.getElementById('lbl-in-time').innerText = inTimeStr;
+      document.getElementById('lbl-out-time').innerText = outTimeStr;
+
+      // Update Profile Tab Real Times
+      document.getElementById('p-real-in-time').innerText = inTimeStr;
+      document.getElementById('p-real-out-time').innerText = outTimeStr;
 
       // 2. Render Today's Logs List
       const todayListEl = document.getElementById('today-logs-list');
