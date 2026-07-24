@@ -88,8 +88,6 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: 900;
-      font-size: 18px;
       color: #fff;
       box-shadow: 0 0 16px var(--accent-glow);
     }
@@ -131,7 +129,7 @@
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 700;
       transition: all 0.2s ease;
     }
@@ -343,7 +341,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 4px;
+      gap: 6px;
       transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
@@ -361,6 +359,12 @@
       background: linear-gradient(135deg, #ef4444, #dc2626);
       color: #fff;
       box-shadow: 0 6px 20px rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-label-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
     .btn-subtext {
@@ -435,14 +439,12 @@
     }
 
     .log-icon {
-      width: 32px;
-      height: 32px;
+      width: 34px;
+      height: 34px;
       border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 14px;
-      font-weight: 800;
     }
 
     .log-icon.in {
@@ -521,7 +523,12 @@
   <!-- Header -->
   <header>
     <div class="header-brand">
-      <div class="brand-logo">B</div>
+      <div class="brand-logo">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <path d="M9 11a3 3 0 1 0 6 0 3 3 0 0 0-6 0"/>
+        </svg>
+      </div>
       <div class="brand-text">
         <span class="brand-title">BioFace Davomat</span>
         <span class="brand-sub" id="header-branch-name">Asosiy filial</span>
@@ -529,7 +536,12 @@
     </div>
     <div class="header-actions">
       <button class="icon-btn" onclick="toggleLanguage()" id="btn-lang">UZ</button>
-      <button class="icon-btn" onclick="refreshAllData()">↻</button>
+      <button class="icon-btn" onclick="refreshAllData()" title="Yangilash">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
+          <path d="M21 3v5h-5"/>
+        </svg>
+      </button>
     </div>
   </header>
 
@@ -537,13 +549,25 @@
   <div class="nav-container">
     <div class="nav-pills">
       <div class="nav-tab active" onclick="switchTab('home')" id="tab-btn-home">
-        <span>⚡ Asosiy</span>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+        <span id="tab-label-home">Asosiy</span>
       </div>
       <div class="nav-tab" onclick="switchTab('history')" id="tab-btn-history">
-        <span>📋 Tarix</span>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 8v4l3 3"/>
+          <circle cx="12" cy="12" r="9"/>
+        </svg>
+        <span id="tab-label-history">Tarix</span>
       </div>
       <div class="nav-tab" onclick="switchTab('profile')" id="tab-btn-profile">
-        <span>👤 Profil</span>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        <span id="tab-label-profile">Profil</span>
       </div>
     </div>
   </div>
@@ -579,11 +603,26 @@
         </div>
         <div class="checkin-buttons">
           <button class="btn-checkin btn-in" onclick="handleCheckIn('in')">
-            <span>↓ KELDIM</span>
+            <div class="btn-label-wrap">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 8v8"/>
+                <path d="m8 12 4 4 4-4"/>
+              </svg>
+              <span id="btn-in-label">KELDIM</span>
+            </div>
             <span class="btn-subtext" id="lbl-in-time">--:--</span>
           </button>
+
           <button class="btn-checkin btn-out" onclick="handleCheckIn('out')">
-            <span>↑ KETDIM</span>
+            <div class="btn-label-wrap">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 16V8"/>
+                <path d="m8 12 4-4 4 4"/>
+              </svg>
+              <span id="btn-out-label">KETDIM</span>
+            </div>
             <span class="btn-subtext" id="lbl-out-time">--:--</span>
           </button>
         </div>
@@ -691,6 +730,9 @@
     // Translations
     const I18N = {
       UZ: {
+        tab_home: "Asosiy",
+        tab_history: "Tarix",
+        tab_profile: "Profil",
         quick_title: "Tezkor Davomat Qayd Etish",
         stats_title: "Joriy Oy Statistikasi",
         stat_present: "Kelgan kunlar",
@@ -702,11 +744,14 @@
         profile_details: "Xodim Ma'lumotlari",
         no_logs: "Bugun hali keldi-ketdi qaydlari yo'q",
         loading: "Yuklanmoqda...",
-        btn_in: "↓ KELDIM",
-        btn_out: "↑ KETDIM",
+        btn_in: "KELDIM",
+        btn_out: "KETDIM",
         checkin_success: "Davomat muvaffaqiyatli qayd etildi!"
       },
       RU: {
+        tab_home: "Главная",
+        tab_history: "История",
+        tab_profile: "Профиль",
         quick_title: "Быстрая отметка посещаемости",
         stats_title: "Статистика за текущий месяц",
         stat_present: "Дней присутствия",
@@ -718,8 +763,8 @@
         profile_details: "Данные сотрудника",
         no_logs: "Сегодня отметок пока нет",
         loading: "Загрузка...",
-        btn_in: "↓ ПРИШЕЛ",
-        btn_out: "↑ УШЕЛ",
+        btn_in: "ПРИШЕЛ",
+        btn_out: "УШЕЛ",
         checkin_success: "Отметка успешно зарегистрирована!"
       }
     };
@@ -766,6 +811,9 @@
 
     function applyTranslations() {
       const t = I18N[currentLang];
+      document.getElementById('tab-label-home').innerText = t.tab_home;
+      document.getElementById('tab-label-history').innerText = t.tab_history;
+      document.getElementById('tab-label-profile').innerText = t.tab_profile;
       document.getElementById('lbl-quick-title').innerText = t.quick_title;
       document.getElementById('lbl-stats-title').innerText = t.stats_title;
       document.getElementById('lbl-stat-present').innerText = t.stat_present;
@@ -775,6 +823,8 @@
       document.getElementById('lbl-today-logs-title').innerText = t.today_title;
       document.getElementById('lbl-history-title').innerText = t.history_title;
       document.getElementById('lbl-profile-details').innerText = t.profile_details;
+      document.getElementById('btn-in-label').innerText = t.btn_in;
+      document.getElementById('btn-out-label').innerText = t.btn_out;
     }
 
     // ── Update Profile UI ──
@@ -868,15 +918,28 @@
       const isOut = String(log.direction || '').toLowerCase().includes('out') || String(log.direction || '').toLowerCase().includes('exit');
       const dirText = isOut ? 'Ketdi (Chiqish)' : 'Keldi (Kirish)';
       const dirClass = isOut ? 'out' : 'in';
-      const dirIcon = isOut ? '↑' : '↓';
       const timeStr = formatTimeStr(log.timestamp);
       const dateStr = formatDateStr(log.timestamp);
       const camName = log.camera_name || log.device_name || 'Hikvision Terminal';
 
+      const iconSvg = isOut ? `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 17V5"/>
+          <path d="m8 9 4-4 4 4"/>
+          <path d="M4 21h16"/>
+        </svg>
+      ` : `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3v12"/>
+          <path d="m8 11 4 4 4-4"/>
+          <path d="M4 21h16"/>
+        </svg>
+      `;
+
       return `
         <div class="log-item">
           <div class="log-left">
-            <div class="log-icon ${dirClass}">${dirIcon}</div>
+            <div class="log-icon ${dirClass}">${iconSvg}</div>
             <div class="log-details">
               <div class="log-type">${dirText}</div>
               <div class="log-cam">${camName} · ${dateStr}</div>
@@ -929,7 +992,6 @@
       document.getElementById('val-stat-late').innerText = `${calendarStats.late_days || 0} marta`;
       document.getElementById('val-stat-absent').innerText = `${calendarStats.absent_days || 0} kun`;
       
-      const totalLateMin = calendarStats.total_late_minutes || 0;
       const hours = Math.round(((calendarStats.present_days || 0) * 8));
       document.getElementById('val-stat-hours').innerText = `${hours} soat`;
     }
@@ -937,7 +999,6 @@
     // ── Handle Check-In / Check-Out Action ──
     async function handleCheckIn(type) {
       showToast(type === 'in' ? "Kelganingiz tasdiqlandi!" : "Ketganingiz tasdiqlandi!");
-      // Re-fetch logs after 1 second
       setTimeout(() => {
         fetchLogs();
         fetchCalendarStats();
