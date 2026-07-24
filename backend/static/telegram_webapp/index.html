@@ -7057,13 +7057,16 @@
             maximumFractionDigits: 0
           });
           
-          document.getElementById('val-est-base').innerText = formatter.format(baseSalary);
-          
-          document.getElementById('val-est-absent').innerText = absentPenalty > 0 ? `-${formatter.format(absentPenalty)}` : formatter.format(0);
-          document.getElementById('val-est-late').innerText = latePenalty > 0 ? `-${formatter.format(latePenalty)}` : formatter.format(0);
-          document.getElementById('val-est-missed').innerText = missedPenalty > 0 ? `-${formatter.format(missedPenalty)}` : formatter.format(0);
-          
-          document.getElementById('val-est-net').innerText = formatter.format(netSalary);
+          const setEstText = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.innerText = val;
+          };
+
+          setEstText('val-est-base', formatter.format(baseSalary));
+          setEstText('val-est-absent', absentPenalty > 0 ? `-${formatter.format(absentPenalty)}` : formatter.format(0));
+          setEstText('val-est-late', latePenalty > 0 ? `-${formatter.format(latePenalty)}` : formatter.format(0));
+          setEstText('val-est-missed', missedPenalty > 0 ? `-${formatter.format(missedPenalty)}` : formatter.format(0));
+          setEstText('val-est-net', formatter.format(netSalary));
           
           estCard.style.display = 'flex';
         } else {
