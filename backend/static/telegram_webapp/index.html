@@ -20,7 +20,7 @@
       --nav:         #0f172a;
       --surface:     #181818;
       --surface-2:   #1e1e1e;
-      --surface-3:   #111111;
+      --surface-3:   #252525;
       --border:      #252525;
       --border-2:    #2a2a2a;
       --border-3:    #2e2e2e;
@@ -65,7 +65,7 @@
       --nav:         #0f172a;
       --surface:     #ffffff;
       --surface-2:   #faf9f8;
-      --surface-3:   #f8f7f6;
+      --surface-3:   #edebe9;
       --border:      #e1dfdd;
       --border-2:    #edebe9;
       --border-3:    #d2d0ce;
@@ -98,6 +98,20 @@
       flex-direction: column;
       overflow-x: hidden;
       transition: background-color 0.25s ease, color 0.25s ease;
+    }
+
+    /* ── Skeleton Shimmer Loading ── */
+    .skeleton {
+      background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 6px;
+      display: inline-block;
+    }
+
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
     }
 
     /* ── Header Bar ── */
@@ -297,7 +311,7 @@
       flex: 1;
       display: flex;
       flex-direction: column;
-      gap: 3px;
+      gap: 4px;
     }
 
     .profile-name {
@@ -717,8 +731,8 @@
     .modal-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.75);
-      backdrop-filter: blur(8px);
+      background: rgba(0,0,0,0.8);
+      backdrop-filter: blur(10px);
       z-index: 1000;
       display: none;
       align-items: flex-end;
@@ -733,13 +747,13 @@
       width: 100%;
       max-width: 500px;
       background: var(--surface);
-      border: 1px solid var(--border-accent);
+      border: 1px solid var(--border-2);
       border-radius: 24px 24px 0 0;
       padding: 24px;
       display: flex;
       flex-direction: column;
       gap: 16px;
-      box-shadow: 0 -10px 40px rgba(0,0,0,0.8);
+      box-shadow: 0 -10px 40px rgba(0,0,0,0.9);
       animation: slideUp 0.25s ease-out;
     }
 
@@ -795,25 +809,113 @@
       text-align: right;
     }
 
-    /* ── Toast Notification ── */
+    /* ── Pro Biometric Scanner Camera Modal Styling ── */
+    .scanner-viewfinder {
+      position: relative;
+      width: 100%;
+      max-width: 320px;
+      height: 320px;
+      border-radius: 24px;
+      overflow: hidden;
+      background: #000;
+      border: 2px solid var(--accent-bd);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.8), 0 0 20px rgba(0,120,212,0.25);
+    }
+
+    .scanner-laser {
+      position: absolute;
+      left: 5%;
+      right: 5%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #38bdf8, #4ade80, #38bdf8, transparent);
+      box-shadow: 0 0 12px #38bdf8, 0 0 20px #4ade80;
+      animation: laserScan 2.4s ease-in-out infinite;
+      z-index: 5;
+      pointer-events: none;
+    }
+
+    @keyframes laserScan {
+      0%   { top: 8%; opacity: 0.2; }
+      50%  { top: 88%; opacity: 0.95; }
+      100% { top: 8%; opacity: 0.2; }
+    }
+
+    .corner-bracket {
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      border-color: #38bdf8;
+      border-style: solid;
+      z-index: 6;
+      pointer-events: none;
+    }
+
+    .cb-top-left     { top: 12px; left: 12px; border-width: 3px 0 0 3px; border-radius: 6px 0 0 0; }
+    .cb-top-right    { top: 12px; right: 12px; border-width: 3px 3px 0 0; border-radius: 0 6px 0 0; }
+    .cb-bottom-left  { bottom: 12px; left: 12px; border-width: 0 0 3px 3px; border-radius: 0 0 0 6px; }
+    .cb-bottom-right { bottom: 12px; right: 12px; border-width: 0 3px 3px 0; border-radius: 0 0 6px 0; }
+
+    .scanner-status-pill {
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      color: #38bdf8;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      z-index: 7;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .pulse-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #4ade80;
+      box-shadow: 0 0 8px #4ade80;
+      animation: pulseDot 1.2s infinite;
+    }
+
+    @keyframes pulseDot {
+      0% { opacity: 0.4; }
+      50% { opacity: 1; }
+      100% { opacity: 0.4; }
+    }
+
+    /* ── High Contrast Responsive Toast Notification ── */
     #toast {
       position: fixed;
-      bottom: 24px;
+      bottom: 28px;
       left: 50%;
-      transform: translateX(-50%) translateY(100px);
-      background: var(--surface-2);
+      transform: translateX(-50%) translateY(120px);
+      width: calc(100% - 36px);
+      max-width: 440px;
+      background: rgba(20, 20, 20, 0.95);
+      backdrop-filter: blur(12px);
       border: 1px solid var(--accent-bd);
-      color: var(--accent-tx);
-      padding: 10px 18px;
-      border-radius: 12px;
+      color: #ffffff;
+      padding: 12px 18px;
+      border-radius: 14px;
       font-size: 13px;
       font-weight: 700;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.7);
-      z-index: 1001;
+      box-shadow: 0 12px 36px rgba(0,0,0,0.85), 0 0 20px rgba(0, 120, 212, 0.25);
+      z-index: 2000;
       opacity: 0;
       transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
       pointer-events: none;
-      white-space: nowrap;
+      white-space: normal;
+      word-break: break-word;
+      text-align: center;
+      line-height: 1.45;
     }
 
     #toast.show {
@@ -892,19 +994,20 @@
     <!-- 1. HOME TAB -->
     <div class="tab-content active" id="tab-home">
 
-      <!-- Employee Hero Card -->
-      <div class="card profile-hero">
+      <!-- Employee Hero Card with Skeleton -->
+      <div class="card profile-hero" id="home-profile-hero">
         <div class="avatar-wrapper">
-          <img id="emp-avatar" class="avatar-img" src="https://www.w3schools.com/howto/img_avatar.png" alt="Avatar">
+          <div id="emp-avatar-skeleton" class="skeleton" style="width: 64px; height: 64px; border-radius: 16px;"></div>
+          <img id="emp-avatar" class="avatar-img" src="" alt="Avatar" style="display: none;" onload="onAvatarLoaded(this)">
           <div class="avatar-status"></div>
         </div>
         <div class="profile-info">
-          <div class="profile-name" id="emp-name">Izzatbek Ulkanov</div>
-          <div class="profile-role" id="emp-role">Bosh mutahassis</div>
-          <div class="profile-dept" id="emp-dept">Kadrlar bo'limi</div>
+          <div class="profile-name" id="emp-name"><span class="skeleton" style="width: 140px; height: 18px;"></span></div>
+          <div class="profile-role" id="emp-role"><span class="skeleton" style="width: 100px; height: 13px;"></span></div>
+          <div class="profile-dept" id="emp-dept"><span class="skeleton" style="width: 80px; height: 11px;"></span></div>
           <div class="profile-badge">
             <span>ID:</span>
-            <strong id="emp-id-badge">2359717</strong>
+            <strong id="emp-id-badge"><span class="skeleton" style="width: 50px; height: 11px;"></span></strong>
           </div>
         </div>
       </div>
@@ -925,7 +1028,7 @@
               </svg>
               <span id="btn-in-label">KELDIM</span>
             </div>
-            <span class="btn-subtext" id="lbl-in-time">--:--</span>
+            <span class="btn-subtext" id="lbl-in-time"><span class="skeleton" style="width: 36px; height: 10px;"></span></span>
           </button>
 
           <button class="btn-checkin btn-out" onclick="handleCheckIn('out')">
@@ -937,12 +1040,12 @@
               </svg>
               <span id="btn-out-label">KETDIM</span>
             </div>
-            <span class="btn-subtext" id="lbl-out-time">--:--</span>
+            <span class="btn-subtext" id="lbl-out-time"><span class="skeleton" style="width: 36px; height: 10px;"></span></span>
           </button>
         </div>
       </div>
 
-      <!-- Monthly Quick Stats -->
+      <!-- Monthly Quick Stats with Skeleton -->
       <div>
         <div class="section-title">
           <span id="lbl-stats-title">Joriy Oy Statistikasi</span>
@@ -951,28 +1054,48 @@
         <div class="stats-grid">
           <div class="stat-box">
             <span class="stat-label" id="lbl-stat-present">Kelgan kunlar</span>
-            <span class="stat-value" id="val-stat-present" style="color: var(--green);">-- kun</span>
+            <span class="stat-value" id="val-stat-present" style="color: var(--green);"><span class="skeleton" style="width: 50px; height: 18px;"></span></span>
           </div>
           <div class="stat-box">
             <span class="stat-label" id="lbl-stat-late">Kechikishlar</span>
-            <span class="stat-value" id="val-stat-late" style="color: var(--yellow);">-- marta</span>
+            <span class="stat-value" id="val-stat-late" style="color: var(--yellow);"><span class="skeleton" style="width: 50px; height: 18px;"></span></span>
           </div>
           <div class="stat-box">
             <span class="stat-label" id="lbl-stat-absent">Kelmagan</span>
-            <span class="stat-value" id="val-stat-absent" style="color: var(--red);">-- kun</span>
+            <span class="stat-value" id="val-stat-absent" style="color: var(--red);"><span class="skeleton" style="width: 50px; height: 18px;"></span></span>
           </div>
           <div class="stat-box">
             <span class="stat-label" id="lbl-stat-hours">Ishlangan soat</span>
-            <span class="stat-value" id="val-stat-hours" style="color: var(--accent-tx);">-- soat</span>
+            <span class="stat-value" id="val-stat-hours" style="color: var(--accent-tx);"><span class="skeleton" style="width: 50px; height: 18px;"></span></span>
           </div>
         </div>
       </div>
 
-      <!-- Today's Logs -->
+      <!-- Today's Logs with Skeleton -->
       <div>
         <div class="section-title" id="lbl-today-logs-title">Bugungi Qaydlar</div>
         <div class="logs-list" id="today-logs-list">
-          <div class="empty-state" id="lbl-loading-logs">Yuklanmoqda...</div>
+          <!-- Skeleton Loading List -->
+          <div class="log-item">
+            <div class="log-left">
+              <div class="skeleton" style="width: 34px; height: 34px; border-radius: 9px;"></div>
+              <div class="log-details" style="gap: 4px;">
+                <span class="skeleton" style="width: 90px; height: 13px;"></span>
+                <span class="skeleton" style="width: 120px; height: 11px;"></span>
+              </div>
+            </div>
+            <span class="skeleton" style="width: 45px; height: 13px;"></span>
+          </div>
+          <div class="log-item">
+            <div class="log-left">
+              <div class="skeleton" style="width: 34px; height: 34px; border-radius: 9px;"></div>
+              <div class="log-details" style="gap: 4px;">
+                <span class="skeleton" style="width: 90px; height: 13px;"></span>
+                <span class="skeleton" style="width: 120px; height: 11px;"></span>
+              </div>
+            </div>
+            <span class="skeleton" style="width: 45px; height: 13px;"></span>
+          </div>
         </div>
       </div>
 
@@ -981,7 +1104,7 @@
     <!-- 2. HISTORY TAB -->
     <div class="tab-content" id="tab-history">
       
-      <!-- Custom Month Filter Bar (System Design) -->
+      <!-- Custom Month Filter Bar -->
       <div class="card" style="padding: 14px 16px; margin-bottom: 10px;">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
           <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; color: var(--text-2); text-transform: uppercase;">
@@ -1001,23 +1124,46 @@
 
         <!-- Horizontal Month Pills Scroller -->
         <div class="month-pills-scroll" id="month-pills-container">
-          <!-- Dynamically populated month pills -->
+          <div class="skeleton" style="width: 100px; height: 30px; border-radius: 10px;"></div>
+          <div class="skeleton" style="width: 100px; height: 30px; border-radius: 10px;"></div>
+          <div class="skeleton" style="width: 100px; height: 30px; border-radius: 10px;"></div>
         </div>
       </div>
 
       <div class="section-title" id="lbl-history-title">Barcha Qaydlar Tarixi</div>
       <div class="logs-list" id="all-history-list">
-        <div class="empty-state">Yuklanmoqda...</div>
+        <!-- Skeleton Loading List -->
+        <div class="log-item">
+          <div class="log-left">
+            <div class="skeleton" style="width: 34px; height: 34px; border-radius: 9px;"></div>
+            <div class="log-details" style="gap: 4px;">
+              <span class="skeleton" style="width: 90px; height: 13px;"></span>
+              <span class="skeleton" style="width: 130px; height: 11px;"></span>
+            </div>
+          </div>
+          <span class="skeleton" style="width: 45px; height: 13px;"></span>
+        </div>
+        <div class="log-item">
+          <div class="log-left">
+            <div class="skeleton" style="width: 34px; height: 34px; border-radius: 9px;"></div>
+            <div class="log-details" style="gap: 4px;">
+              <span class="skeleton" style="width: 90px; height: 13px;"></span>
+              <span class="skeleton" style="width: 130px; height: 11px;"></span>
+            </div>
+          </div>
+          <span class="skeleton" style="width: 45px; height: 13px;"></span>
+        </div>
       </div>
     </div>
 
     <!-- 3. PROFILE TAB -->
     <div class="tab-content" id="tab-profile">
       
-      <!-- Profile Large Photo Card with Pure WebRTC Live Camera Capture -->
+      <!-- Profile Large Photo Card -->
       <div class="card profile-tab-hero">
         <div class="profile-tab-avatar-wrapper">
-          <img id="profile-tab-avatar" class="profile-tab-avatar" src="https://www.w3schools.com/howto/img_avatar.png" alt="Avatar">
+          <div id="profile-tab-avatar-skeleton" class="skeleton" style="width: 96px; height: 96px; border-radius: 24px;"></div>
+          <img id="profile-tab-avatar" class="profile-tab-avatar" src="" alt="Avatar" style="display: none;" onload="onTabAvatarLoaded(this)">
           <div class="avatar-edit-badge" onclick="triggerAvatarUpload()" title="Jonli rasmga olish">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
@@ -1026,10 +1172,10 @@
           </div>
         </div>
 
-        <div style="display: flex; flex-direction: column; gap: 2px;">
-          <div style="font-size: 18px; font-weight: 800; color: var(--white);" id="p-hero-name">Izzatbek Ulkanov</div>
-          <div style="font-size: 12px; font-weight: 700; color: var(--accent-tx);" id="p-hero-role">Bosh mutahassis</div>
-          <div style="font-size: 11px; color: var(--text-3);" id="p-hero-dept">Kadrlar bo'limi</div>
+        <div style="display: flex; flex-direction: column; gap: 4px; align-items: center;">
+          <div style="font-size: 18px; font-weight: 800; color: var(--white);" id="p-hero-name"><span class="skeleton" style="width: 160px; height: 18px;"></span></div>
+          <div style="font-size: 12px; font-weight: 700; color: var(--accent-tx);" id="p-hero-role"><span class="skeleton" style="width: 110px; height: 13px;"></span></div>
+          <div style="font-size: 11px; color: var(--text-3);" id="p-hero-dept"><span class="skeleton" style="width: 90px; height: 11px;"></span></div>
         </div>
 
         <!-- Update Photo Button -->
@@ -1051,12 +1197,12 @@
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div style="background: var(--surface-2); border: 1px solid var(--dir-in-bd); border-radius: var(--radius-md); padding: 12px; display: flex; flex-direction: column; gap: 4px;">
             <span style="font-size: 11px; color: var(--text-3); font-weight: 700;">Haqiqiy Kirish</span>
-            <strong id="p-real-in-time" style="font-size: 16px; font-weight: 900; color: var(--dir-in); font-family: monospace;">--:--</strong>
+            <strong id="p-real-in-time" style="font-size: 16px; font-weight: 900; color: var(--dir-in); font-family: monospace;"><span class="skeleton" style="width: 50px; height: 16px;"></span></strong>
           </div>
 
           <div style="background: var(--surface-2); border: 1px solid var(--dir-out-bd); border-radius: var(--radius-md); padding: 12px; display: flex; flex-direction: column; gap: 4px;">
             <span style="font-size: 11px; color: var(--text-3); font-weight: 700;">Haqiqiy Chiqish</span>
-            <strong id="p-real-out-time" style="font-size: 16px; font-weight: 900; color: var(--dir-out); font-family: monospace;">--:--</strong>
+            <strong id="p-real-out-time" style="font-size: 16px; font-weight: 900; color: var(--dir-out); font-family: monospace;"><span class="skeleton" style="width: 50px; height: 16px;"></span></strong>
           </div>
         </div>
       </div>
@@ -1068,27 +1214,27 @@
         <div style="display: flex; flex-direction: column; gap: 10px; font-size: 13px;">
           <div style="display: flex; justify-content: space-between; padding-bottom: 8px; border-bottom: 1px solid var(--border);">
             <span style="color: var(--text-3);" id="lbl-p-name">F.I.SH.</span>
-            <strong id="p-name-val" style="color: var(--text-1);">Izzatbek Ulkanov</strong>
+            <strong id="p-name-val" style="color: var(--text-1);"><span class="skeleton" style="width: 120px; height: 13px;"></span></strong>
           </div>
           <div style="display: flex; justify-content: space-between; padding-bottom: 8px; border-bottom: 1px solid var(--border);">
             <span style="color: var(--text-3);" id="lbl-p-pos">Lavozim</span>
-            <strong id="p-pos-val" style="color: var(--accent-tx);">Bosh mutahassis</strong>
+            <strong id="p-pos-val" style="color: var(--accent-tx);"><span class="skeleton" style="width: 100px; height: 13px;"></span></strong>
           </div>
           <div style="display: flex; justify-content: space-between; padding-bottom: 8px; border-bottom: 1px solid var(--border);">
             <span style="color: var(--text-3);" id="lbl-p-dept">Bo'lim</span>
-            <strong id="p-dept-val" style="color: var(--text-1);">Kadrlar bo'limi</strong>
+            <strong id="p-dept-val" style="color: var(--text-1);"><span class="skeleton" style="width: 90px; height: 13px;"></span></strong>
           </div>
           <div style="display: flex; justify-content: space-between; padding-bottom: 8px; border-bottom: 1px solid var(--border);">
             <span style="color: var(--text-3);" id="lbl-p-id">Shaxsiy ID</span>
-            <strong id="p-id-val" style="color: var(--text-1);">2359717</strong>
+            <strong id="p-id-val" style="color: var(--text-1);"><span class="skeleton" style="width: 70px; height: 13px;"></span></strong>
           </div>
           <div style="display: flex; justify-content: space-between; padding-bottom: 8px; border-bottom: 1px solid var(--border);">
             <span style="color: var(--text-3);" id="lbl-p-phone">Telefon</span>
-            <strong id="p-phone-val" style="color: var(--text-1);">+998 14 547 67 46</strong>
+            <strong id="p-phone-val" style="color: var(--text-1);"><span class="skeleton" style="width: 110px; height: 13px;"></span></strong>
           </div>
           <div style="display: flex; justify-content: space-between;">
             <span style="color: var(--text-3);" id="lbl-p-schedule">Ish jadvali (Smena)</span>
-            <strong id="p-schedule-val" style="color: var(--green);">01:00 — 05:00</strong>
+            <strong id="p-schedule-val" style="color: var(--green);"><span class="skeleton" style="width: 90px; height: 13px;"></span></strong>
           </div>
         </div>
       </div>
@@ -1145,35 +1291,53 @@
     </div>
   </div>
 
-  <!-- Live Camera Viewfinder Modal (Direct Live Camera Capture, NO GALLERY!) -->
+  <!-- Pro Biometric AI Camera Viewfinder Modal -->
   <div class="modal-backdrop" id="camera-modal" onclick="closeCameraModal()">
-    <div class="modal-card" onclick="event.stopPropagation()" style="align-items: center; gap: 14px;">
+    <div class="modal-card" onclick="event.stopPropagation()" style="align-items: center; gap: 16px;">
       <div class="modal-header" style="width: 100%;">
-        <div class="modal-title">Jonli Kamera Orqali Rasmga Olish</div>
+        <div class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          <span>Jonli Biometrik Kamera</span>
+        </div>
         <div class="modal-close" onclick="closeCameraModal()">✕</div>
       </div>
 
-      <!-- Viewfinder box -->
-      <div style="position: relative; width: 100%; max-width: 320px; height: 320px; border-radius: 24px; overflow: hidden; background: #000; border: 2px solid var(--accent-bd); box-shadow: 0 8px 32px rgba(0,0,0,0.5);">
+      <!-- Pro Viewfinder with Laser Scanner & Corner Brackets -->
+      <div class="scanner-viewfinder">
+        <div class="scanner-status-pill">
+          <div class="pulse-dot"></div>
+          <span>AI SCANNER ACTIVE</span>
+        </div>
+
+        <div class="corner-bracket cb-top-left"></div>
+        <div class="corner-bracket cb-top-right"></div>
+        <div class="corner-bracket cb-bottom-left"></div>
+        <div class="corner-bracket cb-bottom-right"></div>
+        
+        <div class="scanner-laser"></div>
+
         <video id="camera-stream-video" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1);"></video>
         
-        <!-- Face oval guide ring -->
-        <div style="position: absolute; inset: 24px; border: 2px dashed rgba(56, 189, 248, 0.7); border-radius: 50%; pointer-events: none; box-shadow: 0 0 0 9999px rgba(0,0,0,0.4);"></div>
+        <!-- Face Oval Guide Ring -->
+        <div style="position: absolute; inset: 24px; border: 2px dashed rgba(56, 189, 248, 0.85); border-radius: 50%; pointer-events: none; box-shadow: 0 0 0 9999px rgba(0,0,0,0.55);"></div>
 
         <canvas id="camera-capture-canvas" style="display: none;"></canvas>
       </div>
 
-      <!-- Camera Action Buttons -->
+      <!-- Pro Camera Action Buttons -->
       <div style="display: flex; gap: 12px; width: 100%; max-width: 320px;">
-        <button class="icon-btn" style="width: 46px; height: 46px; border-radius: 12px;" onclick="flipCameraFacing()" title="Kamerani almashtirish">
+        <button class="icon-btn" style="width: 48px; height: 48px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--border-2);" onclick="flipCameraFacing()" title="Kamerani almashtirish">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <path d="M20 10c0-4.418-3.582-8-8-8s-8 3.582-8 8m0 4c0 4.418 3.582 8 8 8s8-3.582 8-8"/><path d="m7 7-3 3 3 3"/><path d="m17 17 3-3-3-3"/>
           </svg>
         </button>
 
-        <button class="btn-checkin btn-in" style="flex: 1; padding: 12px; font-size: 14px; border-radius: 14px;" onclick="takePhotoAndUpload()">
+        <button class="btn-checkin btn-in" style="flex: 1; padding: 14px; font-size: 13px; border-radius: 14px; background: linear-gradient(135deg, #0078d4, #106ebe); color: #fff; border: 1px solid #38bdf8; box-shadow: 0 4px 16px rgba(0,120,212,0.4);" onclick="takePhotoAndUpload()">
           <div class="btn-label-wrap">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
               <circle cx="12" cy="13" r="4"/>
             </svg>
@@ -1191,17 +1355,7 @@
     // ── Global State ──
     let currentLang = localStorage.getItem('bioface_lang') || 'UZ';
     let isLightMode = localStorage.getItem('bioface_theme') === 'light';
-    let employeeData = {
-      id: 3,
-      personal_id: '2359717',
-      first_name: 'Izzatbek',
-      last_name: 'Ulkanov',
-      position: 'Bosh mutahassis',
-      department: "Kadrlar bo'limi",
-      phone: '+998 14 547 67 46',
-      schedule_str: '01:00 — 05:00',
-      avatar: '/static/uploads/avatars/2359717_1784801265.jpg'
-    };
+    let employeeData = null;
     let userLogs = [];
     let calendarStats = null;
     let selectedYear = new Date().getFullYear();
@@ -1257,7 +1411,18 @@
       }
     };
 
-    // ── Direct Live Camera Stream Handlers (NO GALLERY!) ──
+    // Avatar Load Handlers (Hide Skeleton, Show Image)
+    function onAvatarLoaded(img) {
+      document.getElementById('emp-avatar-skeleton').style.display = 'none';
+      img.style.display = 'block';
+    }
+
+    function onTabAvatarLoaded(img) {
+      document.getElementById('profile-tab-avatar-skeleton').style.display = 'none';
+      img.style.display = 'block';
+    }
+
+    // ── Direct Live Camera Stream Handlers ──
     async function triggerAvatarUpload() {
       openCameraModal();
     }
@@ -1332,7 +1497,7 @@
       ctx.drawImage(videoEl, 0, 0, w, h);
 
       closeCameraModal();
-      showToast("Real rasm yuklanmoqda va AI yuz aniqlanmoqda...");
+      showToast("Jonli rasm tekshirilmoqda va AI yuz aniqlanmoqda...");
 
       canvasEl.toBlob(async (blob) => {
         if (!blob) {
@@ -1359,9 +1524,17 @@
             const data = await res.json();
             const newAvatar = data.avatar_url || data.image_url;
             if (newAvatar) {
-              employeeData.avatar = newAvatar;
-              document.getElementById('emp-avatar').src = newAvatar;
-              document.getElementById('profile-tab-avatar').src = newAvatar;
+              if (employeeData) employeeData.avatar = newAvatar;
+              
+              const img1 = document.getElementById('emp-avatar');
+              const img2 = document.getElementById('profile-tab-avatar');
+              if (img1) { img1.style.display = 'none'; img1.src = newAvatar; }
+              if (img2) { img2.style.display = 'none'; img2.src = newAvatar; }
+              
+              const sk1 = document.getElementById('emp-avatar-skeleton');
+              const sk2 = document.getElementById('profile-tab-avatar-skeleton');
+              if (sk1) sk1.style.display = 'inline-block';
+              if (sk2) sk2.style.display = 'inline-block';
             }
             showToast("Jonli profil rasmingiz va AI yuz modeli muvaffaqiyatli yangilandi!");
           } else {
@@ -1379,7 +1552,7 @@
       }, 'image/jpeg', 0.92);
     }
 
-    // ── Theme Toggle (Light / Dark Mode) ──
+    // ── Theme Toggle ──
     function initTheme() {
       if (isLightMode) {
         document.body.classList.add('light-mode');
@@ -1407,13 +1580,15 @@
     setInterval(updateClock, 1000);
     updateClock();
 
-    // ── Toast Helper ──
+    // ── High Contrast Toast Helper ──
+    let toastTimeout = null;
     function showToast(msg) {
       const toast = document.getElementById('toast');
       if (!toast) return;
       toast.innerText = msg;
       toast.classList.add('show');
-      setTimeout(() => toast.classList.remove('show'), 3000);
+      if (toastTimeout) clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => toast.classList.remove('show'), 3500);
     }
 
     // ── Tab Switcher ──
@@ -1458,7 +1633,7 @@
       document.getElementById('lbl-today-times-title').innerText = t.today_times_title;
     }
 
-    // ── Render Custom Month Pills Bar (System Design) ──
+    // ── Render Custom Month Pills Bar ──
     function renderMonthPills() {
       const container = document.getElementById('month-pills-container');
       if (!container) return;
@@ -1526,7 +1701,7 @@
       document.getElementById('month-picker-modal').classList.remove('active');
     }
 
-    // ── Update Profile UI ──
+    // ── Update Profile UI (Replaces Skeletons with Real Data) ──
     function renderProfileData() {
       if (!employeeData) return;
       const fullName = [employeeData.last_name, employeeData.first_name, employeeData.middle_name].filter(Boolean).join(' ') || 'Izzatbek Ulkanov';
@@ -1568,7 +1743,7 @@
         if (res.ok) {
           const data = await res.json();
           if (data.employee) {
-            employeeData = Object.assign(employeeData, data.employee);
+            employeeData = data.employee;
             renderProfileData();
           }
         }
@@ -1580,7 +1755,7 @@
     // ── Fetch Logs from Server ──
     async function fetchLogs() {
       try {
-        const empId = employeeData.id || 3;
+        const empId = (employeeData && employeeData.id) ? employeeData.id : 3;
         const res = await fetch(`/api/employees/${empId}/logs?page_size=100`, {
           headers: { 'X-Telegram-WebApp': 'true' }
         });
@@ -1623,7 +1798,6 @@
       // 3. Render Grouped History by Date
       const historyListEl = document.getElementById('all-history-list');
       
-      // Filter logs by selectedYear and selectedMonth
       const filteredLogs = userLogs.filter(l => {
         if (!l.timestamp) return false;
         const d = new Date(l.timestamp);
@@ -1635,7 +1809,6 @@
         return;
       }
 
-      // Group logs by ISO Date string YYYY-MM-DD
       const grouped = {};
       filteredLogs.forEach(l => {
         const dayKey = l.timestamp.split('T')[0];
@@ -1759,7 +1932,7 @@
     // ── Fetch Calendar Stats ──
     async function fetchCalendarStats() {
       try {
-        const empId = employeeData.id || 3;
+        const empId = (employeeData && employeeData.id) ? employeeData.id : 3;
         const res = await fetch(`/api/employees/${empId}/attendance-calendar?year=${selectedYear}&month=${selectedMonth}`, {
           headers: { 'X-Telegram-WebApp': 'true' }
         });
@@ -1809,7 +1982,6 @@
 
       initTheme();
       renderMonthPills();
-      renderProfileData();
       fetchTelegramUserInfo();
       fetchLogs();
       fetchCalendarStats();
