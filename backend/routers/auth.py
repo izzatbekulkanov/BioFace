@@ -7,7 +7,7 @@ from urllib.parse import urlencode
 
 import bcrypt
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, File, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, File, UploadFile, Form
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy import func, or_
@@ -880,13 +880,19 @@ async def telegram_checkin(
     direction: str = Form("in"),
     telegram_user_id: str = Form("7550954976"),
     liveness_score: float = Form(0.98),
+    latitude: Optional[float] = Form(None),
+    longitude: Optional[float] = Form(None),
     file: UploadFile = File(None),
     db: Session = Depends(get_db)
 ):
     from models import TelegramUserBinding, Employee, AttendanceLog
-    from datetime import datetime, timezone
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
     import time
     from pathlib import Path
+
+    tashkent_tz = ZoneInfo("Asia/Tashkent")
+    now_tashkent = datetime.now(tashkent_tz)
 
     binding = db.query(TelegramUserBinding).filter(TelegramUserBinding.telegram_user_id == str(telegram_user_id)).first()
     emp = binding.employee if (binding and binding.employee) else None
@@ -920,7 +926,9 @@ async def telegram_checkin(
         liveness_score=liveness_score,
         liveness_status="REAL",
         attendance_source="telegram_webapp",
-        timestamp=datetime.now(timezone.utc),
+        latitude=latitude,
+        longitude=longitude,
+        timestamp=now_tashkent,
         status="normal"
     )
     db.add(log)

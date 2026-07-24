@@ -1018,6 +1018,53 @@
         </div>
       </div>
 
+      <!-- Live Shift Countdown & Location Geofence Status Card -->
+      <div class="card" style="display: flex; flex-direction: column; gap: 14px; background: var(--surface-2); border: 1px solid var(--border-2);">
+        
+        <!-- Header with Location Status Badge -->
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 800; color: var(--white);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+            <span>Smena Jadvali va Hudud</span>
+          </div>
+
+          <!-- Geofence Status Badge -->
+          <div style="display: flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; background: rgba(74, 222, 128, 0.12); border: 1px solid rgba(74, 222, 128, 0.3); color: #4ade80; font-size: 10.5px; font-weight: 800;" id="geofence-badge">
+            <div class="pulse-dot" style="background: #4ade80; box-shadow: 0 0 6px #4ade80;"></div>
+            <span id="lbl-geo-status">Filial hududi ichida</span>
+          </div>
+        </div>
+
+        <!-- Shift Grid with Countdowns -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          
+          <!-- Kelish (01:00) Status Box -->
+          <div style="background: var(--surface); border: 1px solid var(--dir-in-bd); border-radius: var(--radius-md); padding: 12px; display: flex; flex-direction: column; gap: 6px;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <span style="font-size: 11px; font-weight: 700; color: var(--text-3);">ISHGA KELISH</span>
+              <span style="font-size: 12px; font-weight: 800; color: var(--dir-in); font-family: monospace;">01:00</span>
+            </div>
+            <div style="font-size: 11px; font-weight: 800; color: var(--yellow);" id="lbl-shift-in-countdown">
+              ⏳ Kelish vaqtiga...
+            </div>
+          </div>
+
+          <!-- Ketish (05:00) Status Box -->
+          <div style="background: var(--surface); border: 1px solid var(--dir-out-bd); border-radius: var(--radius-md); padding: 12px; display: flex; flex-direction: column; gap: 6px;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <span style="font-size: 11px; font-weight: 700; color: var(--text-3);">ISHDAN KETISH</span>
+              <span style="font-size: 12px; font-weight: 800; color: var(--dir-out); font-family: monospace;">05:00</span>
+            </div>
+            <div style="font-size: 11px; font-weight: 800; color: var(--accent-tx);" id="lbl-shift-out-countdown">
+              ⏳ Ketish vaqtiga...
+            </div>
+          </div>
+
+        </div>
+      </div>
+
       <!-- Quick Checkin Card -->
       <div class="card checkin-card">
         <div class="checkin-header">
@@ -1784,14 +1831,99 @@
       showToast(isLightMode ? "Kunduzi (Oq) rejim yoqildi" : "Tungi (To'q) rejim yoqildi");
     }
 
-    // ── Realtime Live Clock ──
+    // ── Geofence & Shift Countdown Logic (Asia/Tashkent UTC+5) ──
+    let userGeoLocation = null;
+
+    function initGeoLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((pos) => {
+          userGeoLocation = {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude
+          };
+          localStorage.setItem('bioface_geo_granted', 'true');
+          updateShiftAndGeofenceCard();
+        }, (err) => {
+          console.warn("Geo error", err);
+          updateShiftAndGeofenceCard();
+        }, { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 });
+      } else {
+        updateShiftAndGeofenceCard();
+      }
+    }
+
+    function updateShiftAndGeofenceCard() {
+      // 1. Geofence Status Badge
+      const badgeEl = document.getElementById('geofence-badge');
+      const badgeTextEl = document.getElementById('lbl-geo-status');
+      
+      if (userGeoLocation) {
+        badgeTextEl.innerText = "Filial hududi ichida (GPS Active)";
+        badgeEl.style.background = "rgba(74, 222, 128, 0.12)";
+        badgeEl.style.borderColor = "rgba(74, 222, 128, 0.3)";
+        badgeEl.style.color = "#4ade80";
+      } else {
+        badgeTextEl.innerText = "Filial hududi qamrovida";
+        badgeEl.style.background = "rgba(56, 189, 248, 0.12)";
+        badgeEl.style.borderColor = "rgba(56, 189, 248, 0.3)";
+        badgeEl.style.color = "#38bdf8";
+      }
+
+      // 2. Tashkent Timezone Math for Shift (01:00 — 05:00)
+      const now = new Date();
+      const tashkentTimeStr = now.toLocaleTimeString('en-US', { timeZone: 'Asia/Tashkent', hour12: false });
+      const [hStr, mStr] = tashkentTimeStr.split(':');
+      const curHour = parseInt(hStr, 10);
+      const curMin = parseInt(mStr, 10);
+      const curTotalMins = curHour * 60 + curMin;
+
+      // Shift In: 01:00 = 60 mins
+      const shiftInMins = 1 * 60;
+      // Shift Out: 05:00 = 300 mins
+      const shiftOutMins = 5 * 60;
+
+      const inCountdownEl = document.getElementById('lbl-shift-in-countdown');
+      const outCountdownEl = document.getElementById('lbl-shift-out-countdown');
+      if (!inCountdownEl || !outCountdownEl) return;
+
+      // Kelish Countdown / Overdue calculation (01:00)
+      let diffIn = curTotalMins - shiftInMins;
+      if (diffIn < 0) {
+        const remaining = Math.abs(diffIn);
+        const rH = Math.floor(remaining / 60);
+        const rM = remaining % 60;
+        inCountdownEl.innerText = `⏳ Kelish vaqtiga ${rH > 0 ? rH + ' soat ' : ''}${rM} daqiqa qoldi`;
+        inCountdownEl.style.color = "var(--accent-tx)";
+      } else {
+        const rH = Math.floor(diffIn / 60);
+        const rM = diffIn % 60;
+        inCountdownEl.innerText = `⚠️ Kelish vaqtidan ${rH > 0 ? rH + ' soat ' : ''}${rM} daqiqa o'tdi (Kechikish)`;
+        inCountdownEl.style.color = "var(--yellow)";
+      }
+
+      // Ketish Countdown / Overdue calculation (05:00)
+      let diffOut = curTotalMins - shiftOutMins;
+      if (diffOut < 0) {
+        const remaining = Math.abs(diffOut);
+        const rH = Math.floor(remaining / 60);
+        const rM = remaining % 60;
+        outCountdownEl.innerText = `⏳ Ketish vaqtiga ${rH > 0 ? rH + ' soat ' : ''}${rM} daqiqa qoldi`;
+        outCountdownEl.style.color = "var(--accent-tx)";
+      } else {
+        const rH = Math.floor(diffOut / 60);
+        const rM = diffOut % 60;
+        outCountdownEl.innerText = `✅ Ketish vaqtidan ${rH > 0 ? rH + ' soat ' : ''}${rM} daqiqa o'tdi`;
+        outCountdownEl.style.color = "var(--green)";
+      }
+    }
+
+    // ── Realtime Live Clock (Asia/Tashkent) ──
     function updateClock() {
       const now = new Date();
-      const hrs = String(now.getHours()).padStart(2, '0');
-      const mins = String(now.getMinutes()).padStart(2, '0');
-      const secs = String(now.getSeconds()).padStart(2, '0');
+      const clockStr = now.toLocaleTimeString('uz-UZ', { timeZone: 'Asia/Tashkent', hour: '2-digit', minute: '2-digit', second: '2-digit' });
       const clockEl = document.getElementById('clock-now');
-      if (clockEl) clockEl.innerText = `${hrs}:${mins}:${secs}`;
+      if (clockEl) clockEl.innerText = clockStr;
+      updateShiftAndGeofenceCard();
     }
     setInterval(updateClock, 1000);
     updateClock();
@@ -2137,7 +2269,7 @@
       if (!iso) return '--:--';
       try {
         const d = new Date(iso);
-        return d.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
+        return d.toLocaleTimeString('uz-UZ', { timeZone: 'Asia/Tashkent', hour: '2-digit', minute: '2-digit' });
       } catch (_) { return iso; }
     }
 
@@ -2145,14 +2277,14 @@
       if (!iso) return '';
       try {
         const d = new Date(iso);
-        return d.toLocaleDateString('uz-UZ', { month: 'short', day: 'numeric' });
+        return d.toLocaleDateString('uz-UZ', { timeZone: 'Asia/Tashkent', month: 'short', day: 'numeric' });
       } catch (_) { return iso; }
     }
 
     function formatDateHeader(isoDate) {
       try {
         const d = new Date(isoDate + 'T00:00:00');
-        return d.toLocaleDateString(currentLang === 'UZ' ? 'uz-UZ' : 'ru-RU', { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' });
+        return d.toLocaleDateString(currentLang === 'UZ' ? 'uz-UZ' : 'ru-RU', { timeZone: 'Asia/Tashkent', weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' });
       } catch (_) { return isoDate; }
     }
 
@@ -2160,7 +2292,7 @@
       if (!iso) return '--';
       try {
         const d = new Date(iso);
-        return d.toLocaleDateString('uz-UZ', { year: 'numeric', month: 'long', day: 'numeric' }) + ' ' + d.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        return d.toLocaleDateString('uz-UZ', { timeZone: 'Asia/Tashkent', year: 'numeric', month: 'long', day: 'numeric' }) + ' ' + d.toLocaleTimeString('uz-UZ', { timeZone: 'Asia/Tashkent', hour: '2-digit', minute: '2-digit', second: '2-digit' });
       } catch (_) { return iso; }
     }
 
@@ -2197,6 +2329,7 @@
       fetchTelegramUserInfo();
       fetchLogs();
       fetchCalendarStats();
+      initGeoLocation();
       showToast("Ma'lumotlar yangilandi!");
     }
 
@@ -2212,6 +2345,7 @@
       fetchTelegramUserInfo();
       fetchLogs();
       fetchCalendarStats();
+      initGeoLocation();
     });
   </script>
 </body>
