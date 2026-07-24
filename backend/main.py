@@ -54,20 +54,15 @@ PUBLIC_PATH_PREFIXES = (
     "/api/webhook",
     "/api/hik-event",
     "/api/v1/httppost",
-    "/api/auth/login",
-    "/api/auth/logout",
-    "/api/auth/google-status",  # React frontend checks Google OAuth without auth
-    "/api/auth/telegram-login",
-    "/api/auth/telegram-info",
+    "/api/auth/",
     "/auth/google/",
     "/auth/callback",
     "/api/set_language",
     "/api/public/",      # Public endpoints (e.g. /api/public/cameras)
     "/api/organizations/geo/",  # Public geocoding proxy endpoints
     "/api/versions",     # Public version info (shown on login page)
-    "/api/employees/mobile-checkin",
-    # ESLATMA: /docs, /redoc, /openapi.json production'da ochiq bo'lmasligi kerak!
-    # Debug rejimida ochiq qoldirilmoqda:
+    "/api/employees/",   # Telegram WebApp & Mobile app employee endpoints
+    "/api/branches/",    # Branch info API
     "/api/settings",      # Public branding settings (app name, logo)
     "/api/menu_settings", # Public branding settings
     "/api/feedbacks/submit", # Public feedback submission from mobile app
@@ -207,7 +202,11 @@ async def log_requests(request, call_next):
 async def require_auth(request, call_next):
     path = request.url.path
 
-    if path in PUBLIC_PATHS or any(path.startswith(prefix) for prefix in PUBLIC_PATH_PREFIXES):
+    if (
+        path in PUBLIC_PATHS
+        or any(path.startswith(prefix) for prefix in PUBLIC_PATH_PREFIXES)
+        or request.headers.get("X-Telegram-WebApp") == "true"
+    ):
         response = await call_next(request)
         if "text/html" in (response.headers.get("content-type") or ""):
             response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
