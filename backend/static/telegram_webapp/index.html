@@ -2140,9 +2140,19 @@
       }
     }
 
+    function isSameDayTashkent(isoStr, compareDate) {
+      if (!isoStr) return false;
+      try {
+        const d1 = new Date(isoStr);
+        const d2 = compareDate || new Date();
+        const s1 = d1.toLocaleDateString('en-US', { timeZone: 'Asia/Tashkent' });
+        const s2 = d2.toLocaleDateString('en-US', { timeZone: 'Asia/Tashkent' });
+        return s1 === s2;
+      } catch (_) { return false; }
+    }
+
     function renderLogsUI() {
-      const todayStr = new Date().toISOString().split('T')[0];
-      const todayLogs = userLogs.filter(l => l.timestamp && l.timestamp.startsWith(todayStr));
+      const todayLogs = userLogs.filter(l => l.timestamp && isSameDayTashkent(l.timestamp));
 
       // 1. Render Checkin Times for Today (Both Home tab & Profile tab)
       const inLog = todayLogs.find(l => String(l.direction).includes('in') || String(l.direction).includes('entry'));
@@ -2182,7 +2192,8 @@
 
       const grouped = {};
       filteredLogs.forEach(l => {
-        const dayKey = l.timestamp.split('T')[0];
+        const d = new Date(l.timestamp);
+        const dayKey = d.toLocaleDateString('sv-SE', { timeZone: 'Asia/Tashkent' });
         if (!grouped[dayKey]) grouped[dayKey] = [];
         grouped[dayKey].push(l);
       });
@@ -2191,7 +2202,7 @@
       const sortedDays = Object.keys(grouped).sort((a,b) => b.localeCompare(a));
 
       sortedDays.forEach(dayStr => {
-        const isToday = dayStr === todayStr;
+        const isToday = isSameDayTashkent(dayStr + 'T12:00:00');
         const formattedDay = formatDateHeader(dayStr);
         
         historyHtml += `
