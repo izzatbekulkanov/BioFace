@@ -1618,6 +1618,7 @@
         try {
           const res = await fetch('/api/attendance/telegram-checkin', {
             method: 'POST',
+            headers: { 'X-Telegram-WebApp': 'true' },
             body: formData
           });
 
