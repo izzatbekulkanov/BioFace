@@ -3519,6 +3519,13 @@
   <canvas id="capture-canvas" width="640" height="480"></canvas>
 
   <script>
+    function _fetchWithTimeout(url, opts = {}, ms = 8000) {
+      return Promise.race([
+        fetch(url, opts),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('fetch timeout')), ms))
+      ]);
+    }
+
     // ─── Pre-built Intl formatters (creating these is expensive, cache them) ───
     const _fmtTime = {
       UZ: new Intl.DateTimeFormat('uz-UZ', { hour: '2-digit', minute: '2-digit' }),
@@ -5433,11 +5440,7 @@
       }
     }
 
-    const _fetchWithTimeout = (url, opts = {}, ms = 8000) =>
-      Promise.race([
-        fetch(url, opts),
-        new Promise((_, rej) => setTimeout(() => rej(new Error('fetch timeout')), ms))
-      ]);
+
 
     async function fetchEmployeeProfile(personalId) {
       try {
