@@ -35,7 +35,9 @@ async def add_permissions_policy_header(request, call_next):
     response.headers["Permissions-Policy"] = "camera=*, geolocation=*"
     # Xavfsizlik headerlari
     response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "DENY"
+    path = request.url.path
+    if not path.startswith("/static/telegram_webapp") and path not in {"/app", "/telegram-webapp"}:
+        response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     # HTTPS majburiy (Nginx orqali deploy qilingan)
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
@@ -72,6 +74,8 @@ PUBLIC_PATH_PREFIXES = (
 )
 
 PUBLIC_PATHS = frozenset({
+    "/app",
+    "/telegram-webapp",
     "/login",
     "/logout",
     "/favicon.ico",
@@ -440,6 +444,22 @@ async def serve_robots():
 @app.get("/og-image.png", include_in_schema=False)
 async def serve_og_image():
     return _serve_seo_file("og-image.png", "image/png")
+
+@app.get("/app", include_in_schema=False)
+@app.get("/telegram-webapp", include_in_schema=False)
+async def serve_telegram_webapp():
+    path = os.path.join(_BACKEND_STATIC, "telegram_webapp", "index.html")
+    if os.path.exists(path):
+        return FileResponse(
+            path,
+            media_type="text/html",
+            headers={
+                "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            }
+        )
+    return JSONResponse({"detail": "Telegram WebApp topilmadi"}, status_code=404)
 
 # --- Frontend SPA Integration ---
 
