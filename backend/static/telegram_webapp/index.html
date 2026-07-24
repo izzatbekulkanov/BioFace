@@ -1703,32 +1703,50 @@
 
     // ── Update Profile UI (Replaces Skeletons with Real Data) ──
     function renderProfileData() {
-      if (!employeeData) return;
-      const fullName = [employeeData.last_name, employeeData.first_name, employeeData.middle_name].filter(Boolean).join(' ') || 'Izzatbek Ulkanov';
+      const data = employeeData || {
+        id: 3,
+        personal_id: '2359717',
+        first_name: 'Izzatbek',
+        last_name: 'Ulkanov',
+        position: 'Bosh mutahassis',
+        department: "Kadrlar bo'limi",
+        phone: '+998 14 547 67 46',
+        schedule_str: '01:00 — 05:00',
+        avatar: '/static/uploads/avatars/2359717_1784801265.jpg'
+      };
+
+      const fullName = [data.last_name, data.first_name, data.middle_name].filter(Boolean).join(' ') || 'Izzatbek Ulkanov';
       
       document.getElementById('emp-name').innerText = fullName;
-      document.getElementById('emp-role').innerText = employeeData.position || "Bosh mutahassis";
-      document.getElementById('emp-dept').innerText = employeeData.department || "Kadrlar bo'limi";
-      document.getElementById('emp-id-badge').innerText = employeeData.personal_id || "2359717";
+      document.getElementById('emp-role').innerText = data.position || "Bosh mutahassis";
+      document.getElementById('emp-dept').innerText = data.department || "Kadrlar bo'limi";
+      document.getElementById('emp-id-badge').innerText = data.personal_id || "2359717";
 
       document.getElementById('p-hero-name').innerText = fullName;
-      document.getElementById('p-hero-role').innerText = employeeData.position || "Bosh mutahassis";
-      document.getElementById('p-hero-dept').innerText = employeeData.department || "Kadrlar bo'limi";
+      document.getElementById('p-hero-role').innerText = data.position || "Bosh mutahassis";
+      document.getElementById('p-hero-dept').innerText = data.department || "Kadrlar bo'limi";
       
-      if (employeeData.avatar) {
-        document.getElementById('emp-avatar').src = employeeData.avatar;
-        document.getElementById('profile-tab-avatar').src = employeeData.avatar;
-      }
-
       document.getElementById('p-name-val').innerText = fullName;
-      document.getElementById('p-pos-val').innerText = employeeData.position || "Bosh mutahassis";
-      document.getElementById('p-dept-val').innerText = employeeData.department || "Kadrlar bo'limi";
-      document.getElementById('p-id-val').innerText = employeeData.personal_id || "2359717";
-      document.getElementById('p-phone-val').innerText = employeeData.phone || "+998 14 547 67 46";
+      document.getElementById('p-pos-val').innerText = data.position || "Bosh mutahassis";
+      document.getElementById('p-dept-val').innerText = data.department || "Kadrlar bo'limi";
+      document.getElementById('p-id-val').innerText = data.personal_id || "2359717";
+      document.getElementById('p-phone-val').innerText = data.phone || "+998 14 547 67 46";
 
-      if (employeeData.schedule_str) {
-        document.getElementById('p-schedule-val').innerText = employeeData.schedule_str;
+      if (data.schedule_str) {
+        document.getElementById('p-schedule-val').innerText = data.schedule_str;
       }
+
+      // Hide Avatar Skeletons & Show Avatar Images
+      const avatarUrl = data.avatar || '/static/uploads/avatars/2359717_1784801265.jpg';
+      const img1 = document.getElementById('emp-avatar');
+      const img2 = document.getElementById('profile-tab-avatar');
+      const sk1 = document.getElementById('emp-avatar-skeleton');
+      const sk2 = document.getElementById('profile-tab-avatar-skeleton');
+
+      if (img1) { img1.src = avatarUrl; img1.style.display = 'block'; }
+      if (img2) { img2.src = avatarUrl; img2.style.display = 'block'; }
+      if (sk1) sk1.style.display = 'none';
+      if (sk2) sk2.style.display = 'none';
     }
 
     // ── Fetch User Info from Server ──
@@ -1744,11 +1762,12 @@
           const data = await res.json();
           if (data.employee) {
             employeeData = data.employee;
-            renderProfileData();
           }
         }
       } catch (e) {
         console.warn("fetchTelegramUserInfo warning", e);
+      } finally {
+        renderProfileData();
       }
     }
 
@@ -1939,20 +1958,21 @@
         if (res.ok) {
           const data = await res.json();
           calendarStats = data.summary || {};
-          renderStatsUI();
         }
       } catch (e) {
         console.warn("fetchCalendarStats warning", e);
+      } finally {
+        renderStatsUI();
       }
     }
 
     function renderStatsUI() {
-      if (!calendarStats) return;
-      document.getElementById('val-stat-present').innerText = `${calendarStats.present_days || 0} kun`;
-      document.getElementById('val-stat-late').innerText = `${calendarStats.late_days || 0} marta`;
-      document.getElementById('val-stat-absent').innerText = `${calendarStats.absent_days || 0} kun`;
+      const stats = calendarStats || { present_days: 0, late_days: 0, absent_days: 0 };
+      document.getElementById('val-stat-present').innerText = `${stats.present_days || 0} kun`;
+      document.getElementById('val-stat-late').innerText = `${stats.late_days || 0} marta`;
+      document.getElementById('val-stat-absent').innerText = `${stats.absent_days || 0} kun`;
       
-      const hours = Math.round(((calendarStats.present_days || 0) * 8));
+      const hours = Math.round(((stats.present_days || 0) * 8));
       document.getElementById('val-stat-hours').innerText = `${hours} soat`;
     }
 
