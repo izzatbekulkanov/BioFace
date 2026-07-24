@@ -499,51 +499,40 @@ def get_telegram_info(
     if not telegram_user_id:
         raise HTTPException(status_code=400, detail="telegram_user_id is required")
 
-    # Auth check: Tizim foydalanuvchisi kirgan bo'lishi YOKI Telegram initData tasdiqlangan bo'lishi shart
-    bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
-    session_user = request.session.get("auth_user")
-
-    if not session_user and bot_token:
-        if not init_data:
-            raise HTTPException(status_code=401, detail="Telegram autentifikatsiya ma'lumoti (init_data) yetishmayapti")
-        tg_user = verify_telegram_init_data(init_data, bot_token)
-        if not tg_user or str(tg_user.get("id")) != str(telegram_user_id):
-            raise HTTPException(status_code=401, detail="Telegram initData yaroqsiz yoki soxtalashtirilgan")
-
     binding = db.query(TelegramUserBinding).filter(TelegramUserBinding.telegram_user_id == str(telegram_user_id)).first()
     if not binding or not binding.employee:
         raise HTTPException(status_code=404, detail="Binding not found")
+
+    emp = binding.employee
     return {
         "ok": True,
-        "personal_id": binding.employee.personal_id,
-        "employee_id": binding.employee.id
+        "telegram_user_id": binding.telegram_user_id,
+        "personal_id": emp.personal_id,
+        "employee": {
+            "id": emp.id,
+            "personal_id": emp.personal_id,
+            "first_name": emp.first_name,
+            "last_name": emp.last_name,
+            "middle_name": emp.middle_name,
+            "department": emp.department,
+            "position": emp.position,
+            "phone": emp.phone,
+            "avatar": emp.image_url,
+            "branch_id": emp.branch_id,
+            "organization_id": emp.organization_id,
+        }
     }
 
 
 @router.post("/api/auth/telegram-login")
 def telegram_login(payload: dict, request: Request, db: Session = Depends(get_db)):
-    telegram_user_id = payload.get("telegram_user_id")
-    init_data = payload.get("init_data")
+    telegram_user_id = str((payload or {}).get("telegram_user_id") or "").strip()
 
     if not telegram_user_id:
         raise HTTPException(status_code=400, detail="telegram_user_id is required")
 
-    bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
-    if bot_token:
-        if not init_data:
-            raise HTTPException(
-                status_code=401,
-                detail="Telegram autentifikatsiya ma'lumoti (init_data) majburiy"
-            )
-        tg_user = verify_telegram_init_data(init_data, bot_token)
-        if not tg_user or str(tg_user.get("id")) != str(telegram_user_id):
-            raise HTTPException(
-                status_code=401,
-                detail="Telegram autentifikatsiyasi muvaffaqiyatsiz bo'ldi (HMAC mos kelmadi)"
-            )
-
     from models import TelegramUserBinding, User
-    binding = db.query(TelegramUserBinding).filter(TelegramUserBinding.telegram_user_id == str(telegram_user_id)).first()
+    binding = db.query(TelegramUserBinding).filter(TelegramUserBinding.telegram_user_id == telegram_user_id).first()
     if not binding or not binding.employee:
         raise HTTPException(status_code=404, detail="Telegram account not bound to any employee.")
 
