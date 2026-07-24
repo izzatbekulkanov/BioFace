@@ -166,7 +166,8 @@ def build_main_menu_keyboard(language: str | None, telegram_user_id: str | None 
     import os
     lang = normalize_language(language)
     public_url = os.getenv("PUBLIC_WEB_BASE_URL", "https://bioface.uz").rstrip('/')
-    webapp_url = f"{public_url}/static/telegram_webapp/index.html?v=2.2.1"
+    import time
+    webapp_url = f"{public_url}/static/telegram_webapp/index.html?v={int(time.time())}"
     if telegram_user_id:
         webapp_url += f"&tg_id={telegram_user_id}"
     return ReplyKeyboardMarkup(
