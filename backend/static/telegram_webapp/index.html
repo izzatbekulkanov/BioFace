@@ -5271,12 +5271,17 @@
         // 1. Get Telegram User ID if available
         let telegramUserId = extractTelegramUserId();
         let activeBindingPersonalId = null;
+        // Get raw initData for HMAC verification on backend
+        const tgInitData = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData)
+          ? window.Telegram.WebApp.initData : null;
 
         // Verify if the Telegram binding is still active
         if (telegramUserId) {
           try {
+            const infoUrl = `/api/auth/telegram-info?telegram_user_id=${telegramUserId}` +
+              (tgInitData ? `&init_data=${encodeURIComponent(tgInitData)}` : '');
             const infoResponse = await Promise.race([
-              fetch(`/api/auth/telegram-info?telegram_user_id=${telegramUserId}`),
+              fetch(infoUrl),
               new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000))
             ]);
             if (infoResponse.status === 200) {
@@ -5346,7 +5351,10 @@
                   'Content-Type': 'application/json',
                   'X-Telegram-WebApp': 'true'
                 },
-                body: JSON.stringify({ telegram_user_id: telegramUserId.toString() })
+                body: JSON.stringify({
+                  telegram_user_id: telegramUserId.toString(),
+                  ...(tgInitData ? { init_data: tgInitData } : {})
+                })
               }),
               new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000))
             ]);
@@ -5521,6 +5529,7 @@
             } catch (_) {}
 
             updateProfileDetails();
+            hideHomeSkeleton(); // reveal home content now that data is ready
             await fetchBranchDetails(employeeData.branch_id);
             await fetchTodayTimeLogs(true);
             await fetchDashboardStats();
