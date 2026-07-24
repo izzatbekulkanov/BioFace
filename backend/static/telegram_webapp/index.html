@@ -1585,8 +1585,14 @@
       closeLivenessModal();
     }
 
+    let currentLivenessStep = 1;
+    let motionInterval = null;
+    let prevFrameData = null;
+
     function stopLivenessStream() {
       if (livenessTimer) clearTimeout(livenessTimer);
+      if (motionInterval) clearInterval(motionInterval);
+      prevFrameData = null;
       if (livenessStream) {
         livenessStream.getTracks().forEach(track => track.stop());
         livenessStream = null;
@@ -1598,11 +1604,56 @@
       document.getElementById('liveness-modal').classList.remove('active');
     }
 
-    let currentLivenessStep = 1;
-
     function runLivenessStateMachine() {
       currentLivenessStep = 1;
       updateLivenessStepUI();
+      startLivenessMotionDetection();
+    }
+
+    function startLivenessMotionDetection() {
+      if (motionInterval) clearInterval(motionInterval);
+      prevFrameData = null;
+
+      const videoEl = document.getElementById('liveness-stream-video');
+      if (!videoEl) return;
+
+      const motionCanvas = document.createElement('canvas');
+      motionCanvas.width = 80;
+      motionCanvas.height = 80;
+      const mCtx = motionCanvas.getContext('2d');
+
+      motionInterval = setInterval(() => {
+        if (!livenessStream || !videoEl.videoWidth) return;
+
+        mCtx.drawImage(videoEl, 0, 0, 80, 80);
+        const currData = mCtx.getImageData(0, 0, 80, 80).data;
+
+        if (prevFrameData) {
+          let leftDiff = 0;
+          let rightDiff = 0;
+
+          for (let y = 0; y < 80; y++) {
+            for (let x = 0; x < 80; x++) {
+              const idx = (y * 80 + x) * 4;
+              const diff = Math.abs(currData[idx] - prevFrameData[idx]);
+              if (diff > 25) {
+                if (x < 40) leftDiff += diff;
+                else rightDiff += diff;
+              }
+            }
+          }
+
+          const totalDiff = leftDiff + rightDiff;
+
+          // Motion detected -> Auto advance step without needing button clicks
+          if ((currentLivenessStep === 1 || currentLivenessStep === 2) && totalDiff > 3200) {
+            if (window.navigator && window.navigator.vibrate) window.navigator.vibrate(50);
+            nextLivenessStep();
+          }
+        }
+
+        prevFrameData = currData;
+      }, 160);
     }
 
     function updateLivenessStepUI() {
@@ -1611,23 +1662,27 @@
       const arrowRight = document.getElementById('arrow-right-indicator');
       const arrowLeft = document.getElementById('arrow-left-indicator');
       const btnText = document.getElementById('lbl-liveness-action-text');
+      const guideDesc = document.getElementById('liveness-guide-desc');
       if (!stepText || !ring || !btnText) return;
 
       if (currentLivenessStep === 1) {
         stepText.innerText = "1-BOSQICH: Yuzingizni O'NGGA buring";
-        btnText.innerText = "O'NGGA BURILDIM";
+        btnText.innerText = "BURILDIM (Keyingisi)";
+        if (guideDesc) guideDesc.innerText = "Yuzingizni o'ngga buring, harakat avtomatik aniqlanadi.";
         ring.style.borderColor = "#fbbf24";
         if (arrowRight) arrowRight.style.display = 'flex';
         if (arrowLeft) arrowLeft.style.display = 'none';
       } else if (currentLivenessStep === 2) {
         stepText.innerText = "2-BOSQICH: Yuzingizni CHAPGA buring";
-        btnText.innerText = "CHAPGA BURILDIM";
+        btnText.innerText = "BURILDIM (Keyingisi)";
+        if (guideDesc) guideDesc.innerText = "Yuzingizni chapga buring, harakat avtomatik aniqlanadi.";
         ring.style.borderColor = "#fbbf24";
         if (arrowRight) arrowRight.style.display = 'none';
         if (arrowLeft) arrowLeft.style.display = 'flex';
       } else if (currentLivenessStep === 3) {
         stepText.innerText = "3-BOSQICH: Yuzingizni markazga to'g'rilang";
         btnText.innerText = "DAVOMATNI TASDIQLASH";
+        if (guideDesc) guideDesc.innerText = "Ajoyib! Endi yuzingizni kameraga tik tuting.";
         ring.style.borderColor = "#4ade80";
         if (arrowRight) arrowRight.style.display = 'none';
         if (arrowLeft) arrowLeft.style.display = 'none';
@@ -1642,6 +1697,7 @@
         currentLivenessStep = 3;
         updateLivenessStepUI();
       } else if (currentLivenessStep === 3) {
+        if (motionInterval) clearInterval(motionInterval);
         document.getElementById('liveness-step-text').innerText = "4-BOSQICH: Liveness AI tasdiqlanmoqda...";
         document.getElementById('lbl-liveness-action-text').innerText = "YUKLANMOQDA...";
         captureAndPostCheckIn();
