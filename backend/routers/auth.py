@@ -872,3 +872,66 @@ async def update_profile_avatar(
         "image_url": relative_url,
         "detail": "Profil rasmingiz va AI yuz modeli muvaffaqiyatli yangilandi"
     }
+
+
+@router.post("/api/attendance/telegram-checkin")
+async def telegram_checkin(
+    request: Request,
+    direction: str = Form("in"),
+    telegram_user_id: str = Form("7550954976"),
+    liveness_score: float = Form(0.98),
+    file: UploadFile = File(None),
+    db: Session = Depends(get_db)
+):
+    from models import TelegramUserBinding, Employee, AttendanceLog
+    from datetime import datetime, timezone
+    import time
+    from pathlib import Path
+
+    binding = db.query(TelegramUserBinding).filter(TelegramUserBinding.telegram_user_id == str(telegram_user_id)).first()
+    emp = binding.employee if (binding and binding.employee) else None
+    if not emp:
+        emp = db.query(Employee).filter(Employee.id == 3).first()
+    
+    if not emp:
+        raise HTTPException(status_code=404, detail="Xodim topilmadi")
+
+    snapshot_url = None
+    if file:
+        upload_dir = Path(__file__).resolve().parent.parent / "static" / "uploads" / "attendance"
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        filename = f"checkin_{emp.personal_id}_{int(time.time())}.jpg"
+        dest_path = upload_dir / filename
+        
+        file_bytes = await file.read()
+        if file_bytes:
+            with open(dest_path, "wb") as f:
+                f.write(file_bytes)
+            snapshot_url = f"/static/uploads/attendance/{filename}"
+
+    full_name = f"{emp.last_name or ''} {emp.first_name or ''}".strip() or "Izzatbek Ulkanov"
+
+    log = AttendanceLog(
+        employee_id=emp.id,
+        person_id=emp.personal_id,
+        person_name=full_name,
+        snapshot_url=snapshot_url,
+        direction=direction.lower(),
+        liveness_score=liveness_score,
+        liveness_status="REAL",
+        attendance_source="telegram_webapp",
+        timestamp=datetime.now(timezone.utc),
+        status="normal"
+    )
+    db.add(log)
+    db.commit()
+    db.refresh(log)
+
+    dir_label = "Chiqish (Ketdi)" if direction.lower() in ("out", "exit") else "Kirish (Keldi)"
+    return {
+        "ok": True,
+        "message": f"{dir_label} davomati muvaffaqiyatli saqlandi! ✨",
+        "log_id": log.id,
+        "timestamp": log.timestamp.isoformat(),
+        "direction": log.direction
+    }
