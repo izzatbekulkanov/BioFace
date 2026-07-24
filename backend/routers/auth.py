@@ -552,9 +552,32 @@ def telegram_login(payload: dict, request: Request, db: Session = Depends(get_db
     auth_user = _build_auth_user(user, db=db)
     request.session["auth_user"] = auth_user
 
+    emp = binding.employee
     from utils.jwt_utils import create_access_token
     token = create_access_token(data={"sub": user.name})
-    return {"ok": True, "token": token, "user": auth_user}
+    return {
+        "ok": True,
+        "token": token,
+        "user": auth_user,
+        "employee": {
+            "id": emp.id,
+            "uuid": emp.uuid,
+            "personal_id": emp.personal_id,
+            "first_name": emp.first_name,
+            "last_name": emp.last_name,
+            "middle_name": emp.middle_name,
+            "full_name": f"{emp.last_name or ''} {emp.first_name or ''} {emp.middle_name or ''}".strip(),
+            "department": emp.department,
+            "position": emp.position,
+            "phone": emp.phone,
+            "avatar": emp.image_url,
+            "branch_id": emp.branch_id,
+            "organization_id": emp.organization_id,
+            "start_time": emp.start_time,
+            "end_time": emp.end_time,
+            "salary": emp.salary,
+        }
+    }
 
 
 

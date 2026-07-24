@@ -5251,9 +5251,17 @@
         const debugElem = document.getElementById('lbl-unreg-debug');
         if (debugElem) debugElem.innerText = "Debug: Tekshirilmoqda...";
 
+        // 1. Get Telegram User ID if available
+        let telegramUserId = extractTelegramUserId();
+
+        // If user is opening WebApp from Telegram, clear stale logged_out flag
+        if (telegramUserId) {
+          localStorage.removeItem('logged_out');
+        }
+
         // Check if user has explicitly logged out
         const isLoggedOut = localStorage.getItem('logged_out') === 'true';
-        if (isLoggedOut) {
+        if (isLoggedOut && !telegramUserId) {
           token = null;
           localStorage.removeItem('bioface_token');
           document.getElementById('unregistered-message').style.display = 'none';
@@ -5262,8 +5270,6 @@
           return;
         }
 
-        // 1. Get Telegram User ID if available
-        let telegramUserId = extractTelegramUserId();
         let activeBindingPersonalId = null;
         // Get raw initData for HMAC verification on backend
         const tgInitData = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData)
@@ -5283,6 +5289,7 @@
               activeBindingPersonalId = infoData.personal_id;
               if (infoData.employee) {
                 window._initialEmployeeData = infoData.employee;
+                employeeData = infoData.employee;
               }
             } else {
               console.warn("Telegram info check non-200:", infoResponse.status);
@@ -5355,9 +5362,13 @@
               if (resData.token) {
                 token = resData.token;
                 localStorage.setItem('bioface_token', token);
-                employeeData = null; branchData = null; allLogs = [];
+                branchData = null; allLogs = [];
                 currentMonthAttendance = null;
                 invalidateAllCaches();
+                if (resData.employee) {
+                  window._initialEmployeeData = resData.employee;
+                  employeeData = resData.employee;
+                }
                 await fetchEmployeeProfile(resData.user.name);
                 switchView('portal-view');
                 switchTab('home');
