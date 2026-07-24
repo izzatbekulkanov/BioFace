@@ -476,17 +476,27 @@
     }
 
     .btn-in {
-      background: var(--dir-in-bg);
-      color: var(--dir-in);
-      border: 1px solid var(--dir-in-bd);
-      box-shadow: 0 4px 16px rgba(56, 189, 248, 0.12);
+      background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
+      color: #ffffff !important;
+      border: 1.5px solid #34d399 !important;
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4) !important;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.3);
     }
 
     .btn-out {
-      background: var(--dir-out-bg);
-      color: var(--dir-out);
-      border: 1px solid var(--dir-out-bd);
-      box-shadow: 0 4px 16px rgba(251, 146, 60, 0.12);
+      background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%) !important;
+      color: #ffffff !important;
+      border: 1.5px solid #fbbf24 !important;
+      box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4) !important;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    }
+
+    .btn-checkin.disabled {
+      background: linear-gradient(135deg, #334155 0%, #475569 100%) !important;
+      border: 1.5px solid #64748b !important;
+      color: #94a3b8 !important;
+      box-shadow: none !important;
+      opacity: 0.85 !important;
     }
 
     .btn-label-wrap {
@@ -1545,8 +1555,28 @@
       img.style.display = 'block';
     }
 
+    let hasCheckedInToday = false;
+    let hasCheckedOutToday = false;
+
     // ── Interactive Liveness Check-In / Check-Out Handlers ──
     async function handleCheckIn(type) {
+      // 1. Single Check-In / Check-Out per day rule
+      if (type === 'in' && hasCheckedInToday) {
+        showToast("Siz bugun KELDIM (Kirish) davomatini allaqachon topshirgansiz!");
+        return;
+      }
+      if (type === 'out' && hasCheckedOutToday) {
+        showToast("Siz bugun KETDIM (Chiqish) davomatini allaqachon topshirgansiz!");
+        return;
+      }
+
+      // 2. Geofence / Organization Territory Rule
+      if (!userGeoLocation) {
+        initGeoLocation();
+        showToast("❌ Davomat topshirish uchun Filial (Tashkilot) hududida bo'lishingiz shart!");
+        return;
+      }
+
       livenessDirection = type;
       openLivenessModal();
     }
@@ -2162,8 +2192,10 @@
         document.getElementById('p-schedule-val').innerText = data.schedule_str;
       }
 
-      // Hide Avatar Skeletons & Show Avatar Images
-      const avatarUrl = data.avatar || '/static/uploads/avatars/2359717_1784801265.jpg';
+      // Hide Avatar Skeletons & Show Avatar Images (with cache buster query)
+      let rawAvatar = data.avatar || '/static/uploads/avatars/2359717_1784801265.jpg';
+      const avatarUrl = rawAvatar.includes('v=') ? rawAvatar : (rawAvatar + (rawAvatar.includes('?') ? '&' : '?') + 'v=' + Date.now());
+      
       const img1 = document.getElementById('emp-avatar');
       const img2 = document.getElementById('profile-tab-avatar');
       const sk1 = document.getElementById('emp-avatar-skeleton');
@@ -2232,11 +2264,35 @@
       const inLog = todayLogs.find(l => String(l.direction).includes('in') || String(l.direction).includes('entry'));
       const outLog = todayLogs.find(l => String(l.direction).includes('out') || String(l.direction).includes('exit'));
 
+      hasCheckedInToday = !!inLog;
+      hasCheckedOutToday = !!outLog;
+
       const inTimeStr = inLog ? formatTimeStr(inLog.timestamp) : '--:--';
       const outTimeStr = outLog ? formatTimeStr(outLog.timestamp) : '--:--';
 
       document.getElementById('lbl-in-time').innerText = inTimeStr;
       document.getElementById('lbl-out-time').innerText = outTimeStr;
+
+      const btnIn = document.querySelector('.btn-in');
+      const btnOut = document.querySelector('.btn-out');
+      const btnInLabel = document.getElementById('btn-in-label');
+      const btnOutLabel = document.getElementById('btn-out-label');
+
+      if (hasCheckedInToday) {
+        if (btnInLabel) btnInLabel.innerText = "KELDIM (Bajarildi)";
+        if (btnIn) btnIn.classList.add('disabled');
+      } else {
+        if (btnInLabel) btnInLabel.innerText = "KELDIM";
+        if (btnIn) btnIn.classList.remove('disabled');
+      }
+
+      if (hasCheckedOutToday) {
+        if (btnOutLabel) btnOutLabel.innerText = "KETDIM (Bajarildi)";
+        if (btnOut) btnOut.classList.add('disabled');
+      } else {
+        if (btnOutLabel) btnOutLabel.innerText = "KETDIM";
+        if (btnOut) btnOut.classList.remove('disabled');
+      }
 
       // Update Profile Tab Real Times
       document.getElementById('p-real-in-time').innerText = inTimeStr;
