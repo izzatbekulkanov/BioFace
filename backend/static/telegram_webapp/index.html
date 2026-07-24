@@ -14,7 +14,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
   <style>
-    /* ── BioFace Web Admin Theme Matching ── */
+    /* ── BioFace Web Admin Theme (100% Identical to bioface.uz System Design) ── */
     :root {
       --bg:          #0d0d0d;
       --nav:         #0f172a;
@@ -59,7 +59,7 @@
       --font:        'Inter', system-ui, -apple-system, sans-serif;
     }
 
-    /* ── Light Mode Variables ── */
+    /* ── Light Mode Variables (Identical to [data-theme="light"] in index.css) ── */
     body.light-mode {
       --bg:          #f3f2f1;
       --nav:         #0f172a;
@@ -1090,7 +1090,7 @@
           </div>
           <div style="display: flex; justify-content: space-between;">
             <span style="color: var(--text-3);" id="lbl-p-schedule">Ish jadvali (Smena)</span>
-            <strong id="p-schedule-val" style="color: var(--green);">09:00 — 18:00</strong>
+            <strong id="p-schedule-val" style="color: var(--green);">01:00 — 05:00</strong>
           </div>
         </div>
       </div>
@@ -1162,6 +1162,7 @@
       position: 'Bosh mutahassis',
       department: "Kadrlar bo'limi",
       phone: '+998 14 547 67 46',
+      schedule_str: '01:00 — 05:00',
       avatar: '/static/uploads/avatars/2359717_1784801265.jpg'
     };
     let userLogs = [];
@@ -1433,6 +1434,10 @@
       document.getElementById('p-dept-val').innerText = employeeData.department || "Kadrlar bo'limi";
       document.getElementById('p-id-val').innerText = employeeData.personal_id || "2359717";
       document.getElementById('p-phone-val').innerText = employeeData.phone || "+998 14 547 67 46";
+
+      if (employeeData.schedule_str) {
+        document.getElementById('p-schedule-val').innerText = employeeData.schedule_str;
+      }
     }
 
     // ── Fetch User Info from Server ──
@@ -1447,7 +1452,7 @@
         if (res.ok) {
           const data = await res.json();
           if (data.employee) {
-            employeeData = data.employee;
+            employeeData = Object.assign(employeeData, data.employee);
             renderProfileData();
           }
         }

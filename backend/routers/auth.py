@@ -504,6 +504,12 @@ def get_telegram_info(
         raise HTTPException(status_code=404, detail="Binding not found")
 
     emp = binding.employee
+    sched_str = "01:00 — 05:00"
+    if emp.schedule_id:
+        sched = db.query(Schedule).filter(Schedule.id == emp.schedule_id).first()
+        if sched and sched.start_time and sched.end_time:
+            sched_str = f"{sched.start_time} — {sched.end_time}"
+
     return {
         "ok": True,
         "telegram_user_id": binding.telegram_user_id,
@@ -518,6 +524,7 @@ def get_telegram_info(
             "position": emp.position,
             "phone": emp.phone,
             "avatar": emp.image_url,
+            "schedule_str": sched_str,
             "branch_id": emp.branch_id,
             "organization_id": emp.organization_id,
         }
