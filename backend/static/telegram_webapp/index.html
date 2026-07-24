@@ -4476,51 +4476,47 @@
       const lblUnregDesc = document.getElementById('lbl-unreg-desc');
       if (lblUnregDesc) lblUnregDesc.innerHTML = lang.unreg_desc;
       
+      const setElemText = (id, text) => {
+        const el = document.getElementById(id);
+        if (el && text !== undefined) el.innerText = text;
+      };
+
       // Home Tab
-      document.getElementById('lbl-time-in').innerText = lang.time_in;
-      document.getElementById('lbl-time-out').innerText = lang.time_out;
-      document.getElementById('btn-checkin-in-lbl').innerText = lang.btn_in;
-      document.getElementById('btn-checkin-in-sub').innerText = lang.btn_in_sub;
-      document.getElementById('btn-checkin-out-lbl').innerText = lang.btn_out;
-      document.getElementById('btn-checkin-out-sub').innerText = lang.btn_out_sub;
+      setElemText('lbl-time-in', lang.time_in);
+      setElemText('lbl-time-out', lang.time_out);
+      setElemText('btn-checkin-in-lbl', lang.btn_in);
+      setElemText('btn-checkin-in-sub', lang.btn_in_sub);
+      setElemText('btn-checkin-out-lbl', lang.btn_out);
+      setElemText('btn-checkin-out-sub', lang.btn_out_sub);
       
       // History Tab
-      document.getElementById('lbl-history-title').innerText = lang.history_title;
+      setElemText('lbl-history-title', lang.history_title);
       
       // Profile Tab
-      document.getElementById('lbl-prof-id').innerText = lang.prof_id;
-      document.getElementById('lbl-prof-phone').innerText = lang.prof_phone;
-      document.getElementById('lbl-prof-branch').innerText = lang.prof_branch;
-      document.getElementById('lbl-prof-time').innerText = lang.prof_time;
-      document.getElementById('lbl-prof-dept').innerText = lang.prof_dept || "Bo'lim";
-      document.getElementById('lbl-prof-pos').innerText = lang.prof_pos || "Lavozim";
-      document.getElementById('lbl-prof-salary').innerText = lang.prof_salary || "Oylik maosh";
+      setElemText('lbl-prof-id', lang.prof_id);
+      setElemText('lbl-prof-phone', lang.prof_phone);
+      setElemText('lbl-prof-branch', lang.prof_branch);
+      setElemText('lbl-prof-time', lang.prof_time);
+      setElemText('lbl-prof-dept', lang.prof_dept || "Bo'lim");
+      setElemText('lbl-prof-pos', lang.prof_pos || "Lavozim");
+      setElemText('lbl-prof-salary', lang.prof_salary || "Oylik maosh");
       
-      const lblProfTheme = document.getElementById('lbl-profile-theme');
-      if (lblProfTheme) lblProfTheme.innerText = lang.dropdown_theme;
-      const lblProfChangeAvatar = document.getElementById('lbl-profile-change-avatar');
-      if (lblProfChangeAvatar) lblProfChangeAvatar.innerText = lang.dropdown_change_avatar;
-      const lblProfLogoutBtn = document.getElementById('lbl-profile-logout-btn');
-      if (lblProfLogoutBtn) lblProfLogoutBtn.innerText = lang.prof_logout;
+      setElemText('lbl-profile-theme', lang.dropdown_theme);
+      setElemText('lbl-profile-change-avatar', lang.dropdown_change_avatar);
+      setElemText('lbl-profile-logout-btn', lang.prof_logout);
 
       // Salary Estimator Card
-      const lblEstTitle = document.getElementById('lbl-salary-estimator-title');
-      if (lblEstTitle) lblEstTitle.innerText = lang.est_title || "Maosh va jarimalar (Estimator)";
-      const lblEstBase = document.getElementById('lbl-est-base');
-      if (lblEstBase) lblEstBase.innerText = lang.est_base || "Asosiy oylik:";
-      const lblEstAbsent = document.getElementById('lbl-est-absent');
-      if (lblEstAbsent) lblEstAbsent.innerText = lang.est_absent || "Kelmagan kunlar jarimasi:";
-      const lblEstLate = document.getElementById('lbl-est-late');
-      if (lblEstLate) lblEstLate.innerText = lang.est_late || "Kechikishlar jarimasi:";
-      const lblEstMissed = document.getElementById('lbl-est-missed');
-      if (lblEstMissed) lblEstMissed.innerText = lang.est_missed || "Kam ishlangan vaqt jarimasi:";
-      const lblEstNet = document.getElementById('lbl-est-net');
-      if (lblEstNet) lblEstNet.innerText = lang.est_net || "Jami to'lanadigan maosh:";
+      setElemText('lbl-salary-estimator-title', lang.est_title || "Maosh va jarimalar (Estimator)");
+      setElemText('lbl-est-base', lang.est_base || "Asosiy oylik:");
+      setElemText('lbl-est-absent', lang.est_absent || "Kelmagan kunlar jarimasi:");
+      setElemText('lbl-est-late', lang.est_late || "Kechikishlar jarimasi:");
+      setElemText('lbl-est-missed', lang.est_missed || "Kam ishlangan vaqt jarimasi:");
+      setElemText('lbl-est-net', lang.est_net || "Jami to'lanadigan maosh:");
       
       // Navigation
-      document.getElementById('nav-lbl-home').innerText = lang.nav_home;
-      document.getElementById('nav-lbl-history').innerText = lang.nav_history;
-      document.getElementById('nav-lbl-profile').innerText = lang.nav_profile;
+      setElemText('nav-lbl-home', lang.nav_home);
+      setElemText('nav-lbl-history', lang.nav_history);
+      setElemText('nav-lbl-profile', lang.nav_profile);
       
       // Camera
       const overlayTitle = document.getElementById('camera-overlay-title');
@@ -4532,13 +4528,11 @@
         if (overlayTitle) overlayTitle.innerText = lang.camera_title;
         if (cameraDesc) cameraDesc.innerText = lang.camera_desc;
       }
-      const lblAvatarCapture = document.getElementById('lbl-avatar-capture-btn');
-      if (lblAvatarCapture) lblAvatarCapture.innerText = lang.btn_capture_avatar;
-      const lblAvatarGallery = document.getElementById('lbl-avatar-gallery-btn');
-      if (lblAvatarGallery) lblAvatarGallery.innerText = lang.btn_select_gallery;
+      setElemText('lbl-avatar-capture-btn', lang.btn_capture_avatar);
+      setElemText('lbl-avatar-gallery-btn', lang.btn_select_gallery);
       
       // Button Toggle Text
-      document.getElementById('btn-lang').innerText = currentLang;
+      setElemText('btn-lang', currentLang);
 
       // Dashboard Stats labels
       const lblStatsSectionTitle = document.getElementById('lbl-stats-section-title');
@@ -5820,9 +5814,12 @@
         }
         if (cameraBadge) cameraBadge.style.display = 'flex';
       }
-      document.getElementById('header-avatar').src = avatarUrl;
-      document.getElementById('profile-avatar').src = avatarUrl;
-      document.getElementById('nav-avatar').src = avatarUrl;
+      const headerAv = document.getElementById('header-avatar');
+      if (headerAv) headerAv.src = avatarUrl;
+      const profileAv = document.getElementById('profile-avatar');
+      if (profileAv) profileAv.src = avatarUrl;
+      const navAv = document.getElementById('nav-avatar');
+      if (navAv) navAv.src = avatarUrl;
       
       const dropdownAvatar = document.getElementById('dropdown-avatar');
       if (dropdownAvatar) dropdownAvatar.src = avatarUrl;
@@ -5850,11 +5847,13 @@
       const now = new Date();
       const options = { year: 'numeric', month: 'long', day: 'numeric' };
       const locale = currentLang === 'UZ' ? 'uz-UZ' : 'ru-RU';
-      document.getElementById('home-date').innerText = now.toLocaleDateString(locale, options);
+      const homeDateEl = document.getElementById('home-date');
+      if (homeDateEl) homeDateEl.innerText = now.toLocaleDateString(locale, options);
       
       const daysUz = ["Yakshanba", "Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba"];
       const daysRu = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
-      document.getElementById('home-day').innerText = currentLang === 'UZ' ? daysUz[now.getDay()] : daysRu[now.getDay()];
+      const homeDayEl = document.getElementById('home-day');
+      if (homeDayEl) homeDayEl.innerText = currentLang === 'UZ' ? daysUz[now.getDay()] : daysRu[now.getDay()];
     }
 
     // --- Camera Stream Warm-Up ---
