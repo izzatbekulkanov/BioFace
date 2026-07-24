@@ -59,7 +59,7 @@
       --font:        'Inter', system-ui, -apple-system, sans-serif;
     }
 
-    /* ── Light Mode Variables (Identical to [data-theme="light"] in index.css) ── */
+    /* ── Light Mode Variables ── */
     body.light-mode {
       --bg:          #f3f2f1;
       --nav:         #0f172a;
@@ -100,7 +100,7 @@
       transition: background-color 0.25s ease, color 0.25s ease;
     }
 
-    /* ── Header Bar (Matching bioface.uz PageHero) ── */
+    /* ── Header Bar ── */
     header {
       position: sticky;
       top: 0;
@@ -177,7 +177,7 @@
       background: rgba(255, 255, 255, 0.16);
     }
 
-    /* ── Navigation Tabs (Matching bioface.uz Navbar style) ── */
+    /* ── Navigation Tabs ── */
     .nav-container {
       padding: 10px 18px;
       background: #0f172a;
@@ -235,7 +235,7 @@
       display: flex;
     }
 
-    /* ── Cards (Matching bioface.uz card style) ── */
+    /* ── Cards ── */
     .card {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -713,7 +713,7 @@
       font-weight: 600;
     }
 
-    /* ── Modal Drawer (Log Details & Month Picker) ── */
+    /* ── Modal Backdrop ── */
     .modal-backdrop {
       position: fixed;
       inset: 0;
@@ -824,7 +824,7 @@
 </head>
 <body>
 
-  <!-- Hidden File Input for Avatar Upload -->
+  <!-- Hidden File Input for Avatar Upload Fallback -->
   <input type="file" id="avatar-file-input" accept="image/*" style="display:none;" onchange="uploadAvatarFile(this)">
 
   <!-- Header -->
@@ -1017,11 +1017,11 @@
     <!-- 3. PROFILE TAB -->
     <div class="tab-content" id="tab-profile">
       
-      <!-- Profile Large Photo Card with Photo Update Action -->
+      <!-- Profile Large Photo Card with Real Live Camera Capture -->
       <div class="card profile-tab-hero">
         <div class="profile-tab-avatar-wrapper">
           <img id="profile-tab-avatar" class="profile-tab-avatar" src="https://www.w3schools.com/howto/img_avatar.png" alt="Avatar">
-          <div class="avatar-edit-badge" onclick="triggerAvatarUpload()" title="Rasmni almashtirish">
+          <div class="avatar-edit-badge" onclick="triggerAvatarUpload()" title="Jonli rasmga olish">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
               <circle cx="12" cy="13" r="4"/>
@@ -1035,12 +1035,13 @@
           <div style="font-size: 11px; color: var(--text-3);" id="p-hero-dept">Kadrlar bo'limi</div>
         </div>
 
-        <!-- Update Photo Button -->
+        <!-- Update Photo Button (Triggers Live Camera Viewfinder) -->
         <button class="btn-update-photo" onclick="triggerAvatarUpload()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
           </svg>
-          <span id="lbl-update-photo">Suratni Yangilash</span>
+          <span id="lbl-update-photo">Suratni Yangilash (Kamera)</span>
         </button>
       </div>
 
@@ -1147,6 +1148,45 @@
     </div>
   </div>
 
+  <!-- Live Camera Capture Modal for Profile Avatar -->
+  <div class="modal-backdrop" id="camera-modal" onclick="closeCameraModal()">
+    <div class="modal-card" onclick="event.stopPropagation()" style="align-items: center; gap: 14px;">
+      <div class="modal-header" style="width: 100%;">
+        <div class="modal-title">Jonli Profil Rasmini Olish</div>
+        <div class="modal-close" onclick="closeCameraModal()">✕</div>
+      </div>
+
+      <!-- Viewfinder box -->
+      <div style="position: relative; width: 100%; max-width: 320px; height: 320px; border-radius: 24px; overflow: hidden; background: #000; border: 2px solid var(--accent-bd); box-shadow: 0 8px 32px rgba(0,0,0,0.5);">
+        <video id="camera-stream-video" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1);"></video>
+        
+        <!-- Face oval guide ring -->
+        <div style="position: absolute; inset: 24px; border: 2px dashed rgba(56, 189, 248, 0.7); border-radius: 50%; pointer-events: none; box-shadow: 0 0 0 9999px rgba(0,0,0,0.4);"></div>
+
+        <canvas id="camera-capture-canvas" style="display: none;"></canvas>
+      </div>
+
+      <!-- Camera Action Buttons -->
+      <div style="display: flex; gap: 12px; width: 100%; max-width: 320px;">
+        <button class="icon-btn" style="width: 46px; height: 46px; border-radius: 12px;" onclick="flipCameraFacing()" title="Kamerani almashtirish">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M20 10c0-4.418-3.582-8-8-8s-8 3.582-8 8m0 4c0 4.418 3.582 8 8 8s8-3.582 8-8"/><path d="m7 7-3 3 3 3"/><path d="m17 17 3-3-3-3"/>
+          </svg>
+        </button>
+
+        <button class="btn-checkin btn-in" style="flex: 1; padding: 12px; font-size: 14px; border-radius: 14px;" onclick="takePhotoAndUpload()">
+          <div class="btn-label-wrap">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            <span>RASMGA OLISH</span>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast -->
   <div id="toast">Xabarnoma</div>
 
@@ -1169,6 +1209,8 @@
     let calendarStats = null;
     let selectedYear = new Date().getFullYear();
     let selectedMonth = new Date().getMonth() + 1;
+    let mediaStream = null;
+    let currentFacingMode = 'user';
 
     // Translations
     const I18N = {
@@ -1191,7 +1233,7 @@
         btn_out: "KETDIM",
         filter_month: "Oy bo'yicha filter",
         select_other_month: "Barcha oylar",
-        update_photo: "Suratni Yangilash",
+        update_photo: "Suratni Yangilash (Kamera)",
         today_times_title: "Bugungi Haqiqiy Keldi-Ketdi Vaqtlari"
       },
       RU: {
@@ -1213,14 +1255,121 @@
         btn_out: "УШЕЛ",
         filter_month: "Фильтр по месяцу",
         select_other_month: "Все месяцы",
-        update_photo: "Обновить фото",
+        update_photo: "Сделать фото (Камера)",
         today_times_title: "Фактическое время за сегодня"
       }
     };
 
-    // ── Avatar Upload Handler ──
-    function triggerAvatarUpload() {
-      document.getElementById('avatar-file-input').click();
+    // ── Live Camera Capture Handlers ──
+    async function triggerAvatarUpload() {
+      openCameraModal();
+    }
+
+    async function openCameraModal() {
+      document.getElementById('camera-modal').classList.add('active');
+      await startCameraStream();
+    }
+
+    async function startCameraStream() {
+      stopCameraStream();
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: currentFacingMode, width: { ideal: 720 }, height: { ideal: 720 } },
+          audio: false
+        });
+        const videoEl = document.getElementById('camera-stream-video');
+        if (videoEl) {
+          videoEl.srcObject = mediaStream;
+        }
+      } catch (err) {
+        console.warn("Camera stream error", err);
+        showToast("Kameraga ruxsat berilmadi yoki kamera topilmadi");
+        // Fallback to input file with capture="user"
+        const fileInput = document.getElementById('avatar-file-input');
+        fileInput.setAttribute('capture', 'user');
+        fileInput.click();
+        closeCameraModal();
+      }
+    }
+
+    function stopCameraStream() {
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop());
+        mediaStream = null;
+      }
+    }
+
+    function closeCameraModal() {
+      stopCameraStream();
+      document.getElementById('camera-modal').classList.remove('active');
+    }
+
+    function flipCameraFacing() {
+      currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+      const videoEl = document.getElementById('camera-stream-video');
+      if (videoEl) {
+        videoEl.style.transform = currentFacingMode === 'user' ? 'scaleX(-1)' : 'none';
+      }
+      startCameraStream();
+    }
+
+    async function takePhotoAndUpload() {
+      const videoEl = document.getElementById('camera-stream-video');
+      const canvasEl = document.getElementById('camera-capture-canvas');
+      if (!videoEl || !canvasEl) return;
+
+      canvasEl.width = videoEl.videoWidth || 640;
+      canvasEl.height = videoEl.videoHeight || 640;
+      const ctx = canvasEl.getContext('2d');
+
+      if (currentFacingMode === 'user') {
+        ctx.translate(canvasEl.width, 0);
+        ctx.scale(-1, 1);
+      }
+      ctx.drawImage(videoEl, 0, 0, canvasEl.width, canvasEl.height);
+
+      closeCameraModal();
+      showToast("Real rasm yuklanmoqda va AI yuz aniqlanmoqda...");
+
+      canvasEl.toBlob(async (blob) => {
+        if (!blob) {
+          showToast("Rasm tushirishda xatolik");
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', blob, 'live_photo.jpg');
+
+        try {
+          let tgId = '7550954976';
+          if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
+            tgId = window.Telegram.WebApp.initDataUnsafe.user.id || tgId;
+          }
+
+          const res = await fetch(`/api/profile/update-avatar?telegram_user_id=${tgId}`, {
+            method: 'POST',
+            headers: { 'X-Telegram-WebApp': 'true' },
+            body: formData
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            const newAvatar = data.avatar_url || data.image_url;
+            if (newAvatar) {
+              employeeData.avatar = newAvatar;
+              document.getElementById('emp-avatar').src = newAvatar;
+              document.getElementById('profile-tab-avatar').src = newAvatar;
+            }
+            showToast("Real profil rasmingiz muvaffaqiyatli yangilandi! ✨");
+          } else {
+            const err = await res.json();
+            showToast(err.detail || "Rasm yuklashda xatolik bo'ldi");
+          }
+        } catch (e) {
+          console.error(e);
+          showToast("Rasm yuklashda xatolik yuz berdi");
+        }
+      }, 'image/jpeg', 0.92);
     }
 
     async function uploadAvatarFile(input) {
