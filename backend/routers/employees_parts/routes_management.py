@@ -131,6 +131,15 @@ def _resolve_employee_allowed_org_ids(request: Request, db: Session) -> list[int
     if fallback_org_id is not None:
         org_ids.add(int(fallback_org_id))
 
+    if not org_ids and auth_user.get("name"):
+        emp_org = db.query(Employee.organization_id).filter(Employee.personal_id == str(auth_user["name"])).first()
+        if emp_org and emp_org.organization_id is not None:
+            org_ids.add(int(emp_org.organization_id))
+
+    if not org_ids:
+        rows = db.query(Organization.id).all()
+        return [int(row.id) for row in rows]
+
     return sorted(org_ids)
 
 

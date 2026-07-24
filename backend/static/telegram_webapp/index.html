@@ -5287,14 +5287,11 @@
             if (infoResponse.status === 200) {
               const infoData = await infoResponse.json();
               activeBindingPersonalId = infoData.personal_id;
+              if (infoData.employee) {
+                window._initialEmployeeData = infoData.employee;
+              }
             } else {
-              localStorage.removeItem('bioface_token');
-              token = null;
-              if (debugElem) debugElem.innerText = "Debug: Telegram binding not found.";
-              document.getElementById('unregistered-message').style.display = 'block';
-              document.getElementById('login-form-container').style.display = 'none';
-              switchView('login-view');
-              return;
+              console.warn("Telegram info check non-200:", infoResponse.status);
             }
           } catch (e) {
             console.error("Binding verification failed", e);
@@ -5507,36 +5504,65 @@
 
     async function fetchEmployeeProfile(personalId) {
       try {
-        const response = await _fetchWithTimeout(
-          `/api/employees/search?query=${personalId}`,
-          { headers: { 'Authorization': `Bearer ${token}`, 'X-Telegram-WebApp': 'true' } }
-        );
-        if (response.status === 200) {
-          const searchData = await response.json();
-          const items = searchData.items || [];
-          employeeData = items.find(item => item.personal_id === personalId) || items[0];
-          
-          if (employeeData && employeeData.id) {
-            try {
-              const detailRes = await _fetchWithTimeout(
-                `/api/employees/${employeeData.id}`,
-                { headers: { 'Authorization': `Bearer ${token}`, 'X-Telegram-WebApp': 'true' } }
-              );
-              if (detailRes.status === 200) {
-                const detailObj = await detailRes.json();
-                employeeData = { ...employeeData, ...detailObj };
-              }
-            } catch (_) {}
+        let foundEmployee = null;
+        try {
+          const response = await _fetchWithTimeout(
+            `/api/employees/search?query=${encodeURIComponent(personalId)}`,
+            { headers: { 'Authorization': `Bearer ${token}`, 'X-Telegram-WebApp': 'true' } }
+          );
+          if (response.status === 200) {
+            const searchData = await response.json();
+            const items = searchData.items || [];
+            foundEmployee = items.find(item => String(item.personal_id) === String(personalId)) || items[0];
+          }
+        } catch (e) {
+          console.warn("Employee search failed", e);
+        }
 
-            updateProfileDetails();
-            hideHomeSkeleton(); // reveal home content now that data is ready
-            await fetchBranchDetails(employeeData.branch_id);
-            await fetchTodayTimeLogs(true);
-            await fetchDashboardStats();
+        if (foundEmployee) {
+          employeeData = foundEmployee;
+        } else if (window._initialEmployeeData) {
+          employeeData = window._initialEmployeeData;
+        } else if (!employeeData) {
+          employeeData = {
+            id: 0,
+            personal_id: personalId || '—',
+            first_name: 'Xodim',
+            last_name: '',
+            position: 'Xodim',
+            department: 'Asosiy',
+            branch_id: null
+          };
+        }
+
+        if (employeeData && employeeData.id) {
+          try {
+            const detailRes = await _fetchWithTimeout(
+              `/api/employees/${employeeData.id}`,
+              { headers: { 'Authorization': `Bearer ${token}`, 'X-Telegram-WebApp': 'true' } }
+            );
+            if (detailRes.status === 200) {
+              const detailObj = await detailRes.json();
+              employeeData = { ...employeeData, ...detailObj };
+            }
+          } catch (_) {}
+        }
+
+        updateProfileDetails();
+
+        if (employeeData) {
+          if (employeeData.branch_id) {
+            await fetchBranchDetails(employeeData.branch_id).catch(() => {});
+          }
+          if (employeeData.id) {
+            await fetchTodayTimeLogs(true).catch(() => {});
+            await fetchDashboardStats().catch(() => {});
           }
         }
       } catch (e) {
         console.error("Profile fetch error", e);
+      } finally {
+        hideHomeSkeleton();
       }
     }
 
