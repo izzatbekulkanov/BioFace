@@ -14,7 +14,7 @@
   <!-- Telegram WebApp SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <!-- Pico.js Real-time Face Detection -->
-  <script src="pico.js"></script>
+  <script src="/static/telegram_webapp/pico.js"></script>
   <!-- MediaPipe Face Mesh for accurate 3D face liveness (Blinking & Rotation) -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
   <!-- Cropper.js for profile image cropping -->
@@ -3779,7 +3779,7 @@
     async function initPico() {
       if (picoInitialized) return;
       try {
-        const response = await fetch('facefinder');
+        const response = await fetch('/static/telegram_webapp/facefinder');
         const buffer = await response.arrayBuffer();
         const bytes = new Uint8Array(buffer);
         facefinderClassifyRegion = pico.unpack_cascade(bytes);

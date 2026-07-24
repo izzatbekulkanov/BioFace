@@ -76,6 +76,8 @@ PUBLIC_PATH_PREFIXES = (
 PUBLIC_PATHS = frozenset({
     "/app",
     "/telegram-webapp",
+    "/pico.js",
+    "/facefinder",
     "/login",
     "/logout",
     "/favicon.ico",
@@ -460,6 +462,20 @@ async def serve_telegram_webapp():
             }
         )
     return JSONResponse({"detail": "Telegram WebApp topilmadi"}, status_code=404)
+
+@app.get("/pico.js", include_in_schema=False)
+async def serve_pico_js():
+    path = os.path.join(_BACKEND_STATIC, "telegram_webapp", "pico.js")
+    if os.path.exists(path):
+        return FileResponse(path, media_type="application/javascript")
+    return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+@app.get("/facefinder", include_in_schema=False)
+async def serve_facefinder():
+    path = os.path.join(_BACKEND_STATIC, "telegram_webapp", "facefinder")
+    if os.path.exists(path):
+        return FileResponse(path, media_type="application/octet-stream")
+    return JSONResponse({"detail": "Not Found"}, status_code=404)
 
 # --- Frontend SPA Integration ---
 
