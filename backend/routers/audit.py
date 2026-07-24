@@ -21,6 +21,7 @@ async def get_audit_logs(
     action: Optional[str] = Query(None),
     entity_type: Optional[str] = Query(None),
     user_id: Optional[int] = Query(None),
+    user_name: Optional[str] = Query(None),
     organization_id: Optional[int] = Query(None),
     date_from: Optional[str] = Query(None),
     date_to: Optional[str] = Query(None),
@@ -41,20 +42,22 @@ async def get_audit_logs(
 
     if organization_id and is_super:
         q = q.filter(AuditLog.organization_id == organization_id)
-    if action:
+    if action and action != "all":
         q = q.filter(AuditLog.action == action.upper())
-    if entity_type:
+    if entity_type and entity_type != "all":
         q = q.filter(AuditLog.entity_type == entity_type)
     if user_id:
-        q = q.filter(AuditLog.user_id == user_id)
+        q = q.filter((AuditLog.user_id == user_id) | (AuditLog.user_name == str(user_id)))
+    if user_name:
+        q = q.filter(AuditLog.user_name == user_name)
     if date_from:
         try:
-            q = q.filter(AuditLog.created_at >= datetime.fromisoformat(date_from))
+            q = q.filter(AuditLog.created_at >= datetime.fromisoformat(date_from.replace('Z', '')))
         except Exception:
             pass
     if date_to:
         try:
-            q = q.filter(AuditLog.created_at <= datetime.fromisoformat(date_to))
+            q = q.filter(AuditLog.created_at <= datetime.fromisoformat(date_to.replace('Z', '')))
         except Exception:
             pass
     if search:

@@ -169,9 +169,8 @@ export default function AuditLogs() {
   const [search, setSearch] = useState('')
   const [actionFilter, setActionFilter] = useState('all')
   const [entityFilter, setEntityFilter] = useState('all')
-  const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
-  const [selectedUserId, setSelectedUserId] = useState(null)
+  const [selectedUserKey, setSelectedUserKey] = useState(null)
   const [auditUsers, setAuditUsers] = useState([])
   const [selectedLog, setSelectedLog] = useState(null)
 
@@ -201,7 +200,13 @@ export default function AuditLogs() {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) })
       if (actionFilter && actionFilter !== 'all') params.set('action', actionFilter)
       if (entityFilter && entityFilter !== 'all') params.set('entity_type', entityFilter)
-      if (selectedUserId) params.set('user_id', String(selectedUserId))
+      if (selectedUserKey) {
+        if (selectedUserKey.startsWith('id_')) {
+          params.set('user_id', selectedUserKey.replace('id_', ''))
+        } else if (selectedUserKey.startsWith('name_')) {
+          params.set('user_name', selectedUserKey.replace('name_', ''))
+        }
+      }
       if (dateFrom) params.set('date_from', dateFrom)
       if (dateTo) params.set('date_to', dateTo + 'T23:59:59')
       if (search.trim()) params.set('search', search.trim())
@@ -223,11 +228,11 @@ export default function AuditLogs() {
     } finally {
       setLoading(false)
     }
-  }, [page, actionFilter, entityFilter, selectedUserId, dateFrom, dateTo, search, toast])
+  }, [page, actionFilter, entityFilter, selectedUserKey, dateFrom, dateTo, search, toast])
 
   useEffect(() => {
     setPage(1)
-  }, [actionFilter, entityFilter, selectedUserId, dateFrom, dateTo, search])
+  }, [actionFilter, entityFilter, selectedUserKey, dateFrom, dateTo, search])
 
   useEffect(() => {
     loadData()
@@ -306,14 +311,14 @@ export default function AuditLogs() {
 
         {/* ── User Selector Cards (Audited Users by Category) ─────────────── */}
         <div style={{ ...cardStyle, marginBottom: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justify: 'space-between', marginBottom: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 13, color: 'var(--text-2)' }}>
               <PersonRegular fontSize={15} style={{ color: 'var(--accent)' }} />
               {isRu ? 'Kategoriya bo\'yicha audit qilgan foydalanuvchilar' : "Kategoriya bo'yicha audit qilgan foydalanuvchilar"}
             </div>
-            {selectedUserId && (
+            {selectedUserKey && (
               <button
-                onClick={() => setSelectedUserId(null)}
+                onClick={() => setSelectedUserKey(null)}
                 style={{ ...secondaryBtn, padding: '3px 8px', fontSize: 11 }}
               >
                 <DismissCircleRegular fontSize={12} />
@@ -329,7 +334,7 @@ export default function AuditLogs() {
           ) : (
             <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 6, scrollbarWidth: 'thin' }}>
               <div
-                onClick={() => setSelectedUserId(null)}
+                onClick={() => setSelectedUserKey(null)}
                 style={{
                   cursor: 'pointer',
                   padding: '8px 14px',
@@ -339,9 +344,9 @@ export default function AuditLogs() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
-                  background: selectedUserId === null ? 'var(--accent)' : 'var(--surface-2)',
-                  color: selectedUserId === null ? '#fff' : 'var(--text-2)',
-                  border: `1px solid ${selectedUserId === null ? 'var(--accent)' : 'var(--border)'}`,
+                  background: selectedUserKey === null ? 'var(--accent)' : 'var(--surface-2)',
+                  color: selectedUserKey === null ? '#fff' : 'var(--text-2)',
+                  border: `1px solid ${selectedUserKey === null ? 'var(--accent)' : 'var(--border)'}`,
                   transition: 'all 0.15s ease',
                   flexShrink: 0,
                 }}
@@ -352,19 +357,20 @@ export default function AuditLogs() {
                   borderRadius: 999,
                   fontSize: 10,
                   fontWeight: 800,
-                  background: selectedUserId === null ? 'rgba(255,255,255,0.25)' : 'var(--border)',
-                  color: selectedUserId === null ? '#fff' : 'var(--text-2)',
+                  background: selectedUserKey === null ? 'rgba(255,255,255,0.25)' : 'var(--border)',
+                  color: selectedUserKey === null ? '#fff' : 'var(--text-2)',
                 }}>
                   {auditUsers.reduce((sum, u) => sum + (u.audit_count || 0), 0)}
                 </span>
               </div>
 
               {auditUsers.map(u => {
-                const isSelected = selectedUserId === u.user_id
+                const uKey = u.user_id ? `id_${u.user_id}` : `name_${u.user_name}`
+                const isSelected = selectedUserKey === uKey
                 return (
                   <div
-                    key={u.user_id || u.user_name}
-                    onClick={() => setSelectedUserId(isSelected ? null : u.user_id)}
+                    key={uKey}
+                    onClick={() => setSelectedUserKey(isSelected ? null : uKey)}
                     style={{
                       cursor: 'pointer',
                       padding: '8px 14px',
