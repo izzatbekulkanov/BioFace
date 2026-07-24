@@ -4450,6 +4450,13 @@
       checkAuth(); // Camera/location permissions requested AFTER login inside warmUpCamera()
     });
 
+    function switchLanguage(lang) {
+      currentLang = lang || (currentLang === 'UZ' ? 'RU' : 'UZ');
+      localStorage.setItem('bioface_lang', currentLang);
+      applyTranslations();
+      if (employeeData) updateProfileDetails();
+    }
+
     function applyTranslations() {
       const lang = translations[currentLang];
       
@@ -4560,15 +4567,7 @@
 
     function setupEventListeners() {
       // Language toggle
-      document.getElementById('btn-lang').addEventListener('click', () => {
-        triggerHapticImpact('light');
-        currentLang = currentLang === 'UZ' ? 'RU' : 'UZ';
-        localStorage.setItem('bioface_lang', currentLang);
-        applyTranslations();
-        if (employeeData) {
-          updateProfileDetails();
-        }
-      });
+      // btn-lang has inline onclick="switchLanguage(...)" — no addEventListener needed
 
       // Login trigger
       document.getElementById('btn-login-submit').addEventListener('click', () => {
@@ -4577,12 +4576,8 @@
       });
       
       // Tab navigation
-      document.querySelectorAll('.nav-item').forEach(item => {
-        item.addEventListener('click', (e) => {
-          const tabName = e.currentTarget.getAttribute('data-tab');
-          switchTab(tabName);
-        });
-      });
+      // Tab buttons (new simple layout - buttons have onclick, no need for listeners)
+      // .nav-item removed - tabs use tab-btn-home/history/profile with inline onclick
 
       // Attendance check triggers — enforce geofence before opening camera
       document.getElementById('btn-checkin-in').addEventListener('click', () => {
@@ -4838,31 +4833,31 @@
     }
 
     function showHomeSkeleton() {
-      const sk = document.getElementById('home-skeleton');
+      const sk = document.getElementById('home-skeleton-loader');
       const act = document.getElementById('home-actual-content');
       if (sk) sk.style.display = 'flex';
       if (act) act.style.display = 'none';
     }
 
     function hideHomeSkeleton() {
-      const sk = document.getElementById('home-skeleton');
+      const sk = document.getElementById('home-skeleton-loader');
       const act = document.getElementById('home-actual-content');
       if (sk) sk.style.display = 'none';
-      if (act) act.style.display = 'flex';
+      if (act) { act.style.display = 'flex'; act.style.flexDirection = 'column'; }
     }
 
     function showHistorySkeleton() {
-      const sk = document.getElementById('history-skeleton');
+      const sk = document.getElementById('history-skeleton-loader');
       const act = document.getElementById('history-actual-content');
       if (sk) sk.style.display = 'flex';
       if (act) act.style.display = 'none';
     }
 
     function hideHistorySkeleton() {
-      const sk = document.getElementById('history-skeleton');
+      const sk = document.getElementById('history-skeleton-loader');
       const act = document.getElementById('history-actual-content');
       if (sk) sk.style.display = 'none';
-      if (act) act.style.display = 'flex';
+      if (act) { act.style.display = 'flex'; act.style.flexDirection = 'column'; }
     }
 
     function setupSwipeGestures() {
@@ -5062,11 +5057,9 @@
       // Update language button indicator
       const li = document.getElementById('current-lang-indicator');
       if (li) li.innerText = currentLang || 'UZ';
+      const btnLang = document.getElementById('btn-lang');
+      if (btnLang) btnLang.innerText = currentLang || 'UZ';
       // Lazy-load data when switching
-      if (tabId === 'home' && !isHomeDataCached && employeeData) {
-        fetchDashboardStats();
-        fetchTodayTimeLogs();
-      }
       if (tabId === 'history' && employeeData) {
         loadHistoryList();
       }
@@ -5402,6 +5395,8 @@
         hideLoader();
       }
     }
+
+    function logout() { performLogout(); }
 
     function performLogout() {
       token = null;
