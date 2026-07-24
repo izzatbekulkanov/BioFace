@@ -822,73 +822,39 @@
       box-shadow: 0 8px 32px rgba(0,0,0,0.8), 0 0 20px rgba(0,120,212,0.25);
     }
 
-    .scanner-laser {
-      position: absolute;
-      left: 5%;
-      right: 5%;
-      height: 2px;
-      background: linear-gradient(90deg, transparent, #38bdf8, #4ade80, #38bdf8, transparent);
-      box-shadow: 0 0 12px #38bdf8, 0 0 20px #4ade80;
-      animation: laserScan 2.4s ease-in-out infinite;
-      z-index: 5;
-      pointer-events: none;
-    }
-
-    @keyframes laserScan {
-      0%   { top: 8%; opacity: 0.2; }
-      50%  { top: 88%; opacity: 0.95; }
-      100% { top: 8%; opacity: 0.2; }
-    }
-
-    .corner-bracket {
-      position: absolute;
-      width: 24px;
-      height: 24px;
-      border-color: #38bdf8;
-      border-style: solid;
-      z-index: 6;
-      pointer-events: none;
-    }
-
-    .cb-top-left     { top: 12px; left: 12px; border-width: 3px 0 0 3px; border-radius: 6px 0 0 0; }
-    .cb-top-right    { top: 12px; right: 12px; border-width: 3px 3px 0 0; border-radius: 0 6px 0 0; }
-    .cb-bottom-left  { bottom: 12px; left: 12px; border-width: 0 0 3px 3px; border-radius: 0 0 0 6px; }
-    .cb-bottom-right { bottom: 12px; right: 12px; border-width: 0 3px 3px 0; border-radius: 0 0 6px 0; }
-
-    .scanner-status-pill {
-      position: absolute;
-      top: 14px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(15, 23, 42, 0.85);
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(56, 189, 248, 0.4);
-      color: #38bdf8;
-      padding: 4px 12px;
-      border-radius: 999px;
-      font-size: 10px;
-      font-weight: 800;
-      letter-spacing: 0.5px;
-      z-index: 7;
+    .camera-flip-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      background: var(--surface-2);
+      border: 1.5px solid var(--border-3);
+      color: var(--text-1);
       display: flex;
       align-items: center;
-      gap: 6px;
-      white-space: nowrap;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     }
 
-    .pulse-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: #4ade80;
-      box-shadow: 0 0 8px #4ade80;
-      animation: pulseDot 1.2s infinite;
+    .camera-flip-btn:active {
+      transform: scale(0.92);
+      background: var(--accent-bg);
+      color: var(--accent-tx);
+      border-color: var(--accent-bd);
     }
 
-    @keyframes pulseDot {
-      0% { opacity: 0.4; }
-      50% { opacity: 1; }
-      100% { opacity: 0.4; }
+    body.light-mode .camera-flip-btn {
+      background: #ffffff;
+      border: 1.5px solid #c7e0f4;
+      color: #0078d4;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    body.light-mode .camera-flip-btn:active {
+      background: #eff6fc;
+      color: #106ebe;
+      border-color: #0078d4;
     }
 
     /* ── High Contrast Responsive Toast Notification ── */
@@ -1305,19 +1271,12 @@
         <div class="modal-close" onclick="closeCameraModal()">✕</div>
       </div>
 
-      <!-- Pro Viewfinder with Laser Scanner & Corner Brackets -->
+      <!-- Viewfinder with Corner Brackets & Face Guide Oval -->
       <div class="scanner-viewfinder">
-        <div class="scanner-status-pill">
-          <div class="pulse-dot"></div>
-          <span>AI SCANNER ACTIVE</span>
-        </div>
-
         <div class="corner-bracket cb-top-left"></div>
         <div class="corner-bracket cb-top-right"></div>
         <div class="corner-bracket cb-bottom-left"></div>
         <div class="corner-bracket cb-bottom-right"></div>
-        
-        <div class="scanner-laser"></div>
 
         <video id="camera-stream-video" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1);"></video>
         
@@ -1327,10 +1286,10 @@
         <canvas id="camera-capture-canvas" style="display: none;"></canvas>
       </div>
 
-      <!-- Pro Camera Action Buttons -->
+      <!-- Camera Action Buttons -->
       <div style="display: flex; gap: 12px; width: 100%; max-width: 320px;">
-        <button class="icon-btn" style="width: 48px; height: 48px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--border-2);" onclick="flipCameraFacing()" title="Kamerani almashtirish">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <button class="camera-flip-btn" onclick="flipCameraFacing()" title="Kamerani almashtirish">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
             <path d="M20 10c0-4.418-3.582-8-8-8s-8 3.582-8 8m0 4c0 4.418 3.582 8 8 8s8-3.582 8-8"/><path d="m7 7-3 3 3 3"/><path d="m17 17 3-3-3-3"/>
           </svg>
         </button>
