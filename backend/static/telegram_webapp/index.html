@@ -1177,7 +1177,7 @@
               <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
               <circle cx="12" cy="13" r="4"/>
             </svg>
-            <span>📸 RASMGA OLISH</span>
+            <span>RASMGA OLISH</span>
           </div>
         </button>
       </div>
@@ -1363,10 +1363,14 @@
               document.getElementById('emp-avatar').src = newAvatar;
               document.getElementById('profile-tab-avatar').src = newAvatar;
             }
-            showToast("Real profil rasmingiz muvaffaqiyatli yangilandi! ✨");
+            showToast("Jonli profil rasmingiz va AI yuz modeli muvaffaqiyatli yangilandi!");
           } else {
             const err = await res.json();
-            showToast(err.detail || "Rasm yuklashda xatolik bo'ldi");
+            let msg = err.detail || "Rasm yuklashda xatolik bo'ldi";
+            if (msg.includes("No face detected") || msg.includes("yuz aniqlanmadi")) {
+              msg = "Rasmda yuz aniqlanmadi. Iltimos, yuzingizni kameraga aniq ko'rsatib rasm tushiring";
+            }
+            showToast(msg);
           }
         } catch (e) {
           console.error(e);

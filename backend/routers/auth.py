@@ -731,7 +731,9 @@ async def update_profile_avatar(
     
     if not user and (request.headers.get("X-Telegram-WebApp") == "true" or request.query_params.get("telegram_user_id")):
         tg_id = request.query_params.get("telegram_user_id") or "7550954976"
-        emp = db.query(Employee).filter(Employee.telegram_user_id == str(tg_id)).first()
+        from models import TelegramUserBinding
+        binding = db.query(TelegramUserBinding).filter(TelegramUserBinding.telegram_user_id == str(tg_id)).first()
+        emp = binding.employee if (binding and binding.employee) else None
         if not emp:
             emp = db.query(Employee).filter(Employee.id == 3).first()
         if emp:
@@ -859,12 +861,14 @@ async def update_profile_avatar(
 
     db.commit()
 
-    # Update session cache
-    auth_user["image_url"] = relative_url
-    request.session["auth_user"] = auth_user
+    # Update session cache if present
+    if auth_user:
+        auth_user["image_url"] = relative_url
+        request.session["auth_user"] = auth_user
 
     return {
         "ok": True,
-        "message": "Profil rasmi va yuz embeddingi muvaffaqiyatli yangilandi",
-        "avatar_url": relative_url
+        "avatar_url": relative_url,
+        "image_url": relative_url,
+        "detail": "Profil rasmingiz va AI yuz modeli muvaffaqiyatli yangilandi"
     }
