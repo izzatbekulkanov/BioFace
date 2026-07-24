@@ -410,10 +410,22 @@ def get_employee_logs(
         .all()
     )
 
+    from datetime import timezone, timedelta
+    TASHKENT_TZ = timezone(timedelta(hours=5))
+
+    def format_tashkent_iso(dt):
+        if not dt:
+            return None
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc).astimezone(TASHKENT_TZ)
+        else:
+            dt = dt.astimezone(TASHKENT_TZ)
+        return dt.isoformat()
+
     items = [
         {
             "id": int(row.id),
-            "timestamp": row.timestamp.isoformat() if row.timestamp else None,
+            "timestamp": format_tashkent_iso(row.timestamp),
             "status": str(row.status or ""),
             "camera_name": str(row.device_name or (emp.branch.name if emp.branch else None) or row.camera_mac or "-"),
             "direction": str(row.direction or row.device_direction or "in"),

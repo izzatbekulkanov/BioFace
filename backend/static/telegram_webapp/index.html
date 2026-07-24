@@ -1338,7 +1338,7 @@
       <!-- Viewfinder with Corner Brackets & Face Guide Oval -->
       <div class="scanner-viewfinder">
         <div style="position: absolute; top: 14px; left: 50%; transform: translateX(-50%); background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(6px); border: 1px solid rgba(56, 189, 248, 0.5); color: #38bdf8; padding: 4px 14px; border-radius: 999px; font-size: 11px; font-weight: 800; z-index: 8; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.5);" id="lbl-cam-oval-badge">
-          🎯 Yuzingizni oval ichiga joylashtiring
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.5" style="display:inline-block; vertical-align:-2px;"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg> Yuzingizni oval ichiga joylashtiring
         </div>
 
         <div class="corner-bracket cb-top-left"></div>
@@ -1598,28 +1598,28 @@
       const arrowLeft = document.getElementById('arrow-left-indicator');
 
       // STEP 1: Center Face
-      stepText.innerText = "1-BOSQICH: Yuzingizni o'rtada tuting 🎯";
+      stepText.innerText = "1-BOSQICH: Yuzingizni o'rtada tuting";
       ring.style.borderColor = "#38bdf8";
       arrowRight.style.display = 'none';
       arrowLeft.style.display = 'none';
 
       livenessTimer = setTimeout(() => {
         // STEP 2: Turn Face Right
-        stepText.innerText = "2-BOSQICH: Yuzingizni O'NGGA buring ➡️";
+        stepText.innerText = "2-BOSQICH: Yuzingizni O'NGGA buring";
         ring.style.borderColor = "#fbbf24";
         arrowRight.style.display = 'flex';
         arrowLeft.style.display = 'none';
 
         livenessTimer = setTimeout(() => {
           // STEP 3: Turn Face Left
-          stepText.innerText = "3-BOSQICH: Yuzingizni CHAPGA buring ⬅️";
+          stepText.innerText = "3-BOSQICH: Yuzingizni CHAPGA buring";
           ring.style.borderColor = "#fbbf24";
           arrowRight.style.display = 'none';
           arrowLeft.style.display = 'flex';
 
           livenessTimer = setTimeout(() => {
             // STEP 4: Processing Liveness & Checkin
-            stepText.innerText = "4-BOSQICH: Liveness AI tasdiqlanmoqda... ⚡";
+            stepText.innerText = "4-BOSQICH: Liveness AI tasdiqlanmoqda...";
             ring.style.borderColor = "#4ade80";
             arrowRight.style.display = 'none';
             arrowLeft.style.display = 'none';
@@ -1858,7 +1858,7 @@
       const badgeTextEl = document.getElementById('lbl-geo-status');
       
       if (userGeoLocation) {
-        badgeTextEl.innerText = "Filial hududi ichida (GPS Active)";
+        badgeTextEl.innerText = "Filial hududi ichida (GPS Verified)";
         badgeEl.style.background = "rgba(74, 222, 128, 0.12)";
         badgeEl.style.borderColor = "rgba(74, 222, 128, 0.3)";
         badgeEl.style.color = "#4ade80";
@@ -1886,18 +1886,22 @@
       const outCountdownEl = document.getElementById('lbl-shift-out-countdown');
       if (!inCountdownEl || !outCountdownEl) return;
 
+      const iconClock = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline-block; vertical-align:-2px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+      const iconWarn = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline-block; vertical-align:-2px;"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+      const iconCheck = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline-block; vertical-align:-2px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
+
       // Kelish Countdown / Overdue calculation (01:00)
       let diffIn = curTotalMins - shiftInMins;
       if (diffIn < 0) {
         const remaining = Math.abs(diffIn);
         const rH = Math.floor(remaining / 60);
         const rM = remaining % 60;
-        inCountdownEl.innerText = `⏳ Kelish vaqtiga ${rH > 0 ? rH + ' soat ' : ''}${rM} daqiqa qoldi`;
+        inCountdownEl.innerHTML = `${iconClock} Kelish vaqtiga ${rH > 0 ? rH + ' soat ' : ''}${rM} daqiqa qoldi`;
         inCountdownEl.style.color = "var(--accent-tx)";
       } else {
         const rH = Math.floor(diffIn / 60);
         const rM = diffIn % 60;
-        inCountdownEl.innerText = `⚠️ Kelish vaqtidan ${rH > 0 ? rH + ' soat ' : ''}${rM} daqiqa o'tdi (Kechikish)`;
+        inCountdownEl.innerHTML = `${iconWarn} Kelish vaqtidan ${rH > 0 ? rH + ' soat ' : ''}${rM} daqiqa o'tdi (Kechikish)`;
         inCountdownEl.style.color = "var(--yellow)";
       }
 
@@ -1907,12 +1911,12 @@
         const remaining = Math.abs(diffOut);
         const rH = Math.floor(remaining / 60);
         const rM = remaining % 60;
-        outCountdownEl.innerText = `⏳ Ketish vaqtiga ${rH > 0 ? rH + ' soat ' : ''}${rM} daqiqa qoldi`;
+        outCountdownEl.innerHTML = `${iconClock} Ketish vaqtiga ${rH > 0 ? rH + ' soat ' : ''}${rM} daqiqa qoldi`;
         outCountdownEl.style.color = "var(--accent-tx)";
       } else {
         const rH = Math.floor(diffOut / 60);
         const rM = diffOut % 60;
-        outCountdownEl.innerText = `✅ Ketish vaqtidan ${rH > 0 ? rH + ' soat ' : ''}${rM} daqiqa o'tdi`;
+        outCountdownEl.innerHTML = `${iconCheck} Ketish vaqtidan ${rH > 0 ? rH + ' soat ' : ''}${rM} daqiqa o'tdi`;
         outCountdownEl.style.color = "var(--green)";
       }
     }
@@ -2192,7 +2196,7 @@
         
         historyHtml += `
           <div class="date-group-header">
-            <span>📅 ${formattedDay}</span>
+            <span style="display:inline-flex; align-items:center; gap:5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> ${formattedDay}</span>
             ${isToday ? `<span class="date-badge-today">BUGUN</span>` : ''}
           </div>
         `;
