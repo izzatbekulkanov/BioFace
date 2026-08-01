@@ -400,8 +400,10 @@ def login(payload: LoginPayload, request: Request, db: Session = Depends(get_db)
     if user_status != "active":
         raise HTTPException(status_code=403, detail="Hisob nofaol holatda")
 
-    # Veb-brauzer orqali kirgan xodimlarni taqiqlash (faqat is_staff=True foydalanuvchilarga ruxsat beriladi)
-    if not user.is_staff:
+    # Veb-brauzer orqali kirish ruxsati (tizim foydalanuvchilari hamda adminlarga ruxsat beriladi)
+    ADMIN_ROLES = {"SuperAdmin", "MahallaAdmin", "MaktabAdmin", "KollejAdmin", "TashkilotAdmin", "KorxonaAdmin", "Kadr", "Buxgalter", "Psixolog"}
+    is_admin_user = user.is_staff or (str(user.role or "").strip() in ADMIN_ROLES) or ("admin" in str(user.role or "").lower())
+    if not is_admin_user:
         is_tg_webapp = request.headers.get("x-telegram-webapp") == "true"
         if not is_tg_webapp:
             origin = request.headers.get("origin")
