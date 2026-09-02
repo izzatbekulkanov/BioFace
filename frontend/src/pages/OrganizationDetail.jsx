@@ -18,6 +18,7 @@ import {
   PhoneRegular,
   LocationRegular,
   ClockRegular,
+  HatGraduationRegular,
 } from '@fluentui/react-icons'
 import PageHero from '../components/PageHero'
 import Skeleton from '../components/Skeleton'
@@ -60,6 +61,15 @@ export default function OrganizationDetail() {
   const [posSalaryOptions, setPosSalaryOptions] = useState('')
   const [showViewPosModal, setShowViewPosModal] = useState(false)
   const [viewingPos, setViewingPos] = useState(null)
+
+  // Default classes state
+  const [showDefaultClassesModal, setShowDefaultClassesModal] = useState(false)
+  const [defaultFormat, setDefaultFormat] = useState('number')
+  const [startGrade, setStartGrade] = useState(1)
+  const [endGrade, setEndGrade] = useState(11)
+  const [includeLetters, setIncludeLetters] = useState(true)
+  const [lettersInput, setLettersInput] = useState('A, B, D')
+  const [creatingClasses, setCreatingClasses] = useState(false)
 
   const aliveRef = useRef(true)
 
@@ -268,6 +278,45 @@ export default function OrganizationDetail() {
       await load({ silent: true })
     } catch (err) {
       toast.error(err.message)
+    }
+  }
+
+  // --- Default classes action (Schools) ---
+  const handleCreateDefaultClasses = async (e) => {
+    e?.preventDefault?.()
+    setCreatingClasses(true)
+    try {
+      const letters = includeLetters
+        ? lettersInput
+            .split(',')
+            .map(l => l.trim().toUpperCase())
+            .filter(Boolean)
+        : []
+      const res = await fetch(`/api/organizations/${id}/default-classes`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          start_grade: parseInt(startGrade, 10) || 1,
+          end_grade: parseInt(endGrade, 10) || 11,
+          format: defaultFormat,
+          letters,
+        }),
+      })
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData?.detail || `HTTP ${res.status}`)
+      }
+
+      const resData = await res.json()
+      toast.success(resData.message || (isRu ? 'Классы успешно созданы' : 'Sinflar muvaffaqiyatli yaratildi'))
+      setShowDefaultClassesModal(false)
+      await load({ silent: true })
+    } catch (err) {
+      toast.error(err.message)
+    } finally {
+      setCreatingClasses(false)
     }
   }
 
@@ -754,9 +803,22 @@ export default function OrganizationDetail() {
                 <BuildingMultipleRegular style={{ color: 'var(--accent)' }} />
                 {getLabel('departmentsCard', isRu ? 'Отделы' : 'Bo\'limlar')}
               </h3>
-              <button onClick={handleOpenAddDept} style={smallBtn('accent')}>
-                <AddRegular fontSize={14} /> {getLabel('addDepartment', isRu ? 'Добавить' : 'Qo\'shish')}
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {isSchool && (
+                  <button
+                    type="button"
+                    onClick={() => setShowDefaultClassesModal(true)}
+                    style={{ ...smallBtn('secondary'), display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                    title={isRu ? 'Создать 1-11 классы по умолчанию' : '1-11 standart sinflarni yaratish'}
+                  >
+                    <HatGraduationRegular fontSize={14} />
+                    {isRu ? '1-11 классы' : 'Default sinflar'}
+                  </button>
+                )}
+                <button onClick={handleOpenAddDept} style={smallBtn('accent')}>
+                  <AddRegular fontSize={14} /> {getLabel('addDepartment', isRu ? 'Добавить' : 'Qo\'shish')}
+                </button>
+              </div>
             </div>
 
             {loading ? (
@@ -766,7 +828,26 @@ export default function OrganizationDetail() {
                 <Skeleton width="100%" height={38} />
               </div>
             ) : departments.length === 0 ? (
-              <div style={emptyStyle}>{t('organizationDetail.noDepartments')}</div>
+              <div style={{ ...emptyStyle, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+                <div>{t('organizationDetail.noDepartments')}</div>
+                {isSchool && (
+                  <button
+                    type="button"
+                    onClick={() => setShowDefaultClassesModal(true)}
+                    style={{
+                      ...smallBtn('accent'),
+                      padding: '8px 14px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      fontSize: 13,
+                    }}
+                  >
+                    <HatGraduationRegular fontSize={16} />
+                    {isRu ? 'Создать 1-11 классы по умолчанию' : '1-dan 11-gacha sinflarni qo\'shish'}
+                  </button>
+                )}
+              </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 400, overflowY: 'auto', paddingRight: 4 }}>
                 {departments.map(dept => {
@@ -1099,6 +1180,128 @@ export default function OrganizationDetail() {
               </button>
             </div>
           </div>
+        </Modal>
+      )}
+
+      {/* Default Classes Modal */}
+      {showDefaultClassesModal && (
+        <Modal
+          title={isRu ? 'Создать классы по умолчанию (1-11)' : 'Standart sinflarni qo\'shish (1-dan 11-gacha)'}
+          onClose={() => setShowDefaultClassesModal(false)}
+        >
+          <form onSubmit={handleCreateDefaultClasses} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ fontSize: 13, color: 'var(--text-3)', lineHeight: 1.5 }}>
+              {isRu
+                ? 'Эта функция автоматически создаст параллели классов от 1-го до 11-го класса для школы.'
+                : 'Ushbu funksiya maktab uchun 1-sinfdan 11-sinfgacha bo\'lgan barcha sinflarni avtomatik yaratadi.'}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <Field label={isRu ? 'Начальный класс' : "Boshlang'ich sinf"} required>
+                <input
+                  type="number"
+                  min="1"
+                  max="20"
+                  value={startGrade}
+                  onChange={e => setStartGrade(e.target.value)}
+                  style={inpStyle}
+                  required
+                />
+              </Field>
+              <Field label={isRu ? 'Конечный класс' : 'Oxirgi sinf'} required>
+                <input
+                  type="number"
+                  min="1"
+                  max="20"
+                  value={endGrade}
+                  onChange={e => setEndGrade(e.target.value)}
+                  style={inpStyle}
+                  required
+                />
+              </Field>
+            </div>
+
+            <Field label={isRu ? 'Формат названия' : 'Sinf nomlanishi formati'}>
+              <div style={{ display: 'flex', gap: 14, marginTop: 4, flexWrap: 'wrap' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="defaultFormat"
+                    value="number"
+                    checked={defaultFormat === 'number'}
+                    onChange={() => setDefaultFormat('number')}
+                  />
+                  <span>{isRu ? '1, 2 ... 11 (Рекомендуется)' : '1, 2 ... 11 (Tavsiya etiladi)'}</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="defaultFormat"
+                    value="suffix"
+                    checked={defaultFormat === 'suffix'}
+                    onChange={() => setDefaultFormat('suffix')}
+                  />
+                  <span>1-sinf, 2-sinf...</span>
+                </label>
+              </div>
+            </Field>
+
+            <div style={{ borderTop: '1px solid var(--border-2)', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={includeLetters}
+                  onChange={e => setIncludeLetters(e.target.checked)}
+                />
+                <span>{isRu ? 'Добавить параллели (буквы классов)' : 'Parallel sinf harflarini ham qo\'shish'}</span>
+              </label>
+
+              {includeLetters && (
+                <Field label={isRu ? 'Буквы классов (через запятую)' : 'Sinf harflari (vergul bilan)'}>
+                  <input
+                    type="text"
+                    value={lettersInput}
+                    onChange={e => setLettersInput(e.target.value)}
+                    placeholder="A, B, D"
+                    style={inpStyle}
+                  />
+                  <span style={{ fontSize: 11, color: 'var(--text-4)', marginTop: 2 }}>
+                    {isRu
+                      ? 'Пример: "A, B, D" создаст для каждого класса параллели (например: 1-A, 1-B, 1-D)'
+                      : 'Masalan: "A, B, D" kiritilsa, har bir sinf ichiga shu harflar qo\'shiladi (1-A, 1-B, 1-D)'}
+                  </span>
+                </Field>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 12 }}>
+              <button
+                type="button"
+                onClick={() => setShowDefaultClassesModal(false)}
+                disabled={creatingClasses}
+                style={smallBtn('subtle')}
+              >
+                {isRu ? 'Отмена' : 'Bekor qilish'}
+              </button>
+              <button
+                type="submit"
+                disabled={creatingClasses}
+                style={{ ...smallBtn('accent'), display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              >
+                {creatingClasses ? (
+                  <>
+                    <ArrowSyncRegular style={{ animation: 'spin 1s linear infinite' }} fontSize={14} />
+                    {isRu ? 'Создание...' : 'Yaratilmoqda...'}
+                  </>
+                ) : (
+                  <>
+                    <CheckmarkRegular fontSize={14} />
+                    {isRu ? 'Создать классы' : 'Sinflarni yaratish'}
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
         </Modal>
       )}
     </div>

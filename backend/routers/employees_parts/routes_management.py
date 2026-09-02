@@ -1848,6 +1848,56 @@ def create_position(
     return {"ok": True, "item": serialize_position_item(item)}
 
 
+@router.post("/api/organizations/{organization_id}/default-classes")
+def create_default_classes(
+    organization_id: str,
+    request: Request,
+    payload: dict = Body(default={}),
+    db: Session = Depends(get_db),
+):
+    org = get_accessible_organization_or_raise(request, db, organization_id)
+    start_grade = int((payload or {}).get("start_grade") or 1)
+    end_grade = int((payload or {}).get("end_grade") or 11)
+    format_type = str((payload or {}).get("format") or "number").strip().lower()
+    letters = (payload or {}).get("letters") or []
+
+    if start_grade < 1:
+        start_grade = 1
+    if end_grade > 20:
+        end_grade = 20
+    if start_grade > end_grade:
+        raise HTTPException(status_code=422, detail="Boshlang'ich sinf oxirgi sinfdan katta bo'lishi mumkin emas")
+
+    created_depts = []
+    created_pos_count = 0
+
+    for grade in range(start_grade, end_grade + 1):
+        dept_name = f"{grade}-sinf" if format_type == "suffix" else str(grade)
+        dept = get_or_create_department(db, organization_id=int(org.id), name=dept_name)
+        db.flush()
+        created_depts.append(dept)
+
+        if letters and isinstance(letters, list):
+            for letter in letters:
+                clean_letter = str(letter).strip().upper()
+                if clean_letter:
+                    get_or_create_position(
+                        db,
+                        organization_id=int(org.id),
+                        department_id=int(dept.id),
+                        name=clean_letter,
+                    )
+                    created_pos_count += 1
+
+    db.commit()
+    return {
+        "ok": True,
+        "created_departments_count": len(created_depts),
+        "created_positions_count": created_pos_count,
+        "message": f"{start_grade}-dan {end_grade}-gacha sinflar muvaffaqiyatli saqlandi.",
+    }
+
+
 def sync_employee_to_cameras_bg(
     employee_id: int,
     camera_ids: list[int],
