@@ -925,7 +925,7 @@ export default function OrganizationDetail() {
                     <div key={pos.id} style={posItemStyle}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                         <span style={{ fontWeight: 500, fontSize: 13 }}>{pos.name}</span>
-                        {pos.salary_options && (
+                        {!isSchool && pos.salary_options && (
                           <span style={{ fontSize: 11, color: 'var(--text-4)' }}>
                             {isRu ? 'Оклады: ' : 'Ish haqlari: '}
                             {pos.salary_options.split(',').map(s => {
@@ -1099,18 +1099,20 @@ export default function OrganizationDetail() {
                 autoFocus
               />
             </Field>
-            <Field label={isRu ? 'Варианты окладов' : 'Oylik maosh variantlari'}>
-              <input
-                type="text"
-                value={posSalaryOptions}
-                onChange={handleSalaryOptionsChange}
-                placeholder="3 000 000, 5 000 000"
-                style={inpStyle}
-              />
-              <span style={{ fontSize: 11, color: 'var(--text-4)', marginTop: 2 }}>
-                {isRu ? 'Введите значения через запятую (например: 3000000, 5000000)' : 'Qiymatlarni vergul bilan ajratib kiriting (masalan: 3000000, 5000000)'}
-              </span>
-            </Field>
+            {!isSchool && (
+              <Field label={isRu ? 'Варианты окладов' : 'Oylik maosh variantlari'}>
+                <input
+                  type="text"
+                  value={posSalaryOptions}
+                  onChange={handleSalaryOptionsChange}
+                  placeholder="3 000 000, 5 000 000"
+                  style={inpStyle}
+                />
+                <span style={{ fontSize: 11, color: 'var(--text-4)', marginTop: 2 }}>
+                  {isRu ? 'Введите значения через запятую (например: 3000000, 5000000)' : 'Qiymatlarni vergul bilan ajratib kiriting (masalan: 3000000, 5000000)'}
+                </span>
+              </Field>
+            )}
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 10 }}>
               <button type="button" onClick={() => setShowPosModal(false)} style={smallBtn('subtle')}>
                 {isRu ? 'Отмена' : 'Bekor qilish'}
@@ -1127,12 +1129,12 @@ export default function OrganizationDetail() {
       {/* View Position Modal */}
       {showViewPosModal && viewingPos && (
         <Modal
-          title={isRu ? 'Детали должности' : 'Lavozim tafsilotlari'}
+          title={isSchool ? (isRu ? 'Детали параллели (буквы)' : 'Sinf harfi tafsilotlari') : (isRu ? 'Детали должности' : 'Lavozim tafsilotlari')}
           onClose={() => setShowViewPosModal(false)}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
-              <div style={infoTitleStyle}>{isRu ? 'Название должности' : 'Lavozim nomi'}</div>
+              <div style={infoTitleStyle}>{getLabel('positionName', isRu ? 'Название должности' : 'Lavozim nomi')}</div>
               <div style={{ fontSize: 15, fontWeight: 700, marginTop: 4, color: 'var(--text-1)' }}>
                 {viewingPos.name}
               </div>
@@ -1145,38 +1147,40 @@ export default function OrganizationDetail() {
               </div>
             </div>
 
-            <div>
-              <div style={infoTitleStyle}>{isRu ? 'Варианты окладов' : 'Ish haqi variantlari'}</div>
-              {viewingPos.salary_options ? (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
-                  {viewingPos.salary_options.split(',').map(s => {
-                    const num = parseInt(s.trim().replace(/\s/g, ''), 10);
-                    const formatted = isNaN(num) ? s : num.toLocaleString('uz-UZ').replace(/,/g, ' ') + ' UZS';
-                    return (
-                      <span
-                        key={s}
-                        style={{
-                          display: 'inline-block',
-                          padding: '4px 10px',
-                          borderRadius: 6,
-                          background: 'var(--surface-2)',
-                          border: '1px solid var(--border-2)',
-                          fontSize: 12,
-                          fontWeight: 600,
-                          color: 'var(--text-1)'
-                        }}
-                      >
-                        {formatted}
-                      </span>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div style={{ fontSize: 13, color: 'var(--text-4)', marginTop: 4 }}>
-                  {isRu ? 'Не указаны' : 'Belgilanmagan'}
-                </div>
-              )}
-            </div>
+            {!isSchool && (
+              <div>
+                <div style={infoTitleStyle}>{isRu ? 'Варианты окладов' : 'Ish haqi variantlari'}</div>
+                {viewingPos.salary_options ? (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                    {viewingPos.salary_options.split(',').map(s => {
+                      const num = parseInt(s.trim().replace(/\s/g, ''), 10);
+                      const formatted = isNaN(num) ? s : num.toLocaleString('uz-UZ').replace(/,/g, ' ') + ' UZS';
+                      return (
+                        <span
+                          key={s}
+                          style={{
+                            display: 'inline-block',
+                            padding: '4px 10px',
+                            borderRadius: 6,
+                            background: 'var(--surface-2)',
+                            border: '1px solid var(--border-2)',
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: 'var(--text-1)'
+                          }}
+                        >
+                          {formatted}
+                        </span>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 13, color: 'var(--text-4)', marginTop: 4 }}>
+                    {isRu ? 'Не указаны' : 'Belgilanmagan'}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div>
               <div style={infoTitleStyle}>{isRu ? 'Связанные сотрудники' : 'Bog\'langan xodimlar'}</div>
