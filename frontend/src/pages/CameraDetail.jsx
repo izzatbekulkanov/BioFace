@@ -198,6 +198,32 @@ export default function CameraDetail() {
     }
   }
 
+  const [refreshingSerial, setRefreshingSerial] = useState(false)
+
+  const refreshSerialNumber = async () => {
+    setRefreshingSerial(true)
+    try {
+      const res = await fetch(`/api/cameras/${id}/refresh-serial`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data.detail || (isRu ? 'Не удалось получить серийный номер' : 'Seriya raqamini yuklab bo\'lmadi'))
+      }
+      if (data.serial_number) {
+        setF(prev => ({ ...prev, serial_number: data.serial_number }))
+        setCam(prev => ({ ...prev, serial_number: data.serial_number }))
+        toast.success(data.message || (isRu ? `Серийный номер обновлен: ${data.serial_number}` : `Seriya raqami yangilandi: ${data.serial_number}`))
+      }
+    } catch (e) {
+      toast.error(e.message)
+    } finally {
+      setRefreshingSerial(false)
+    }
+  }
+
   const [f, setF] = useState({
     name: '', location: '', model: '', mac_address: '', serial_number: '',
     isup_device_id: '', username: 'admin', isup_password: '', password: '',
@@ -609,7 +635,54 @@ export default function CameraDetail() {
                 </div>
               </Field>
               <Field label={isRu ? "Серийный номер" : "Seriya Raqami"}>
-                <input style={{ ...inp, fontFamily: 'monospace' }} value={f.serial_number} onChange={update('serial_number')} placeholder="DS3B24123456" />
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <input
+                    style={{ ...inp, flex: 1, minWidth: 0, fontFamily: 'monospace' }}
+                    value={f.serial_number}
+                    onChange={update('serial_number')}
+                    placeholder="DS3B24123456"
+                  />
+                  <button
+                    type="button"
+                    onClick={refreshSerialNumber}
+                    disabled={refreshingSerial}
+                    title={isRu ? "Получить настоящий серийный номер с камеры" : "Kameraning haqiqiy seriya raqamini yuklab olish"}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 36,
+                      height: 36,
+                      borderRadius: 9,
+                      background: 'var(--surface-3)',
+                      border: '1px solid var(--border-3)',
+                      color: 'var(--text-1)',
+                      cursor: refreshingSerial ? 'not-allowed' : 'pointer',
+                      flexShrink: 0,
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={e => {
+                      if (!refreshingSerial) {
+                        e.currentTarget.style.background = 'var(--accent)'
+                        e.currentTarget.style.borderColor = 'var(--accent)'
+                        e.currentTarget.style.color = '#fff'
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      if (!refreshingSerial) {
+                        e.currentTarget.style.background = 'var(--surface-3)'
+                        e.currentTarget.style.borderColor = 'var(--border-3)'
+                        e.currentTarget.style.color = 'var(--text-1)'
+                      }
+                    }}
+                  >
+                    {refreshingSerial ? (
+                      <Spinner size="tiny" />
+                    ) : (
+                      <ArrowSyncRegular fontSize={16} />
+                    )}
+                  </button>
+                </div>
               </Field>
               <Field label={isRu ? "Организация" : "Tashkilot"} span={2}>
                 <CustomSelect

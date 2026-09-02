@@ -2270,6 +2270,57 @@ def refresh_camera_mac(request: Request, cam_id: str, db: Session = Depends(get_
     }
 
 
+@router.post("/api/cameras/{cam_id}/refresh-serial")
+def refresh_camera_serial(request: Request, cam_id: str, db: Session = Depends(get_db)):
+    _assert_camera_manage_access(request)
+    cam, _ = _get_camera_for_request(request, db, cam_id)
+
+    target_id, live_info, source = _resolve_online_command_target(cam)
+    info_response = _send_isup_command_or_raise(
+        target_id,
+        "get_info",
+        {},
+        timeout=10.0,
+    )
+    camera_info = _extract_command_camera_info(info_response)
+    device_info = info_response.get("device") if isinstance(info_response, dict) else {}
+
+    raw_serial = (
+        _pick_first_nonempty(camera_info, ("serialNumber", "serial", "serial_no", "device_serial")) or
+        _pick_first_nonempty(device_info, ("serial", "serial_no", "serialNumber", "device_serial")) or
+        info_response.get("serial")
+    )
+    incoming_serial = str(raw_serial).strip() if raw_serial else None
+    if not incoming_serial:
+        raise HTTPException(
+            status_code=400,
+            detail="Kameradan seriya raqami o'qib bo'lmadi yoki kamera bu ma'lumotni qaytarmadi"
+        )
+
+    conflict = db.query(Device).filter(
+        Device.serial_number == incoming_serial,
+        Device.id != cam.id,
+    ).first()
+    if conflict:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Aniqlangan seriya raqami ('{incoming_serial}') allaqachon boshqa kameraga ('{conflict.name}') biriktirilgan"
+        )
+
+    old_serial = cam.serial_number
+    cam.serial_number = incoming_serial
+    db.commit()
+
+    return {
+        "ok": True,
+        "serial_number": incoming_serial,
+        "old_serial_number": old_serial,
+        "camera_id": cam.id,
+        "camera_uuid": cam.uuid,
+        "message": f"Kameraning haqiqiy seriya raqami muvaffaqiyatli yuklandi: {incoming_serial}",
+    }
+
+
 @router.post("/api/cameras/{cam_id}/sync-metadata")
 def sync_camera_metadata(request: Request, cam_id: str, db: Session = Depends(get_db)):
     _assert_camera_manage_access(request)
