@@ -68,7 +68,7 @@ export default function OrganizationDetail() {
   const [startGrade, setStartGrade] = useState(1)
   const [endGrade, setEndGrade] = useState(11)
   const [includeLetters, setIncludeLetters] = useState(true)
-  const [lettersInput, setLettersInput] = useState('A, B, D')
+  const [lettersInput, setLettersInput] = useState('A, B, C, D, E, F')
   const [creatingClasses, setCreatingClasses] = useState(false)
 
   const aliveRef = useRef(true)
@@ -138,10 +138,21 @@ export default function OrganizationDetail() {
     return t(`organizationDetail.${key}`, fallback)
   }
 
-  // Filter positions for selected department
+  // Naturally sorted departments (1, 2, 3 ... 9, 10, 11)
+  const sortedDepartments = useMemo(() => {
+    return [...departments].sort((a, b) =>
+      (a.name || '').localeCompare(b.name || '', undefined, { numeric: true, sensitivity: 'base' })
+    )
+  }, [departments])
+
+  // Filter positions for selected department and sort naturally (A, B, C, D, E, F)
   const filteredPositions = useMemo(() => {
     if (!selectedDeptId) return []
-    return positions.filter(p => p.department_id === selectedDeptId)
+    return positions
+      .filter(p => p.department_id === selectedDeptId)
+      .sort((a, b) =>
+        (a.name || '').localeCompare(b.name || '', undefined, { numeric: true, sensitivity: 'base' })
+      )
   }, [positions, selectedDeptId])
 
   // Selected department details
@@ -850,7 +861,7 @@ export default function OrganizationDetail() {
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 400, overflowY: 'auto', paddingRight: 4 }}>
-                {departments.map(dept => {
+                {sortedDepartments.map(dept => {
                   const count = getDeptEmployeesCount(dept.id)
                   const isSelected = selectedDeptId === dept.id
                   return (

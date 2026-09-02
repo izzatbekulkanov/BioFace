@@ -45,22 +45,27 @@ def serialize_position_item(item: Position) -> dict[str, Any]:
     }
 
 
+def natural_sort_key(s: str):
+    import re
+    return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', str(s or ''))]
+
+
 def get_catalog_items_for_org(db: Session, organization_id: int) -> dict[str, list[dict[str, Any]]]:
     departments = (
         db.query(Department)
         .filter(Department.organization_id == int(organization_id))
-        .order_by(func.lower(Department.name).asc(), Department.id.asc())
         .all()
     )
     positions = (
         db.query(Position)
         .filter(Position.organization_id == int(organization_id))
-        .order_by(func.lower(Position.name).asc(), Position.id.asc())
         .all()
     )
+    sorted_depts = sorted(departments, key=lambda d: natural_sort_key(d.name))
+    sorted_positions = sorted(positions, key=lambda p: natural_sort_key(p.name))
     return {
-        "departments": [serialize_department_item(item) for item in departments],
-        "positions": [serialize_position_item(item) for item in positions],
+        "departments": [serialize_department_item(item) for item in sorted_depts],
+        "positions": [serialize_position_item(item) for item in sorted_positions],
     }
 
 

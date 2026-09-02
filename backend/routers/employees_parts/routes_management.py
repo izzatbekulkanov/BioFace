@@ -1148,18 +1148,19 @@ def get_employee_catalogs_management(
         .order_by(func.lower(Organization.name).asc(), Organization.id.asc())
         .all()
     )
+    from .catalogs import natural_sort_key
     departments = (
         db.query(Department)
         .filter(Department.organization_id.in_(org_ids))
-        .order_by(func.lower(Department.name).asc(), Department.id.asc())
         .all()
     )
     positions = (
         db.query(Position)
         .filter(Position.organization_id.in_(org_ids))
-        .order_by(func.lower(Position.name).asc(), Position.id.asc())
         .all()
     )
+    departments = sorted(departments, key=lambda d: natural_sort_key(d.name))
+    positions = sorted(positions, key=lambda p: natural_sort_key(p.name))
     positions_by_department: dict[int, list[Position]] = {}
     for position in positions:
         if position.department_id is not None:
@@ -1859,7 +1860,9 @@ def create_default_classes(
     start_grade = int((payload or {}).get("start_grade") or 1)
     end_grade = int((payload or {}).get("end_grade") or 11)
     format_type = str((payload or {}).get("format") or "number").strip().lower()
-    letters = (payload or {}).get("letters") or []
+    letters = (payload or {}).get("letters")
+    if letters is None:
+        letters = ["A", "B", "C", "D", "E", "F"]
 
     if start_grade < 1:
         start_grade = 1
