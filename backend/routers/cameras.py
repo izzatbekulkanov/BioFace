@@ -5492,189 +5492,176 @@ def _hik_process_log_ml_and_notify(
     username: Optional[str],
     password: Optional[str],
 ) -> None:
+    # 1. Tezkor o'qish (DB sessiya darhol yopiladi)
+    log_info = None
     db = SessionLocal()
     try:
         log = db.query(AttendanceLog).filter(AttendanceLog.id == int(log_id)).first()
         if log is None:
             return
-
         device = db.query(Device).filter(Device.id == log.device_id).first() if log.device_id else None
         emp = db.query(Employee).filter(Employee.id == log.employee_id).first() if log.employee_id else None
-
-        # 1. Backfill snapshot if needed
-        snapshot_url = str(log.snapshot_url or "").strip()
-        if needs_backfill and not snapshot_url.startswith("/static/"):
-            time.sleep(1.5)
-            target_device_id = str(isup_device_id or "").strip()
-            if target_device_id and redis_ok():
-                try:
-                    response = send_command_and_wait(
-                        target_device_id,
-                        "capture_snapshot",
-                        {
-                            "camera_ip": str(camera_ip or "").strip() or None,
-                            "allow_http_fallback": True,
-                            "username": str(username or "").strip() or None,
-                            "password": str(password or "").strip() or None,
-                        },
-                        timeout=15.0,
-                    )
-                    if isinstance(response, dict) and response.get("ok") and response.get("snapshot_url"):
-                        snapshot_url = str(response.get("snapshot_url") or "").strip() or None
-                except Exception as exc:
-                    print(f"[HIK-EVENT-BG] ISUP snapshot backfill error: {exc}")
-
-            if not snapshot_url:
-                snapshot_url = _hik_try_fetch_snapshot_from_camera(
-                    str(camera_ip or "").strip(),
-                    str(username or "").strip(),
-                    str(password or "").strip(),
-                )
-            
-            if snapshot_url:
-                log.snapshot_url = snapshot_url
-
-        # 2. Run ML models (emotion, liveness) if snapshot exists
-        snapshot_url = str(log.snapshot_url or "").strip()
-        psychological_state_key = None
-        psychological_state_uz = ""
-        psychological_state_ru = ""
-        psychological_profile_uz = ""
-        psychological_profile_ru = ""
-        psychological_state_confidence = None
-        emotion_scores = {}
-        stress_score = 0.0
-        stress_status_uz = "Normal"
-        stress_status_ru = "Нормальный"
-        liveness_score = None
-        liveness_status = None
-
-        if snapshot_url.startswith("/static/"):
-            try:
-                photo_path = resolve_snapshot_path(snapshot_url)
-                
-                # Emotion recognition
-                psychological_profile = detect_psychological_profile(photo_path)
-                psychological_state_key = str(psychological_profile.get("state_key") or "")
-                psychological_state_uz = str(psychological_profile.get("state_uz") or "")
-                psychological_state_ru = str(psychological_profile.get("state_ru") or "")
-                psychological_state_confidence = psychological_profile.get("confidence")
-                emotion_scores = dict(psychological_profile.get("emotion_scores") or {})
-                psychological_profile_uz = str(psychological_profile.get("profile_text_uz") or "")
-                psychological_profile_ru = str(psychological_profile.get("profile_text_ru") or "")
-                
-                stress_score = psychological_profile.get("stress_score", 0.0)
-                stress_status_uz = psychological_profile.get("stress_status_uz", "Normal")
-                stress_status_ru = psychological_profile.get("stress_status_ru", "Нормальный")
-
-                # Liveness check
-                liveness_score, liveness_status = check_liveness(photo_path)
-
-                # Update DB record
-                log.psychological_state_key = psychological_state_key or None
-                log.psychological_state_confidence = psychological_state_confidence
-                log.emotion_scores_json = psychological_profile.get("emotion_scores_json") or None
-                log.liveness_score = liveness_score
-                log.liveness_status = liveness_status
-                if log.employee_id is not None and liveness_status == "spoof":
-                    log.review_status = "pending"
-                    log.review_reason = "spoof_detected"
-                    log.status = "tasdiqlash_kerak"
-
-                # Daily psychological state update
-                if emp is not None:
-                    upsert_daily_psychological_state(
-                        db,
-                        employee_id=int(emp.id),
-                        state_key=psychological_state_key,
-                        confidence=psychological_state_confidence,
-                        emotion_scores=emotion_scores,
-                        timestamp=normalize_timestamp_tashkent(log.timestamp),
-                        note=f"hik_event_bg:{device.mac_address if device else '-'}",
-                        source="external_system",
-                    )
-            except Exception as ml_exc:
-                print(f"[HIK-EVENT-BG] ML processing error: {ml_exc}")
-
-        db.commit()
-
-        # 3. Publish final updated event to frontend via Redis WebSockets!
-        try:
-            _publish_attendance_event_redis(
-                source="hik_event",
-                log_id=int(log_id),
-                timestamp=log.timestamp,
-                device=device,
-                employee_id=int(emp.id) if emp else None,
-                person_id=log.person_id,
-                person_name=log.person_name,
-                status=log.status,
-                snapshot_url=snapshot_url or None,
-                psychological_state_key=psychological_state_key,
-                psychological_state_confidence=psychological_state_confidence,
-                emotion_scores=emotion_scores,
-                psychological_state_uz=psychological_state_uz,
-                psychological_state_ru=psychological_state_ru,
-                psychological_profile_uz=psychological_profile_uz,
-                psychological_profile_ru=psychological_profile_ru,
-                psychological_state_source="external_system" if emp else "",
-                wellbeing_note_uz=log.wellbeing_note_uz,
-                wellbeing_note_ru=log.wellbeing_note_ru,
-                wellbeing_note_source=log.wellbeing_note_source,
-                liveness_score=liveness_score,
-                liveness_status=liveness_status,
-                stress_score=stress_score,
-                stress_status_uz=stress_status_uz,
-                stress_status_ru=stress_status_ru,
-            )
-        except Exception as pub_exc:
-            print(f"[HIK-EVENT-BG] Redis publish error: {pub_exc}")
-
-    except Exception as task_exc:
-        db.rollback()
-        print(f"[HIK-EVENT-BG] Unified task error: {task_exc}")
+        log_info = {
+            "log_id": int(log.id),
+            "device_id": int(device.id) if device else None,
+            "device_mac": device.mac_address if device else None,
+            "device_name": device.name if device else None,
+            "organization_id": int(device.organization_id) if device and device.organization_id else None,
+            "employee_id": int(emp.id) if emp else None,
+            "person_id": log.person_id,
+            "person_name": log.person_name,
+            "status": log.status,
+            "snapshot_url": str(log.snapshot_url or "").strip(),
+            "timestamp": log.timestamp,
+            "wellbeing_note_uz": log.wellbeing_note_uz,
+            "wellbeing_note_ru": log.wellbeing_note_ru,
+            "wellbeing_note_source": log.wellbeing_note_source,
+        }
     finally:
         db.close()
 
-@router.post("/api/v1/httppost/")
-@router.post("/api/v1/httppost")
-@router.post("/api/hik-event")
-async def hik_event_webhook(
-    request: Request,
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db),
-):
-    """
-    Hikvision DS-K kameralarining HTTP push notification endpointi.
-    Kamera sozlamalari:
-      Configuration → Network → Advanced Settings → HTTP Listening
-      yoki Event → Basic Event → Alarm Linkage → HTTP Push
-      Server/IP: 94.141.85.147
-      Port: 8000
-      URL: /api/v1/httppost/
-    """
-    # ── RAW LOGGER: Kamera yuborayotgan haqiqiy so'rovni qayd qilamiz ──
-    try:
-        import datetime as _dt
-        _raw_body = await request.body()
-        _log_lines = [
-            f"\n{'='*70}\n",
-            f"[{_dt.datetime.now().isoformat()}] HIK-EVENT REQUEST\n",
-            f"Method : {request.method}\n",
-            f"URL    : {request.url}\n",
-            f"Client : {request.client}\n",
-        ]
-        for _hk, _hv in request.headers.items():
-            _log_lines.append(f"Header : {_hk}: {_hv}\n")
-        _body_preview = _raw_body[:4096]
-        _log_lines.append(f"Body({len(_raw_body)} bytes):\n")
-        _log_lines.append(_body_preview.decode("utf-8", errors="replace"))
-        _log_lines.append("\n")
-        _append_runtime_log("camera_raw.log", "".join(_log_lines))
-    except Exception as _log_exc:
-        print(f"[HIK-EVENT] log xatosi: {_log_exc}")
+    if not log_info:
+        return
 
-    content_type = (request.headers.get("content-type", "") or "").lower()
+    # 2. Snapshot backfill (DB sessiyasiz tarmoq so'rovi)
+    snapshot_url = log_info["snapshot_url"]
+    if needs_backfill and not snapshot_url.startswith("/static/"):
+        time.sleep(0.5)
+        target_device_id = str(isup_device_id or "").strip()
+        if target_device_id and redis_ok():
+            try:
+                response = send_command_and_wait(
+                    target_device_id,
+                    "capture_snapshot",
+                    {
+                        "camera_ip": str(camera_ip or "").strip() or None,
+                        "allow_http_fallback": True,
+                        "username": str(username or "").strip() or None,
+                        "password": str(password or "").strip() or None,
+                    },
+                    timeout=3.0,
+                )
+                if isinstance(response, dict) and response.get("ok") and response.get("snapshot_url"):
+                    snapshot_url = str(response.get("snapshot_url") or "").strip() or None
+            except Exception as exc:
+                print(f"[HIK-EVENT-BG] ISUP snapshot backfill error: {exc}")
+
+        if not snapshot_url:
+            snapshot_url = _hik_try_fetch_snapshot_from_camera(
+                str(camera_ip or "").strip(),
+                str(username or "").strip(),
+                str(password or "").strip(),
+            )
+
+    # 3. ML Modellari (DB sessiyasiz hisoblash)
+    psychological_state_key = None
+    psychological_state_uz = ""
+    psychological_state_ru = ""
+    psychological_profile_uz = ""
+    psychological_profile_ru = ""
+    psychological_state_confidence = None
+    emotion_scores = {}
+    emotion_scores_json = None
+    stress_score = 0.0
+    stress_status_uz = "Normal"
+    stress_status_ru = "Нормальный"
+    liveness_score = None
+    liveness_status = None
+
+    if snapshot_url and snapshot_url.startswith("/static/"):
+        try:
+            photo_path = resolve_snapshot_path(snapshot_url)
+            psychological_profile = detect_psychological_profile(photo_path)
+            psychological_state_key = str(psychological_profile.get("state_key") or "")
+            psychological_state_uz = str(psychological_profile.get("state_uz") or "")
+            psychological_state_ru = str(psychological_profile.get("state_ru") or "")
+            psychological_state_confidence = psychological_profile.get("confidence")
+            emotion_scores = dict(psychological_profile.get("emotion_scores") or {})
+            emotion_scores_json = psychological_profile.get("emotion_scores_json") or None
+            psychological_profile_uz = str(psychological_profile.get("profile_text_uz") or "")
+            psychological_profile_ru = str(psychological_profile.get("profile_text_ru") or "")
+            stress_score = psychological_profile.get("stress_score", 0.0)
+            stress_status_uz = psychological_profile.get("stress_status_uz", "Normal")
+            stress_status_ru = psychological_profile.get("stress_status_ru", "Нормальный")
+
+            liveness_score, liveness_status = check_liveness(photo_path)
+        except Exception as ml_exc:
+            print(f"[HIK-EVENT-BG] ML processing error: {ml_exc}")
+
+    # 4. Qisqa va tezkor DB yozish
+    db = SessionLocal()
+    try:
+        log = db.query(AttendanceLog).filter(AttendanceLog.id == int(log_id)).first()
+        if log:
+            if snapshot_url:
+                log.snapshot_url = snapshot_url
+            log.psychological_state_key = psychological_state_key or None
+            log.psychological_state_confidence = psychological_state_confidence
+            log.emotion_scores_json = emotion_scores_json
+            log.liveness_score = liveness_score
+            log.liveness_status = liveness_status
+            if log.employee_id is not None and liveness_status == "spoof":
+                log.review_status = "pending"
+                log.review_reason = "spoof_detected"
+                log.status = "tasdiqlash_kerak"
+
+            if log_info["employee_id"]:
+                upsert_daily_psychological_state(
+                    db,
+                    employee_id=log_info["employee_id"],
+                    state_key=psychological_state_key,
+                    confidence=psychological_state_confidence,
+                    emotion_scores=emotion_scores,
+                    timestamp=normalize_timestamp_tashkent(log.timestamp),
+                    note=f"hik_event_bg:{log_info['device_mac'] or '-'}",
+                    source="external_system",
+                )
+            db.commit()
+    except Exception as db_exc:
+        db.rollback()
+        print(f"[HIK-EVENT-BG] DB update error: {db_exc}")
+    finally:
+        db.close()
+
+    # 5. Real-time Redis publish
+    try:
+        _publish_attendance_event_redis(
+            source="hik_event",
+            log_id=int(log_id),
+            timestamp=log_info["timestamp"],
+            device=None,
+            employee_id=log_info["employee_id"],
+            person_id=log_info["person_id"],
+            person_name=log_info["person_name"],
+            status=log_info["status"],
+            snapshot_url=snapshot_url or None,
+            psychological_state_key=psychological_state_key,
+            psychological_state_confidence=psychological_state_confidence,
+            emotion_scores=emotion_scores,
+            psychological_state_uz=psychological_state_uz,
+            psychological_state_ru=psychological_state_ru,
+            psychological_profile_uz=psychological_profile_uz,
+            psychological_profile_ru=psychological_profile_ru,
+            psychological_state_source="external_system" if log_info["employee_id"] else "",
+            wellbeing_note_uz=log_info["wellbeing_note_uz"],
+            wellbeing_note_ru=log_info["wellbeing_note_ru"],
+            wellbeing_note_source=log_info["wellbeing_note_source"],
+            liveness_score=liveness_score,
+            liveness_status=liveness_status,
+            stress_score=stress_score,
+            stress_status_uz=stress_status_uz,
+            stress_status_ru=stress_status_ru,
+        )
+    except Exception as pub_exc:
+        print(f"[HIK-EVENT-BG] Redis publish error: {pub_exc}")
+
+def _process_hik_webhook_sync(
+    *,
+    body: bytes,
+    content_type: str,
+    background_tasks: BackgroundTasks,
+    db: Session,
+):
     xml_text = ""
     json_payload: Any = None
     image_bytes: Optional[bytes] = None
@@ -5700,15 +5687,13 @@ async def hik_event_webhook(
         "picdata",
     }
 
-    body = _raw_body  # Already read in logger above
-
     if "multipart" in content_type:
         boundary = b""
         if "boundary=" in content_type:
             b_str = content_type.split("boundary=")[-1].split(";")[0].strip('"').strip()
             boundary = f"--{b_str}".encode("utf-8")
 
-        # Hikvision ko'p hollarda Content-Disposition yubormaydi, FastAPI form() uni tashlab yuboradi.
+        # Hikvision ko'p hollarda Content-Disposition yubormaydi, form() uni tashlab yuboradi.
         # Shu sababli manual split qilamiz
         if boundary and boundary in body:
             for part in body.split(boundary):
@@ -5727,24 +5712,6 @@ async def hik_event_webhook(
                         txt = content.decode("utf-8", errors="ignore").strip()
                         if txt:
                             text_parts.append(txt)
-        else:
-            # Fallback for Requestly yoki to'g'ri form-data clientlar uchun
-            try:
-                form = await request.form()
-                for key, val in form.items():
-                    if hasattr(val, "read"):
-                        raw = await val.read()
-                        if _hik_is_valid_image_bytes(raw):
-                            image_bytes = raw
-                            image_ext = _hik_guess_image_ext(raw)
-                        else:
-                            txt = raw.decode("utf-8", errors="ignore").strip()
-                            if txt: text_parts.append(txt)
-                    else:
-                        txt = str(val).strip()
-                        if txt: text_parts.append(txt)
-            except Exception:
-                pass
     else:
         if body and _hik_is_valid_image_bytes(body):
             image_bytes = body
@@ -6156,3 +6123,31 @@ async def hik_event_webhook(
 </ResponseStatus>"""
     from fastapi.responses import Response
     return Response(content=xml_content, media_type="application/xml")
+
+
+@router.post("/api/v1/httppost/")
+@router.post("/api/v1/httppost")
+@router.post("/api/hik-event")
+async def hik_event_webhook(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    """
+    Hikvision DS-K kameralarining HTTP push notification endpointi.
+    Barcha og'ir hisoblash va DB operatsiyalari alohida threadpoolda bajariladi (Event Loop bloklanmaydi).
+    """
+    try:
+        raw_body = await request.body()
+    except Exception:
+        raw_body = b""
+    content_type = (request.headers.get("content-type", "") or "").lower()
+
+    from starlette.concurrency import run_in_threadpool
+    return await run_in_threadpool(
+        _process_hik_webhook_sync,
+        body=raw_body,
+        content_type=content_type,
+        background_tasks=background_tasks,
+        db=db,
+    )

@@ -107,11 +107,19 @@ def _maybe_ensure_schema():
 
 def ensure_schema() -> bool:
     """
-    Lightweight migrations for SQLite when Alembic is not used.
+    Lightweight migrations for SQLite and PostgreSQL when Alembic is not used.
     Safely adds new columns/indexes if missing.
     """
+    global _SCHEMA_READY
+    if _SCHEMA_READY:
+        return True
     try:
         with engine.begin() as conn:
+            if conn.dialect.name == "postgresql":
+                try:
+                    conn.execute(text("SELECT pg_advisory_xact_lock(74839201);"))
+                except Exception:
+                    pass
             inspector = inspect(conn)
             if "devices" in inspector.get_table_names():
                 cols = {c["name"] for c in inspector.get_columns("devices")}
@@ -130,20 +138,24 @@ def ensure_schema() -> bool:
                     "direction": "ALTER TABLE devices ADD COLUMN direction VARCHAR",
                     "branch_id": "ALTER TABLE devices ADD COLUMN branch_id INTEGER",
                 }
+                added_device_col = False
                 for col_name, sql in device_alters.items():
                     if col_name not in cols:
                         conn.execute(text(sql))
-                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_devices_serial_number ON devices (serial_number)"))
-                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_devices_organization_id ON devices (organization_id)"))
-                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_devices_branch_id ON devices (branch_id)"))
-                default_bool = "false" if conn.dialect.name == "postgresql" else "0"
-                conn.execute(
-                    text(
-                        f"UPDATE devices SET "
-                        f"webhook_enabled = COALESCE(webhook_enabled, {default_bool}), "
-                        f"webhook_picture_sending = COALESCE(webhook_picture_sending, {default_bool})"
+                        added_device_col = True
+                if added_device_col:
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_devices_serial_number ON devices (serial_number)"))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_devices_organization_id ON devices (organization_id)"))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_devices_branch_id ON devices (branch_id)"))
+                    default_bool = "false" if conn.dialect.name == "postgresql" else "0"
+                    conn.execute(
+                        text(
+                            f"UPDATE devices SET "
+                            f"webhook_enabled = COALESCE(webhook_enabled, {default_bool}), "
+                            f"webhook_picture_sending = COALESCE(webhook_picture_sending, {default_bool}) "
+                            f"WHERE webhook_enabled IS NULL OR webhook_picture_sending IS NULL"
+                        )
                     )
-                )
 
                 non_mac_pattern = re.compile(r"^(?:[0-9A-F]{12}|[0-9A-F]{2}(?:[-:][0-9A-F]{2}){5})$", re.IGNORECASE)
                 legacy_rows = conn.execute(
@@ -749,6 +761,8 @@ def ensure_schema() -> bool:
                     conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN longitude FLOAT"))
                 if "review_status" not in attendance_cols:
                     conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN review_status VARCHAR DEFAULT 'auto'"))
+                    conn.execute(text("UPDATE attendance_logs SET review_status = 'auto' WHERE review_status IS NULL"))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_attendance_logs_review_status ON attendance_logs (review_status)"))
                 if "review_reason" not in attendance_cols:
                     conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN review_reason VARCHAR"))
                 if "reviewed_by_id" not in attendance_cols:
@@ -757,12 +771,6 @@ def ensure_schema() -> bool:
                     conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN reviewed_at TIMESTAMP"))
                 if "review_note" not in attendance_cols:
                     conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN review_note VARCHAR"))
-                conn.execute(text("UPDATE attendance_logs SET review_status = COALESCE(review_status, 'auto')"))
-                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_attendance_logs_timestamp ON attendance_logs (timestamp)"))
-                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_attendance_logs_status_timestamp ON attendance_logs (status, timestamp)"))
-                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_attendance_logs_employee_timestamp ON attendance_logs (employee_id, timestamp)"))
-                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_attendance_logs_device_timestamp ON attendance_logs (device_id, timestamp)"))
-                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_attendance_logs_review_status ON attendance_logs (review_status)"))
 
             if "attendance_review_audits" not in inspector.get_table_names():
                 conn.execute(
@@ -1103,6 +1111,7 @@ def ensure_schema() -> bool:
                 conn.commit()
             except Exception:
                 pass
+        _SCHEMA_READY = True
         return True
     except Exception as e:
         import traceback

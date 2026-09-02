@@ -20,9 +20,7 @@ from models import RequestLog
 from routers import auth, dashboard, webhook, cameras, employees, settings, organizations, users, system_monitor, planning, chat, versions, finance, feedbacks, system_tools, audit
 from utils.time_utils import now_tashkent
 
-# Jadvallarni yaratish
-models.Base.metadata.create_all(bind=engine)
-ensure_schema()
+# Jadvallarni yaratish va migratsiyalar leader worker tomonidan startup jarayonida bajariladi
 
 # --- FastAPI Ilovasi ---
 app = FastAPI(title="BioFace Admin Dashboard", version="1.0.0")
@@ -343,16 +341,48 @@ async def startup_background_services():
     finally:
         db.close()
 
-    start_attendance_monitor()
-    start_self_healing_monitor()
-    start_ai_process()
-    start_notification_monitor()
+    # Faqat bitta Uvicorn worker leader bo'lib fon jarayonlarini boshqaradi (Redis lock)
+    is_leader = False
+    try:
+        from services.redis_client import get_redis
+        r = get_redis()
+        if r:
+            pid = str(os.getpid())
+            # Lock 30 soniyalik emas, balki worker tirik bo'lgan vaqtgacha saqlanadi
+            is_leader = bool(r.set("bioface:bg_services_leader", pid, nx=True, ex=86400))
+        else:
+            is_leader = True
+    except Exception:
+        is_leader = True
+
+    if is_leader:
+        print(f"[STARTUP] Process {os.getpid()} elected as Background Services Leader.")
+        try:
+            ensure_schema()
+        except Exception as _schema_err:
+            print(f"[STARTUP-WARNING] Schema migration: {_schema_err}")
+        start_attendance_monitor()
+        start_self_healing_monitor()
+        start_ai_process()
+        start_notification_monitor()
+    else:
+        print(f"[STARTUP] Process {os.getpid()} running as API worker (background monitors handled by leader).")
 
 
 @app.on_event("shutdown")
 async def shutdown_background_services():
     if not _background_autostart_enabled():
         return
+    try:
+        from services.redis_client import get_redis
+        r = get_redis()
+        if r:
+            pid = str(os.getpid())
+            val = r.get("bioface:bg_services_leader")
+            if val == pid or val == pid.encode("utf-8"):
+                r.delete("bioface:bg_services_leader")
+    except Exception:
+        pass
     stop_attendance_monitor()
     stop_self_healing_monitor()
     stop_ai_process()
