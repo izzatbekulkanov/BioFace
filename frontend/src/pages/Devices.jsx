@@ -79,23 +79,22 @@ export default function Devices() {
     abortRef.current = new AbortController()
     const signal = abortRef.current.signal
     try {
-      const isFirstLoad = _camerasCache.length === 0 && !animate
       const camsPromise = fetch('/api/cameras', { signal, credentials: 'include' }).catch(err => { if (err.name === 'AbortError') return null; throw err; })
       const orgsPromise = fetch('/api/organizations', { signal, credentials: 'include' }).catch(err => { if (err.name === 'AbortError') return null; throw err; })
       const mePromise   = fetch('/api/auth/me', { signal, credentials: 'include' }).catch(err => { if (err.name === 'AbortError') return null; throw err; })
 
-      const [camsRes, orgsRes, meRes] = isFirstLoad
-        ? await Promise.all([camsPromise, orgsPromise, mePromise, new Promise(r => setTimeout(r, 600))]).then(arr => [arr[0], arr[1], arr[2]])
-        : await Promise.all([camsPromise, orgsPromise, mePromise])
+      const [camsRes, orgsRes, meRes] = await Promise.all([camsPromise, orgsPromise, mePromise])
 
-      if (signal.aborted || !camsRes || !orgsRes || !meRes) return
+      if (signal.aborted) return
 
-      if (camsRes.status === 401 || orgsRes.status === 401) { navigate('/login'); return }
-      if (!camsRes.ok) throw new Error()
+      if (camsRes && (camsRes.status === 401 || (orgsRes && orgsRes.status === 401))) {
+        navigate('/login')
+        return
+      }
 
-      const camsData = await camsRes.json().catch(() => [])
-      const orgsData = orgsRes.ok ? await orgsRes.json().catch(() => []) : []
-      const meData   = meRes.ok   ? await meRes.json().catch(() => ({}))   : {}
+      const camsData = camsRes && camsRes.ok ? await camsRes.json().catch(() => []) : []
+      const orgsData = orgsRes && orgsRes.ok ? await orgsRes.json().catch(() => []) : []
+      const meData   = meRes && meRes.ok     ? await meRes.json().catch(() => ({})) : {}
 
       const role = String(meData.role || '').toLowerCase()
       const superAdmin = role === 'super_admin' || role === 'superadmin'
@@ -108,26 +107,29 @@ export default function Devices() {
       const orgList = Array.isArray(orgsData) ? orgsData : []
       setCameras(list)
       setOrganizations(orgList)
-
-      // Agar SuperAdmin emas va faqat 1 ta tashkilot bo'lsa — to'g'ridan kameralarga o'tamiz
-      if (!superAdmin && orgList.length === 1 && !searchParams.get('org')) {
-        setSearchParams({ org: String(orgList[0].id) })
-      }
-
-      setLoading(false)
-      if (animate) setTimeout(() => setSpin(false), 500)
     } catch (e) {
-      if (e.name === 'AbortError') return
-      setError(t('devices.errLoad'))
-      setLoading(false)
-      if (animate) setTimeout(() => setSpin(false), 500)
+      if (e.name !== 'AbortError') {
+        setError(t('devices.errLoad'))
+      }
+    } finally {
+      if (!signal.aborted) {
+        setLoading(false)
+        if (animate) setTimeout(() => setSpin(false), 500)
+      }
     }
-  }, [navigate, t, searchParams, setSearchParams])
+  }, [navigate, t])
 
   useEffect(() => {
     load()
     return () => { if (abortRef.current) abortRef.current.abort() }
   }, [load])
+
+  // Agar SuperAdmin emas va faqat 1 ta tashkilot bo'lsa — to'g'ridan kameralarga o'tamiz
+  useEffect(() => {
+    if (!loading && !isSuperAdmin && organizations.length === 1 && !searchParams.get('org')) {
+      setSearchParams({ org: String(organizations[0].id) }, { replace: true })
+    }
+  }, [loading, isSuperAdmin, organizations, searchParams, setSearchParams])
 
   // orgParam o'zgarganda filialllarni yuklash
   useEffect(() => {
