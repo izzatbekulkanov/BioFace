@@ -224,8 +224,35 @@ export default function CameraDetail() {
     }
   }
 
+  const [refreshingIp, setRefreshingIp] = useState(false)
+
+  const refreshIpAddress = async () => {
+    setRefreshingIp(true)
+    try {
+      const res = await fetch(`/api/cameras/${id}/refresh-ip`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data.detail || (isRu ? 'Не удалось получить IP-адрес' : 'IP manzilni yuklab bo\'lmadi'))
+      }
+      if (data.local_ip) {
+        setF(prev => ({ ...prev, local_ip: data.local_ip }))
+        setCam(prev => ({ ...prev, local_ip: data.local_ip, external_ip: data.external_ip || prev.external_ip }))
+        toast.success(data.message || (isRu ? `IP-адрес обновлен: ${data.local_ip}` : `IP manzil yangilandi: ${data.local_ip}`))
+      }
+    } catch (e) {
+      toast.error(e.message)
+    } finally {
+      setRefreshingIp(false)
+    }
+  }
+
   const [f, setF] = useState({
     name: '', location: '', model: '', mac_address: '', serial_number: '',
+    local_ip: '',
     isup_device_id: '', username: 'admin', isup_password: '', password: '',
     max_memory: '', min_face_confidence: '0.40', organization_id: '', direction: '',
   })
@@ -267,6 +294,7 @@ export default function CameraDetail() {
         model:          data.model || '',
         mac_address:    data.mac_address || '',
         serial_number:  data.serial_number || '',
+        local_ip:       data.local_ip || '',
         isup_device_id: data.isup_device_id || '',
         username:       data.username || 'admin',
         isup_password:  data.isup_password || '',
@@ -309,6 +337,7 @@ export default function CameraDetail() {
       name: f.name.trim(), location: f.location.trim() || null,
       model: f.model.trim() || null, mac_address: f.mac_address.trim() || null,
       serial_number: f.serial_number.trim() || null,
+      local_ip: f.local_ip.trim() || null,
       isup_device_id: f.isup_device_id.trim() || null,
       username: f.username.trim() || null,
       isup_password: f.isup_password.trim() || null,
@@ -684,7 +713,7 @@ export default function CameraDetail() {
                   </button>
                 </div>
               </Field>
-              <Field label={isRu ? "Организация" : "Tashkilot"} span={2}>
+              <Field label={isRu ? "Организация" : "Tashkilot"}>
                 <CustomSelect
                   value={f.organization_id || ''}
                   onChange={val => setF(prev => ({ ...prev, organization_id: val }))}
@@ -695,7 +724,7 @@ export default function CameraDetail() {
                   placeholder={isRu ? "Выберите организацию..." : "Tashkilotni tanlang..."}
                 />
               </Field>
-              <Field label={isRu ? "Направление (Вход/Выход)" : "Yo'nalish (Kirish/Chiqish)"} span={2}>
+              <Field label={isRu ? "Направление (Вход/Выход)" : "Yo'nalish (Kirish/Chiqish)"}>
                 <CustomSelect
                   value={f.direction || ''}
                   onChange={val => setF(prev => ({ ...prev, direction: val }))}
@@ -705,6 +734,63 @@ export default function CameraDetail() {
                     { value: 'out', label: isRu ? 'Выход (Chiqish)' : 'Chiqish (Выход)' }
                   ]}
                   placeholder={isRu ? "Выберите направление..." : "Yo'nalishni tanlang..."}
+                />
+              </Field>
+              <Field label={isRu ? "IP-адрес (локальная сеть)" : "IP Manzil (Lokal tarmoq)"}>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <input
+                    style={{ ...inp, flex: 1, minWidth: 0, fontFamily: 'monospace' }}
+                    value={f.local_ip}
+                    onChange={update('local_ip')}
+                    placeholder="192.168.1.100"
+                  />
+                  <button
+                    type="button"
+                    onClick={refreshIpAddress}
+                    disabled={refreshingIp}
+                    title={isRu ? "Получить настоящий IP-адрес с камеры" : "Kameraning haqiqiy IP manzilini yuklab olish"}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 36,
+                      height: 36,
+                      borderRadius: 9,
+                      background: 'var(--surface-3)',
+                      border: '1px solid var(--border-3)',
+                      color: 'var(--text-1)',
+                      cursor: refreshingIp ? 'not-allowed' : 'pointer',
+                      flexShrink: 0,
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={e => {
+                      if (!refreshingIp) {
+                        e.currentTarget.style.background = 'var(--accent)'
+                        e.currentTarget.style.borderColor = 'var(--accent)'
+                        e.currentTarget.style.color = '#fff'
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      if (!refreshingIp) {
+                        e.currentTarget.style.background = 'var(--surface-3)'
+                        e.currentTarget.style.borderColor = 'var(--border-3)'
+                        e.currentTarget.style.color = 'var(--text-1)'
+                      }
+                    }}
+                  >
+                    {refreshingIp ? (
+                      <Spinner size="tiny" />
+                    ) : (
+                      <ArrowSyncRegular fontSize={16} />
+                    )}
+                  </button>
+                </div>
+              </Field>
+              <Field label={isRu ? "Внешний IP (WAN)" : "Tashqi IP (WAN)"}>
+                <input
+                  style={{ ...inpRO, fontFamily: 'monospace' }}
+                  readOnly
+                  value={cam?.external_ip || '—'}
                 />
               </Field>
             </div>

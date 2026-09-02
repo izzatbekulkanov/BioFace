@@ -1201,6 +1201,7 @@ def list_cameras(request: Request, db: Session = Depends(get_db)):
             "model": c.model,
             "firmware_version": c.firmware_version,
             "external_ip": c.external_ip,
+            "local_ip": c.local_ip,
             "protocol_version": c.protocol_version,
             "webhook_enabled": bool(c.webhook_enabled),
             "webhook_target_url": c.webhook_target_url,
@@ -1347,6 +1348,7 @@ def get_camera(request: Request, cam_id: str, db: Session = Depends(get_db)):
         "model": cam.model,
         "firmware_version": cam.firmware_version,
         "external_ip": cam.external_ip,
+        "local_ip": cam.local_ip,
         "protocol_version": cam.protocol_version,
         "webhook_enabled": bool(cam.webhook_enabled),
         "webhook_target_url": cam.webhook_target_url,
@@ -1584,6 +1586,8 @@ def update_camera(request: Request, cam_id: str, data: CameraUpdate, db: Session
         cam.firmware_version = _strip_or_none(data.firmware_version)
     if data.external_ip is not None:
         cam.external_ip = _strip_or_none(data.external_ip)
+    if data.local_ip is not None:
+        cam.local_ip = _strip_or_none(data.local_ip)
     if data.protocol_version is not None:
         cam.protocol_version = _strip_or_none(data.protocol_version)
     if data.webhook_enabled is not None:
@@ -2321,6 +2325,54 @@ def refresh_camera_serial(request: Request, cam_id: str, db: Session = Depends(g
     }
 
 
+@router.post("/api/cameras/{cam_id}/refresh-ip")
+def refresh_camera_ip(request: Request, cam_id: str, db: Session = Depends(get_db)):
+    _assert_camera_manage_access(request)
+    cam, _ = _get_camera_for_request(request, db, cam_id)
+
+    target_id, live_info, source = _resolve_online_command_target(cam)
+    info_response = _send_isup_command_or_raise(
+        target_id,
+        "get_info",
+        {},
+        timeout=10.0,
+    )
+    camera_info = _extract_command_camera_info(info_response)
+    device_info = info_response.get("device") if isinstance(info_response, dict) else {}
+    network_info = info_response.get("network_info") if isinstance(info_response, dict) else {}
+
+    raw_ip = (
+        _pick_first_nonempty(network_info, ("ipAddress", "ip", "local_ip")) or
+        _pick_first_nonempty(camera_info, ("ipAddress", "ip")) or
+        _pick_first_nonempty(device_info, ("local_ip", "ipAddress"))
+    )
+    incoming_ip = str(raw_ip).strip() if raw_ip else None
+    if not incoming_ip:
+        raise HTTPException(
+            status_code=400,
+            detail="Kameradan ichki IP manzil o'qib bo'lmadi yoki kamera bu ma'lumotni qaytarmadi"
+        )
+
+    old_ip = cam.local_ip
+    cam.local_ip = incoming_ip
+
+    remote_ip = _pick_first_nonempty(device_info, ("remote_ip", "ip")) or info_response.get("camera_ip")
+    if remote_ip and remote_ip != "-":
+        cam.external_ip = str(remote_ip).strip()
+
+    db.commit()
+
+    return {
+        "ok": True,
+        "local_ip": incoming_ip,
+        "old_local_ip": old_ip,
+        "external_ip": cam.external_ip,
+        "camera_id": cam.id,
+        "camera_uuid": cam.uuid,
+        "message": f"Kameraning tarmoqdagi IP manzili muvaffaqiyatli yuklandi: {incoming_ip}",
+    }
+
+
 @router.post("/api/cameras/{cam_id}/sync-metadata")
 def sync_camera_metadata(request: Request, cam_id: str, db: Session = Depends(get_db)):
     _assert_camera_manage_access(request)
@@ -2411,6 +2463,11 @@ def sync_camera_metadata(request: Request, cam_id: str, db: Session = Depends(ge
     if incoming_external_ip and cam.external_ip != incoming_external_ip:
         cam.external_ip = incoming_external_ip
         updated["external_ip"] = incoming_external_ip
+
+    incoming_local_ip = _pick_first_nonempty(network_info, ("ipAddress", "ip", "local_ip")) or _pick_first_nonempty(camera_info, ("ipAddress", "ip"))
+    if incoming_local_ip and cam.local_ip != incoming_local_ip:
+        cam.local_ip = str(incoming_local_ip).strip()
+        updated["local_ip"] = str(incoming_local_ip).strip()
 
     incoming_protocol_version = (
         _pick_first_nonempty(live_info or {}, ("isup_version", "protocol_version"))

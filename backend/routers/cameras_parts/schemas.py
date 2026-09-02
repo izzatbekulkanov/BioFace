@@ -14,6 +14,7 @@ class CameraCreate(BaseModel):
     model: Optional[str] = ""
     firmware_version: Optional[str] = None
     external_ip: Optional[str] = None
+    local_ip: Optional[str] = None
     protocol_version: Optional[str] = None
     webhook_enabled: Optional[bool] = None
     webhook_target_url: Optional[str] = None
@@ -37,6 +38,7 @@ class CameraUpdate(BaseModel):
     model: Optional[str] = None
     firmware_version: Optional[str] = None
     external_ip: Optional[str] = None
+    local_ip: Optional[str] = None
     protocol_version: Optional[str] = None
     webhook_enabled: Optional[bool] = None
     webhook_target_url: Optional[str] = None

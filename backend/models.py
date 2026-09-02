@@ -133,6 +133,7 @@ class Device(Base):
     model = Column(String, nullable=True)                        # "DS-K1T343"
     firmware_version = Column(String, nullable=True)
     external_ip = Column(String, nullable=True)
+    local_ip = Column(String, nullable=True)
     protocol_version = Column(String, nullable=True)
     webhook_enabled = Column(Boolean, default=False)
     webhook_target_url = Column(String, nullable=True)
