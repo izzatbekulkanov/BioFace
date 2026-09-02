@@ -2218,6 +2218,58 @@ def get_camera_snapshot(request: Request, cam_id: str, db: Session = Depends(get
     }
 
 
+@router.post("/api/cameras/{cam_id}/refresh-mac")
+def refresh_camera_mac(request: Request, cam_id: str, db: Session = Depends(get_db)):
+    _assert_camera_manage_access(request)
+    cam, _ = _get_camera_for_request(request, db, cam_id)
+
+    target_id, live_info, source = _resolve_online_command_target(cam)
+    info_response = _send_isup_command_or_raise(
+        target_id,
+        "get_info",
+        {},
+        timeout=10.0,
+    )
+    camera_info = _extract_command_camera_info(info_response)
+    device_info = info_response.get("device") if isinstance(info_response, dict) else {}
+    network_info = info_response.get("network_info") if isinstance(info_response, dict) else {}
+
+    raw_mac = (
+        _pick_first_nonempty(camera_info, ("macAddress", "MACAddress", "mac_address", "mac")) or
+        _pick_first_nonempty(network_info, ("macAddress", "MACAddress", "mac_address", "mac")) or
+        _pick_first_nonempty(device_info, ("macAddress", "MACAddress", "mac_address", "mac"))
+    )
+    incoming_mac = _normalize_mac_address(raw_mac)
+    if not incoming_mac:
+        raise HTTPException(
+            status_code=400,
+            detail="Kameradan MAC manzil o'qib bo'lmadi yoki kamera bu ma'lumotni qaytarmadi"
+        )
+
+    conflict = db.query(Device).filter(
+        Device.mac_address == incoming_mac,
+        Device.id != cam.id,
+    ).first()
+    if conflict:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Aniqlangan MAC manzil ({incoming_mac}) allaqachon boshqa kameraga ('{conflict.name}') biriktirilgan"
+        )
+
+    old_mac = cam.mac_address
+    cam.mac_address = incoming_mac
+    db.commit()
+
+    return {
+        "ok": True,
+        "mac_address": incoming_mac,
+        "old_mac_address": old_mac,
+        "camera_id": cam.id,
+        "camera_uuid": cam.uuid,
+        "message": f"Kameraning haqiqiy MAC manzili muvaffaqiyatli yuklandi: {incoming_mac}",
+    }
+
+
 @router.post("/api/cameras/{cam_id}/sync-metadata")
 def sync_camera_metadata(request: Request, cam_id: str, db: Session = Depends(get_db)):
     _assert_camera_manage_access(request)
@@ -2232,6 +2284,7 @@ def sync_camera_metadata(request: Request, cam_id: str, db: Session = Depends(ge
     )
     camera_info = _extract_command_camera_info(info_response)
     device_info = info_response.get("device") if isinstance(info_response, dict) else {}
+    network_info = info_response.get("network_info") if isinstance(info_response, dict) else {}
 
     alarm_summary: dict[str, Any] = {}
     updated: dict[str, Any] = {}
@@ -2269,7 +2322,12 @@ def sync_camera_metadata(request: Request, cam_id: str, db: Session = Depends(ge
             cam.isup_device_id = incoming_isup_device_id
             updated["isup_device_id"] = incoming_isup_device_id
 
-    incoming_mac = _normalize_mac_address(_pick_first_nonempty(camera_info, ("macAddress", "MACAddress")))
+    raw_incoming_mac = (
+        _pick_first_nonempty(camera_info, ("macAddress", "MACAddress", "mac_address", "mac")) or
+        _pick_first_nonempty(network_info, ("macAddress", "MACAddress", "mac_address", "mac")) or
+        _pick_first_nonempty(device_info, ("macAddress", "MACAddress", "mac_address", "mac"))
+    )
+    incoming_mac = _normalize_mac_address(raw_incoming_mac)
     if incoming_mac and cam.mac_address != incoming_mac:
         mac_conflict = db.query(Device).filter(
             Device.mac_address == incoming_mac,

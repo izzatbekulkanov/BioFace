@@ -172,6 +172,32 @@ export default function CameraDetail() {
     }
   }
 
+  const [refreshingMac, setRefreshingMac] = useState(false)
+
+  const refreshMacAddress = async () => {
+    setRefreshingMac(true)
+    try {
+      const res = await fetch(`/api/cameras/${id}/refresh-mac`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data.detail || (isRu ? 'Не удалось получить MAC-адрес' : 'MAC manzilni yuklab bo\'lmadi'))
+      }
+      if (data.mac_address) {
+        setF(prev => ({ ...prev, mac_address: data.mac_address }))
+        setCam(prev => ({ ...prev, mac_address: data.mac_address }))
+        toast.success(data.message || (isRu ? `MAC-адрес обновлен: ${data.mac_address}` : `MAC manzil yangilandi: ${data.mac_address}`))
+      }
+    } catch (e) {
+      toast.error(e.message)
+    } finally {
+      setRefreshingMac(false)
+    }
+  }
+
   const [f, setF] = useState({
     name: '', location: '', model: '', mac_address: '', serial_number: '',
     isup_device_id: '', username: 'admin', isup_password: '', password: '',
@@ -533,7 +559,56 @@ export default function CameraDetail() {
                 </div>
               </Field>
               <Field label={isRu ? "MAC-адрес" : "MAC Manzil"}>
-                <input style={{ ...inp, fontFamily: 'monospace', textTransform: 'uppercase' }} value={f.mac_address} onChange={update('mac_address')} placeholder="AA:BB:CC:11:22:33" />
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <input
+                    style={{ ...inp, flex: 1, minWidth: 0, fontFamily: 'monospace', textTransform: 'uppercase' }}
+                    value={f.mac_address}
+                    onChange={update('mac_address')}
+                    placeholder="AA:BB:CC:11:22:33"
+                  />
+                  <button
+                    type="button"
+                    onClick={refreshMacAddress}
+                    disabled={refreshingMac}
+                    title={isRu ? "Получить настоящий MAC-адрес с камеры" : "Kameraning haqiqiy MAC manzilini kameradan yuklab olish"}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '9px 12px',
+                      borderRadius: 9,
+                      background: 'var(--surface-3)',
+                      border: '1px solid var(--border-3)',
+                      color: 'var(--text-1)',
+                      fontSize: 12.5,
+                      fontWeight: 600,
+                      cursor: refreshingMac ? 'not-allowed' : 'pointer',
+                      whiteSpace: 'nowrap',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={e => {
+                      if (!refreshingMac) {
+                        e.currentTarget.style.background = 'var(--accent)'
+                        e.currentTarget.style.borderColor = 'var(--accent)'
+                        e.currentTarget.style.color = '#fff'
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      if (!refreshingMac) {
+                        e.currentTarget.style.background = 'var(--surface-3)'
+                        e.currentTarget.style.borderColor = 'var(--border-3)'
+                        e.currentTarget.style.color = 'var(--text-1)'
+                      }
+                    }}
+                  >
+                    {refreshingMac ? (
+                      <Spinner size="tiny" />
+                    ) : (
+                      <ArrowSyncRegular fontSize={14} />
+                    )}
+                    <span>{refreshingMac ? (isRu ? 'Получение...' : 'Yuklanmoqda...') : (isRu ? 'Обновить' : 'Yangilash')}</span>
+                  </button>
+                </div>
               </Field>
               <Field label={isRu ? "Серийный номер" : "Seriya Raqami"}>
                 <input style={{ ...inp, fontFamily: 'monospace' }} value={f.serial_number} onChange={update('serial_number')} placeholder="DS3B24123456" />
