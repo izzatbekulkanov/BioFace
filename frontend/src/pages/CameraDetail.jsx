@@ -570,20 +570,19 @@ export default function CameraDetail() {
                     type="button"
                     onClick={refreshMacAddress}
                     disabled={refreshingMac}
-                    title={isRu ? "Получить настоящий MAC-адрес с камеры" : "Kameraning haqiqiy MAC manzilini kameradan yuklab olish"}
+                    title={isRu ? "Получить настоящий MAC-адрес с камеры" : "Kameraning haqiqiy MAC manzilini yuklab olish"}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 6,
-                      padding: '9px 12px',
+                      justifyContent: 'center',
+                      width: 36,
+                      height: 36,
                       borderRadius: 9,
                       background: 'var(--surface-3)',
                       border: '1px solid var(--border-3)',
                       color: 'var(--text-1)',
-                      fontSize: 12.5,
-                      fontWeight: 600,
                       cursor: refreshingMac ? 'not-allowed' : 'pointer',
-                      whiteSpace: 'nowrap',
+                      flexShrink: 0,
                       transition: 'all 0.2s',
                     }}
                     onMouseEnter={e => {
@@ -604,9 +603,8 @@ export default function CameraDetail() {
                     {refreshingMac ? (
                       <Spinner size="tiny" />
                     ) : (
-                      <ArrowSyncRegular fontSize={14} />
+                      <ArrowSyncRegular fontSize={16} />
                     )}
-                    <span>{refreshingMac ? (isRu ? 'Получение...' : 'Yuklanmoqda...') : (isRu ? 'Обновить' : 'Yangilash')}</span>
                   </button>
                 </div>
               </Field>
