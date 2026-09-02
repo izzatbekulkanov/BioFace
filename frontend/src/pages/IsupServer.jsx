@@ -761,6 +761,7 @@ function AddDeviceModal({ target, onClose, onSaved, isRu }) {
     serial_number: '',
     model: target?.model || target?.camera_model || '',
     firmware_version: '',
+    local_ip: '',
     external_ip: target?.ip && target.ip !== '-' ? target.ip : '',
     location: '',
     organization_id: '',
@@ -805,6 +806,7 @@ function AddDeviceModal({ target, onClose, onSaved, isRu }) {
               serial_number: meta?.detected?.serial_number || prev.serial_number,
               model: meta?.detected?.model || prev.model,
               firmware_version: meta?.detected?.firmware_version || prev.firmware_version,
+              local_ip: meta?.detected?.local_ip || prev.local_ip,
               external_ip: meta?.detected?.external_ip || prev.external_ip,
             }))
             if (Array.isArray(meta?.warnings) && meta.warnings.length) {
@@ -862,6 +864,7 @@ function AddDeviceModal({ target, onClose, onSaved, isRu }) {
         serial_number: form.serial_number.trim() || null,
         model: form.model.trim() || null,
         firmware_version: form.firmware_version.trim() || null,
+        local_ip: form.local_ip.trim() || null,
         external_ip: form.external_ip.trim() || null,
         location: form.location.trim() || null,
         organization_id: form.organization_id ? Number(form.organization_id) : null,
@@ -973,21 +976,24 @@ function AddDeviceModal({ target, onClose, onSaved, isRu }) {
               </Field>
 
               <Field label="MAC">
-                <input value={form.mac_address} disabled style={{ ...inp, opacity: 0.6, cursor: 'not-allowed' }} placeholder="AA:BB:CC:11:22:33" readOnly />
+                <input value={form.mac_address} onChange={setField('mac_address')} style={{ ...inp, fontFamily: 'monospace', textTransform: 'uppercase' }} placeholder="AA:BB:CC:11:22:33" />
               </Field>
               <Field label="Serial">
-                <input value={form.serial_number} disabled style={{ ...inp, opacity: 0.6, cursor: 'not-allowed' }} readOnly />
+                <input value={form.serial_number} onChange={setField('serial_number')} style={{ ...inp, fontFamily: 'monospace' }} placeholder="DS-K1T..." />
               </Field>
 
               <Field label={isRu ? 'Модель' : 'Model'}>
-                <input value={form.model} disabled style={{ ...inp, opacity: 0.6, cursor: 'not-allowed' }} placeholder="DS-K1T343" readOnly />
+                <input value={form.model} onChange={setField('model')} style={inp} placeholder="DS-K1T343" />
               </Field>
               <Field label="Firmware">
-                <input value={form.firmware_version} disabled style={{ ...inp, opacity: 0.6, cursor: 'not-allowed' }} readOnly />
+                <input value={form.firmware_version} onChange={setField('firmware_version')} style={inp} placeholder="V3.3.15" />
               </Field>
 
-              <Field label={isRu ? 'IP' : 'IP'}>
-                <input value={form.external_ip} disabled style={{ ...inp, opacity: 0.6, cursor: 'not-allowed' }} placeholder="192.168.1.100" readOnly />
+              <Field label={isRu ? 'Локальный IP (LAN)' : 'Lokal IP (LAN)'}>
+                <input value={form.local_ip} onChange={setField('local_ip')} style={{ ...inp, fontFamily: 'monospace' }} placeholder="192.168.1.100" />
+              </Field>
+              <Field label={isRu ? 'Внешний IP (WAN)' : 'Tashqi IP (WAN)'}>
+                <input value={form.external_ip} disabled style={{ ...inp, opacity: 0.6, cursor: 'not-allowed', fontFamily: 'monospace' }} placeholder="100.71.61.63" readOnly />
               </Field>
               <Field label={isRu ? 'Расположение' : 'Joylashuvi'}>
                 <input value={form.location} onChange={setField('location')} style={inp} placeholder={isRu ? '1-вход' : '1-kirish'} />

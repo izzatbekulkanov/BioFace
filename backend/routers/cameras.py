@@ -1404,6 +1404,7 @@ def add_camera(request: Request, data: CameraCreate, db: Session = Depends(get_d
     model_val = _strip_or_none(data.model)
     firmware_val = _strip_or_none(data.firmware_version)
     external_ip_val = _strip_or_none(data.external_ip)
+    local_ip_val = _strip_or_none(data.local_ip)
     protocol_version_val = _strip_or_none(data.protocol_version)
     webhook_enabled_val = bool(data.webhook_enabled) if data.webhook_enabled is not None else False
     webhook_target_url_val = _resolve_camera_webhook_target_url(request, _strip_or_none(data.webhook_target_url))
@@ -1422,8 +1423,12 @@ def add_camera(request: Request, data: CameraCreate, db: Session = Depends(get_d
             if res.get("ok"):
                 c_info = res.get("camera_info", {})
                 d_info = res.get("device", {})
+                n_info = res.get("network_info", {})
                 
-                fetched_mac = _normalize_mac_address(_pick_first_nonempty(c_info, ("macAddress", "MACAddress")))
+                fetched_mac = _normalize_mac_address(
+                    _pick_first_nonempty(c_info, ("macAddress", "MACAddress")) or
+                    _pick_first_nonempty(n_info, ("macAddress", "MACAddress"))
+                )
                 if fetched_mac and (not _is_probable_mac_address(mac_val) or str(mac_val).startswith("AUTO-")):
                     mac_val = fetched_mac
 
@@ -1439,7 +1444,11 @@ def add_camera(request: Request, data: CameraCreate, db: Session = Depends(get_d
                 if fetched_firmware and not firmware_val:
                     firmware_val = fetched_firmware
 
-                fetched_external_ip = _pick_first_nonempty(d_info, ("remote_ip", "ip"))
+                fetched_local_ip = _pick_first_nonempty(n_info, ("ipAddress", "ip")) or _pick_first_nonempty(c_info, ("ipAddress", "ip"))
+                if fetched_local_ip and not local_ip_val:
+                    local_ip_val = fetched_local_ip
+
+                fetched_external_ip = _pick_first_nonempty(d_info, ("remote_ip", "ip")) or res.get("camera_ip")
                 if fetched_external_ip and not external_ip_val:
                     external_ip_val = fetched_external_ip
 
@@ -1486,6 +1495,7 @@ def add_camera(request: Request, data: CameraCreate, db: Session = Depends(get_d
         model=model_val,
         firmware_version=firmware_val,
         external_ip=external_ip_val,
+        local_ip=local_ip_val,
         protocol_version=protocol_version_val,
         webhook_enabled=webhook_enabled_val,
         webhook_target_url=webhook_target_url_val,

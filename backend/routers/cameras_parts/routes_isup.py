@@ -209,10 +209,14 @@ def get_isup_device_metadata(device_id: str):
         or _pick_first_nonempty(device_info, ("firmware_version", "firmware"))
         or _pick_first_nonempty(live_device, ("firmware_version", "firmware"))
     )
+    local_ip = (
+        _pick_first_nonempty(network_info, ("ipAddress", "ip", "local_ip"))
+        or _pick_first_nonempty(camera_info, ("ipAddress", "ip"))
+    )
     external_ip = (
-        _pick_first_nonempty(network_info, ("ipAddress",))
-        or _pick_first_nonempty(device_info, ("remote_ip", "ip"))
+        _pick_first_nonempty(device_info, ("remote_ip", "ip"))
         or _pick_first_nonempty(live_device, ("remote_ip", "ip"))
+        or info_response.get("camera_ip")
     )
     protocol_version = (
         _pick_first_nonempty(device_info, ("isup_version", "protocol_version"))
@@ -228,6 +232,7 @@ def get_isup_device_metadata(device_id: str):
             "serial_number": serial_number or "",
             "model": model or "",
             "firmware_version": firmware_version or "",
+            "local_ip": local_ip or "",
             "external_ip": external_ip or "",
             "protocol_version": protocol_version or "",
         },
