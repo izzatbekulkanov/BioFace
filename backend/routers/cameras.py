@@ -1192,6 +1192,7 @@ def list_cameras(request: Request, db: Session = Depends(get_db)):
 
         result.append({
             "id": c.id,
+            "uuid": c.uuid,
             "name": c.name,
             "mac_address": c.mac_address,
             "serial_number": c.serial_number,
@@ -1284,13 +1285,24 @@ def list_public_cameras(request: Request, db: Session = Depends(get_db)):
     return result
 
 
-# ── GET /api/cameras/{id} — bitta kamera ─────────────────
-@router.get("/api/cameras/{cam_id}")
-def get_camera(request: Request, cam_id: int, db: Session = Depends(get_db)):
-    scope = _resolve_camera_org_scope(request, db)
-    cam = db.query(Device).filter(Device.id == cam_id).first()
+def _resolve_camera_or_404(db: Session, cam_id: Any) -> Device:
+    cam_str = str(cam_id or "").strip()
+    if not cam_str:
+        raise HTTPException(status_code=404, detail="Kamera topilmadi")
+    if cam_str.isdigit():
+        cam = db.query(Device).filter(Device.id == int(cam_str)).first()
+    else:
+        cam = db.query(Device).filter(Device.uuid == cam_str).first()
     if not cam:
         raise HTTPException(status_code=404, detail="Kamera topilmadi")
+    return cam
+
+
+# ── GET /api/cameras/{id} — bitta kamera ─────────────────
+@router.get("/api/cameras/{cam_id}")
+def get_camera(request: Request, cam_id: str, db: Session = Depends(get_db)):
+    scope = _resolve_camera_org_scope(request, db)
+    cam = _resolve_camera_or_404(db, cam_id)
     if not bool(scope.get("is_super_admin")):
         allowed_org_ids = list(scope.get("allowed_org_ids") or [])
         if cam.organization_id not in allowed_org_ids:
@@ -1326,6 +1338,7 @@ def get_camera(request: Request, cam_id: int, db: Session = Depends(get_db)):
 
     return {
         "id": cam.id,
+        "uuid": cam.uuid,
         "name": cam.name,
         "mac_address": cam.mac_address,
         "serial_number": cam.serial_number,
@@ -1512,22 +1525,18 @@ def add_camera(request: Request, data: CameraCreate, db: Session = Depends(get_d
 
 # ── DELETE /api/cameras/{id} ───────────────────────────
 @router.delete("/api/cameras/{cam_id}")
-def delete_camera(request: Request, cam_id: int, db: Session = Depends(get_db)):
+def delete_camera(request: Request, cam_id: str, db: Session = Depends(get_db)):
     _assert_camera_manage_access(request)
-    cam = db.query(Device).filter(Device.id == cam_id).first()
-    if not cam:
-        raise HTTPException(status_code=404, detail="Kamera topilmadi")
+    cam = _resolve_camera_or_404(db, cam_id)
     db.delete(cam)
     db.commit()
     return {"ok": True, "message": "Kamera o'chirildi"}
 
 # ── PUT /api/cameras/{id} ─────────────────────────────
 @router.put("/api/cameras/{cam_id}")
-def update_camera(request: Request, cam_id: int, data: CameraUpdate, db: Session = Depends(get_db)):
+def update_camera(request: Request, cam_id: str, data: CameraUpdate, db: Session = Depends(get_db)):
     _assert_camera_manage_access(request)
-    cam = db.query(Device).filter(Device.id == cam_id).first()
-    if not cam:
-        raise HTTPException(status_code=404, detail="Kamera topilmadi")
+    cam = _resolve_camera_or_404(db, cam_id)
     
     if data.mac_address is not None:
         incoming_mac_raw = _strip_or_none(data.mac_address)
@@ -1546,7 +1555,7 @@ def update_camera(request: Request, cam_id: int, data: CameraUpdate, db: Session
         if incoming_serial:
             existing_serial = db.query(Device).filter(
                 Device.serial_number == incoming_serial,
-                Device.id != cam_id,
+                Device.id != cam.id,
             ).first()
             if existing_serial:
                 raise HTTPException(status_code=409, detail="Bu seriya raqam allaqachon mavjud")
@@ -1895,13 +1904,11 @@ def _is_not_supported_error(detail: Any) -> bool:
     return any(marker in text for marker in markers)
 
 @router.post("/api/cameras/{cam_id}/command")
-def send_command(request: Request, cam_id: int, payload: CommandPayload, db: Session = Depends(get_db)):
+def send_command(request: Request, cam_id: str, payload: CommandPayload, db: Session = Depends(get_db)):
     _assert_camera_manage_access(request)
     if payload.command not in ALLOWED_COMMANDS:
         raise HTTPException(status_code=400, detail="Noto'g'ri buyruq")
-    cam = db.query(Device).filter(Device.id == cam_id).first()
-    if not cam:
-        raise HTTPException(status_code=404, detail="Kamera topilmadi")
+    cam = _resolve_camera_or_404(db, cam_id)
 
     if payload.command == "get_today_attendance_count":
         today_attendance = _get_today_attendance_summary(db, cam)
@@ -2047,7 +2054,7 @@ def _collect_camera_users(target_id: str, *, limit: int = 500) -> list[dict]:
 
 
 @router.get("/api/cameras/{cam_id}/snapshot")
-def get_camera_snapshot(request: Request, cam_id: int, db: Session = Depends(get_db)):
+def get_camera_snapshot(request: Request, cam_id: str, db: Session = Depends(get_db)):
     cam, _ = _get_camera_for_request(request, db, cam_id)
 
     target_id, live_info, source = _resolve_online_command_target(cam)
@@ -2212,7 +2219,7 @@ def get_camera_snapshot(request: Request, cam_id: int, db: Session = Depends(get
 
 
 @router.post("/api/cameras/{cam_id}/sync-metadata")
-def sync_camera_metadata(request: Request, cam_id: int, db: Session = Depends(get_db)):
+def sync_camera_metadata(request: Request, cam_id: str, db: Session = Depends(get_db)):
     _assert_camera_manage_access(request)
     cam, _ = _get_camera_for_request(request, db, cam_id)
 
@@ -2371,7 +2378,7 @@ def sync_camera_metadata(request: Request, cam_id: int, db: Session = Depends(ge
 
 
 @router.get("/api/cameras/{cam_id}/camera-users")
-def get_camera_users(request: Request, cam_id: int, limit: int = 300, db: Session = Depends(get_db)):
+def get_camera_users(request: Request, cam_id: str, limit: int = 300, db: Session = Depends(get_db)):
     cam, _ = _get_camera_for_request(request, db, cam_id)
     target_id, _, source = _resolve_online_command_target(cam)
     try:
@@ -2435,7 +2442,7 @@ def get_camera_users(request: Request, cam_id: int, limit: int = 300, db: Sessio
 
 
 def import_camera_users_to_db_impl(
-    cam_id: int,
+    cam_id: Any,
     limit: int = 500,
     allow_camera_http_download: bool = True,
     face_import_mode: str = "if_missing",
@@ -2445,7 +2452,7 @@ def import_camera_users_to_db_impl(
     progress_cb: Optional[Callable[[int, int, Optional[str], dict[str, Any]], None]] = None,
     db: Session = None,
 ):
-    cam = db.query(Device).filter(Device.id == cam_id).first()
+    cam = _resolve_camera_or_404(db, cam_id)
     if not cam:
         raise HTTPException(status_code=404, detail="Kamera topilmadi")
     target_id, _, source = _resolve_online_command_target(cam)
@@ -2878,7 +2885,7 @@ def import_camera_users_to_db_impl(
 
 @router.post("/api/cameras/{cam_id}/import-camera-users")
 def import_camera_users_to_db(
-    cam_id: int,
+    cam_id: str,
     limit: int = 500,
     allow_camera_http_download: bool = True,
     face_import_mode: str = "if_missing",
@@ -2908,13 +2915,11 @@ class AddUserToCameraPayload(BaseModel):
 
 @router.post("/api/cameras/{cam_id}/users")
 async def add_user_to_camera(
-    cam_id: int,
+    cam_id: str,
     data: AddUserToCameraPayload,
     db: Session = Depends(get_db)
 ):
-    cam = db.query(Device).filter(Device.id == cam_id).first()
-    if not cam:
-        raise HTTPException(status_code=404, detail="Kamera topilmadi")
+    cam = _resolve_camera_or_404(db, cam_id)
 
     pid = _normalize_personal_id(data.personal_id)
     if pid is None and data.employee_id:
@@ -2950,14 +2955,12 @@ async def add_user_to_camera(
 @router.post("/api/cameras/{cam_id}/sync-employee")
 async def sync_employee_to_camera(
     request: Request,
-    cam_id: int,
+    cam_id: str,
     employee_id: int = Form(...),
     db: Session = Depends(get_db),
 ):
     _append_runtime_log("tracer_sync.log", f"Direct sync hit for cam_id={cam_id}, emp_id={employee_id}\n")
-    cam = db.query(Device).filter(Device.id == cam_id).first()
-    if not cam:
-        raise HTTPException(status_code=404, detail="Kamera topilmadi")
+    cam = _resolve_camera_or_404(db, cam_id)
 
     employee = db.query(Employee).filter(Employee.id == employee_id).first()
     if not employee:
@@ -2997,7 +3000,7 @@ async def sync_employee_to_camera(
 async def add_user_to_camera_with_image(
     request: Request,
     background_tasks: BackgroundTasks,
-    cam_id: int,
+    cam_id: str,
     first_name: str = Form(...),
     last_name: str = Form(...),
     personal_id: Optional[str] = Form(None),
@@ -3005,7 +3008,7 @@ async def add_user_to_camera_with_image(
     push_mode: str = Form("background"),
     db: Session = Depends(get_db),
 ):
-    cam = db.query(Device).filter(Device.id == cam_id).first()
+    cam = _resolve_camera_or_404(db, cam_id)
     if not cam:
         raise HTTPException(status_code=404, detail="Kamera topilmadi")
 
@@ -4054,9 +4057,13 @@ def _assert_camera_manage_access(request: Request) -> None:
         )
 
 
-def _get_camera_for_request(request: Request, db: Session, cam_id: int) -> tuple[Device, dict[str, Any]]:
+def _get_camera_for_request(request: Request, db: Session, cam_id: Any) -> tuple[Device, dict[str, Any]]:
     scope = _resolve_camera_org_scope(request, db)
-    query = db.query(Device).filter(Device.id == cam_id)
+    cam_str = str(cam_id or "").strip()
+    if cam_str.isdigit():
+        query = db.query(Device).filter(Device.id == int(cam_str))
+    else:
+        query = db.query(Device).filter(Device.uuid == cam_str)
     if not bool(scope.get("is_super_admin")):
         allowed_org_ids = list(scope.get("allowed_org_ids") or [])
         if not allowed_org_ids:

@@ -759,7 +759,7 @@ export default function OrganizationForm() {
                               </div>
 
                               <a
-                                href={`/devices/${cam.id}`}
+                                href={`/devices/${cam.uuid || cam.id}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 style={{
@@ -834,7 +834,7 @@ export default function OrganizationForm() {
                               </div>
 
                               <a
-                                href={`/devices/${cam.id}`}
+                                href={`/devices/${cam.uuid || cam.id}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 style={{

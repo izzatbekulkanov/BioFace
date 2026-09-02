@@ -445,7 +445,7 @@ export default function Devices() {
                                 <CameraRegular fontSize={22}/>
                                 <span style={{position:'absolute',right:-2,bottom:-2,width:10,height:10,borderRadius:'50%',background:cam.is_online?'var(--green)':'var(--red)',border:'2px solid var(--surface)',animation:cam.is_online?'onlinePulse 2s infinite ease-in-out':'none',boxShadow:cam.is_online?'0 0 6px var(--green)':'none'}}/>
                               </div>
-                              <div style={{flex:1,minWidth:0,cursor:'pointer'}} onClick={()=>navigate(`/devices/${cam.id}`)}>
+                              <div style={{flex:1,minWidth:0,cursor:'pointer'}} onClick={()=>navigate(`/devices/${cam.uuid || cam.id}`)}>
                                 <div style={{fontSize:15,fontWeight:700,color:'var(--white)',marginBottom:4,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={cam.name}>{cam.name}</div>
                                 <div style={{display:'flex',alignItems:'center',gap:6}}>
                                   <span style={{fontSize:10,fontWeight:700,color:cam.is_online?'var(--green)':'var(--text-3)',textTransform:'uppercase',letterSpacing:0.3}}>{cam.is_online?'Online':'Offline'}</span>
@@ -483,7 +483,7 @@ export default function Devices() {
                               )}
                             </div>
                             <div style={{display:'flex',alignItems:'center',gap:8,padding:'10px 14px',background:'var(--surface-2)',borderTop:'1px solid var(--border-2)'}}>
-                              <button onClick={()=>navigate(`/devices/${cam.id}`)} style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'8px 12px',borderRadius:8,background:'var(--surface-3)',border:'1px solid var(--border-3)',color:'var(--text-1)',fontSize:12.5,fontWeight:600,cursor:'pointer',transition:'all 0.2s'}} onMouseEnter={e=>{e.currentTarget.style.background='var(--accent)';e.currentTarget.style.borderColor='var(--accent)';e.currentTarget.style.color='#fff'}} onMouseLeave={e=>{e.currentTarget.style.background='var(--surface-3)';e.currentTarget.style.borderColor='var(--border-3)';e.currentTarget.style.color='var(--text-1)'}}>
+                              <button onClick={()=>navigate(`/devices/${cam.uuid || cam.id}`)} style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'8px 12px',borderRadius:8,background:'var(--surface-3)',border:'1px solid var(--border-3)',color:'var(--text-1)',fontSize:12.5,fontWeight:600,cursor:'pointer',transition:'all 0.2s'}} onMouseEnter={e=>{e.currentTarget.style.background='var(--accent)';e.currentTarget.style.borderColor='var(--accent)';e.currentTarget.style.color='#fff'}} onMouseLeave={e=>{e.currentTarget.style.background='var(--surface-3)';e.currentTarget.style.borderColor='var(--border-3)';e.currentTarget.style.color='var(--text-1)'}}>
                                 <EyeRegular fontSize={14}/>{t('devices.details')}
                               </button>
                               <Tooltip content={t('nav.commands','Buyruq berish')} relationship="label">

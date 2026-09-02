@@ -203,6 +203,10 @@ export default function CameraDetail() {
       const data = await camRes.json().catch(() => null)
       if (!data) throw new Error(isRu ? 'Ошибка формата данных камеры' : 'Kamera ma\'lumotlari formati noto\'g\'ri')
       const orgList = orgsRes.ok ? await orgsRes.json().catch(() => []) : []
+      if (data?.uuid && String(id) !== String(data.uuid)) {
+        navigate(`/devices/${data.uuid}`, { replace: true })
+        return
+      }
       setCam(data)
       setOrgs(Array.isArray(orgList) ? orgList : [])
       setF({

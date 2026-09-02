@@ -580,7 +580,7 @@ export default function BranchDetail() {
                                   {togglingCamId === d.id ? '...' : (isRu ? 'Убрать' : 'Ajratish')}
                                 </button>
                                 <Link
-                                  to={`/devices/${d.id}`}
+                                  to={`/devices/${d.uuid || d.id}`}
                                   target="_blank"
                                   style={{
                                     ...smallBtn('subtle'),
@@ -664,7 +664,7 @@ export default function BranchDetail() {
                                   {togglingCamId === d.id ? '...' : (isRu ? "Добавить" : "Qo'shish")}
                                 </button>
                                 <Link
-                                  to={`/devices/${d.id}`}
+                                  to={`/devices/${d.uuid || d.id}`}
                                   target="_blank"
                                   style={{
                                     ...smallBtn('subtle'),

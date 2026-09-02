@@ -124,6 +124,7 @@ class Device(Base):
     """Kamera qurilmasi"""
     __tablename__ = "devices"
     id = Column(Integer, primary_key=True, index=True)
+    uuid = Column(String(36), unique=True, index=True, default=lambda: str(uuid_lib.uuid4()))
     name = Column(String, nullable=False)                        # "Rakat mahallasi 1-kirish"
     mac_address = Column(String, unique=True, index=True, nullable=False)  # "AA:BB:CC:11:22:33"
     serial_number = Column(String, index=True, nullable=True)
