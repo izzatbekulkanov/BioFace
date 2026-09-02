@@ -85,7 +85,6 @@ function AttendanceDropdown({ currentUser, active }) {
   const items = [
     { id: 'attendance', label: isRu ? 'Журнал событий' : 'Voqealar jurnali', icon: <HistoryRegular fontSize={15} />, path: '/attendance', perm: 'attendance' },
     { id: 'attendanceEmployees', label: isRu ? 'В разрезе сотрудников' : 'Xodimlar kesimida', icon: <PeopleRegular fontSize={15} />, path: '/attendance/employees', perm: 'attendance' },
-    { id: 'faceIdControl', label: isRu ? 'Face ID контроль' : 'Face ID nazorat', icon: <ShieldRegular fontSize={15} />, path: '/attendance/control', perm: 'attendance' },
     { id: 'psychology', label: isRu ? 'Психологический портрет' : 'Psixologik portret', icon: <BrainCircuitRegular fontSize={15} />, path: '/psychology', perm: 'psychological_portrait' },
   ].filter(item => !currentUser || isSuper || (currentUser?.menu_permissions || []).includes(item.perm))
 

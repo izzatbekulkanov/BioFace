@@ -24,7 +24,6 @@ import EmployeeForm   from './pages/EmployeeForm'
 import EmployeeDetail from './pages/EmployeeDetail'
 import Attendance     from './pages/Attendance'
 import AttendanceGroups from './pages/AttendanceGroups'
-import FaceIdControl from './pages/FaceIdControl'
 import PsychologicalPortrait from './pages/PsychologicalPortrait'
 import MiddlewareLogs from './pages/MiddlewareLogs'
 import Shifts         from './pages/Shifts'
@@ -187,7 +186,7 @@ export default function App() {
               <Route path="/employees/:id"      element={isLoggedIn ? <EmployeeDetail />             : <Navigate to="/login" replace />} />
               <Route path="/attendance"      element={isLoggedIn ? <Attendance /> : <Navigate to="/login" replace />} />
               <Route path="/attendance/employees" element={isLoggedIn ? <AttendanceGroups /> : <Navigate to="/login" replace />} />
-              <Route path="/attendance/control" element={isLoggedIn ? <FaceIdControl /> : <Navigate to="/login" replace />} />
+              <Route path="/attendance/control" element={<Navigate to="/attendance" replace />} />
               <Route path="/psychology"      element={isLoggedIn ? <PsychologicalPortrait /> : <Navigate to="/login" replace />} />
               <Route path="/shifts"          element={isLoggedIn ? <Shifts />    : <Navigate to="/login" replace />} />
               <Route path="/organizations"        element={isLoggedIn ? <Organizations /> : <Navigate to="/login" replace />} />
