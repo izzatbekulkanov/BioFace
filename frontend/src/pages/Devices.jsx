@@ -80,9 +80,9 @@ export default function Devices() {
     const signal = abortRef.current.signal
     try {
       const isFirstLoad = _camerasCache.length === 0 && !animate
-      const camsPromise = fetch('/api/cameras', { signal }).catch(err => { if (err.name === 'AbortError') return null; throw err; })
-      const orgsPromise = fetch('/api/organizations', { signal }).catch(err => { if (err.name === 'AbortError') return null; throw err; })
-      const mePromise   = fetch('/api/auth/me', { signal }).catch(err => { if (err.name === 'AbortError') return null; throw err; })
+      const camsPromise = fetch('/api/cameras', { signal, credentials: 'include' }).catch(err => { if (err.name === 'AbortError') return null; throw err; })
+      const orgsPromise = fetch('/api/organizations', { signal, credentials: 'include' }).catch(err => { if (err.name === 'AbortError') return null; throw err; })
+      const mePromise   = fetch('/api/auth/me', { signal, credentials: 'include' }).catch(err => { if (err.name === 'AbortError') return null; throw err; })
 
       const [camsRes, orgsRes, meRes] = isFirstLoad
         ? await Promise.all([camsPromise, orgsPromise, mePromise, new Promise(r => setTimeout(r, 600))]).then(arr => [arr[0], arr[1], arr[2]])
@@ -93,9 +93,9 @@ export default function Devices() {
       if (camsRes.status === 401 || orgsRes.status === 401) { navigate('/login'); return }
       if (!camsRes.ok) throw new Error()
 
-      const camsData = await camsRes.json()
-      const orgsData = orgsRes.ok ? await orgsRes.json() : []
-      const meData   = meRes.ok   ? await meRes.json()   : {}
+      const camsData = await camsRes.json().catch(() => [])
+      const orgsData = orgsRes.ok ? await orgsRes.json().catch(() => []) : []
+      const meData   = meRes.ok   ? await meRes.json().catch(() => ({}))   : {}
 
       const role = String(meData.role || '').toLowerCase()
       const superAdmin = role === 'super_admin' || role === 'superadmin'
@@ -136,7 +136,7 @@ export default function Devices() {
       return
     }
     setBranchesLoading(true)
-    fetch(`/api/branches?org=${orgParam}`)
+    fetch(`/api/branches?org=${orgParam}`, { credentials: 'include' })
       .then(r => r.ok ? r.json() : [])
       .then(data => {
         const list = Array.isArray(data) ? data : data.items || []
@@ -164,7 +164,7 @@ export default function Devices() {
     if (!ok) return
     setDeleting(cam.id)
     try {
-      const res = await fetch(`/api/cameras/${cam.id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/cameras/${cam.id}`, { method: 'DELETE', credentials: 'include' })
       if (res.ok) {
         setCameras(c => c.filter(x => x.id !== cam.id))
         _camerasCache = _camerasCache.filter(x => x.id !== cam.id)

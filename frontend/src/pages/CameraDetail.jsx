@@ -95,17 +95,19 @@ export default function CameraDetail() {
   })
   const [loadingAlarm, setLoadingAlarm] = useState(false)
   const [savingAlarm, setSavingAlarm] = useState(false)
+  const [alarmError, setAlarmError] = useState('')
 
   const fetchAlarmSettings = async () => {
     setLoadingAlarm(true)
-    setError('')
+    setAlarmError('')
     try {
       const res = await fetch(`/api/cameras/${id}/command`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ command: 'get_alarm_server', params: {} }),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.detail || (isRu ? 'Ошибка при получении настроек' : 'Sozlamalarni olishda xatolik'))
       if (data.response && data.response.ok && data.response.summary) {
         const sum = data.response.summary
@@ -129,7 +131,7 @@ export default function CameraDetail() {
         throw new Error(isRu ? 'Не удалось прочитать настройки из ответа' : 'Javobdan sozlamalarni o\'qib bo\'lmadi')
       }
     } catch (e) {
-      setError(e.message)
+      setAlarmError(e.message)
     } finally {
       setLoadingAlarm(false)
     }
@@ -146,6 +148,7 @@ export default function CameraDetail() {
       const res = await fetch(`/api/cameras/${id}/command`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           command: 'set_alarm_server',
           params: {
@@ -156,7 +159,7 @@ export default function CameraDetail() {
           }
         }),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.detail || (isRu ? 'Ошибка при записи настроек' : 'Sozlamalarni yozishda xatolik'))
       toast.success(isRu ? 'Настройки успешно записаны на камеру' : 'Sozlamalar kameraga muvaffaqiyatli yozildi')
       setTimeout(() => {
@@ -184,8 +187,8 @@ export default function CameraDetail() {
     abortRef.current = new AbortController()
     const signal = abortRef.current.signal
     try {
-      const camPromise = fetch(`/api/cameras/${id}`, { signal }).catch(err => { if (err.name === 'AbortError') return null; throw err; })
-      const orgsPromise = fetch('/api/organizations', { signal }).catch(err => { if (err.name === 'AbortError') return null; throw err; })
+      const camPromise = fetch(`/api/cameras/${id}`, { signal, credentials: 'include' }).catch(err => { if (err.name === 'AbortError') return null; throw err; })
+      const orgsPromise = fetch('/api/organizations', { signal, credentials: 'include' }).catch(err => { if (err.name === 'AbortError') return null; throw err; })
 
       const [camRes, orgsRes] = await Promise.all([
         camPromise,
@@ -197,8 +200,9 @@ export default function CameraDetail() {
       if (camRes.status === 401) { navigate('/login'); return }
       if (camRes.status === 404) throw new Error(isRu ? 'Камера не найдена' : 'Kamera topilmadi')
       if (!camRes.ok) throw new Error(isRu ? 'Камера не загружена' : 'Kamera yuklanmadi')
-      const data = await camRes.json()
-      const orgList = orgsRes.ok ? await orgsRes.json() : []
+      const data = await camRes.json().catch(() => null)
+      if (!data) throw new Error(isRu ? 'Ошибка формата данных камеры' : 'Kamera ma\'lumotlari formati noto\'g\'ri')
+      const orgList = orgsRes.ok ? await orgsRes.json().catch(() => []) : []
       setCam(data)
       setOrgs(Array.isArray(orgList) ? orgList : [])
       setF({
@@ -263,10 +267,12 @@ export default function CameraDetail() {
     if (f.password.trim()) body.password = f.password.trim()
     try {
       const res = await fetch(`/api/cameras/${id}`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(body),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.detail || (isRu ? 'Ошибка' : 'Xatolik'))
       toast.success(data.message || (isRu ? 'Успешно сохранено' : 'Muvaffaqiyatli saqlandi'))
       load(true)
@@ -278,10 +284,12 @@ export default function CameraDetail() {
     setCmdLoading(p => ({ ...p, [cmd]: true }))
     try {
       const res = await fetch(`/api/cameras/${id}/command`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ command: cmd, params: {} }),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.detail || (isRu ? 'Ошибка' : 'Xatolik'))
       
       let cmdMsg = ''
@@ -313,9 +321,13 @@ export default function CameraDetail() {
     })
     if (!ok) return
     try {
-      await fetch(`/api/cameras/${id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/cameras/${id}`, { method: 'DELETE', credentials: 'include' })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.detail || (isRu ? "Ошибка при удалении" : "O'chirishda xatolik"))
+      }
       navigate('/devices')
-    } catch { toast.error(isRu ? "Ошибка при удалении" : "O'chirishda xatolik") }
+    } catch (e) { toast.error(e.message || (isRu ? "Ошибка при удалении" : "O'chirishda xatolik")) }
   }
 
   if (loading) return (
@@ -703,8 +715,10 @@ export default function CameraDetail() {
                     </div>
                   </div>
                 ) : (
-                  <div style={{ fontSize: 12, color: 'var(--text-4)', fontStyle: 'italic' }}>
-                    {isRu ? 'Данные не загружены. Нажмите "Считать с камеры" для опроса устройства.' : "Ma'lumotlar yuklanmagan. Qurilmani so'rash uchun 'Kameradan yuklash' tugmasini bosing."}
+                  <div style={{ fontSize: 12, color: alarmError ? 'var(--red)' : 'var(--text-4)', fontStyle: alarmError ? 'normal' : 'italic' }}>
+                    {alarmError
+                      ? `⚠ ${alarmError}`
+                      : (isRu ? 'Данные не загружены. Нажмите "Считать с камеры" для опроса устройства.' : "Ma'lumotlar yuklanmagan. Qurilmani so'rash uchun 'Kameradan yuklash' tugmasini bosing.")}
                   </div>
                 )}
               </div>
